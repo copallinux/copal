@@ -86,8 +86,7 @@ model_of = $(patsubst pizero%,zero%,$(1))
 .PHONY: alldebug build-all-debug imagedebug freshdebug purge \
 	help menu flow targets boards configure require-tools vm graphical check \
         fresh auto image refresh utm utm-x86 layout layout-auto answers answers-show lint space clean distclean \
-         \
-        all cache build-all release capture video screens verify gallery chain walkthrough release-cast logs utm-export install utm-type answers-node
+        all cache build-all release capture video screens verify gallery chain walkthrough release-cast logs utm-export install answers-node
 
 help:
 	@printf '\nCopal Linux -- make targets\n\n'
