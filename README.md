@@ -1428,6 +1428,7 @@ these stay.
 | `copal-ssh` · `copal-logflush` · `copal-splash` | SSH policy; RAM logs down to the card; the key bindings on the wallpaper |
 | `copal-grove` | Written by stage 16, on a card that named a grove: the beacon, this node's facts, and the half of enrolment that runs here |
 | `copal-code` | The checkouts in `~/code` — the list, and cloning or pulling from it. `~/code/copal` is always there, listed or not |
+| `copal-fonts` | The font sets — coding faces with and without ligatures, console/TTY, the IBM PC pack — and which font the text console uses |
 | `snapshot` · `mountdsk` | rsync snapshots; mount a disk image |
 
 ### Why one file, and not packages
