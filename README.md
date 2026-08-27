@@ -2003,6 +2003,7 @@ bindings, the account model, the SD-card wear analysis — is in
 | `docs/grove-plan.md` | **Copal Grove** — a fleet of Copal machines on one LAN: discovery, certificates, the message bus, scenes, and the build order |
 | `docs/grove-lab-report.md` | What Timbuktu, Veyon and Xen Orchestra each got right, and the console a grove should have. IEEE format |
 | `docs/grove-m4-backlog.md` | **The next milestone, ready to resume.** The bus and the wall, broken into ten work items with acceptance tests, three blocking decisions, and the demo that closes it |
+| `docs/interface-report.md` | Interface simplification for the technically capable user — the design position, IEEE format |
 
 ## Repository policy
 
