@@ -11483,7 +11483,7 @@ hypr_write_waybar() {
     "exec": "echo '\u2261'",
     "interval": "once",
     "tooltip": true,
-    "tooltip-format": "Menu -- programs, settings, install, session (Super+Z). Right-click: shut down",
+    "tooltip-format": "Menu -- programs (Super+Space); settings, install, session (Super+Z). Right-click: shut down",
     "on-click": "copal-menu",
     "on-click-right": "copal-halt"
   },
