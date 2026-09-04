@@ -5471,7 +5471,7 @@ write_share_retry() {
     cat > /etc/local.d/copal-share.start <<'SHARESTART'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # The folder shared with the host, tried at every boot. Written by copal-init.sh.
 #
 # fstab mounts the share that was there when the card was written. This is
@@ -8410,7 +8410,7 @@ COPALHALT
         cat > /etc/init.d/copal-unplug <<'UNPLUG'
 #!/sbin/openrc-run
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-unplug -- the last words on the console when a Raspberry Pi halts.
 #
 # OpenRC "starts" the shutdown runlevel's services on the way down; this one
