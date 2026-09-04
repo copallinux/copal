@@ -6710,7 +6710,7 @@ configure_desktop_autostart() {  # [session command shown in the question, e.g. 
     cat > /usr/local/bin/copal-session <<'SESSION'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-session -- the one front door for the graphical session.
 #
 # Reads one word from /etc/copal/session and starts that desktop:
@@ -6903,7 +6903,7 @@ XDGENV
     cat > /usr/local/bin/copal-desktop <<'DESKTOPSW'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-desktop -- choose which desktop owns the screen. Needs root.
 #
 #   doas copal-desktop wayland   Hyprland at the next login, and X's setuid
@@ -7091,7 +7091,7 @@ write_copal_clip() {
     cat > /usr/local/bin/copal-clip <<'COPALCLIP'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 #
 # copal-clip -- one clipboard, one set of keys, every window.
 #
@@ -8879,7 +8879,7 @@ DESKCODE
     cat > /usr/local/bin/copal-desk <<'COPALDESK'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-desk -- put the workspaces into a known shape, in one command.
 #
 # Reads a layout file and opens what it names on the workspace it names.
@@ -9071,7 +9071,7 @@ COPALDESK
     cat > /usr/local/bin/copal-camera <<'COPALCAMERA'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-camera -- the camera application, whichever one this machine has.
 #
 #   copal-camera            open it
@@ -9954,7 +9954,7 @@ COPALSPLASH
     cat > /usr/local/bin/copal-gpu <<'COPALGPU'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-gpu -- report the display stack, layer by layer, and say what is wrong.
 #
 # Exit status is the verdict, so this is usable in a script:
@@ -11750,7 +11750,7 @@ WAYBARDESKCSS
     cat > /usr/local/bin/copal-widgets <<'COPALWIDGETS'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-widgets -- the widgets on the wallpaper: place them, hide them, seed
 # them for the shell that is not installed yet.
 #
@@ -11897,7 +11897,7 @@ COPALWIDGETS
     cat > /usr/local/bin/copal-bar <<'COPALBAR'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-bar -- start whichever shell this machine actually has.
 #
 # Linux Antiquity's bar, taskbar, widgets and launcher are quickshell QML.
@@ -12188,7 +12188,7 @@ stage_hyprland() {
     cat > /usr/local/bin/copal-launcher <<'ANTIQLAUNCH'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-launcher -- Super+Space, Super+D and Super+Z on the Antiquity desktop.
 #
 # ONE MENU, WHICH IS THE POINT OF THIS FILE NOW. It used to be a second menu:
@@ -12217,7 +12217,7 @@ ANTIQLAUNCH
     cat > /usr/local/bin/copal-shot <<'ANTIQSHOT'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-shot -- Super+Shift+S: screenshot a region you draw.
 #
 # hyprshot is what the theme binds; Alpine does not package it, and grim +
@@ -12239,7 +12239,7 @@ ANTIQSHOT
     cat > /usr/local/bin/copal-wallpaper <<'ANTIQWALL'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-wallpaper -- paint the wallpaper, choose one, or fetch more.
 #
 #   copal-wallpaper              paint the chosen one and stay running.
@@ -14104,7 +14104,7 @@ install_copal_fonts() {
     cat > /usr/local/bin/copal-fonts <<'COPALFONTS'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-fonts -- the font sets, and the console font.
 #
 #   copal-fonts                  what is installed, group by group
@@ -14567,7 +14567,7 @@ install_copal_code() {
     cat > /usr/local/bin/copal-code <<'COPALCODE'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-code -- the checkouts in ~/code.
 #
 #   copal-code              clone anything on the list that is not here yet,
@@ -14874,7 +14874,7 @@ install_copal_build() {
     cat > /usr/local/bin/copal-build <<'COPALBUILD'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # copal-build -- compile the checkouts in ~/code and put what they make on PATH.
 #
 #   copal-build              build every checkout whose shape it recognises,
@@ -26738,7 +26738,7 @@ iio_write_iiod_service() {
     cat > /etc/init.d/iiod <<'IIOD'
 #!/sbin/openrc-run
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # iiod -- serve this board's IIO devices to libiio clients on the network.
 #
 # Options go in /etc/conf.d/iiod as IIOD_OPTS, e.g. IIOD_OPTS="-p 30431".
@@ -26801,7 +26801,7 @@ iio_usb_access() {
     cat > /etc/local.d/usb-group.start <<'USBGRP'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # The mdev coldplug scan at boot recreates USB device nodes root:root; the
 # rule in /etc/mdev.conf only sees hotplug events. Hand whatever was already
 # plugged in at power-on to the usb group, so libiio can open it as a user.
@@ -26849,7 +26849,7 @@ iio_write_scan_helper() {
     cat > /usr/local/bin/iio-scan <<'IIOSCAN'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 paulr@sdf.org -- part of Copal Linux.
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
 # iio-scan -- what libiio can see from here, and why it might not.
 #
 #   iio-scan              scan USB, the network and this board's own devices
