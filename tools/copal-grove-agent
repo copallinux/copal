@@ -93,8 +93,54 @@ def run_tool(*args):
 
 # ------------------------------------------------------------- discovery ---
 
-def find_warden():
+# ------------------------------------------------------------- the sort ---
+
+UNREACHABLE = os.environ.get("COPAL_GROVE_UNREACHABLE",
+                             "/var/lib/copal-grove/unreachable")
+DOAS = os.environ.get("COPAL_GROVE_DOAS", "/usr/bin/doas")
+
+
+def unreachable(ids):
+    """Record the wardens that announce but do not answer.
+
+    THE BEACON SAYS WHO CLAIMS THE ROLE; THE PORT SAYS WHO HOLDS IT. An
+    unplugged card goes on announcing for as long as its record is cached, so
+    an election reading beacons alone would follow a machine that is off until
+    mDNS forgot it -- minutes, where §7 promises twenty seconds. This process
+    is the one holding the connection, so it is the one that knows, and this
+    file is how it tells `copal-grove elect`.
+    """
+    try:
+        os.makedirs(os.path.dirname(UNREACHABLE), exist_ok=True)
+        tmp = UNREACHABLE + ".new"
+        with open(tmp, "w") as fh:
+            fh.write("".join(i + "\n" for i in sorted(ids) if i))
+        os.replace(tmp, UNREACHABLE)
+    except OSError as exc:
+        log("unreachable list: %s" % exc)
+
+
+def elect():
+    """Re-run the election; the role it settled on, or "" if it could not ask.
+
+    Through the node tool rather than in here, so that there is ONE election
+    and it is the one a person can run by hand.
+    """
+    argv = ([DOAS, GROVE_TOOL, "elect"] if os.access(DOAS, os.X_OK)
+            else [GROVE_TOOL, "elect"])
+    try:
+        out = subprocess.run(argv, capture_output=True, text=True, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return out.stdout.strip() if out.returncode == 0 else ""
+
+def find_warden(skip=()):
     """(address, id) of the node announcing itself as warden, or (None, None).
+
+    `skip` is the ids that announce the role but did not answer for it.  A
+    warden that is off keeps claiming the role while its record is cached, and
+    without this the agent would go on dialling a dead machine and never reach
+    the one that has since been elected.
 
     Read out of the same beacons `copal grove ls` reads, through the node
     tool's own `browse`, so there is one parser for that format and it is not
@@ -112,8 +158,15 @@ def find_warden():
         if kv.get("g") != field("name") or kv.get("r") != "warden":
             continue
         score = int(kv.get("s") or 0)
-        if best is None or score > best[0]:
-            best = (score, addr, kv.get("n") or nid)
+        name = kv.get("n") or nid
+        if name in skip:
+            continue
+        # §7: highest score takes the role, ties break on lowest node id,
+        # string compare.  Comparing on score alone let the browse order decide
+        # a tie, so two nodes reading the same beacons could pick two different
+        # wardens -- the one case where a deterministic sort has to be one.
+        if best is None or (-score, name) < (-best[0], best[2]):
+            best = (score, addr, name)
     return (best[1], best[2]) if best else (None, None)
 
 
@@ -402,27 +455,51 @@ def main():
 
     log("agent for %s in grove %s, tags %s" % (node_id, grove, tags or "none"))
 
+    dead = set()
+
     while True:
-        is_warden = field("role") == "warden"
-        addr, wid = find_warden()
+        addr, wid = find_warden(dead)
         if not addr:
             # NOT AN ERROR. Twenty seconds of no warden is what a handover
-            # looks like, and every verb over ssh is unaffected.
+            # looks like, and every verb over ssh is unaffected. It is also
+            # precisely when the election wants running: nobody is claiming the
+            # role, so somebody -- perhaps this node -- has to take it.
+            elect()
             time.sleep(BACKOFF[min(attempt, len(BACKOFF) - 1)])
             attempt = min(attempt + 1, len(BACKOFF) - 1)
             continue
 
+        # After the election, not before: elect() may just have changed it.
+        is_warden = field("role") == "warden"
         conn = copal_nats.Nats(addr, int(os.environ.get("COPAL_GROVE_PORT", "4222")),
                                seed=seed, name=node_id, timeout=10)
         try:
             conn.connect()
             log("on the bus at %s (warden %s)" % (addr, wid))
+            if dead:
+                # The field is clear again. A warden that answers must not be
+                # left on a list that would keep it out of the next sort.
+                dead = set()
+                unreachable(dead)
             attempt = 0
             session(conn, grove, node_id, tags, is_warden, seen, tail)
         except copal_nats.NatsError as exc:
+            # THE WARDEN IS THERE AND SAID NO. An auth or protocol refusal is
+            # not absence, and treating it as absence would elect a new warden
+            # every time this node's own credentials were wrong.
             log("bus: %s" % exc)
         except OSError as exc:
+            # A CLAIM THAT DOES NOT ANSWER. Discount it and re-run the sort.
+            # This is the fast half of the handover: it turns on a refused
+            # connection rather than on an expired mDNS record, which is the
+            # difference between §7's twenty seconds and the beacon's four
+            # minutes.
             log("bus: %s" % exc)
+            if wid:
+                dead.add(wid)
+                unreachable(dead)
+                log("warden %s announces but does not answer -- role is now %s"
+                    % (wid, elect() or "unchanged"))
         finally:
             conn.close()
         time.sleep(BACKOFF[min(attempt, len(BACKOFF) - 1)])

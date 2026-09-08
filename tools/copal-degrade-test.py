@@ -84,6 +84,37 @@ def free_port():
     return p
 
 
+def node_tool(root):
+    """Cut `/usr/bin/copal-grove` out of copal-prep.sh and make it runnable.
+
+    THE NODE TOOL IS NOT A FILE IN THIS REPOSITORY -- it is a heredoc inside
+    the installer, which is why W10's first version of this check read it with
+    `sed` instead of running it. Extracting it costs four lines and turns a
+    checklist item back into a test.
+    """
+    src = os.path.join(os.path.dirname(HERE), "copal-prep.sh")
+    out, keep = [], False
+    try:
+        with open(src, encoding="utf-8") as fh:
+            for ln in fh:
+                if ln.rstrip("\n").endswith("<<'COPALGROVE'"):
+                    keep = True
+                    continue
+                if keep and ln.rstrip("\n") == "COPALGROVE":
+                    break
+                if keep:
+                    out.append(ln)
+    except OSError:
+        return None
+    if not out:
+        return None
+    path = os.path.join(root, "copal-grove")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.writelines(out)
+    os.chmod(path, 0o755)
+    return path
+
+
 def grove_sh(*args, env=None, timeout=90):
     argv = ["sh", os.path.join(HERE, "copal-grove.sh")] + list(args)
     e = dict(os.environ)
@@ -222,25 +253,136 @@ def case_warden_unplugged(root, beacons, answers, home):
         bad("the console did not follow the warden",
             out[:200] if code == 0 else "state failed")
 
-    # The node half. THIS IS THE ONE W10 EXISTS TO FIND.
-    role_now = subprocess.run(
-        ["sed", "-n", "/^role_now()/,/^}/p",
-         os.path.join(os.path.dirname(HERE), "copal-prep.sh")],
-        capture_output=True, text=True).stdout
-    if "score" in role_now or "browse" in role_now:
-        ok("a node computes its own role from the election")
+    # The node half. THIS IS THE ONE W10 EXISTS TO FIND, and until the
+    # election was written this was a `sed` over role_now() looking for the
+    # word "score" -- which is reading a checklist, not performing one. It now
+    # RUNS the election out of copal-prep.sh over a directory of fixtures.
+    tool = node_tool(root)
+    if not tool:
+        bad("the node tool could not be extracted from copal-prep.sh",
+            "the `cat > /usr/bin/copal-grove <<COPALGROVE` heredoc moved or "
+            "was renamed")
+        return
+
+    me = subprocess.run(["hostname"], capture_output=True,
+                        text=True).stdout.strip()
+
+    def elect(peers, role="node", pin=None, unreachable=(), lease=None,
+              times=1):
+        """Run `copal-grove elect` over a made-up grove; the roles it printed.
+
+        `peers` is (id, score) -- this node is never in it, because the
+        election reads its own score live rather than out of its own beacon.
+        """
+        d = os.path.join(root, "electdir")
+        shutil.rmtree(d, ignore_errors=True)
+        os.makedirs(d)
+        with open(os.path.join(d, "name"), "w") as fh:
+            fh.write("museum\n")
+        with open(os.path.join(d, "role"), "w") as fh:
+            fh.write(role + "\n")
+        if pin:
+            with open(os.path.join(d, "role-pin"), "w") as fh:
+                fh.write(pin + "\n")
+        if lease is not None:
+            lp = os.path.join(d, "warden-lease")
+            open(lp, "w").close()
+            os.utime(lp, (time.time() - lease, time.time() - lease))
+        bf = os.path.join(root, "elect-beacons.tsv")
+        with open(bf, "w") as fh:
+            for nid, sc in peers:
+                fh.write("%s\t10.0.0.9\tv=1;g=museum;n=%s;r=node;s=%d;m=1024\n"
+                         % (nid, nid, sc))
+        uf = os.path.join(root, "elect-unreachable")
+        with open(uf, "w") as fh:
+            fh.write("".join(i + "\n" for i in unreachable))
+        env = dict(os.environ)
+        env.update({"COPAL_GROVE_DIR": d, "COPAL_GROVE_BEACONS": bf,
+                    "COPAL_GROVE_UNREACHABLE": uf})
+        out = []
+        for _ in range(times):
+            r = subprocess.run([tool, "elect"], capture_output=True,
+                               text=True, env=env, timeout=30)
+            out.append(r.stdout.strip())
+        return out
+
+    # This node's own score decides who wins, so the fixtures are written
+    # around it rather than assuming a number.
+    mine = int(subprocess.run([tool, "score"], capture_output=True, text=True,
+                              env=dict(os.environ, COPAL_GROVE_DIR=root)
+                              ).stdout.strip() or 0)
+    low = [("museum-01", mine - 100), ("museum-02", mine - 200)]
+    high = [("museum-01", mine + 100)]
+
+    got = elect(low, times=3)
+    if got == ["node", "node", "warden"]:
+        ok("the best score takes the role, after three agreeing checks",
+           "slow to take: %s" % " ".join(got))
     else:
-        bad("A NODE NEVER CHANGES ITS ROLE. `role_now()` returns the field "
-            "written to the card; nothing computes the election.",
-            "docs/grove-plan.md §7 describes a sort -- every node computes a\n"
-            "score, publishes it, and the highest announcing takes the role.\n"
-            "score() exists and is published. Nothing reads it to decide.\n"
-            "So unplugging the warden leaves the grove with no warden until\n"
-            "somebody rewrites a card. The console follows a warden that moves;\n"
-            "no warden ever moves.")
+        bad("the election did not promote the best score on the third check",
+            "got %s, wanted node node warden" % " ".join(got))
+
+    got = elect(high, role="warden", lease=0, times=1)
+    if got == ["node"]:
+        ok("a better score demotes this node on the FIRST check",
+           "quick to yield -- the asymmetry is the hysteresis")
+    else:
+        bad("a node holding the role did not yield to a better score",
+            "got %s, wanted node" % " ".join(got))
+
+    got = elect(high, times=4)
+    if got == ["node"] * 4:
+        ok("a losing node stays a node, and does not flap")
+    else:
+        bad("a losing node did not stay a node", " ".join(got))
+
+    got = elect(high, unreachable=["museum-01"], times=3)
+    if got == ["node", "node", "warden"]:
+        ok("a warden that announces but does not answer is discounted",
+           "the agent writes the list; the beacon alone would follow a "
+           "machine that is off")
+    else:
+        bad("an unreachable warden was still counted in the sort",
+            "got %s, wanted node node warden" % " ".join(got))
+
+    got = elect(low, pin="node", times=3)
+    if got == ["node"] * 3:
+        ok("a pinned role overrides the sort")
+    else:
+        bad("`role-pin` did not override the election", " ".join(got))
+
+    got = elect(low, role="warden", lease=None, times=1)
+    if got == ["node"]:
+        ok("a card that says warden with no live lease demotes first",
+           "a card off a shelf is not a warden that rebooted")
+    else:
+        bad("a stale warden role was resumed without a lease",
+            "got %s, wanted node" % " ".join(got))
+
+    got = elect(low, role="warden", lease=10, times=1)
+    if got == ["warden"]:
+        ok("a warden that rebooted inside its lease keeps the role at once")
+    else:
+        bad("a warden inside its lease had to serve the hold again",
+            "got %s, wanted warden" % " ".join(got))
+
+    if me:                       # only meaningful if `hostname` answered
+        # The grove is this node and a four-minute-old beacon of itself
+        # claiming a better score. Counting that beacon would make a node lose
+        # an election to its own past, so the only candidate is this node and
+        # it takes the role on the usual hold.
+        got = elect([(me, mine + 500)], times=3)
+        if got == ["node", "node", "warden"]:
+            ok("a node does not lose to its own stale beacon",
+               "its own row comes from the live score, never from the browse")
+        else:
+            bad("this node's own stale beacon was counted as a second node",
+                "got %s, wanted node node warden" % " ".join(got))
+
     skip("the 20-second failover, timed on hardware",
-         "Needs two machines and a power switch. The line above is why it "
-         "would fail if it were run.")
+         "Needs two machines and a power switch. The election above is a "
+         "sort over fixtures; what it cannot show is how fast a real card "
+         "stops answering.")
 
 
 # ------------------------------------------------------------------ line 3 ---

@@ -580,7 +580,7 @@ operator that the tiles in front of them are four-minute-old beacons rather
 than agents. It now reads `bus off — polled, not live (timed out)`. A fallback
 that is labelled but not explained is still a quiet fallback.
 
-### 2. Warden unplugged — the next-highest score takes the role · **FAIL** · 2026-09-08
+### 2. Warden unplugged — the next-highest score takes the role · **FAIL as run 2026-09-08 · resolved same day**
 
 | | |
 |---|---|
@@ -608,6 +608,33 @@ W1's checklist said "the election already computes the role (`role_now`,
 `score`) — W1 makes the role *do* something for the first time." The first
 half of that sentence was untrue when it was written, and building on it is how
 this went unnoticed through W1, W3 and W7.
+
+**Resolved 2026-09-08, and the line above stands as it was run.** The election
+was written: `copal-grove elect`, the sort §7 describes, with hysteresis that
+is quick to yield and slow to take, a `warden-lease` that tells a rebooted
+warden from a card off a shelf, and a `role-pin` for an operator who wants the
+sort to keep out of it. The re-run reads **20 passed, 0 failed, 2 not
+performed**.
+
+Two things were learned in the writing that the original finding did not
+contain:
+
+- **§7's twenty seconds could not have come from the beacon.** The beacon loop
+  is `sleep 240`, so two announcement intervals is eight minutes. The number is
+  reachable, but only because the agent holds an open connection and a refused
+  socket is what triggers the re-election — the beacon carries the *scores*,
+  the connection carries *who is alive*. §7 asserted the interval without
+  naming the mechanism, and the code was built to the sentence.
+- **§7's split-brain argument was wrong in its reason.** It said commands do
+  not go through the warden because the warden is one subscriber among many;
+  W1 puts `nats-server` *on* the warden, so two wardens are two buses, not one
+  bus with two subscribers. What keeps split brain small is that the election
+  is a deterministic sort over shared inputs, not that the bus survives it.
+  Corrected in the plan; **still not tested on hardware.**
+
+The check that found the original fault was a `sed` over `role_now()` looking
+for the word "score" — reading a checklist, not performing one. It now extracts
+the node tool from `copal-prep.sh` and runs the election over fixtures.
 
 ### 3. Avahi off — addresses from a written list · **PASS** · 2026-09-08
 

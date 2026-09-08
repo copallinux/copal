@@ -409,23 +409,68 @@ tie-break: lowest node id, string compare
 ```
 
 Every node computes its own score, publishes it in the beacon TXT record, and
-the highest score that is currently announcing takes the role. A node that sees
-a higher score than its own yields at the next announcement — two announcement
-intervals, so about twenty seconds, is the worst case for a handover.
+the highest score that is currently announcing takes the role. `copal-grove
+elect` is the half that reads the scores back; `role_now()` is only the field
+it writes.
+
+The handover is **asymmetric on purpose**. A node that sees a better candidate
+yields on the first check; a node that means to *take* the role has to see the
+same answer three checks running. Flapping needs both directions to be fast, so
+making one of them slow is the whole of the hysteresis — and it errs towards a
+moment with no warden rather than a moment with two, which is the cheaper of
+the two mistakes.
+
+**What makes a handover twenty seconds is a refused connection, not an
+announcement.** The beacon is rewritten every four minutes, so two announcement
+intervals is eight minutes and any failover that waited on them would take
+that long. It does not, because the node agent holds an open connection to the
+warden: when the warden goes, the agent's socket fails within seconds, the
+agent records that id as announcing-but-not-answering, and the election
+discounts it and runs again. The beacon is how a grove learns the *scores*; the
+connection is how it learns who is *alive*. Earlier drafts of this section
+described the twenty seconds without saying which of the two produced it, and
+the code was built to the sentence rather than to the mechanism.
+
+A warden also holds a lease — `warden-lease` on the card, an mtime — so that
+its own restart is clean. The lease is what distinguishes a warden that
+rebooted, which resumes the role at once, from a card off a shelf whose `role`
+field says warden and has not held it for a week, which demotes and stands in
+the queue like anything else.
 
 The `-500` term is the interesting one: the machine driving the visitor-facing
 display should not also be the machine hosting the queue, and encoding that as
 a score term rather than as configuration means it stays true when the display
 moves to a different Pi.
 
-### Why split brain does not matter here
+### Split brain: what it costs, and why it stays small
 
-Because of invariant 8. Two wardens for twenty seconds means two log sinks and
-two queue hosts; the console sees both, prefers the higher score, and no
-command is lost because commands do not go *through* the warden — they are
-published on the bus and the warden is one subscriber among many. The warden
-holds a lease file so that its own restart is clean, and that is the whole of
-the coordination.
+Because of invariant 8 — but *not* for the reason this section gave until the
+election was written, and the difference matters.
+
+The old argument was that commands do not go through the warden: they are
+published on the bus, and the warden is one subscriber among many. **That is
+not true of this bus.** W1 puts `nats-server` *on* the warden, so two wardens
+are not one bus with two subscribers — they are two buses. A node connected to
+one does not see what is published on the other, and each has its own
+JetStream store. Split brain here costs a partitioned grove for as long as it
+lasts, not a duplicated log.
+
+What actually keeps it small is that the election is a **deterministic sort over
+the same inputs**: two nodes reading the same beacons cannot both make
+themselves warden, because both compute the same winner. They can only diverge
+while they see *different* beacons — a partition, or one node's cache lagging
+another's — and the hysteresis bounds that, because taking the role is the slow
+direction. A node that is wrong about being the best yields on its first check
+after the beacons agree again.
+
+And when it does happen, invariant 8 is what pays for it: `ls`, `enrol`, `run`,
+`scene`, `power` and `logs` are ssh verbs that never touch the bus, so a
+partitioned bus costs the wall going live, telemetry, and the log sink — not
+the grove. The console sees both wardens and prefers the higher score.
+
+**This has not been tested on hardware.** Two wardens need two machines and a
+power switch; W10 records it as not performed rather than as a claim, which is
+what the rest of this section should have done from the start.
 
 If the warden is unplugged mid-day: the console notices in ten seconds, the
 next-highest node takes the role, the JetStream stream is re-created empty, and
@@ -942,7 +987,9 @@ pool, the tree, the host dashboard, the bulk selection — and not about the
 machinery. There are no VMs here, no live migration, and no shared block store
 holding disk images. A grove is bare metal that boots the same way every time.
 
-**Not high availability.** The warden is elected in twenty seconds and holds no
+**Not high availability.** The warden is elected within seconds of the old one
+refusing a connection — see §7 for why that, and not the four-minute beacon, is
+what sets the number — and holds no
 state that matters. Nothing in the grove is designed to survive a partition,
 because there is no partition to survive on one switch in one room.
 

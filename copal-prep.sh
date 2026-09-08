@@ -20329,6 +20329,7 @@ grove_service_account() {
 permit nopass copal-grove as root cmd /sbin/poweroff
 permit nopass copal-grove as root cmd /sbin/reboot
 permit nopass copal-grove as root cmd /usr/bin/copal-grove args beacon
+permit nopass copal-grove as root cmd /usr/bin/copal-grove args elect
 # The forced command's `snapshot restore` verb runs this, and without a rule
 # naming it doas refused -- so the verb existed, was documented, and could
 # never once have worked. `args restore` and not a bare cmd: restore is the
@@ -20346,6 +20347,7 @@ permit nopass copal-grove as root cmd /usr/bin/copal-grove args bus-users
 # role or tags should say so immediately rather than at the next tick, and a
 # beacon is public information -- this grants nothing that listening does not.
 permit nopass :wheel cmd /usr/bin/copal-grove args beacon
+permit nopass :wheel cmd /usr/bin/copal-grove args elect
 GROVEDOAS
     chmod 0640 /etc/doas.d/copal-grove.conf
     if ! doas -C /etc/doas.d/copal-grove.conf >/dev/null 2>&1; then
@@ -20498,7 +20500,10 @@ grove_install_tools() {
 #   copal-grove logs ID [DAYS] the collected logs (warden), even for a dead node
 #   copal-grove status         what this machine thinks it is
 set -eu
-D=/etc/copal/grove
+# COPAL_GROVE_DIR is the agent's variable and it means the same thing here, so
+# that the election can be driven over a directory of fixtures by a test that
+# is not running on a node. On a node nothing sets it.
+D=${COPAL_GROVE_DIR:-/etc/copal/grove}
 SERVICE=_copal-grove._tcp
 PORT=7420
 AVAHI_FILE=/etc/avahi/services/copal-grove.service
@@ -20558,7 +20563,143 @@ beacon_key() {
         | openssl dgst -sha256 -hmac "$_p" -r 2>/dev/null | cut -c1-16
 }
 
+# ------------------------------------------------------------ the election ---
+#
+# §7 of the plan: deterministic, and a sort rather than a consensus protocol.
+# Every node computes a score and publishes it in its beacon; THIS is the half
+# that reads those scores back and decides. Until M4 W10 it did not exist --
+# role_now() returned the field written to the card, so while the console
+# faithfully followed a warden that moved, no warden ever moved.
+#
+# Two properties matter more than speed:
+#
+#   QUICK TO YIELD, SLOW TO TAKE. A better candidate demotes this node at once;
+#   taking the role needs the same answer ELECT_HOLD times running. That
+#   asymmetry IS the hysteresis, and it is why this cannot flap: flapping needs
+#   both directions to be fast. It errs towards no warden rather than two,
+#   which is the cheaper mistake -- a moment with no warden costs nothing that
+#   ssh cannot do, and §7's twenty seconds of two costs two log sinks.
+#
+#   A CLAIM IS NOT A LISTENER. An unplugged card goes on announcing for as long
+#   as its record is cached, so the sort by itself would follow a machine that
+#   is off. The agent holds the connection, so the agent is what knows: it
+#   writes the ids it could not reach into $UNREACHABLE and this discounts
+#   them. NOTHING IN THIS FILE OPENS A SOCKET -- the half that can be tested on
+#   a workstation is kept separate from the half that needs a network.
+ELECT_HOLD=3
+LEASE_SECONDS=600
+UNREACHABLE=${COPAL_GROVE_UNREACHABLE:-/var/lib/copal-grove/unreachable}
+TAB=$(printf '\t')
+
+# Every node in this grove that is announcing, best first: highest score, then
+# lowest id by string compare. That is §7's sort and it is deliberately the
+# same order the agent's find_warden() uses -- two orders would be two answers.
+candidates() {
+    _grove=$(f name)
+    _me=$(hostname)
+    _dead=$(cat "$UNREACHABLE" 2>/dev/null || true)
+    {
+        # This node from its LIVE score rather than from its own beacon, which
+        # is up to four minutes old and does not exist at all on a first boot.
+        printf '%s\t%s\t%s\n' "$(score)" "$_me" "127.0.0.1"
+        browse 2>/dev/null | awk -F"$TAB" -v grove="$_grove" -v me="$_me" -v dead="$_dead" '
+            BEGIN {
+                n = split(dead, d, "\n")
+                for (i = 1; i <= n; i++) if (d[i] != "") gone[d[i]] = 1
+            }
+            {
+                addr = $2; nm = $1; sc = 0; g = ""
+                k = split($3, kv, ";")
+                for (i = 1; i <= k; i++) {
+                    if (kv[i] ~ /^s=/)      sc = substr(kv[i], 3) + 0
+                    else if (kv[i] ~ /^g=/) g  = substr(kv[i], 3)
+                    else if (kv[i] ~ /^n=/) nm = substr(kv[i], 3)
+                }
+                if (g != grove || nm == me || nm in gone) next
+                printf "%d\t%s\t%s\n", sc, nm, addr
+            }'
+    } | sort -t"$TAB" -k1,1nr -k2,2
+}
+
+# The role the sort says this node should hold, and nothing else: the best
+# candidate is the warden, everybody else is a node. No state and no history,
+# so that it can be reasoned about and tested from a file of beacons.
+role_wanted() {
+    _best=$(candidates | head -1 | cut -f2)
+    [ -n "$_best" ] || { echo node; return 0; }
+    if [ "$_best" = "$(hostname)" ]; then echo warden; else echo node; fi
+}
+
+# The warden's lease -- §7 describes one and until now nothing wrote it. It is
+# an mtime rather than a timestamp inside the file, for the same reason
+# scene_min() uses one: every way of touching it stays correct.
+lease_touch() { mkdir -p "$D" 2>/dev/null; : > "$D/warden-lease" 2>/dev/null || true; }
+lease_fresh() {
+    [ -f "$D/warden-lease" ] || return 1
+    _m=$(stat -c %Y "$D/warden-lease" 2>/dev/null) || return 1
+    [ $(( $(date +%s) - _m )) -lt "$LEASE_SECONDS" ]
+}
+
+set_role() {
+    [ "$(f role)" = "$1" ] && return 0
+    printf '%s\n' "$1" > "$D/role.new" 2>/dev/null \
+        && mv "$D/role.new" "$D/role" 2>/dev/null || return 1
+    printf '%s copal-grove: role %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$1" \
+        >> /var/log/copal-grove.log 2>/dev/null || true
+}
+
+# Run the election and write the answer to the card. Prints the role settled
+# on, so that `copal-grove elect` is also how an operator asks.
+elect() {
+    # An operator can nail a node down, and the sort does not get a vote.
+    _pin=$(f role-pin)
+    [ -n "$_pin" ] && { echo "$_pin"; return 0; }
+
+    _have=$(f role); [ -n "$_have" ] || _have=node
+
+    # A card that SAYS warden but has not held the role recently is a card off
+    # a shelf, not a warden that rebooted. Resuming on a stale role field is
+    # one of the ways a grove ends up with two wardens, so an expired lease
+    # demotes first and stands in the queue like anybody else.
+    if [ "$_have" = warden ] && ! lease_fresh; then
+        set_role node || true
+        _have=node
+    fi
+
+    _want=$(role_wanted)
+
+    if [ "$_want" = "$_have" ]; then
+        rm -f "$D/elect-hold" 2>/dev/null || true
+        [ "$_want" = warden ] && lease_touch
+        echo "$_have"; return 0
+    fi
+
+    if [ "$_want" = node ]; then
+        # Yielding is immediate: see QUICK TO YIELD above.
+        rm -f "$D/elect-hold" 2>/dev/null || true
+        set_role node || true
+        echo node; return 0
+    fi
+
+    # Taking it needs the same answer ELECT_HOLD times running.
+    _n=$(f elect-hold); [ -n "$_n" ] || _n=0
+    _n=$(( _n + 1 ))
+    if [ "$_n" -ge "$ELECT_HOLD" ]; then
+        rm -f "$D/elect-hold" 2>/dev/null || true
+        set_role warden || true
+        lease_touch
+        echo warden
+    else
+        printf '%s\n' "$_n" > "$D/elect-hold" 2>/dev/null || true
+        echo "$_have"
+    fi
+}
+
+# What this node currently IS, which is a file read and not an election: the
+# beacon asks for this every four minutes and `state` on every poll, and
+# neither should pay for a browse. elect() is what changes the answer.
 role_now() {
+    _p=$(f role-pin); [ -n "$_p" ] && { echo "$_p"; return; }
     _r=$(f role); [ -n "$_r" ] || _r=node
     echo "$_r"
 }
@@ -20598,11 +20739,20 @@ beacon() {
     chmod 0644 "$AVAHI_FILE"
 }
 
-# The service. A loop and a sleep rather than a cron entry, because the
-# interval is shorter than cron's minute granularity is comfortable with and
-# because this has to stop when OpenRC stops it.
+# The service. A loop and a sleep rather than a cron entry, because it has to
+# stop when OpenRC stops it and because it now holds the election as well as
+# the beacon.
+#
+# FOUR MINUTES IS THE SLOW PATH. It keeps score and uptime current and it
+# promotes a node when nothing else prompts one, which is the case where the
+# warden was never there rather than the case where it went away. The fast
+# path is the agent: it elects on every lost connection, and THAT -- not this
+# sleep -- is what makes §7's twenty-second handover twenty seconds. Reading
+# the interval as the failover time is how the plan came to claim twenty
+# seconds for a mechanism that could only ever have delivered eight minutes.
 watch_loop() {
     while :; do
+        elect >/dev/null 2>&1 || true
         beacon || true
         sleep 240
     done
@@ -20613,6 +20763,15 @@ watch_loop() {
 # same lines it would have browsed for itself. A Mac has no avahi-browse, and
 # scripting dns-sd is worse than asking a machine that already knows.
 browse() {
+    # A FILE OF BEACONS STANDS IN FOR THE NETWORK when COPAL_GROVE_BEACONS is
+    # set: the console's variable and the console's format, so that the
+    # election can be run against a grove that is not in the room. W10 found
+    # the missing election by READING this file; this is what lets the next
+    # one RUN it.
+    if [ -n "${COPAL_GROVE_BEACONS:-}" ]; then
+        [ -f "$COPAL_GROVE_BEACONS" ] || { echo "no such beacon file: $COPAL_GROVE_BEACONS" >&2; return 1; }
+        sort -u "$COPAL_GROVE_BEACONS"; return 0
+    fi
     command -v avahi-browse >/dev/null 2>&1 || { echo "no avahi-browse here" >&2; return 1; }
     avahi-browse -rpt "$SERVICE" 2>/dev/null | awk -F';' '
         $1 == "=" {
@@ -20908,6 +21067,7 @@ case "${1:-status}" in
     score)        score ;;
     id)           hostname ;;
     role)         role_now ;;
+    elect)        elect ;;
     install-cert) install_cert ;;
     bus-config)   bus_config ;;
     bus-key)      bus_key ;;
@@ -22104,8 +22264,54 @@ def run_tool(*args):
 
 # ------------------------------------------------------------- discovery ---
 
-def find_warden():
+# ------------------------------------------------------------- the sort ---
+
+UNREACHABLE = os.environ.get("COPAL_GROVE_UNREACHABLE",
+                             "/var/lib/copal-grove/unreachable")
+DOAS = os.environ.get("COPAL_GROVE_DOAS", "/usr/bin/doas")
+
+
+def unreachable(ids):
+    """Record the wardens that announce but do not answer.
+
+    THE BEACON SAYS WHO CLAIMS THE ROLE; THE PORT SAYS WHO HOLDS IT. An
+    unplugged card goes on announcing for as long as its record is cached, so
+    an election reading beacons alone would follow a machine that is off until
+    mDNS forgot it -- minutes, where §7 promises twenty seconds. This process
+    is the one holding the connection, so it is the one that knows, and this
+    file is how it tells `copal-grove elect`.
+    """
+    try:
+        os.makedirs(os.path.dirname(UNREACHABLE), exist_ok=True)
+        tmp = UNREACHABLE + ".new"
+        with open(tmp, "w") as fh:
+            fh.write("".join(i + "\n" for i in sorted(ids) if i))
+        os.replace(tmp, UNREACHABLE)
+    except OSError as exc:
+        log("unreachable list: %s" % exc)
+
+
+def elect():
+    """Re-run the election; the role it settled on, or "" if it could not ask.
+
+    Through the node tool rather than in here, so that there is ONE election
+    and it is the one a person can run by hand.
+    """
+    argv = ([DOAS, GROVE_TOOL, "elect"] if os.access(DOAS, os.X_OK)
+            else [GROVE_TOOL, "elect"])
+    try:
+        out = subprocess.run(argv, capture_output=True, text=True, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return out.stdout.strip() if out.returncode == 0 else ""
+
+def find_warden(skip=()):
     """(address, id) of the node announcing itself as warden, or (None, None).
+
+    `skip` is the ids that announce the role but did not answer for it.  A
+    warden that is off keeps claiming the role while its record is cached, and
+    without this the agent would go on dialling a dead machine and never reach
+    the one that has since been elected.
 
     Read out of the same beacons `copal grove ls` reads, through the node
     tool's own `browse`, so there is one parser for that format and it is not
@@ -22123,8 +22329,15 @@ def find_warden():
         if kv.get("g") != field("name") or kv.get("r") != "warden":
             continue
         score = int(kv.get("s") or 0)
-        if best is None or score > best[0]:
-            best = (score, addr, kv.get("n") or nid)
+        name = kv.get("n") or nid
+        if name in skip:
+            continue
+        # §7: highest score takes the role, ties break on lowest node id,
+        # string compare.  Comparing on score alone let the browse order decide
+        # a tie, so two nodes reading the same beacons could pick two different
+        # wardens -- the one case where a deterministic sort has to be one.
+        if best is None or (-score, name) < (-best[0], best[2]):
+            best = (score, addr, name)
     return (best[1], best[2]) if best else (None, None)
 
 
@@ -22413,27 +22626,51 @@ def main():
 
     log("agent for %s in grove %s, tags %s" % (node_id, grove, tags or "none"))
 
+    dead = set()
+
     while True:
-        is_warden = field("role") == "warden"
-        addr, wid = find_warden()
+        addr, wid = find_warden(dead)
         if not addr:
             # NOT AN ERROR. Twenty seconds of no warden is what a handover
-            # looks like, and every verb over ssh is unaffected.
+            # looks like, and every verb over ssh is unaffected. It is also
+            # precisely when the election wants running: nobody is claiming the
+            # role, so somebody -- perhaps this node -- has to take it.
+            elect()
             time.sleep(BACKOFF[min(attempt, len(BACKOFF) - 1)])
             attempt = min(attempt + 1, len(BACKOFF) - 1)
             continue
 
+        # After the election, not before: elect() may just have changed it.
+        is_warden = field("role") == "warden"
         conn = copal_nats.Nats(addr, int(os.environ.get("COPAL_GROVE_PORT", "4222")),
                                seed=seed, name=node_id, timeout=10)
         try:
             conn.connect()
             log("on the bus at %s (warden %s)" % (addr, wid))
+            if dead:
+                # The field is clear again. A warden that answers must not be
+                # left on a list that would keep it out of the next sort.
+                dead = set()
+                unreachable(dead)
             attempt = 0
             session(conn, grove, node_id, tags, is_warden, seen, tail)
         except copal_nats.NatsError as exc:
+            # THE WARDEN IS THERE AND SAID NO. An auth or protocol refusal is
+            # not absence, and treating it as absence would elect a new warden
+            # every time this node's own credentials were wrong.
             log("bus: %s" % exc)
         except OSError as exc:
+            # A CLAIM THAT DOES NOT ANSWER. Discount it and re-run the sort.
+            # This is the fast half of the handover: it turns on a refused
+            # connection rather than on an expired mDNS record, which is the
+            # difference between §7's twenty seconds and the beacon's four
+            # minutes.
             log("bus: %s" % exc)
+            if wid:
+                dead.add(wid)
+                unreachable(dead)
+                log("warden %s announces but does not answer -- role is now %s"
+                    % (wid, elect() or "unchanged"))
         finally:
             conn.close()
         time.sleep(BACKOFF[min(attempt, len(BACKOFF) - 1)])

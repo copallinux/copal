@@ -80,7 +80,9 @@ command that a person could have typed.
   live screen. The lab report's Control/Exchange verbs are stubs that say so.
 - **Not a web console.** TUI only. The web view is named in the plan as a
   future surface that would call the same commands.
-- **Not high availability.** Warden handover is twenty seconds and loses the
+- **Not high availability.** Warden handover is seconds after the old warden
+  stops answering — the beacon's four minutes is not what sets it, see §7 — and
+  loses the
   in-flight work of one job. That is stated in §7 and it stays true.
 
 ---
@@ -230,7 +232,11 @@ claim about eight machines and not about a compiling program.
 - [x] OpenRC service `/etc/init.d/nats`, `rc-update add nats default`. Its
       `start_pre` refuses to start on a node whose role is not warden — two
       wardens on one segment is the muddle this design has no answer for.
-- [x] The election already computes the role (`role_now`, `score`) — W1 makes
+- [~] ~~The election already computes the role (`role_now`, `score`)~~ — **this
+      was not true when it was written.** `score()` existed and was published;
+      nothing read it, and `role_now()` returned the field on the card. W1, W3
+      and W7 were all built on this sentence. The election was written after
+      W10 found it; see the W10 entry and §7 of the plan. W1 makes
       the role *do* something for the first time.
 
 **Not yet done: the acceptance test.** It is a claim about a warden and a
@@ -535,14 +541,22 @@ is [`grove-lab-report.md` Appendix A](grove-lab-report.md#appendix-a--degradatio
       anybody that the tiles are now four-minute-old beacons. It now reads
       `bus off — polled, not live`. Nothing is called live or silent with no
       bus to prove it, because both would be guesses.
-- [ ] **Warden unplugged → FAILS, and this is what W10 was for.** A node never
-      changes its role: `role_now()` returns the field written to its card and
-      nothing computes the election. `score()` is correct and published, and
-      nothing reads it to decide. §7 describes a sort; the code has a constant.
-      The console *does* follow a warden that moves — but no warden ever moves.
-      **W1's checklist asserted the opposite** ("the election already computes
-      the role"), and building on that sentence is how this survived W1, W3
-      and W7.
+- [x] **Warden unplugged → this is what W10 was for, and it found it.** As
+      performed on 2026-09-08 this FAILED: a node never changed its role.
+      `role_now()` returned the field written to its card and nothing computed
+      the election; `score()` was correct and published and nothing read it to
+      decide. §7 described a sort and the code had a constant. The console
+      *did* follow a warden that moved — but no warden ever moved. **W1's
+      checklist asserted the opposite** ("the election already computes the
+      role"), and building on that sentence is how this survived W1, W3 and W7.
+
+      The election is now written: `copal-grove elect`, a deterministic sort
+      with hysteresis — quick to yield, slow to take — a warden lease, and an
+      operator pin. The check that found this was a `sed` over `role_now()`
+      looking for the word "score", which is reading a checklist rather than
+      performing one; it now extracts the node tool from `copal-prep.sh` and
+      **runs** the election over fixtures. Eight assertions, including that a
+      node does not lose an election to its own stale beacon.
 - [x] Avahi off → addresses from the written list at
       `~/.copal/groves/<grove>/nodes`; everything else unchanged, because
       identity never depended on discovery. *(Until W10 was performed this
