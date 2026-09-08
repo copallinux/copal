@@ -85,81 +85,125 @@ command that a person could have typed.
 
 ---
 
-## 3 · DECISIONS REQUIRED — read before writing code
+## 3 · DECISIONS — resolved 2026-09-08
 
-### D1 · The trust root for the bus. **This is a hole in the plan.**
+All four are decided. D1 was the hole in the plan and it is now filled; the
+answer is a refinement of the recommendation rather than the recommendation as
+written, and the difference is set out below because it removes machinery.
 
-§6 says: *"mTLS with certificates from the same grove CA, so there is one trust
-root in the entire system."* **That cannot be built as written.** The grove CA
-is an **SSH** certificate authority — `ssh-keygen -s` — and SSH certificates
-are not X.509. An SSH CA key cannot sign a TLS certificate, and NATS mTLS wants
-X.509. The sentence describes an intention, not a mechanism.
-
-Three ways out, with a recommendation:
-
-| | What it means | Cost |
+| | Decided | In one line |
 |---|---|---|
-| **A · NATS nkeys + account JWTs** *(recommended)* | NATS's own identity system. Each node gets an nkey seed and a signed user JWT whose `pub`/`sub` allow-lists are exactly invariant 5. The console holds the account signing key beside the SSH CA. | A second key type to explain. No X.509 anywhere. Native permission model — the ACL *is* the credential, which is what the invariant wants. |
-| **B · A second, X.509 CA** | `openssl` CA in `~/.copal/ca/`, one leaf per node, mTLS as written. | Two CAs, two expiries, two revocation stories. Contradicts "one trust root" more than A does. |
-| **C · No transport auth; rely on the LAN** | Nothing. | Fails invariant 5 outright. Named only to be rejected in writing. |
+| **D1** | nkeys, **and no JWTs** | the SSH CA decides membership; the bus credential is a scoped capability issued as a consequence of it |
+| **D2** | `apk add nats-server` | it is in Alpine v3.24 community for `aarch64`; nothing to download and nothing to verify |
+| **D3** | Python 3, stdlib, `curses`, own client | and `nats-py` stays out — the console runs on a Mac, where `apk` cannot rescue it |
+| **D4** | half-blocks are the default | sixel is an enhancement; a glyph is the floor |
 
-**Recommendation: A.** The SSH CA stays the identity root of the *grove* — it
-is what proves a node is a node — and the NATS credential is *issued over that
-proven channel* as one more step of enrolment. A node that cannot present a
-valid SSH host certificate never receives bus credentials, so the SSH CA
-remains the thing that decides, exactly as invariant 1 requires. Write the
-correction into `docs/grove-plan.md` §6 as part of W2; do not leave the plan
-saying something that cannot be done.
+### D1 · The trust root for the bus. **Resolved: nkeys, without JWTs.**
 
-### D2 · Where `nats-server` comes from
+The diagnosis stands. §6 said *"mTLS with certificates from the same grove
+CA"*, the grove CA is an **SSH** CA (`ssh-keygen -s`), SSH certificates are not
+X.509, and no amount of care makes one sign the other. Option C fails invariant
+5 outright and option B contradicts "one trust root" more than it fixes. The
+answer is A: **NATS's own nkey identity**.
 
-Unresolved and cheap to resolve: **check whether `nats-server` is in Alpine's
-community repository for aarch64.** If it is, `apk add nats-server` and this
-decision costs nothing. If it is not, fetch the static binary from the GitHub
-release and verify its published SHA256 — which is the pattern `copal-prep.sh`
-already uses for the Alpine payload and for GRUB, so there is a house style to
-follow and `fetch-minivmac.sh` is the worked example.
+But A as written said *"nkeys + account JWTs"*, and the JWTs are not wanted.
+NATS has two authentication worlds built on the same nkey primitive:
 
-Do not vendor a binary. Repository policy, README §"Repository policy": no
-binaries are tracked, ever.
+- **Decentralized** — an operator signs accounts, an account signs user JWTs,
+  and the server runs a resolver to fetch them. The permission list travels
+  inside a signed token.
+- **Static** — `authorization { users = [ { nkey: U…, permissions: {…} } ] }`
+  in the server's own config. The permission list lives in a file on the
+  warden.
 
-### D3 · What the console is written in
+Both prove identity identically: the server sends a nonce, the client signs it
+with its ed25519 seed, the server checks the signature against the public nkey
+it already has. The **only** difference is where the permission list is kept.
 
-The console today is POSIX `sh`. A wall of eight live tiles is not.
+**Keep it in the config file.** Four reasons, in the order they matter:
 
-**Recommendation: Python 3, standard library only, `curses`.** Reasons: it is
-already required on the console (Ansible), it is already on the nodes (stage 7),
-the repository already ships Python tools (`tools/copal-app-plan.py`,
-`copal-terminal-palettes.py`), and `curses` is stdlib. A Go TUI would be a
-tracked binary or a build step; a shell TUI would be a re-implementation of
-curses in `tput`.
+1. **§15 already ruled out what JWTs are for.** *"Not multi-tenant. One grove,
+   one operator, one CA."* Operator/account/resolver is the machinery
+   multi-tenancy needs. This grove is eight machines and one person.
+2. **Invariant 5 becomes readable.** It is a claim about who may publish what.
+   In a config file a person can open `nats.conf` at nine in the morning and
+   check it against the invariant. Nobody can read a JWT.
+3. **It deletes four things** — the account signing key, the resolver
+   configuration, a JWT encoder, and a second expiry story running beside the
+   90-day host certificate. W2's acceptance test does not get weaker for any of
+   it; it gets easier to write.
+4. **It is the shape the console already has.** Write a file, push it over
+   SSH, reload a service. That is every other thing `copal grove` does.
 
-**And a corollary worth deciding now: do not add `nats-py`.** The NATS client
-protocol is a text protocol over TCP — `CONNECT`, `PUB`, `SUB`, `MSG`, `PING`,
-`PONG`, newline-delimited, with a JSON options blob on connect. A stdlib socket
-client is on the order of 200 lines and keeps the console dependency-free,
-which matters more here than saving those lines: a museum console that needs
-`pip install` at 08:45 is a console that is down. Write it as
-`tools/copal_nats.py`, test it against a local `nats-server`, and keep it
-small enough to read in one sitting.
+What survives from A unchanged, and is the whole point of choosing it:
 
-### D4 · How a thumbnail reaches a terminal
+- The **SSH CA stays the identity root of the grove.** It is what decides that
+  a machine is a node. A node that cannot present a valid host certificate is
+  never handed bus credentials, so invariant 1 holds exactly as written.
+- The **seed is generated on the node** and never leaves it. Only the public
+  nkey travels. Invariant 2 holds.
+- The credential is **issued over the already-proven channel**, as one more
+  step of enrolment, after the host certificate is installed.
 
-The lab report's mock draws ASCII bars, which is honest about what a terminal
-can do. Three tiers, and the console should degrade down them without being
-told:
+**The cost, stated plainly:** the warden's config names every node, so
+enrolling a node now edits the warden and reloads it. Two consequences, both
+accepted: `copal grove enrol` gains a step that touches a second machine, and a
+grove whose warden is down cannot issue bus credentials. Neither is a real
+loss — enrolment already requires the console to be present, and a grove with
+no warden has no bus for a credential to be good on. Revocation gets *simpler*
+rather than harder: delete the stanza, reload, and the node is off the bus in
+under a second, with no revocation list to distribute.
 
-1. **Kitty graphics protocol / sixel** — real images, in terminals that support
-   it (kitty, wezterm, foot, iTerm2). Detect with `$TERM` and the terminal's
-   response to a device-attributes query.
-2. **Half-block Unicode + 256 colour** — a recognisable 20×10 image. Works
-   everywhere that is not a serial console.
-3. **A glyph and a sparkline** — `●` and the node's recent activity. Works on
-   the GPIO serial console, which is a supported way to run everything else in
-   this repository and should not stop being one here.
+`nats-server --signal reload` re-reads authorization without dropping
+connections that are still permitted, which is what makes the reload cheap
+enough to do on every enrolment.
 
-Decide tier 2 is the *default* and tier 1 an enhancement. Do not block the
-milestone on sixel.
+### D2 · Where `nats-server` comes from. **Resolved: `apk add nats-server`.**
+
+Checked rather than assumed:
+
+```
+$ apk --print-arch
+aarch64
+$ apk search -x nats-server
+nats-server-2.14.0-r2
+```
+
+It is in **Alpine v3.24 community for `aarch64`**, which is the repository
+`copal-prep.sh` already enables. So there is no download, no SHA256 to pin, no
+release URL to rot, and no argument to have with the "no binaries are tracked,
+ever" policy in README §*Repository policy*. W1 loses its first checkbox.
+
+The version matters slightly: 2.14 has JetStream, which M5 needs, so nothing
+here has to be revisited when the gems arrive.
+
+### D3 · What the console is written in. **Resolved: Python 3, stdlib, `curses`.**
+
+As recommended, and the corollary — **no `nats-py`** — is confirmed with a
+reason the original note did not have. Alpine does ship `py3-nats-2.12.0-r0`,
+so on a node the dependency would be one `apk add`. But **the console's home is
+the operator's Mac**, where `apk` does not exist and the fallback is
+`pip install` into whatever environment happens to be current. A museum console
+that needs `pip` at 08:45 is a console that is down, and a dependency that is
+easy on seven of eight machines is not easy.
+
+So: `tools/copal_nats.py`, a stdlib socket client for the text protocol —
+`CONNECT`, `PUB`, `SUB`, `MSG`, `PING`, `PONG`, newline-delimited, a JSON blob
+on connect. It needs one thing the original estimate missed: **the nonce
+signature from D1**, which is ed25519 over a 32-byte seed. That goes in
+`tools/copal_nkeys.py` beside it, is pure stdlib, and is shared with the node
+so that there is exactly one implementation of the grove's key format.
+
+### D4 · How a thumbnail reaches a terminal. **Resolved: tier 2 is the default.**
+
+Unchanged from the recommendation. Half-block Unicode with 256 colour is what
+the wall draws unless it is told otherwise; kitty/sixel is detected and used
+when it is there; the glyph-and-sparkline tier is what a GPIO serial console
+gets, because running everything in this repository over that console is
+supported and W7 does not get to be the thing that ends it.
+
+**Not blocking the milestone on sixel** is the operative half of this. W5 and
+W7 are written against tier 2.
 
 ---
 
@@ -169,19 +213,29 @@ Sizes are relative: **S** an afternoon, **M** a day or two, **L** longer than
 that. Every item names its acceptance test, because "done" on a fleet is a
 claim about eight machines and not about a compiling program.
 
-### W1 · `nats-server` on the warden — S — depends on D2
+### W1 · `nats-server` on the warden — S — depends on D2 — **written**
 
-- [ ] Resolve D2. Package or verified download.
-- [ ] `grove_warden_bus()` in `copal-prep.sh`, called by `stage_grove` **only
+- [x] Resolve D2. `apk add nats-server`; 2.14.0-r2, Alpine v3.24 community.
+- [x] `grove_warden_bus()` in `copal-prep.sh`, called by `stage_grove` **only
       when the node's role is warden**, and idempotent: a node that is demoted
-      must stop and disable it.
-- [ ] `/etc/nats/nats.conf` written by the stage: listen on the LAN only,
+      must stop and disable it. Demotion removes the init script as well as the
+      runlevel entry, because a stopped service starts again at the next boot.
+- [x] `/etc/nats/nats.conf` written by the stage: listen on the LAN only,
       **never `0.0.0.0` without an explicit `bind`**, JetStream on with a file
       store under `/var/lib/nats`, and a store limit that a 512 MB Zero 2 can
-      survive — start at 64 MB and measure.
-- [ ] OpenRC service `/etc/init.d/nats`, `rc-update add nats default`.
-- [ ] The election already computes the role (`role_now`, `score`) — W1 makes
+      survive — start at 64 MB and measure. Written by `copal-grove bus-config`
+      and rewritten by `start_pre` on **every** start, because the address is
+      the one field that cannot be known when the card is written.
+      `sync_interval` is set to 2m rather than left at its default, per the trap.
+- [x] OpenRC service `/etc/init.d/nats`, `rc-update add nats default`. Its
+      `start_pre` refuses to start on a node whose role is not warden — two
+      wardens on one segment is the muddle this design has no answer for.
+- [x] The election already computes the role (`role_now`, `score`) — W1 makes
       the role *do* something for the first time.
+
+**Not yet done: the acceptance test.** It is a claim about a warden and a
+demoted node, and there is no hardware here to make it on. Everything above is
+written and syntax-checked; none of it has run on a Pi.
 
 **Acceptance:** on a warden, `rc-service nats status` is up and
 `nats-server --version` runs; on a non-warden the service is absent, not merely
@@ -191,25 +245,63 @@ stopped. Stage 16 re-run on a demoted node removes it.
 spends a page warning about. The store limit and the sync interval are not
 defaults to accept quietly.
 
-### W2 · Bus credentials, issued over the enrolled channel — M — depends on D1
+### W2 · Bus credentials, issued over the enrolled channel — M — depends on D1 — **done**
 
-- [ ] Implement D1's option A. Account signing key beside the SSH CA in
-      `~/.copal/ca/`, never on a node.
-- [ ] `copal grove enrol` gains a step: after the host certificate is
+- [x] Implement D1. No account signing key, because the resolved D1 has no
+      JWTs: the console's **own** bus identity lives beside the SSH CA at
+      `~/.copal/ca/console.nk`, and nothing of the console's goes on a node.
+- [x] `copal grove enrol` gains a step: after the host certificate is
       installed, generate the node's nkey **on the node** (invariant 2 — no
-      private key crosses the network), receive its public half, sign a user
-      JWT with the permissions below, push the JWT back.
-- [ ] Permissions, from invariant 5, verbatim:
+      private key crosses the network) and receive its public half. There is no
+      JWT to sign and push back; instead the console collects the public halves
+      and hands the **warden** a list, which the warden renders into its own
+      `grove-users.conf`. `copal grove bus` is that step, and `enrol` calls it
+      when a warden is announcing.
+- [x] Permissions, from invariant 5, verbatim:
       - publish: `grove.<g>.node.<id>.>`, `grove.<g>.log.<id>`,
         `grove.<g>.ack.<id>.>`, `grove.<g>.gem.>`, `grove.<g>.hello`
       - subscribe: `grove.<g>.cmd.>`, `grove.<g>.work.>`
-      - nothing else, and the console must have a test that proves a node
-        **cannot** publish as another node.
-- [ ] Correct `docs/grove-plan.md` §6's mTLS sentence.
+      - nothing else. Rendered by `copal-grove bus-users` on the warden, from
+        the warden's own grove name — the console never sends config text, so
+        a tampered console cannot widen an allow-list.
+- [x] **The test that proves a node cannot publish as another node.**
+      `tools/copal-bus-test.py`, and `make bus-test`. It starts its own
+      `nats-server` on the loopback with a membership rendered by the same
+      `render_users()` the warden uses, so it needs a server but not the fleet.
+      Skips with status **77**, never 0, when there is no `nats-server` — a run
+      that proved nothing must not read as a run that passed.
+- [x] Correct `docs/grove-plan.md` §6's mTLS sentence. It is now a subsection,
+      "How the bus is authenticated", and it says what was wrong with what it
+      replaced.
 
-**Acceptance:** a test that connects as `museum-02`'s credential, attempts
-`PUB grove.museum.node.museum-01.state`, and is refused by the server. That
-test is the invariant; without it invariant 5 is an aspiration.
+**Acceptance: met.** Against `nats-server` v2.14.0, seventeen checks, every one
+of them a real server's answer:
+
+```
+As museum-01, holding museum-01's seed:
+  ✓ may publish its own state / its own log / hello
+  ✓ MAY NOT publish as museum-02          ← the invariant
+  ✓ MAY NOT write museum-02's log
+  ✓ MAY NOT acknowledge for museum-02
+  ✓ MAY NOT issue a command
+  ✓ MAY NOT reach another grove
+  ✓ may subscribe to commands
+  ✓ MAY NOT subscribe to the whole grove
+As the console:      may command, may hear everything, MAY NOT impersonate a node
+Never enrolled:      MAY NOT connect at all
+Before enrolment:    an unenrolled grove admits nobody
+```
+
+**And the test was checked for teeth.** Widening one allow-list to the
+console's wildcard — the exact mistake invariant 5 exists to prevent — makes
+six of those checks fail. A test that cannot fail proves nothing, and that
+negative control is what found the client bug recorded in `copal_nats.py`'s
+regression note.
+
+`nats-server -t` still parses the rendered config before the warden installs
+it, and `parse_members()` still refuses bad checksums, duplicate ids, ids that
+are not ids, roles that are not roles, an empty list, and a grove name carrying
+a quote.
 
 ### W3 · The node agent — M — depends on W1, W2
 

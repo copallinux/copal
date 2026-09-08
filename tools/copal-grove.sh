@@ -24,6 +24,8 @@
 #   copal grove run VERB [ARG...]  one verb, fanned out, a result per node
 #   copal grove status NODE        one node's facts
 #   copal grove inventory          an Ansible inventory, out of discovery
+#   copal grove bus                put every enrolled node on the message bus
+#   copal grove bus --check        what the warden says the bus is doing
 #
 # The day, once a grove directory exists (milestone 3):
 #   copal grove init               make groves/<name>/ from the template
@@ -58,6 +60,7 @@ warn() { printf "${Y}warning:${Z} %s\n" "$*" >&2; }
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ANSWERS="${COPAL_ANSWERS:-$ROOT/answers.txt}"
 HOME_COPAL="${COPAL_HOME:-$HOME/.copal}"
+NKEYS="$ROOT/tools/copal_nkeys.py"
 SERVICE="_copal-grove._tcp"
 TAB=$(printf '\t')
 
@@ -412,6 +415,14 @@ ssh_as_operator() {  # <host> <command>
     _h="$1"; shift
     ssh -n -o BatchMode=yes -o ConnectTimeout=8 -i "$OPKEY" "copal-grove@$_h" "$@"
 }
+# The same, but WITHOUT -n, for the two verbs that read stdin. Kept separate
+# rather than made an option: -n is what stops ssh-keyscan and `while read`
+# loops from eating each other (see cert_state), and the default must stay the
+# safe one. Only call this where stdin is a file you opened on purpose.
+ssh_as_operator_stdin() {  # <host> <command> -- stdin goes to the far end
+    _h="$1"; shift
+    ssh -o BatchMode=yes -o ConnectTimeout=8 -i "$OPKEY" "copal-grove@$_h" "$@"
+}
 ssh_as_login() {  # <host> <command> -- the bootstrap account, before certificates
     _h="$1"; shift
     ssh -n -o BatchMode=yes -o ConnectTimeout=8 "$LOGIN_USER@$_h" "$@"
@@ -513,7 +524,130 @@ cmd_enrol() {
         sign_one "$_id" "$_addr" || true
     done < "$TMP/cand"
     [ "$_n" -gt 0 ] || note "nothing was waiting to be enrolled"
+
+    # A NODE THAT IS ENROLLED BUT NOT ON THE BUS IS A NODE THE WALL CANNOT SEE.
+    # Best effort and quiet about it: a grove with no warden announcing is the
+    # ordinary state through milestone 3, and enrolment must not start failing
+    # because milestone 4 exists.
+    if [ "$_n" -gt 0 ] && [ -n "$(warden_of)" ]; then
+        note ""
+        cmd_bus || warn "enrolled, but not put on the bus -- run: copal grove bus"
+    fi
     note "Check with: copal grove ls"
+}
+
+# --------------------------------------------------------------- bus -------
+#
+# Milestone 4, the console's half. The SSH CA stays the grove's identity root
+# and this verb does nothing to change that: it talks only to nodes that
+# cert_state() already calls `enrolled`, and it asks each of them for a PUBLIC
+# key the node generated on itself. Nothing here makes a node's key and nothing
+# here ever sees a node's seed -- invariant 2, applied to a second key type.
+# See docs/grove-plan.md §6, "How the bus is authenticated".
+#
+#   1. make this console's own bus identity, once
+#   2. ask every enrolled node for its public nkey
+#   3. find the warden
+#   4. hand the warden the LIST -- and the warden renders the permissions
+#
+# Step 4 is the one worth defending. The console does not send nats.conf. It
+# sends ids and public keys, and the allow-lists of invariant 5 are built on
+# the warden from the warden's own idea of the grove's name. A console someone
+# has tampered with cannot widen a permission by sending a cleverer file,
+# because no file it sends is ever read as configuration.
+
+console_nkey() {  # this console's public nkey, made once and kept
+    _s="$CADIR/console.nk"
+    if [ ! -s "$_s" ]; then
+        mkdir -p "$CADIR"; chmod 700 "$CADIR"
+        ( umask 077; python3 "$NKEYS" new-seed user > "$_s" ) \
+            || { warn "could not make the console's bus identity"; return 1; }
+        chmod 600 "$_s"
+        note "made this console's bus identity: $_s"
+        note "It sits beside the CA and is backed up with it."
+    fi
+    python3 "$NKEYS" public "$(cat "$_s")"
+}
+
+# The warden, as the beacons report it: role first, then score, because the
+# plan's election is a sort and this is the console's half of that sort.
+warden_of() {  # id<TAB>addr, or nothing
+    selected | while IFS="$TAB" read -r _id _addr _txt; do
+        [ "$(txt_get "$_txt" r)" = warden ] || continue
+        printf '%s\t%s\t%s\n' "$(txt_get "$_txt" s)" "$_id" "$_addr"
+    done | sort -rn | head -1 | cut -f2,3
+}
+
+cmd_bus() {
+    while [ $# -gt 0 ]; do
+        take_common "$@" || die "unknown option '$1' for bus"
+        shift "$SHIFTN"
+    done
+    settle
+    command -v python3 >/dev/null 2>&1 || die "the bus needs python3 on this machine"
+    [ -f "$NKEYS" ] || die "no $NKEYS -- this is not a full checkout"
+    [ -f "$OPKEY" ] || die "no operator certificate here. Run: copal grove login"
+
+    _w=$(warden_of)
+    if [ -z "$_w" ]; then
+        die "no node in grove '$GROVE' is announcing itself as the warden.
+
+    The bus lives on the warden, so there is nowhere to put it. Either no card
+    in this grove was given the warden role, or that machine is off. Check with
+    'copal grove ls' -- the role column is what this reads."
+    fi
+    _wid=${_w%%"$TAB"*}; _waddr=${_w#*"$TAB"}
+
+    if [ "$CHECK" = 1 ]; then
+        info "The bus, as the warden ($_wid) reports it"
+        ssh_as_operator "$_waddr" 'bus state' \
+            || die "$_wid did not answer. Is it enrolled, and is the bus installed?"
+        return 0
+    fi
+
+    info "Collecting bus identities in grove '$GROVE'."
+    note "A node makes its key the first time it is asked, and keeps it after."
+    : > "$TMP/members"
+    _n=0; _skip=0
+    selected > "$TMP/buscand"
+    while IFS="$TAB" read -r _id _addr _txt; do
+        [ -n "$_id" ] || continue
+        if [ "$(cert_state "$_addr")" != enrolled ]; then
+            _skip=$((_skip + 1))
+            continue
+        fi
+        _k=$(ssh_as_operator "$_addr" 'bus key' 2>/dev/null | tr -d '\r' | head -1)
+        case "$_k" in
+            U?*) printf '%s %s node\n' "$_id" "$_k" >> "$TMP/members"
+                 _n=$((_n + 1))
+                 printf "    ${G}✓${Z} %-14s %s\n" "$_id" "$_k" >&2 ;;
+            *)   warn "$_id: no bus key -- it answered '${_k:-nothing}'"
+                 note "That node may predate milestone 4. Re-run stage 16 on it." ;;
+        esac
+    done < "$TMP/buscand"
+
+    [ "$_n" -gt 0 ] || die "not one enrolled node gave up a bus key -- nothing to install"
+    [ "$_skip" = 0 ] || note "$_skip machine(s) skipped: not enrolled. 'copal grove enrol' first."
+
+    # THE CONSOLE IS A MEMBER TOO, and it goes in last so that the operator can
+    # see it arrive. It publishes commands and subscribes to everything; it is
+    # the only member that is allowed to do either.
+    _ck=$(console_nkey) || die "no console identity, and the bus needs one"
+    printf 'console %s console\n' "$_ck" >> "$TMP/members"
+    printf "    ${G}✓${Z} %-14s %s\n" "console" "$_ck" >&2
+
+    info "Installing the membership on the warden, $_wid."
+    if ssh_as_operator_stdin "$_waddr" 'bus users' < "$TMP/members"; then
+        note "The warden rendered it, nats-server accepted it, and reloaded."
+        note "Read it there: /etc/nats/grove-users.conf -- it is invariant 5 in"
+        note "the form the server enforces, and it is meant to be read."
+    else
+        die "$_wid refused the membership. Nothing on the bus changed.
+
+    The warden checks every key's checksum and asks nats-server to parse the
+    result before it installs anything, so a refusal here means the bus is
+    still running on whatever it had before."
+    fi
 }
 
 # --------------------------------------------------------------- run -------
@@ -1013,6 +1147,7 @@ case "${1:-}" in
     run)               shift; cmd_run "$@" ;;
     status)            shift; cmd_status "$@" ;;
     inventory)         shift; cmd_inventory "$@" ;;
+    bus)               shift; cmd_bus "$@" ;;
     help|-h|--help|'') usage ;;
     *) die "no grove verb called '$1'. Try: copal grove help" ;;
 esac

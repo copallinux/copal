@@ -498,6 +498,30 @@ RADBEEPER_SRC ?= $(HOME)/code/radbeeper/radbeeper
 ## This is the fix when lint says the embedded copy has drifted -- edit
 ## radbeeper in its own checkout, run this, commit both.
 .PHONY: sync-radbeeper
+## sync-nats: copy tools/copal_nats.py into the heredoc in copal-prep.sh.
+sync-nats:
+	@python3 -c 'import sys;\
+	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
+	m="    cat > /usr/lib/copal/copal_nats.py <<\x27COPALNATS\x27\n";\
+	i=s.index(m)+len(m);j=s.index("\nCOPALNATS\n",i);\
+	open(p,"w").write(s[:i]+prog.rstrip("\n")+s[j:])' $(PREP) tools/copal_nats.py
+	@printf '  ok      tools/copal_nats.py -> $(PREP)\n'
+	@$(MAKE) --no-print-directory lint
+
+## bus-test: prove a node cannot publish as another node (needs nats-server).
+bus-test:
+	@python3 tools/copal-bus-test.py $(if $(V),-v,)
+
+## sync-nkeys: copy tools/copal_nkeys.py into the heredoc in copal-prep.sh.
+sync-nkeys:
+	@python3 -c 'import sys;\
+	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
+	m="    cat > /usr/lib/copal/copal_nkeys.py <<\x27COPALNKEYS\x27\n";\
+	i=s.index(m)+len(m);j=s.index("\nCOPALNKEYS\n",i);\
+	open(p,"w").write(s[:i]+prog.rstrip("\n")+s[j:])' $(PREP) tools/copal_nkeys.py
+	@printf '  ok      tools/copal_nkeys.py -> $(PREP)\n'
+	@$(MAKE) --no-print-directory lint
+
 sync-radbeeper:
 	@test -f $(RADBEEPER_SRC) || { printf '\033[31merror:\033[0m no $(RADBEEPER_SRC)\n'; exit 1; }
 	@python3 -c 'import sys;\
@@ -522,6 +546,44 @@ lint: | $(BUILDDIR)
 	@rm -f $(BUILDDIR)/.copal-init.lint.sh
 	@for _s in bin/*.sh; do sh -n "$$_s" || exit 1; done; \
 	    printf '  ok      bin/*.sh (%s shortcuts)\n' "$$(ls bin/*.sh | wc -l | xargs)"
+	@for _s in tools/*.sh; do sh -n "$$_s" || exit 1; done; \
+	    printf '  ok      tools/*.sh (%s programs)\n' "$$(ls tools/*.sh | wc -l | xargs)"
+	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal_nkeys.py \
+	    && printf '  ok      tools/copal_nkeys.py\n'
+	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal_nats.py \
+	    && printf '  ok      tools/copal_nats.py\n'
+	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-bus-test.py \
+	    && printf '  ok      tools/copal-bus-test.py\n'
+	@python3 tools/copal_nkeys.py self-test | sed 's/^/  ok      /'
+	@python3 tools/copal_nats.py self-test | sed 's/^/  ok      /'
+	@sed -n "/^    cat > \/usr\/lib\/copal\/copal_nkeys.py <<'COPALNKEYS'$$/,/^COPALNKEYS$$/p" $(PREP) \
+	    | sed '1d;$$d' > $(BUILDDIR)/.nkeys.lint.py
+	@test -s $(BUILDDIR)/.nkeys.lint.py \
+	    || { printf '\033[31merror:\033[0m could not extract copal_nkeys.py from $(PREP)\n'; exit 1; }
+	@cmp -s $(BUILDDIR)/.nkeys.lint.py tools/copal_nkeys.py \
+	    && printf '  ok      copal_nkeys.py in $(PREP) matches tools/\n' \
+	    || { printf '\033[31merror:\033[0m copal_nkeys.py in $(PREP) has drifted -- run: make sync-nkeys\n'; \
+	         diff -u tools/copal_nkeys.py $(BUILDDIR)/.nkeys.lint.py | head -20; exit 1; }
+	@python3 $(BUILDDIR)/.nkeys.lint.py self-test >/dev/null \
+	    && printf '  ok      the embedded copy passes RFC 8032 too\n'
+	@sed -n "/^    cat > \/usr\/lib\/copal\/copal_nats.py <<'COPALNATS'$$/,/^COPALNATS$$/p" $(PREP) \
+	    | sed '1d;$$d' > $(BUILDDIR)/.nats.lint.py
+	@test -s $(BUILDDIR)/.nats.lint.py \
+	    || { printf '\033[31merror:\033[0m could not extract copal_nats.py from $(PREP)\n'; exit 1; }
+	@cmp -s $(BUILDDIR)/.nats.lint.py tools/copal_nats.py \
+	    && printf '  ok      copal_nats.py in $(PREP) matches tools/\n' \
+	    || { printf '\033[31merror:\033[0m copal_nats.py in $(PREP) has drifted -- run: make sync-nats\n'; \
+	         diff -u tools/copal_nats.py $(BUILDDIR)/.nats.lint.py | head -20; exit 1; }
+	@rm -f $(BUILDDIR)/.nkeys.lint.py $(BUILDDIR)/.nats.lint.py
+	@sed -n "/^    cat > \/usr\/bin\/copal-grove <<'COPALGROVE'$$/,/^COPALGROVE$$/p" $(PREP) \
+	    | sed '1d;$$d' > $(BUILDDIR)/.copal-grove.lint.sh
+	@test -s $(BUILDDIR)/.copal-grove.lint.sh && sh -n $(BUILDDIR)/.copal-grove.lint.sh \
+	    && printf '  ok      copal-grove (embedded, %s lines)\n' "$$(wc -l < $(BUILDDIR)/.copal-grove.lint.sh | xargs)"
+	@sed -n "/^    cat > \/usr\/bin\/copal-grove-exec <<'COPALGROVEEXEC'$$/,/^COPALGROVEEXEC$$/p" $(PREP) \
+	    | sed '1d;$$d' > $(BUILDDIR)/.grove-exec.lint.sh
+	@test -s $(BUILDDIR)/.grove-exec.lint.sh && sh -n $(BUILDDIR)/.grove-exec.lint.sh \
+	    && printf '  ok      copal-grove-exec (embedded, %s lines)\n' "$$(wc -l < $(BUILDDIR)/.grove-exec.lint.sh | xargs)"
+	@rm -f $(BUILDDIR)/.copal-grove.lint.sh $(BUILDDIR)/.grove-exec.lint.sh
 	@sed -n "/^    cat > \/usr\/local\/bin\/radbeeper <<'RADBEEPERPY'$$/,/^RADBEEPERPY$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.radbeeper.lint.py
 	@test -s $(BUILDDIR)/.radbeeper.lint.py \

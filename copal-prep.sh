@@ -20334,6 +20334,13 @@ permit nopass copal-grove as root cmd /usr/bin/copal-grove args beacon
 # never once have worked. `args restore` and not a bare cmd: restore is the
 # only subcommand automation has any business calling.
 permit nopass copal-grove as root cmd /usr/local/bin/copal-snapshot args restore
+# Milestone 4. `bus-key` writes this node's own seed once and prints only its
+# public half. `bus-users` rewrites the warden's membership -- which is the
+# console's job, gated by an 8-hour operator certificate, and it still cannot
+# widen an allow-list, because the allow-lists are rendered by copal-grove from
+# this machine's own grove name rather than by anything that arrives over ssh.
+permit nopass copal-grove as root cmd /usr/bin/copal-grove args bus-key
+permit nopass copal-grove as root cmd /usr/bin/copal-grove args bus-users
 # The operator's own account, for one command: rewriting the announcement this
 # machine already broadcasts every four minutes. A scene that changes a node's
 # role or tags should say so immediately rather than at the next tick, and a
@@ -20484,6 +20491,10 @@ grove_install_tools() {
 #   copal-grove browse         what this machine can see, in the console's format
 #   copal-grove score          this node's warden election score
 #   copal-grove install-cert   install a host certificate read on stdin (root)
+#   copal-grove bus-key        this node's bus identity; makes one if needed
+#   copal-grove bus-users      render the membership from stdin (warden, root)
+#   copal-grove bus-config     rewrite /etc/nats/nats.conf (warden, root)
+#   copal-grove bus-state      what this node's half of the bus is doing
 #   copal-grove status         what this machine thinks it is
 set -eu
 D=/etc/copal/grove
@@ -20493,6 +20504,10 @@ AVAHI_FILE=/etc/avahi/services/copal-grove.service
 CA=/etc/ssh/copal_grove_ca.pub
 HOSTKEY=/etc/ssh/ssh_host_ed25519_key.pub
 HOSTCERT=/etc/ssh/ssh_host_ed25519_key-cert.pub
+NKEYS=/usr/lib/copal/copal_nkeys.py
+NATSPY=/usr/lib/copal/copal_nats.py
+BUSDIR=/etc/nats
+SEED=$D/nkey.seed
 
 f() { cat "$D/$1" 2>/dev/null || true; }        # a field, or nothing
 uptime_min() { awk '{ printf "%d", $1 / 60 }' /proc/uptime 2>/dev/null || echo 0; }
@@ -20705,6 +20720,153 @@ status() {
     fi
 }
 
+# ------------------------------------------------------------- the bus -----
+#
+# This node's half of milestone 4. Three verbs and one rule: THE SEED NEVER
+# LEAVES. `bus-key` makes one here and reads out only its public half, which
+# is invariant 2 applied to a second key type.
+
+# The address the grove is on. NEVER 0.0.0.0: a bus that listens on every
+# interface of a machine that might also have wifi up is a bus on a network the
+# grove does not control. Wired is preferred because plan §9.1 says the grove
+# is one switch, and the election already scores a wired link at 1000.
+lan_address() {
+    for _i in /sys/class/net/e* /sys/class/net/w*; do
+        [ -e "$_i" ] || continue
+        _n=${_i##*/}
+        [ "$(cat "$_i/operstate" 2>/dev/null)" = up ] || continue
+        _a=$(ip -4 -o addr show dev "$_n" 2>/dev/null \
+             | awk '{print $4}' | cut -d/ -f1 | head -1)
+        [ -n "$_a" ] && { printf '%s\n' "$_a"; return 0; }
+    done
+    return 1
+}
+bus_address() { lan_address; }
+
+# The server's shape. Rewritten on every start rather than kept, because the
+# one field in it that cannot be known when the card is written is the address.
+bus_config() {
+    [ "$(id -u)" = 0 ] || { echo "bus-config must run as root" >&2; return 1; }
+    [ "$(role_now)" = warden ] || { echo "this node is not the warden" >&2; return 1; }
+    _a=$(lan_address) || { echo "no address to listen on" >&2; return 1; }
+    mkdir -p "$BUSDIR"
+    cat > "$BUSDIR/nats.conf.new" <<NATSCONF
+# /etc/nats/nats.conf -- written by \`copal-grove bus-config\` on every start.
+# Do not edit: the next start overwrites it. The membership is the other file.
+server_name: $(hostname)
+host: $_a
+port: 4222
+max_payload: 1MB
+write_deadline: "5s"
+
+# JETSTREAM ON AN SD CARD, which stage 15 spends a page warning about. The
+# limits below are chosen for the smallest board that can hold this role -- a
+# 512 MB Zero 2 -- and they are deliberately small enough to be raised on
+# purpose rather than large enough to be discovered during an exhibit.
+#
+# sync_interval is the one that matters for the card's life: the default
+# fsyncs far more often than a log stream needs, and every one of those is a
+# write amplified by the card's erase block.
+jetstream {
+    store_dir: "/var/lib/nats"
+    max_memory_store: 16MB
+    max_file_store: 64MB
+    sync_interval: "2m"
+}
+
+# The membership. Rendered by \`copal-grove bus-users\` from the list the
+# console sends at enrolment; never written by the console directly.
+include "grove-users.conf"
+NATSCONF
+    mv "$BUSDIR/nats.conf.new" "$BUSDIR/nats.conf"
+    chmod 0644 "$BUSDIR/nats.conf"
+}
+
+# This node's bus identity. Generated here, once, and the public half is the
+# only part that is ever printed.
+bus_key() {
+    [ "$(id -u)" = 0 ] || { echo "bus-key must run as root" >&2; return 1; }
+    [ -f "$NKEYS" ] || { echo "no key format installed on this node" >&2; return 1; }
+    if [ ! -s "$SEED" ]; then
+        _new=$(python3 "$NKEYS" new-seed user) \
+            || { echo "could not generate a seed" >&2; return 1; }
+        ( umask 077; printf '%s\n' "$_new" > "$SEED" )
+        chmod 0600 "$SEED"
+        chown root:root "$SEED" 2>/dev/null || true
+    fi
+    python3 "$NKEYS" public "$(cat "$SEED")"
+}
+
+# The membership, rendered here from a list of ids and public nkeys. The
+# console cannot send configuration text -- see the note above grove_bus_tools
+# in copal-prep.sh for why that is the whole point of this verb existing.
+bus_users() {
+    [ "$(id -u)" = 0 ] || { echo "bus-users must run as root" >&2; return 1; }
+    [ "$(role_now)" = warden ] || { echo "this node is not the warden" >&2; return 1; }
+    _g=$(f name); [ -n "$_g" ] || { echo "not in a grove" >&2; return 1; }
+    [ -f "$NATSPY" ] || { echo "no bus module on this node" >&2; return 1; }
+    _in=$(mktemp /tmp/grove-users.XXXXXX) || return 1
+    cat > "$_in"
+    [ -s "$_in" ] || { echo "nothing on stdin" >&2; rm -f "$_in"; return 1; }
+
+    # ONE IMPLEMENTATION OF INVARIANT 5, and this is the call to it. The
+    # allow-lists are built by copal_nats.render_users() -- the same function
+    # tools/copal-bus-test.py renders with before it watches a real server
+    # refuse them. Two copies of those subject patterns would mean the test
+    # could pass while the fleet was wrong, which is worse than no test.
+    if ! python3 "$NATSPY" render "$_g" "$_in" > "$BUSDIR/grove-users.conf.new" 2>"$_in.err"
+    then
+        echo "refused: $(head -1 "$_in.err" 2>/dev/null)" >&2
+        rm -f "$_in" "$_in.err" "$BUSDIR/grove-users.conf.new"
+        return 1
+    fi
+    rm -f "$_in" "$_in.err"
+
+    # THE SAME DISCIPLINE install_cert USES ON sshd. A config the server will
+    # not parse must never become the config the server is asked to load: on a
+    # warden that is the bus down, and on a reboot it is the bus down with
+    # nobody watching. Tested against a copy, and only then moved into place.
+    _t=$(mktemp -d /tmp/grove-natscheck.XXXXXX) || return 1
+    sed 's|include "grove-users.conf"|include "grove-users.conf"|' "$BUSDIR/nats.conf" > "$_t/nats.conf"
+    cp "$BUSDIR/grove-users.conf.new" "$_t/grove-users.conf"
+    if ! nats-server -t -c "$_t/nats.conf" >/dev/null 2>&1; then
+        echo "refused: nats-server rejected the rendered configuration" >&2
+        nats-server -t -c "$_t/nats.conf" 2>&1 | head -3 >&2
+        rm -rf "$_t"; rm -f "$BUSDIR/grove-users.conf.new"
+        return 1
+    fi
+    rm -rf "$_t"
+
+    mv "$BUSDIR/grove-users.conf.new" "$BUSDIR/grove-users.conf"
+    chmod 0644 "$BUSDIR/grove-users.conf"
+
+    # Reload rather than restart: a restart drops every connection in the
+    # grove to add one member, and the nodes would all reconnect at once.
+    if [ -s /run/nats.pid ]; then
+        nats-server --signal reload="$(cat /run/nats.pid)" >/dev/null 2>&1 \
+            || rc-service nats restart >/dev/null 2>&1 || true
+    fi
+    grep -c '{ nkey:' "$BUSDIR/grove-users.conf" | sed 's/$/ members on the bus/'
+}
+
+bus_state() {
+    if [ "$(role_now)" = warden ]; then
+        printf 'role       warden\n'
+        printf 'listening  %s:4222\n' "$(bus_address 2>/dev/null || echo '-')"
+        if rc-service nats status >/dev/null 2>&1; then printf 'server     up\n'
+        else printf 'server     down\n'; fi
+        printf 'members    %s\n' "$(grep -c '{ nkey:' "$BUSDIR/grove-users.conf" 2>/dev/null || echo 0)"
+        printf 'store      %s\n' "$(du -sh /var/lib/nats 2>/dev/null | awk '{print $1}' || echo '-')"
+    else
+        printf 'role       %s -- no server on this node\n' "$(role_now)"
+    fi
+    if [ -s "$SEED" ]; then
+        printf 'identity   %s\n' "$(python3 "$NKEYS" public "$(cat "$SEED")" 2>/dev/null || echo unreadable)"
+    else
+        printf 'identity   none yet -- the console has not enrolled this node onto the bus\n'
+    fi
+}
+
 case "${1:-status}" in
     state)        state ;;
     beacon)       beacon ;;
@@ -20714,8 +20876,13 @@ case "${1:-status}" in
     id)           hostname ;;
     role)         role_now ;;
     install-cert) install_cert ;;
+    bus-config)   bus_config ;;
+    bus-key)      bus_key ;;
+    bus-users)    bus_users ;;
+    bus-address)  bus_address ;;
+    bus-state)    bus_state ;;
     status)       status ;;
-    help|-h|--help) sed -n '4,12p' "$0" | sed 's/^# \{0,1\}//' ;;
+    help|-h|--help) sed -n '4,15p' "$0" | sed 's/^# \{0,1\}//' ;;
     *) echo "no such verb: $1" >&2; exit 2 ;;
 esac
 COPALGROVE
@@ -20787,6 +20954,18 @@ case "$1" in
         printf '%s\n' "$3" > "$D/scene" 2>/dev/null || refuse "cannot record the scene"
         logline "SCENE $3"
         echo "scene: $3" ;;
+    bus)
+        # Milestone 4's half of the console lands here. `key` is safe on any
+        # node -- it prints a public key and nothing else. `users` refuses on
+        # anything that is not the warden. NEITHER CARRIES CONFIGURATION TEXT:
+        # `users` takes a list of ids and nkeys, and the rendering of invariant
+        # 5 happens in copal-grove on the node, not in whatever arrived here.
+        case "${2:-}" in
+            key)   exec doas /usr/bin/copal-grove bus-key ;;
+            users) exec doas /usr/bin/copal-grove bus-users ;;
+            state) exec /usr/bin/copal-grove bus-state ;;
+            *) refuse "bus takes key, users or state" ;;
+        esac ;;
     log)
         [ "${2:-}" = tail ] || refuse "log takes tail [N]"
         exec tail -n "${3:-20}" "$LOG" ;;
@@ -20799,6 +20978,1109 @@ COPALGROVEEXEC
     chmod 0644 /var/log/copal-grove.log 2>/dev/null || true
     note "installed copal-grove and copal-grove-exec"
 }
+
+# ---------------------------------------------------------------- the bus ---
+#
+# NATS on the warden, and only on the warden. This is the first thing in the
+# grove that the ELECTION decides rather than merely reports: until now `role`
+# was a field in a beacon that nothing acted on.
+#
+# THREE FILES, and the split between them is the architecture:
+#
+#   /usr/lib/copal/copal_nkeys.py   the key format. Byte-identical to the
+#                                   console's copy; `make lint` fails on drift
+#   /etc/nats/nats.conf             THE SERVER'S SHAPE -- written by this stage
+#   /etc/nats/grove-users.conf      THE MEMBERSHIP -- rendered on this machine
+#                                   from a list the console sends at enrolment
+#
+# A stage that owned the membership would have to be re-run to add a node. A
+# console that owned the server's shape would be deciding what JetStream may
+# write to somebody else's SD card. Each owns the half it knows about, and
+# `include` joins them.
+#
+# THE CONSOLE NEVER SENDS CONFIGURATION TEXT. It sends a list of ids and public
+# nkeys; the permission strings of plan §6 are rendered here, on the node, from
+# the node's own idea of the grove's name. Invariant 5 is therefore generated
+# in exactly one place, and a console that has been tampered with cannot widen
+# an allow-list by sending a cleverer file. See grove-m4-backlog.md §3 D1.
+grove_bus_tools() {
+    mkdir -p /usr/lib/copal
+    chmod 0755 /usr/lib/copal
+    cat > /usr/lib/copal/copal_nkeys.py <<'COPALNKEYS'
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson
+"""copal_nkeys -- the grove's bus key format, and nothing else.
+
+An NKEY is how NATS names a principal: an ed25519 keypair in a base32 encoding
+with a one-byte role prefix and a CRC.  A node proves itself to the bus by
+signing the server's nonce with its seed; the server checks that signature
+against the public nkey it was configured with.  That is the whole of the
+mechanism, and this module is the whole of our implementation of it.
+
+WHY THIS EXISTS AT ALL, rather than `pip install nkeys`:
+
+  The console's home is the operator's Mac.  `apk` cannot help there and
+  `pip install` at 08:45 is a console that is down -- see grove-m4-backlog.md
+  §3 D3.  So: standard library only, on both halves of the grove.
+
+WHAT IT DELIBERATELY DOES NOT DO:
+
+  No JWTs.  Permissions live in the warden's nats.conf, in plain text a person
+  can read against invariant 5.  See grove-plan.md §6 "How the bus is
+  authenticated" and grove-m4-backlog.md §3 D1.
+
+  No X.509.  The SSH CA remains the only thing that decides membership; an
+  nkey is a capability issued as a consequence of membership, never a second
+  authority.
+
+The ed25519 below is RFC 8032, in extended twisted-Edwards coordinates so that
+one signature costs milliseconds rather than the second the textbook affine
+version costs on a Pi Zero.  It is checked against RFC 8032's own test vectors
+by `--self-test`, which `make lint` runs.
+"""
+
+import hashlib
+import hmac
+import os
+import sys
+
+# --------------------------------------------------------------- ed25519 ---
+#
+# RFC 8032 §5.1.  The curve is  -x^2 + y^2 = 1 + d x^2 y^2  over GF(2^255-19),
+# so a = -1 and the fast addition formulas apply.
+
+P = 2**255 - 19
+L = 2**252 + 27742317777372353535851937790883648493
+D = (-121665 * pow(121666, P - 2, P)) % P
+
+
+def _recover_x(y, sign):
+    """The x that goes with this y, or None if the point is not on the curve."""
+    if y >= P:
+        return None
+    xx = (y * y - 1) * pow(D * y * y + 1, P - 2, P) % P
+    x = pow(xx, (P + 3) // 8, P)
+    if (x * x - xx) % P != 0:
+        x = x * pow(2, (P - 1) // 4, P) % P
+    if (x * x - xx) % P != 0:
+        return None
+    if (x & 1) != sign:
+        x = P - x
+    return x
+
+
+_BY = 4 * pow(5, P - 2, P) % P
+_BX = _recover_x(_BY, 0)
+# The base point, in extended coordinates (X, Y, Z, T) with T = XY/Z.
+B = (_BX, _BY, 1, _BX * _BY % P)
+
+
+def _add(p, q):
+    """add-2008-hwcd-3, the a = -1 addition.  Ten multiplications."""
+    x1, y1, z1, t1 = p
+    x2, y2, z2, t2 = q
+    a = (y1 - x1) * (y2 - x2) % P
+    b = (y1 + x1) * (y2 + x2) % P
+    c = 2 * t1 * t2 * D % P
+    dd = 2 * z1 * z2 % P
+    e, f, g, h = b - a, dd - c, dd + c, b + a
+    return (e * f % P, g * h % P, f * g % P, e * h % P)
+
+
+def _mul(s, p):
+    """Scalar multiplication, double-and-add over the bits of s."""
+    q = (0, 1, 1, 0)  # the neutral element
+    while s > 0:
+        if s & 1:
+            q = _add(q, p)
+        p = _add(p, p)
+        s >>= 1
+    return q
+
+
+def _encode_point(p):
+    x, y, z, _ = p
+    zi = pow(z, P - 2, P)
+    x, y = x * zi % P, y * zi % P
+    return int.to_bytes(y | ((x & 1) << 255), 32, "little")
+
+
+def _clamp(h):
+    a = int.from_bytes(h[:32], "little")
+    a &= (1 << 254) - 8          # clear the low three bits, and the top one
+    a |= 1 << 254                # set bit 254
+    return a
+
+
+def public_from_seed(seed):
+    """The 32-byte ed25519 public key for a 32-byte seed."""
+    if len(seed) != 32:
+        raise ValueError("an ed25519 seed is 32 bytes")
+    h = hashlib.sha512(seed).digest()
+    return _encode_point(_mul(_clamp(h), B))
+
+
+def sign(seed, message):
+    """A 64-byte ed25519 signature over `message`."""
+    if len(seed) != 32:
+        raise ValueError("an ed25519 seed is 32 bytes")
+    h = hashlib.sha512(seed).digest()
+    a = _clamp(h)
+    pub = _encode_point(_mul(a, B))
+    r = int.from_bytes(hashlib.sha512(h[32:] + message).digest(), "little") % L
+    rr = _encode_point(_mul(r, B))
+    k = int.from_bytes(hashlib.sha512(rr + pub + message).digest(), "little") % L
+    return rr + int.to_bytes((r + k * a) % L, 32, "little")
+
+
+def verify(pub, message, signature):
+    """True when `signature` is pub's signature over message.
+
+    Only the console needs this -- the server does the verifying that matters.
+    It is here so that the self-test can check signing against RFC 8032's
+    vectors in both directions rather than only reproducing bytes.
+    """
+    if len(signature) != 64 or len(pub) != 32:
+        return False
+    y = int.from_bytes(pub, "little")
+    sign_bit = (y >> 255) & 1
+    x = _recover_x(y & ((1 << 255) - 1), sign_bit)
+    if x is None:
+        return False
+    a = (P - x, y & ((1 << 255) - 1), 1, (P - x) * (y & ((1 << 255) - 1)) % P)
+    s = int.from_bytes(signature[32:], "little")
+    if s >= L:
+        return False
+    k = int.from_bytes(
+        hashlib.sha512(signature[:32] + pub + message).digest(), "little") % L
+    return _encode_point(_add(_mul(s, B), _mul(k, a))) == signature[:32]
+
+
+# ------------------------------------------------------------------ nkeys ---
+#
+# NATS role prefixes are 5-bit values in the top of a byte, chosen so that the
+# base32 encoding of the whole blob starts with a recognisable letter.
+
+PREFIX = {
+    "operator": 14 << 3,   # O
+    "server":   13 << 3,   # N
+    "cluster":   2 << 3,   # C
+    "account":   0 << 3,   # A
+    "user":     20 << 3,   # U
+}
+_SEED = 18 << 3            # S
+
+
+def _crc16(data):
+    """CCITT, poly 0x1021, init 0 -- what NATS appends, little-endian."""
+    crc = 0
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
+    return crc
+
+
+def _b32(raw):
+    import base64
+    return base64.b32encode(raw).decode("ascii").rstrip("=")
+
+
+def _unb32(text):
+    import base64
+    pad = "=" * (-len(text) % 8)
+    return base64.b32decode(text + pad)
+
+
+def _wrap(prefix_bytes, key):
+    body = prefix_bytes + key
+    return _b32(body + int.to_bytes(_crc16(body), 2, "little"))
+
+
+def _unwrap(text, n_prefix):
+    raw = _unb32(text)
+    body, crc = raw[:-2], int.from_bytes(raw[-2:], "little")
+    if _crc16(body) != crc:
+        raise ValueError("nkey checksum does not match -- it was mistyped or truncated")
+    return body[:n_prefix], body[n_prefix:]
+
+
+def encode_public(role, pub):
+    """`U...` for a user, `A...` for an account, from a 32-byte public key."""
+    if role not in PREFIX:
+        raise ValueError("no such nkey role: %s" % role)
+    return _wrap(bytes([PREFIX[role]]), pub)
+
+
+def encode_seed(role, seed):
+    """`SU...` for a user seed.  Two prefix bytes, because 5 bits do not divide 8."""
+    if role not in PREFIX:
+        raise ValueError("no such nkey role: %s" % role)
+    role_byte = PREFIX[role]
+    return _wrap(bytes([_SEED | (role_byte >> 5), (role_byte & 31) << 3]), seed)
+
+
+def decode_seed(text):
+    """(role, 32-byte seed) from an `S...` nkey.  Raises on anything else."""
+    prefix, seed = _unwrap(text.strip(), 2)
+    if prefix[0] & 0xF8 != _SEED:
+        raise ValueError("that is not a seed -- a seed starts with S")
+    role_byte = ((prefix[0] & 7) << 5) | ((prefix[1] >> 3) & 31)
+    for name, value in PREFIX.items():
+        if value == role_byte:
+            if len(seed) != 32:
+                raise ValueError("a seed carries 32 bytes, not %d" % len(seed))
+            return name, seed
+    raise ValueError("unknown nkey role in seed")
+
+
+def decode_public(text):
+    """(role, 32-byte public key) from a `U...`/`A...` nkey."""
+    prefix, pub = _unwrap(text.strip(), 1)
+    for name, value in PREFIX.items():
+        if value == prefix[0]:
+            if len(pub) != 32:
+                raise ValueError("a public nkey carries 32 bytes, not %d" % len(pub))
+            return name, pub
+    raise ValueError("unknown nkey role: not a public nkey")
+
+
+def new_seed(role="user"):
+    """A fresh seed, from the system CSPRNG.  This is the only place one is made."""
+    return encode_seed(role, os.urandom(32))
+
+
+def public_of(seed_text):
+    role, seed = decode_seed(seed_text)
+    return encode_public(role, public_from_seed(seed))
+
+
+def sign_nonce(seed_text, nonce):
+    """What a client sends as `sig` in its CONNECT: base64url, unpadded."""
+    import base64
+    _role, seed = decode_seed(seed_text)
+    return base64.urlsafe_b64encode(sign(seed, nonce)).decode("ascii").rstrip("=")
+
+
+# -------------------------------------------------------------- self-test ---
+
+_RFC8032 = [
+    # (seed, public, message, signature) -- RFC 8032 §7.1, tests 1 and 2.
+    ("9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+     "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+     "",
+     "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821"
+     "590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b"),
+    ("4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb",
+     "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c",
+     "72",
+     "92a009a9f0d4cab8720e820b5f642540a2b27b5416503f8fb3762223ebdb69da085ac1e"
+     "43e15996e458f3613d0f11d8c387b2eaeb4302aeeb00d291612bb0c00"),
+]
+
+
+def self_test():
+    """Every claim this module makes, checked.  Returns the number of checks."""
+    checks = 0
+
+    for seed_hex, pub_hex, msg_hex, sig_hex in _RFC8032:
+        seed, pub = bytes.fromhex(seed_hex), bytes.fromhex(pub_hex)
+        msg, sig = bytes.fromhex(msg_hex), bytes.fromhex(sig_hex)
+        assert public_from_seed(seed) == pub, "RFC 8032 public key mismatch"
+        assert sign(seed, msg) == sig, "RFC 8032 signature mismatch"
+        assert verify(pub, msg, sig), "RFC 8032 signature did not verify"
+        assert not verify(pub, msg + b"!", sig), "a bad message verified"
+        checks += 4
+
+    # The nkey encoding round-trips, and says which role it carries.
+    for role in ("user", "account", "operator", "server", "cluster"):
+        text = new_seed(role)
+        back_role, seed = decode_seed(text)
+        assert back_role == role, "seed role did not round-trip"
+        assert len(seed) == 32
+        pub_text = encode_public(role, public_from_seed(seed))
+        assert decode_public(pub_text) == (role, public_from_seed(seed))
+        assert public_of(text) == pub_text, "public_of disagreed with the long way"
+        checks += 4
+
+    # The human-visible shapes, because the console prints these and the
+    # warden's config is read by people.
+    user_seed = new_seed("user")
+    assert user_seed.startswith("SU"), "a user seed starts with SU"
+    assert public_of(user_seed).startswith("U"), "a user nkey starts with U"
+    assert len(public_of(user_seed)) == 56, "a public nkey is 56 characters"
+    assert new_seed("account").startswith("SA")
+    checks += 4
+
+    # A corrupted nkey is refused rather than silently accepted -- the CRC is
+    # the reason the encoding has one.
+    good = public_of(new_seed("user"))
+    bad = good[:-1] + ("A" if good[-1] != "A" else "B")
+    try:
+        decode_public(bad)
+    except ValueError:
+        checks += 1
+    else:
+        raise AssertionError("a corrupted nkey was accepted")
+
+    # Signing is deterministic, which is what makes ed25519 safe to use with
+    # no entropy at signing time -- a Pi that just booted has very little.
+    s = new_seed("user")
+    assert sign_nonce(s, b"nonce") == sign_nonce(s, b"nonce")
+    assert sign_nonce(s, b"nonce") != sign_nonce(s, b"other")
+    checks += 2
+
+    return checks
+
+
+# -------------------------------------------------------------------- cli ---
+
+USAGE = """copal_nkeys -- the grove's bus key format
+
+  copal_nkeys.py new-seed [ROLE]     a fresh seed (default: user)
+  copal_nkeys.py public SEED         the public nkey for a seed
+  copal_nkeys.py sign SEED NONCE     sign a nonce, base64url as NATS wants it
+  copal_nkeys.py self-test           RFC 8032 vectors and the encoding
+
+A seed is a private key.  Print one only into a file you have already made
+mode 0600, and never onto a network.
+"""
+
+
+def main(argv):
+    if len(argv) < 2 or argv[1] in ("-h", "--help", "help"):
+        sys.stdout.write(USAGE)
+        return 0
+    verb = argv[1]
+    try:
+        if verb == "new-seed":
+            role = argv[2] if len(argv) > 2 else "user"
+            print(new_seed(role))
+        elif verb == "public":
+            print(public_of(argv[2]))
+        elif verb == "sign":
+            print(sign_nonce(argv[2], argv[3].encode()))
+        elif verb in ("self-test", "--self-test"):
+            n = self_test()
+            print("copal_nkeys: %d checks passed" % n)
+        else:
+            sys.stderr.write("no such verb: %s\n" % verb)
+            return 2
+    except IndexError:
+        sys.stderr.write("missing argument -- see --help\n")
+        return 2
+    except (ValueError, AssertionError) as exc:
+        sys.stderr.write("error: %s\n" % exc)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
+COPALNKEYS
+    chmod 0644 /usr/lib/copal/copal_nkeys.py
+    cat > /usr/lib/copal/copal_nats.py <<'COPALNATS'
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson
+"""copal_nats -- the grove's half of NATS: the permission list, and the wire.
+
+Two things live here because they are two halves of one subject, and keeping
+them together means there is ONE place that knows what a grove's subjects are
+called:
+
+  render_users()   the warden's authorization block -- invariant 5, rendered
+  Nats             a client for the text protocol, standard library only
+
+WHY NOT `nats-py`:  the console's home is the operator's Mac, where `apk` does
+not exist and the fallback is `pip install` into whatever environment happens
+to be current.  A museum console that needs pip at 08:45 is a console that is
+down.  See grove-m4-backlog.md §3 D3.
+
+WHY THE RENDERER IS HERE AND NOT IN THE SHELL:  because the test that proves
+invariant 5 has to render exactly what the warden renders.  Two copies of those
+allow-lists would mean the test could pass while the fleet was wrong, which is
+worse than having no test.
+
+The protocol is newline-delimited text over TCP.  A client that has read the
+first INFO knows everything it needs:
+
+    S: INFO {"nonce":"...","auth_required":true}
+    C: CONNECT {"nkey":"U...","sig":"...","name":"...","verbose":false}
+    C: PING                                 S: PONG
+    C: SUB grove.museum.cmd.> 1
+    C: PUB grove.museum.hello 0
+    S: MSG grove.museum.cmd.all 1 17
+    S: -ERR 'Permissions Violation for Publish to "grove.museum.node.x.state"'
+
+A permission violation is an -ERR that does NOT close the connection.  An
+authorization failure is an -ERR that does.  The difference is the whole of
+what copal-bus-test.py checks.
+"""
+
+import json
+import socket
+import sys
+import time
+
+sys.path.insert(0, __file__.rsplit("/", 1)[0])
+import copal_nkeys  # noqa: E402  -- same directory, on the node and here
+
+ID_OK = set("abcdefghijklmnopqrstuvwxyz0123456789-")
+
+
+# ------------------------------------------------------- the permissions ---
+#
+# INVARIANT 5 OF docs/grove-plan.md, and this function is the only place in the
+# system where these strings are built.  Both arguments are checked by the
+# caller before they arrive: `grove` against ID_OK by render_users, and `nid`
+# the same.  Nothing here interpolates anything a network could choose.
+
+def perms_for(grove, nid, role):
+    """(publish allow-list, subscribe allow-list) for one member."""
+    if role == "console":
+        # The console is the one member that may command, and the one member
+        # that may listen to everything.  It is not a node and does not get a
+        # node's shape.
+        return (["grove.%s.cmd.>" % grove],
+                ["grove.%s.>" % grove])
+    if role != "node":
+        raise ValueError("role is 'node' or 'console', not %r" % role)
+    return (["grove.%s.node.%s.>" % (grove, nid),
+             "grove.%s.log.%s" % (grove, nid),
+             "grove.%s.ack.%s.>" % (grove, nid),
+             "grove.%s.gem.>" % grove,
+             "grove.%s.hello" % grove],
+            ["grove.%s.cmd.>" % grove,
+             "grove.%s.work.>" % grove])
+
+
+def parse_members(text):
+    """`<id> <nkey> <node|console>` lines -> [(id, nkey, role)].
+
+    Every refusal below is a refusal the warden makes before it writes
+    anything.  A membership list arrives over ssh from a console holding an
+    8-hour certificate; that is a good deal of trust, and it is still not a
+    reason to skip checking that what arrived is what was meant.
+    """
+    rows, seen = [], set()
+    for n, line in enumerate(text.splitlines(), 1):
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        parts = line.split()
+        if len(parts) != 3:
+            raise ValueError("line %d: want '<id> <nkey> <node|console>'" % n)
+        nid, nkey, role = parts
+        if not nid or set(nid) - ID_OK:
+            raise ValueError("line %d: %r is not a usable node id" % (n, nid))
+        if role not in ("node", "console"):
+            raise ValueError("line %d: role is 'node' or 'console', not %r" % (n, role))
+        try:
+            kind, _raw = copal_nkeys.decode_public(nkey)
+        except ValueError as exc:
+            raise ValueError("line %d: %s's nkey is not usable -- %s" % (n, nid, exc))
+        if kind != "user":
+            raise ValueError("line %d: %s is a %s nkey, not a user one" % (n, nid, kind))
+        if nid in seen:
+            raise ValueError("line %d: %s appears twice" % (n, nid))
+        seen.add(nid)
+        rows.append((nid, nkey, role))
+    if not rows:
+        raise ValueError("an empty membership would open the bus -- refusing")
+    return rows
+
+
+def render_users(grove, rows):
+    """The warden's /etc/nats/grove-users.conf, as text."""
+    if not grove or set(grove) - ID_OK:
+        raise ValueError("refusing to render a grove name that is not [a-z0-9-]: %r" % grove)
+    out = [
+        "# /etc/nats/grove-users.conf -- rendered by `copal-grove bus-users`.",
+        "# Do not edit: the next enrolment overwrites it. %d members." % len(rows),
+        "#",
+        "# THIS FILE IS INVARIANT 5 of docs/grove-plan.md, in the form the server",
+        "# enforces it. A node publishes under its own id and nowhere else. Read",
+        "# it against the plan -- that is what it is here for.",
+        "authorization {",
+        "    users = [",
+    ]
+    for nid, nkey, role in rows:
+        pub, sub = perms_for(grove, nid, role)
+        quoted = lambda xs: ", ".join('"%s"' % x for x in xs)  # noqa: E731
+        out.append("        # %s (%s)" % (nid, role))
+        out.append("        { nkey: %s, permissions: {" % nkey)
+        out.append("            publish:   { allow: [%s] }," % quoted(pub))
+        out.append("            subscribe: { allow: [%s] }" % quoted(sub))
+        out.append("        }},")
+    out.append("    ]")
+    out.append("}")
+    return "\n".join(out) + "\n"
+
+
+# -------------------------------------------------------------- the wire ---
+
+class NatsError(Exception):
+    """A `-ERR` the server sent, or a connection that did not survive."""
+
+
+class Nats:
+    """One connection.  Not thread-safe, and deliberately not a reconnector --
+    W3's agent owns the backoff policy, because only it knows that a grove with
+    no warden is the ordinary state during a handover rather than a fault."""
+
+    def __init__(self, host, port=4222, seed=None, name="copal", timeout=5.0):
+        self.host, self.port = host, int(port)
+        self.seed = seed          # an `SU...` nkey seed, or None for open buses
+        self.name = name
+        self.timeout = float(timeout)
+        self.sock = None
+        self.info = {}
+        self.errors = []          # every -ERR seen, in order
+        # Messages can arrive during flush() -- a client subscribed to a
+        # wildcard hears its own publish -- so this is initialised here rather
+        # than lazily in messages(). It was lazy once, and the crash only
+        # showed up under a client that could hear itself.
+        self._pending = []
+        self._buf = b""
+        self._sid = 0
+
+    # -- plumbing ---------------------------------------------------------
+    def _fill(self, deadline):
+        left = deadline - time.monotonic()
+        if left <= 0:
+            raise NatsError("timed out waiting for the server")
+        self.sock.settimeout(left)
+        try:
+            chunk = self.sock.recv(65536)
+        except socket.timeout:
+            raise NatsError("timed out waiting for the server")
+        if not chunk:
+            raise NatsError("the server closed the connection")
+        self._buf += chunk
+
+    def _line(self, deadline):
+        while b"\r\n" not in self._buf:
+            self._fill(deadline)
+        line, self._buf = self._buf.split(b"\r\n", 1)
+        return line.decode("utf-8", "replace")
+
+    def _exact(self, n, deadline):
+        while len(self._buf) < n:
+            self._fill(deadline)
+        out, self._buf = self._buf[:n], self._buf[n:]
+        return out
+
+    def _send(self, text):
+        self.sock.sendall(text.encode() if isinstance(text, str) else text)
+
+    # -- the handshake ----------------------------------------------------
+    def connect(self):
+        deadline = time.monotonic() + self.timeout
+        self.sock = socket.create_connection((self.host, self.port), self.timeout)
+        self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
+        line = self._line(deadline)
+        if not line.startswith("INFO "):
+            raise NatsError("that is not a NATS server -- it said %r" % line[:40])
+        self.info = json.loads(line[5:])
+
+        opts = {"verbose": False, "pedantic": False, "tls_required": False,
+                "name": self.name, "lang": "python-copal", "version": "1",
+                "protocol": 1, "echo": True}
+        nonce = self.info.get("nonce")
+        if self.seed:
+            # THE ONLY THING THE SEED IS EVER USED FOR. It signs a nonce the
+            # server chose, so a recorded CONNECT cannot be replayed against a
+            # later one.
+            opts["nkey"] = copal_nkeys.public_of(self.seed)
+            if nonce:
+                opts["sig"] = copal_nkeys.sign_nonce(self.seed, nonce.encode())
+        elif nonce:
+            raise NatsError("the server wants a credential and this client has none")
+
+        self._send("CONNECT %s\r\nPING\r\n" % json.dumps(opts))
+
+        # An authorization failure arrives as -ERR and then a closed socket; a
+        # good handshake arrives as PONG. Read until one or the other.
+        while True:
+            line = self._line(deadline)
+            if line == "PONG":
+                return self
+            if line.startswith("-ERR"):
+                raise NatsError(line[5:].strip().strip("'"))
+            if line == "PING":
+                self._send("PONG\r\n")
+            # INFO can arrive again on cluster changes; ignore it here.
+
+    # -- verbs ------------------------------------------------------------
+    def publish(self, subject, payload=b""):
+        if isinstance(payload, str):
+            payload = payload.encode()
+        self._send("PUB %s %d\r\n" % (subject, len(payload)))
+        self._send(payload + b"\r\n")
+
+    def subscribe(self, subject, queue=None):
+        self._sid += 1
+        if queue:
+            self._send("SUB %s %s %d\r\n" % (subject, queue, self._sid))
+        else:
+            self._send("SUB %s %d\r\n" % (subject, self._sid))
+        return self._sid
+
+    def unsubscribe(self, sid):
+        self._send("UNSUB %d\r\n" % sid)
+
+    def flush(self, timeout=None):
+        """PING, then read until PONG.  Returns the -ERRs that arrived first.
+
+        This is how a permission violation becomes visible: NATS processes a
+        connection's input in order, so any -ERR our PUB earned is already on
+        the wire ahead of the PONG.  Anything that wants to know whether a
+        publish was allowed calls this.
+        """
+        deadline = time.monotonic() + (self.timeout if timeout is None else timeout)
+        before = len(self.errors)
+        self._send("PING\r\n")
+        while True:
+            line = self._line(deadline)
+            if line == "PONG":
+                return self.errors[before:]
+            self._absorb(line, deadline)
+
+    def _absorb(self, line, deadline):
+        if line.startswith("-ERR"):
+            self.errors.append(line[5:].strip().strip("'"))
+        elif line == "PING":
+            self._send("PONG\r\n")
+        elif line.startswith("MSG "):
+            parts = line.split()
+            n = int(parts[-1])
+            payload = self._exact(n + 2, deadline)[:-2]
+            self._pending.append((parts[1], int(parts[2]),
+                                  parts[3] if len(parts) == 6 else None, payload))
+
+    def messages(self, timeout=1.0):
+        """Read whatever has arrived, as (subject, sid, reply, payload)."""
+        deadline = time.monotonic() + timeout
+        try:
+            while time.monotonic() < deadline:
+                line = self._line(deadline)
+                self._absorb(line, deadline)
+        except NatsError:
+            pass
+        out, self._pending = self._pending, []
+        return out
+
+    def close(self):
+        if self.sock:
+            try:
+                self.sock.close()
+            finally:
+                self.sock = None
+
+    def __enter__(self):
+        return self.connect()
+
+    def __exit__(self, *_):
+        self.close()
+
+
+# -------------------------------------------------------------------- cli ---
+
+USAGE = """copal_nats -- the grove's permission list, and a client for the bus
+
+  copal_nats.py render GROVE FILE    the warden's authorization block
+  copal_nats.py ping HOST[:PORT]     is there a bus there, and does it want a key
+  copal_nats.py self-test            the renderer, and the wire against a stub
+"""
+
+
+def main(argv):
+    if len(argv) < 2 or argv[1] in ("-h", "--help", "help"):
+        sys.stdout.write(USAGE)
+        return 0
+    try:
+        if argv[1] == "render":
+            grove, path = argv[2], argv[3]
+            sys.stdout.write(render_users(grove, parse_members(open(path).read())))
+        elif argv[1] == "ping":
+            where = argv[2]
+            host, _, port = where.partition(":")
+            n = Nats(host, port or 4222, seed=None, name="copal-ping")
+            try:
+                n.connect()
+                print("open bus -- no credential was asked for")
+            except NatsError as exc:
+                print("bus at %s: %s" % (where, exc))
+            finally:
+                n.close()
+        elif argv[1] in ("self-test", "--self-test"):
+            print("copal_nats: %d checks passed" % self_test())
+        else:
+            sys.stderr.write("no such verb: %s\n" % argv[1])
+            return 2
+    except IndexError:
+        sys.stderr.write("missing argument -- see --help\n")
+        return 2
+    except (ValueError, NatsError, OSError) as exc:
+        sys.stderr.write("error: %s\n" % exc)
+        return 1
+    return 0
+
+
+# -------------------------------------------------------------- self-test ---
+#
+# The renderer is checked against its own output.  The CLIENT is checked against
+# a stub server in this process -- which is not nats-server and does not pretend
+# to be, but it is enough to prove the handshake, the nonce signature, the
+# framing and the -ERR path without needing a binary installed.  The test that
+# needs a real server is tools/copal-bus-test.py, and it is a separate file
+# precisely so that this one can run anywhere.
+
+def _stub_server(sock, seed_pub, verify=True):
+    """One connection of a pretend NATS server.  Returns what it observed."""
+    import base64
+    conn, _ = sock.accept()
+    conn.settimeout(5)
+    nonce = base64.b64encode(b"a-nonce-worth-signing").decode()
+    conn.sendall(('INFO {"server_id":"stub","nonce":"%s","auth_required":true}\r\n'
+                  % nonce).encode())
+    buf = b""
+    seen = {"connect": None, "pub": [], "sub": []}
+    while b"\r\n" not in buf:
+        buf += conn.recv(4096)
+    line, buf = buf.split(b"\r\n", 1)
+    assert line.startswith(b"CONNECT "), line
+    seen["connect"] = json.loads(line[8:])
+    if verify:
+        sig = seen["connect"]["sig"]
+        raw = base64.urlsafe_b64decode(sig + "=" * (-len(sig) % 4))
+        _role, pub = copal_nkeys.decode_public(seen["connect"]["nkey"])
+        assert seen["connect"]["nkey"] == seed_pub, "the client sent the wrong nkey"
+        assert copal_nkeys.verify(pub, nonce.encode(), raw), "the nonce signature is bad"
+    # The client's PING follows in the same write.
+    while True:
+        while b"\r\n" not in buf:
+            chunk = conn.recv(4096)
+            if not chunk:
+                conn.close()
+                return seen
+            buf += chunk
+        line, buf = buf.split(b"\r\n", 1)
+        text = line.decode()
+        if text == "PING":
+            conn.sendall(b"PONG\r\n")
+        elif text.startswith("SUB "):
+            seen["sub"].append(text)
+        elif text.startswith("PUB "):
+            parts = text.split()
+            n = int(parts[-1])
+            while len(buf) < n + 2:
+                buf += conn.recv(4096)
+            payload, buf = buf[:n], buf[n + 2:]
+            seen["pub"].append((parts[1], payload))
+            # Refuse exactly one subject, the way a real server refuses a
+            # publish outside an allow-list: an -ERR, connection left open.
+            if "forbidden" in parts[1]:
+                conn.sendall(('-ERR \'Permissions Violation for Publish to "%s"\'\r\n'
+                              % parts[1]).encode())
+            # And deliver something back, to exercise MSG framing.
+            if parts[1].endswith("echo"):
+                conn.sendall(b"MSG %s 1 %d\r\n%s\r\n"
+                             % (parts[1].encode(), n, payload))
+        elif text == "QUIT":
+            conn.close()
+            return seen
+
+
+def self_test():
+    import threading
+    checks = 0
+
+    # -- the renderer ---------------------------------------------------
+    seeds = {n: copal_nkeys.new_seed("user") for n in ("museum-01", "museum-02", "console")}
+    pubs = {n: copal_nkeys.public_of(s) for n, s in seeds.items()}
+    listing = "\n".join([
+        "museum-01 %s node" % pubs["museum-01"],
+        "# a comment, and a blank line follow",
+        "",
+        "museum-02 %s node" % pubs["museum-02"],
+        "console %s console" % pubs["console"],
+    ])
+    rows = parse_members(listing)
+    assert [r[0] for r in rows] == ["museum-01", "museum-02", "console"]
+    conf = render_users("museum", rows)
+    checks += 1
+
+    # A node's own subjects are there; another node's are not, anywhere.
+    assert '"grove.museum.node.museum-01.>"' in conf
+    assert '"grove.museum.log.museum-01"' in conf
+    assert conf.count('"grove.museum.cmd.>"') == 3   # two nodes subscribe, console publishes
+    assert '"grove.museum.>"' in conf                # the console, and only the console
+    assert conf.count('"grove.museum.>"') == 1
+    checks += 5
+
+    # The publish allow-list of a node must not mention any other node's id.
+    for nid in ("museum-01", "museum-02"):
+        pub, sub = perms_for("museum", nid, "node")
+        other = "museum-02" if nid == "museum-01" else "museum-01"
+        assert not any(other in s for s in pub + sub), "a node's list names another node"
+        assert not any(s == "grove.museum.>" for s in pub + sub), "a node got the console's wildcard"
+        checks += 2
+
+    for bad, why in [
+        ("museum-01 %s admin" % pubs["museum-01"], "role"),
+        ("museum-01 %s node\nmuseum-01 %s node" % (pubs["museum-01"], pubs["museum-01"]), "twice"),
+        ("../etc %s node" % pubs["museum-01"], "usable node id"),
+        ("museum-01 %sA node" % pubs["museum-01"][:-1], "not usable"),
+        ("museum-01 %s" % pubs["museum-01"], "want"),
+        ("", "empty membership"),
+    ]:
+        try:
+            parse_members(bad)
+        except ValueError as exc:
+            assert why in str(exc), "refused for the wrong reason: %s" % exc
+            checks += 1
+        else:
+            raise AssertionError("accepted a membership it should have refused: %r" % bad)
+
+    for bad in ('museum"; evil', "MUSEUM", "", "../x"):
+        try:
+            render_users(bad, rows)
+        except ValueError:
+            checks += 1
+        else:
+            raise AssertionError("rendered a grove name it should have refused: %r" % bad)
+
+    # -- the wire, against the stub -------------------------------------
+    srv = socket.socket()
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(1)
+    port = srv.getsockname()[1]
+    observed = {}
+
+    def run():
+        observed.update(_stub_server(srv, pubs["museum-01"]) or {})
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+
+    client = Nats("127.0.0.1", port, seed=seeds["museum-01"], name="museum-01")
+    client.connect()                                    # handshake + signature
+    checks += 1
+    sid = client.subscribe("grove.museum.cmd.>")
+    assert sid == 1
+    client.publish("grove.museum.node.museum-01.state", b"temp=41")
+    assert client.flush() == [], "an allowed publish drew an error"
+    checks += 2
+    client.publish("grove.museum.node.forbidden.state", b"nope")
+    errs = client.flush()
+    assert len(errs) == 1 and "Permissions Violation" in errs[0], errs
+    checks += 1
+    client.publish("grove.museum.echo", b"hello")
+    got = client.messages(0.5)
+    assert got and got[0][3] == b"hello", got
+    checks += 1
+
+    # REGRESSION. A client subscribed to a wildcard hears its own publish, so a
+    # MSG can arrive inside flush() before messages() has ever been called.
+    # This used to raise AttributeError on a lazily-created buffer, and it was
+    # found by deliberately breaking a permission to check that the invariant
+    # test could fail -- the console heard itself and the client fell over.
+    client.publish("grove.museum.echo", b"during-flush")
+    assert client.flush() == [], "the echo drew an error"
+    heard = client.messages(0.2)
+    assert any(m[3] == b"during-flush" for m in heard), heard
+    checks += 2
+    client._send("QUIT\r\n")
+    client.close()
+    thread.join(timeout=5)
+    srv.close()
+    assert observed.get("sub") == ["SUB grove.museum.cmd.> 1"], observed.get("sub")
+    checks += 1
+
+    # A client with no seed must refuse to talk to a server that wants one,
+    # rather than connecting and failing later in a way that looks like a bug.
+    srv2 = socket.socket()
+    srv2.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv2.bind(("127.0.0.1", 0))
+    srv2.listen(1)
+    p2 = srv2.getsockname()[1]
+    t2 = threading.Thread(target=lambda: _stub_server(srv2, None, verify=False), daemon=True)
+    t2.start()
+    try:
+        Nats("127.0.0.1", p2, seed=None).connect()
+    except NatsError as exc:
+        assert "credential" in str(exc), exc
+        checks += 1
+    else:
+        raise AssertionError("connected with no credential to a server that asked")
+    srv2.close()
+
+    return checks
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
+COPALNATS
+    chmod 0644 /usr/lib/copal/copal_nats.py
+    if ! command -v python3 >/dev/null 2>&1; then
+        warn "no python3 here -- the bus needs it and will stay off"
+        return 1
+    fi
+    # SELF-TEST ON THE MACHINE THAT WILL USE IT, not on the one that wrote the
+    # card. This is ed25519 written out by hand; it is checked against RFC
+    # 8032's own vectors, and a board where that check fails must not go on to
+    # sign anything.
+    if ! python3 /usr/lib/copal/copal_nkeys.py self-test >/dev/null 2>&1; then
+        warn "the bus key self-test FAILED here -- refusing to enable the bus"
+        rm -f /usr/lib/copal/copal_nkeys.py /usr/lib/copal/copal_nats.py
+        return 1
+    fi
+    if ! python3 /usr/lib/copal/copal_nats.py self-test >/dev/null 2>&1; then
+        warn "the bus protocol self-test FAILED here -- refusing to enable the bus"
+        rm -f /usr/lib/copal/copal_nkeys.py /usr/lib/copal/copal_nats.py
+        return 1
+    fi
+    note "bus modules installed; RFC 8032 vectors and the wire both check out"
+}
+
+# THE DEFAULT MEMBERSHIP IS A LOCK WITH NO KEY.
+#
+# Between nats-server starting and the console enrolling anybody, this file has
+# to exist -- `include` fails without it and the server will not start. What it
+# must NOT be is an empty authorization block, because to NATS that reads as no
+# authentication at all, and a bus that is briefly open is a bus that was open.
+#
+# So it holds exactly one user: a real, valid nkey generated here, whose seed
+# is thrown away in the same breath. The config parses, the server demands a
+# credential from its first second of listening, and no such credential exists
+# anywhere in the world.
+grove_bus_users_default() {
+    [ -s /etc/nats/grove-users.conf ] && return 0
+    _lock=$(python3 - <<'PY' 2>/dev/null
+import sys
+sys.path.insert(0, "/usr/lib/copal")
+import copal_nkeys as k
+print(k.public_of(k.new_seed("user")))
+PY
+) || _lock=""
+    if [ -z "$_lock" ]; then
+        warn "could not generate the placeholder credential"
+        return 1
+    fi
+    cat > /etc/nats/grove-users.conf <<LOCKED
+# Written by Copal stage 16. Replaced wholesale by \`copal grove bus\` the
+# first time a node is enrolled onto the bus.
+#
+# THIS IS A LOCK WITH NO KEY. The nkey below is real and was generated on this
+# machine; its seed was never written to disk and no longer exists. It is here
+# so that this file is a valid, CLOSED authorization block rather than an empty
+# one -- an empty block means "no authentication" to NATS, and that is not what
+# an unenrolled grove should mean.
+authorization {
+    users = [
+        { nkey: $_lock }
+    ]
+}
+LOCKED
+    chmod 0644 /etc/nats/grove-users.conf
+    note "bus membership: closed, pending enrolment"
+}
+
+grove_warden_bus() {
+    _role=$(cat "$GROVE_DIR/role" 2>/dev/null || echo node)
+
+    # DEMOTION IS THE CASE THAT GETS FORGOTTEN, and stopping the service is not
+    # enough: a reboot would start it again, and two wardens holding two
+    # JetStream stores on one segment is the one muddle this design has no
+    # answer for. Removed from the runlevel, and the init script deleted, so
+    # that "is this node the warden" has one answer and not two.
+    if [ "$_role" != warden ]; then
+        if [ -f /etc/init.d/nats ]; then
+            note "role is '$_role', not warden -- removing the bus from this node"
+            rc-service nats stop >/dev/null 2>&1 || true
+            rc-update del nats default >/dev/null 2>&1 || true
+            rm -f /etc/init.d/nats /etc/nats/nats.conf
+        fi
+        return 0
+    fi
+
+    say "This card is the grove's warden: installing the message bus"
+
+    # D2: it is in Alpine v3.24 community for aarch64, so there is no download,
+    # no SHA256 to pin and no argument with the no-binaries policy.
+    if ! apk add nats-server >/dev/null 2>&1; then
+        warn "could not install nats-server -- the grove works without it"
+        note "Everything through milestone 3 runs over SSH and is unaffected:"
+        note "ls, enrol, run, scene and power all keep working. The bus is what"
+        note "the wall and the gems need. Try by hand: apk add nats-server"
+        return 1
+    fi
+    note "$(nats-server --version 2>/dev/null | head -1 || echo 'nats-server installed')"
+
+    install -d -m 0755 /etc/nats
+    # JetStream's store. Root-owned and 0700 because it will hold the grove's
+    # log stream, and /var/log on a node is tmpfs (stage 3) while this is not.
+    install -d -m 0700 /var/lib/nats
+
+    [ -f /usr/lib/copal/copal_nkeys.py ] \
+        || { warn "no key format on this node -- not starting the bus"; return 1; }
+    grove_bus_users_default || return 1
+    /usr/bin/copal-grove bus-config \
+        || { warn "could not write /etc/nats/nats.conf -- is there an address yet?"; return 1; }
+
+    cat > /etc/init.d/nats <<'NATSRC'
+#!/sbin/openrc-run
+# nats -- the grove's message bus. Written by Copal stage 16, on the warden.
+#
+# start_pre REWRITES THE CONFIG EVERY TIME, and that is deliberate rather than
+# wasteful: the one thing in it that cannot be decided when the card is written
+# is the address to listen on. A DHCP lease that moved overnight would
+# otherwise leave a server bound to an address this machine no longer has, and
+# the failure would look like the bus being broken rather than the config being
+# stale.
+name="nats"
+description="Copal grove message bus"
+command="/usr/bin/nats-server"
+command_args="-c /etc/nats/nats.conf"
+command_background=true
+pidfile="/run/nats.pid"
+output_log="/var/log/nats.log"
+error_log="/var/log/nats.log"
+
+depend() {
+	need localmount net
+	after sshd
+}
+
+start_pre() {
+	if [ "$(cat /etc/copal/grove/role 2>/dev/null)" != warden ]; then
+		eerror "This node is not the warden. Refusing to start a second bus."
+		return 1
+	fi
+	/usr/bin/copal-grove bus-config || {
+		eerror "no address to listen on -- the network is not up yet"
+		return 1
+	}
+	return 0
+}
+NATSRC
+    chmod 0755 /etc/init.d/nats
+    rc-update add nats default >/dev/null 2>&1 \
+        && note "nats added to the default runlevel" \
+        || warn "could not add nats to the default runlevel"
+    if rc-service nats restart >/dev/null 2>&1; then
+        note "the bus is up on $(/usr/bin/copal-grove bus-address 2>/dev/null || echo '?'):4222"
+        note "It has no members yet. From the console:  copal grove bus"
+    else
+        warn "nats did not start -- see: rc-service nats status; tail /var/log/nats.log"
+    fi
+}
+
 
 stage_grove() {
     say "Stage 16: the grove -- this machine as one of several"
@@ -20843,6 +22125,10 @@ MSG
       - points sshd at the authority, and binds that account to one forced
         command that accepts a list of verbs and refuses everything else
       - installs avahi and announces this machine, if discovery is mdns
+      - installs the bus key format, and generates NO key yet: this machine's
+        bus identity is made the first time the console asks for it
+      - if this card's role is warden, installs nats-server and starts it with
+        a membership of nobody. If it is not, makes sure no bus is running here
 
     What it does NOT do:
 
@@ -20861,6 +22147,11 @@ MSG
     grove_service_account || warn "the service account is incomplete"
     grove_sshd_policy     || warn "sshd was left as it was"
     grove_discovery       || true
+    # Every node gets the key format, because every node needs a bus identity.
+    # Only the warden gets a server, and grove_warden_bus is what decides that
+    # -- including taking one away from a node that has just been demoted.
+    grove_bus_tools       || warn "the bus key format is not installed here"
+    grove_warden_bus      || true
 
     say "Stage 16 complete."
     note ""
@@ -20873,7 +22164,7 @@ MSG
     note "    copal grove enrol     -- checks its token, signs, installs"
     note "    copal grove ls        -- a '✓'"
     note ""
-    note "On this machine: copal-grove status"
+    note "On this machine: copal-grove status, and copal-grove bus-state"
 }
 
 stage_verify() {

@@ -277,6 +277,9 @@ copal grove init                # groves/<name>/ -- the grove file and its scene
 copal grove scene               # which scenes this grove has
 copal grove scene wake          # the museum's morning, on every node at once
 copal grove scene sleep         # flush the logs, halt, confirm each one went
+
+copal grove bus                 # put every enrolled node on the message bus
+copal grove bus --check         # what the warden says the bus is doing
 ```
 
 **The images are raw MBR disks — dd them straight to a card:**
@@ -1661,14 +1664,19 @@ it becomes editable, `shellcheck`-able and testable — but it is a refactor of
 working code, so it happens *after* the two VMs can prove a refactor did not
 break anything.
 
-The grove is three of its five milestones in. Eight cards can be written, they
-announce themselves, the authority signs them, one verb reaches all of them,
-and a day is five scene files that can be applied to the whole room and
-reported per node. The message bus and the wall, and the work the grove
-computes, are designed in [`docs/grove-plan.md`](docs/grove-plan.md) and not
-yet written — as is Nix, which would give a fleet bit-identical closures
-instead of eight afternoons of `apk` drift, at the price of every 32-bit board
-in the table. None of this has run on eight real Pis: it has run on one machine
+The grove is three of its five milestones in, and the fourth has started. Eight
+cards can be written, they announce themselves, the authority signs them, one
+verb reaches all of them, and a day is five scene files that can be applied to
+the whole room and reported per node. Of milestone 4, the **bus** is written:
+the warden runs `nats-server`, every node has an ed25519 bus identity it
+generated itself, and the permission list the server enforces is rendered on
+the warden from invariant 5, which a real `nats-server` has been watched
+enforcing — `make bus-test` starts one and checks that a node cannot publish as
+another node. None of it has run on a Pi yet. **The wall is still only a
+design**, in [`docs/grove-plan.md`](docs/grove-plan.md) and
+[`docs/grove-m4-backlog.md`](docs/grove-m4-backlog.md) — as is Nix, which would
+give a fleet bit-identical closures instead of eight afternoons of `apk` drift,
+at the price of every 32-bit board in the table. None of this has run on eight real Pis: it has run on one machine
 and a fixture, and the playbooks have never met an Ansible.
 
 The next milestone is planned rather than started:

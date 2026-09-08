@@ -320,8 +320,50 @@ grove.museum.event                       anything worth a toast
 Permissions follow invariant 5: a node's credentials allow publish on
 `…node.<own-id>.*`, `…log.<own-id>`, `…ack.<own-id>.*` and `…gem.>`, subscribe
 on `…cmd.>` and `…work.>`, and nothing else. The console publishes `cmd.>` and
-subscribes to everything. mTLS with certificates from the same grove CA, so
-there is one trust root in the entire system.
+subscribes to everything.
+
+### How the bus is authenticated
+
+*This section replaces a sentence that could not be built. Until 2026-09-08 it
+read "mTLS with certificates from the same grove CA, so there is one trust root
+in the entire system." The grove CA is an **SSH** certificate authority —
+`ssh-keygen -s` — and an SSH CA key cannot sign an X.509 certificate, which is
+what mTLS wants. The intention was right and the mechanism did not exist. See
+`grove-m4-backlog.md` §3 D1 for the full working.*
+
+**Nodes authenticate to the bus with NATS nkeys, and the permission list lives
+in the warden's configuration.** An nkey is an ed25519 keypair in NATS's own
+encoding. On connect the server sends a nonce, the client signs it with its
+seed, and the server checks that signature against the public nkey it already
+holds. There is no X.509 anywhere, and there are no JWTs — the decentralized
+operator/account/resolver arrangement is what NATS provides for multi-tenancy,
+and §15 has ruled multi-tenancy out.
+
+The single trust root survives, and it is the SSH CA. It decides *membership*;
+the nkey is a **scoped capability issued as a consequence of membership**, not
+a second authority:
+
+1. A node generates its own seed, on itself, at enrolment. `/etc/copal/grove/
+   nkey.seed`, mode 0600, root. Only the public half (`U…`) is ever read out —
+   invariant 2, unchanged.
+2. The console reads that public half **over the channel the host certificate
+   just proved**. A machine that cannot present a valid grove host certificate
+   never reaches this step, so invariant 1 decides here exactly as it decides
+   everywhere else.
+3. The console writes the node's stanza into the warden's `nats.conf` with the
+   allow-lists above, verbatim from invariant 5, and reloads the server.
+
+Consequences worth knowing before they surprise somebody:
+
+- **Enrolment touches the warden.** Issuing a bus credential means editing a
+  file on a second machine. A grove whose warden is down can still enrol a node
+  over SSH; it just cannot put it on the bus until the warden is back.
+- **Revocation is a deletion.** Remove the stanza, reload, and the node is off
+  the bus within a second. There is no revocation list to distribute and no
+  token to wait out — which is a better story than the one mTLS would have had.
+- **The invariant is legible.** `nats.conf` on the warden is the permission
+  list, in plain text, and it can be read against invariant 5 by a person
+  standing in front of it.
 
 ### The command envelope
 
