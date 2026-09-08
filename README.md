@@ -1671,6 +1671,12 @@ instead of eight afternoons of `apk` drift, at the price of every 32-bit board
 in the table. None of this has run on eight real Pis: it has run on one machine
 and a fixture, and the playbooks have never met an Ansible.
 
+The next milestone is planned rather than started:
+[`docs/grove-m4-backlog.md`](docs/grove-m4-backlog.md) is the bus and the wall
+in ten work items, each with an acceptance test, and it opens with the three
+decisions that block code — one of which is a hole in the plan rather than a
+preference. It is written to be picked up cold.
+
 ## Sizing
 
 `IMAGE_SIZE` defaults to **64g**, which yields a 4 GB FAT boot partition and
@@ -1716,6 +1722,7 @@ bindings, the account model, the SD-card wear analysis — is in
 | `docs/development-report.md` | Architecture, verification method and results, known defects |
 | `docs/grove-plan.md` | **Copal Grove** — a fleet of Copal machines on one LAN: discovery, certificates, the message bus, scenes, and the build order |
 | `docs/grove-lab-report.md` | What Timbuktu, Veyon and Xen Orchestra each got right, and the console a grove should have. IEEE format |
+| `docs/grove-m4-backlog.md` | **The next milestone, ready to resume.** The bus and the wall, broken into ten work items with acceptance tests, three blocking decisions, and the demo that closes it |
 
 ## Repository policy
 

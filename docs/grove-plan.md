@@ -875,7 +875,9 @@ run power off` turns off eight Pis. *This alone is the end of the working day.*
 museum's morning.*
 
 **M4 · The bus and the wall.** `nats-server` on the warden, telemetry, log
-collection, thumbnails, and the TUI. *This alone is the console.*
+collection, thumbnails, and the TUI. *This alone is the console.* Broken into
+work items, with its three blocking decisions, in
+[`grove-m4-backlog.md`](grove-m4-backlog.md) — start there, and start with D1.
 
 **M4½ · Nix, if it measures well.** A `nix-serve` verb behind the forced
 command, `copal grove nix copy`, and closures instead of `apk` for the things
