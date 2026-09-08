@@ -550,6 +550,111 @@ museum performs most reliably and enjoys least. The wall can wait; it is the
 part everyone will want to build first and the part that is worth nothing
 without the three below it.
 
+## Appendix A — Degradation, performed
+
+**W10 of milestone 4.** Invariant 8 says the console works with every layer
+above the first removed. This is the checklist, each line performed and dated,
+and it is reproducible rather than a claim: `tools/copal-degrade-test.py`, or
+`make degrade-test`.
+
+Run **2026-09-08** on a workstation, against a fixture grove of eight, a real
+`nats-server` 2.14.0 and the real `copal-grove-agent`. **18 passed, 1 failed,
+1 not performed.** A layer that has become load-bearing is a bug, and this item
+exists to find it. It found one.
+
+### 1. Bus down — the console falls back, and says so · **PASS** · 2026-09-08
+
+| | |
+|---|---|
+| ✓ | `copal grove state --json` still answers, and still returns JSON |
+| ✓ | the document says the bus is unreachable, and why |
+| ✓ | all seven announced nodes are still listed — the list does not shrink |
+| ✓ | **no node is called live.** They are `announced`, which is all a beacon can prove |
+| ✓ | **no agent is called silent.** With no bus that is unknowable, and guessing would send somebody to a machine that is fine |
+| ✓ | the wall draws, and its header says the bus is off |
+| ✓ | the header says the picture is **polled rather than live** |
+
+The last line failed on the first run and was fixed. The header said
+`bus off: timed out`, which reports a missing component but does not tell an
+operator that the tiles in front of them are four-minute-old beacons rather
+than agents. It now reads `bus off — polled, not live (timed out)`. A fallback
+that is labelled but not explained is still a quiet fallback.
+
+### 2. Warden unplugged — the next-highest score takes the role · **FAIL** · 2026-09-08
+
+| | |
+|---|---|
+| ✓ | the console follows a warden that has moved, without a restart |
+| ✗ | **a node never changes its role** |
+| – | the twenty-second failover, timed on hardware — not performed |
+
+**This is the finding.** `role_now()` on a node returns the `role` field that
+was written to its card. Nothing computes an election. `score()` exists, is
+correct, and is published in every beacon — and nothing reads it to decide
+anything. The console uses it only to break ties between machines that already
+*claim* to be the warden.
+
+So §7's description — "every node computes this, publishes it, and the highest
+score that is currently announcing takes the role" — is not implemented. Pull
+the warden's plug and the grove has no warden until somebody rewrites a card.
+
+It is worth being precise about what does and does not break, because it is
+less than it sounds: **the bus is a convenience and every verb over ssh is
+unaffected.** `ls`, `enrol`, `run`, `scene`, `power` and `logs` on the surviving
+nodes keep working. What is lost is the wall going live, telemetry, and the log
+sink — until a warden is named by hand.
+
+W1's checklist said "the election already computes the role (`role_now`,
+`score`) — W1 makes the role *do* something for the first time." The first
+half of that sentence was untrue when it was written, and building on it is how
+this went unnoticed through W1, W3 and W7.
+
+### 3. Avahi off — addresses from a written list · **PASS** · 2026-09-08
+
+| | |
+|---|---|
+| ✓ | the written list is read when there is nothing to browse with |
+| ✓ | the console works from it, with identity untouched |
+| ✓ | the nodes absent from the list are reported **missing, not forgotten** |
+| ✓ | the backlog names the file the static path actually reads |
+
+Performed with a `PATH` carrying every command except avahi's, rather than with
+an empty `PATH` — emptying it proves only that a shell without `sh` cannot run,
+which is not the question.
+
+The last line also failed first. The backlog said addresses come from the grove
+file's `nodes` key; that key is a list of **ids** for `copal grove wait` and
+carries no addresses at all. The mechanism was right and the sentence was not,
+and a checklist naming the wrong file is one somebody follows into a wall at
+nine in the morning. The document is corrected and the suite now checks it.
+
+### 4. Console killed mid-command — a re-run is safe · **PASS** · 2026-09-08
+
+Performed against a real `nats-server` and the real `copal-grove-agent`, driven
+by the real client. **This is also W3's acceptance test, which had not been
+made until now.**
+
+| | |
+|---|---|
+| ✓ | the agent connected to a real bus and said hello |
+| ✓ | a redelivered command — same `once` — ran **exactly once** |
+| ✓ | still exactly once **after the agent was restarted**, which is what proves the seen-list is on disk and not in memory |
+| ✓ | a command that expired while the node was off **did not fire** |
+| ✓ | a fresh command still ran — the node is idempotent, not deaf |
+| ✓ | every command went through `copal-grove-exec`, as a verb |
+
+The last line is the one that matters for the security boundary: a command
+arriving over NATS is executed by the same forced command sshd uses, so a verb
+that is not allowed over ssh cannot become allowed by arriving over the bus.
+
+### What this appendix is not
+
+It is one machine. The two lines that need two machines and a power switch —
+the timed failover, and a node powered off at 11:00 read back at 16:00 — are
+marked *not performed* rather than reworded into something a workstation can
+do. **None of milestone 4 has run on a Raspberry Pi.**
+
+
 ## References
 
 Surveyed 2026-09-08.

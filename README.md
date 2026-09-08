@@ -1684,7 +1684,12 @@ enforcing, since `make bus-test` starts one and checks that a node cannot
 publish as another node. `copal grove watch` renders the grove as a live table
 from the bus and degrades to beacons when the bus is off, and `copal grove
 console` is the wall itself — a tile per node in a terminal, which calls
-`copal grove` and never the network. None of it has run on a Pi yet. **The seat,
+`copal grove` and never the network. `make degrade-test` runs the console with
+each layer taken away in turn, and it found that the **warden election is not
+implemented**: a node never changes its role, so unplugging the warden leaves
+the grove without one until a card is rewritten. Every verb over ssh is
+unaffected by that, which is the layering rule doing its job. None of it has
+run on a Pi yet. **The seat,
 thumbnails and notifications are still only a design**, in [`docs/grove-plan.md`](docs/grove-plan.md) and
 [`docs/grove-m4-backlog.md`](docs/grove-m4-backlog.md) — as is Nix, which would
 give a fleet bit-identical closures instead of eight afternoons of `apk` drift,

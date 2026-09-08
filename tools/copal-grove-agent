@@ -47,13 +47,18 @@ sys.path.insert(0, "/usr/lib/copal")
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
 import copal_nats  # noqa: E402
 
-D = "/etc/copal/grove"
+# Paths, with test seams. The defaults are the only values a node ever uses;
+# the overrides exist so that tools/copal-degrade-test.py can run this exact
+# program against a real nats-server without being root and without a card.
+# The repository already reads COPAL_GROVE_BEACONS, COPAL_ANSWERS and
+# COPAL_HOME the same way, for the same reason.
+D = os.environ.get("COPAL_GROVE_DIR", "/etc/copal/grove")
 SEED = os.path.join(D, "nkey.seed")
-EXEC = "/usr/bin/copal-grove-exec"
-GROVE_TOOL = "/usr/bin/copal-grove"
-NODE_LOG = "/var/log/copal-grove.log"
-SEEN = "/var/lib/copal-grove/seen"          # `once` values already run
-COLLECT = "/var/log/copal-grove"            # the warden's collector directory
+EXEC = os.environ.get("COPAL_GROVE_EXEC", "/usr/bin/copal-grove-exec")
+GROVE_TOOL = os.environ.get("COPAL_GROVE_TOOL", "/usr/bin/copal-grove")
+NODE_LOG = os.environ.get("COPAL_GROVE_NODE_LOG", "/var/log/copal-grove.log")
+SEEN = os.environ.get("COPAL_GROVE_SEEN", "/var/lib/copal-grove/seen")
+COLLECT = os.environ.get("COPAL_GROVE_COLLECT", "/var/log/copal-grove")
 COLLECT_CAP = 64 * 1024 * 1024              # bytes, across every node
 
 HELLO_EVERY = 10.0
@@ -407,7 +412,8 @@ def main():
             attempt = min(attempt + 1, len(BACKOFF) - 1)
             continue
 
-        conn = copal_nats.Nats(addr, 4222, seed=seed, name=node_id, timeout=10)
+        conn = copal_nats.Nats(addr, int(os.environ.get("COPAL_GROVE_PORT", "4222")),
+                               seed=seed, name=node_id, timeout=10)
         try:
             conn.connect()
             log("on the bus at %s (warden %s)" % (addr, wid))

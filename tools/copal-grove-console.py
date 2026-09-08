@@ -177,7 +177,10 @@ def frame(doc, sel, cursor, width, height, overlay=None, err=None):
         ("  COPAL GROVE · ", HEAD), (grove, KEY),
         ("   %d of %d up" % (up, declared), HEAD),
         ("   ", FG),
-        ("bus on" if bus.get("reachable") else "bus off: %s" % (bus.get("why") or "?"),
+        # See the note in copal-grove-view: "bus off" does not tell an operator
+        # that the tiles are beacons now rather than agents. This does.
+        ("bus on" if bus.get("reachable")
+         else "bus off -- polled, not live (%s)" % (bus.get("why") or "?"),
          UP if bus.get("reachable") else WARN),
         ("   ⌂ wall", DIM),
     ])
@@ -718,10 +721,11 @@ def self_test():
         n["temp_c"] = None
         n["agent"] = "unknown"
     dtxt = text_of(frame(dark, set(), 0, 104, 40))
-    assert "bus off: timed out" in dtxt
+    assert "bus off -- polled, not live" in dtxt, dtxt.splitlines()[0]
+    assert "timed out" in dtxt
     assert "no reading" in dtxt, "a missing temperature must read as missing"
     assert "silent" not in dtxt, "with no bus, nothing can be called silent"
-    checks += 3
+    checks += 4
 
     # -- and with no state at all, it still draws ------------------------
     empty = text_of(frame(None, set(), 0, 104, 40, err="state did not return JSON"))

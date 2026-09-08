@@ -522,25 +522,51 @@ Three severities, distinguished by *what the operator must do*:
 **Acceptance:** applying `rest` while one node is unreachable produces an
 alarm, not a toast, and the alarm names the node.
 
-### W10 · Degradation, tested on purpose — M — depends on all
+### W10 · Degradation, tested on purpose — M — depends on all — **performed**
 
 Invariant 8 says the console works with every layer removed. M4 is where that
-stops being a claim.
+stops being a claim. `tools/copal-degrade-test.py`, or `make degrade-test`.
 
-- [ ] Bus down → the console falls back to SSH fan-out and **says so in the
-      header**. Not silently: the operator must know the wall is now polled
-      rather than live.
-- [ ] Warden unplugged → next-highest score takes the role within ~20 s; the
-      console follows without a restart.
-- [ ] Avahi off → addresses from `nodes` in `grove.toml`; everything else
-      unchanged, because identity never depended on discovery.
-- [ ] Console killed mid-command → nothing on any node is left half-applied
-      that a re-run does not fix. Scenes are idempotent; verify that the bus
-      path is too.
+Run 2026-09-08: **18 passed, 1 failed, 1 not performed.** The dated checklist
+is [`grove-lab-report.md` Appendix A](grove-lab-report.md#appendix-a--degradation-performed).
 
-**Acceptance:** a written checklist in `docs/grove-lab-report.md`, each line
-performed and dated. A layer that has become load-bearing is a bug, and this is
-the item that finds it.
+- [x] Bus down → the console falls back and **says so in the header**. It said
+      `bus off: timed out`, which names a missing component without telling
+      anybody that the tiles are now four-minute-old beacons. It now reads
+      `bus off — polled, not live`. Nothing is called live or silent with no
+      bus to prove it, because both would be guesses.
+- [ ] **Warden unplugged → FAILS, and this is what W10 was for.** A node never
+      changes its role: `role_now()` returns the field written to its card and
+      nothing computes the election. `score()` is correct and published, and
+      nothing reads it to decide. §7 describes a sort; the code has a constant.
+      The console *does* follow a warden that moves — but no warden ever moves.
+      **W1's checklist asserted the opposite** ("the election already computes
+      the role"), and building on that sentence is how this survived W1, W3
+      and W7.
+- [x] Avahi off → addresses from the written list at
+      `~/.copal/groves/<grove>/nodes`; everything else unchanged, because
+      identity never depended on discovery. *(Until W10 was performed this
+      line named the grove file's `nodes` key instead. That key is a list of
+      **ids** for `copal grove wait` and carries no addresses; the file that
+      can is the one named above. The mechanism was right and the sentence was
+      not, which is the sort of thing only performing a checklist finds.)*
+- [x] Console killed mid-command → nothing left half-applied. Verified against
+      a real `nats-server` and the real agent: a redelivered command runs
+      exactly once, still exactly once **after the agent restarts** — which is
+      what proves the seen-list is on disk — an expired command does not fire
+      at four in the afternoon, a fresh one still runs, and every one of them
+      goes through `copal-grove-exec` as a verb. **This is also W3's acceptance
+      test, which had not been made until now.**
+
+**Acceptance: met, and the finding is the point.** A layer that has become
+load-bearing is a bug, and this is the item that finds it. It found the
+election.
+
+**What remains not performed:** the twenty-second failover timed on hardware,
+and a node powered off at 11:00 read back at 16:00. Both need two machines and
+a power switch, and both are marked *not performed* rather than reworded into
+something a workstation can do.
+
 
 ---
 

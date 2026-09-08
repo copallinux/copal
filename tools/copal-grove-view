@@ -265,8 +265,13 @@ def glyph_for(status):
 def render(doc, width=None):
     n = doc["counts"]
     lines = []
+    # WITH NO BUS THE PICTURE IS POLLED, AND THE OPERATOR HAS TO BE TOLD SO.
+    # "bus off" alone says a component is missing; it does not say that what is
+    # on the screen is a four-minute-old beacon rather than something live.
+    # W10's first line is that the fallback must not be silent, and a header
+    # that omits the difference is a quiet fallback with a label on it.
     bus = ("%son the bus%s" % (G, Z) if doc["bus"]["reachable"]
-           else "%sbus off: %s%s" % (Y, doc["bus"]["why"], Z))
+           else "%sbus off, polled not live: %s%s" % (Y, doc["bus"]["why"], Z))
     lines.append("")
     lines.append("  %sCOPAL GROVE  %s%s%s   %s%d of %d up%s   %s"
                  % (B, C, doc["grove"], Z, B, n["announced"], max(n["declared"], n["announced"]), Z, bus))
@@ -466,6 +471,9 @@ def self_test():
     doc = assemble("museum", b, {}, ["museum-01", "museum-06", "museum-07"],
                    "10.0.0.16", "no warden announcing")
     assert doc["bus"]["reachable"] is False
+    header = render(doc).splitlines()[1]
+    assert "polled not live" in header, header
+    assert "no warden announcing" in header, header
     assert doc["counts"]["declared"] == 3
     assert doc["counts"]["announced"] == 2
     assert doc["counts"]["missing"] == 1
@@ -474,7 +482,7 @@ def self_test():
     assert by["museum-01"]["agent"] == "unknown"
     assert by["museum-07"]["status"] == "missing"
     assert by["museum-07"]["declared"] is True
-    checks += 7
+    checks += 9
 
     # With the bus: live state wins, and the scene is per node and never a
     # global boolean.

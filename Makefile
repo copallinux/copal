@@ -518,6 +518,10 @@ sync-nats:
 	@printf '  ok      tools/copal_nats.py -> $(PREP)\n'
 	@$(MAKE) --no-print-directory lint
 
+## degrade-test: W10 -- run the console with every layer removed, on purpose.
+degrade-test:
+	@python3 tools/copal-degrade-test.py $(if $(V),-v,)
+
 ## bus-test: prove a node cannot publish as another node (needs nats-server).
 bus-test:
 	@python3 tools/copal-bus-test.py $(if $(V),-v,)
@@ -570,6 +574,8 @@ lint: | $(BUILDDIR)
 	    && printf '  ok      tools/copal-grove-view\n'
 	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-grove-console.py \
 	    && printf '  ok      tools/copal-grove-console.py\n'
+	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-degrade-test.py \
+	    && printf '  ok      tools/copal-degrade-test.py\n'
 	@python3 tools/copal_nkeys.py self-test | sed 's/^/  ok      /'
 	@python3 tools/copal_nats.py self-test | sed 's/^/  ok      /'
 	@python3 tools/copal-grove-agent --self-test 2>/dev/null | sed 's/^/  ok      /'
