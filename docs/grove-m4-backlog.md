@@ -389,22 +389,57 @@ failure the museum will actually hit is exactly this one.
 on the VM. The plan lists this as an open question and it stays open until
 somebody has the number. Record it in `docs/grove-lab-report.md`.
 
-### W6 · `copal grove watch` — the wall, without the TUI — M — depends on W3
+### W6 · `copal grove watch` — the wall, without the TUI — M — depends on W3 — **written**
 
-**Build this before the TUI.** It is the layering rule made concrete: a
-line-oriented command that subscribes to the bus and prints state changes.
-Everything the wall will show, this prints first.
+Built before the wall on purpose, and the reason is §12: anything the TUI can
+do, `copal grove` can do, because the TUI calls it. A rule like that is only
+worth having if it is tested, and the test is that the closing demo can be
+performed with these verbs and no TUI at all.
 
-- [ ] `copal grove watch [--tag T]` — a live table, redrawn, no curses.
-- [ ] `copal grove notify --all-up` — exits 0 when every declared node is up.
-      This is the morning's real primitive: *tell me when all eight are up* is
-      the difference between watching a screen for ten minutes and doing
-      something else until it chimes.
-- [ ] `copal grove state --json` — the whole grove as one JSON document, which
-      is what the TUI will actually consume.
+- [x] `copal grove watch [--every N] [--once]` — a live table, redrawn, no
+      curses. Two sources: beacons always, and the bus when there is a warden
+      and this console has been enrolled onto it. The bus is what makes it live
+      — a beacon is four minutes old at worst.
+- [x] `copal grove notify --all-up` — exits 0 when every declared node is up,
+      non-zero on timeout, one line of output, so it composes:
+      `copal grove notify --all-up && copal grove scene wake`.
+- [x] `copal grove state --json` — the whole grove as one JSON document:
+      counts, the warden, bus reachability, per-node facts, strangers, and
+      `scenes` as a **mapping of scene to node ids** rather than a global
+      boolean, because a room where six machines got the memo is the normal
+      case and the document has to be able to say so.
+- [x] `copal grove browse` — the beacon lines, unadorned. Exposed because the
+      live views re-run it to refresh, which keeps one parser for that format,
+      and because "what did discovery actually say" is worth asking directly.
+- [x] **Degraded with the bus off, which is milestone requirement 5.** The
+      header says `bus off: <why>`, glyphs drop from `●` to `◐` — announced,
+      not confirmed live — and temperature and agent age go blank rather than
+      stale. Nothing claims to know what it cannot know.
 
-**Acceptance:** the demo in §6 can be performed with these three commands and
-no TUI at all. If it cannot, the TUI is about to become load-bearing.
+**Acceptance: met for the commands.** Run against a fixture grove of eight and
+a real `nats-server` with seven agents publishing on it, then again with the
+bus switched off. 38 checks in `copal-grove-view self-test`, which `make lint`
+runs.
+
+**Four bugs, and every one of them was found by running it rather than by
+reading it:**
+
+1. A beacon with no `g=` fell through as a member of this grove, which put a
+   networked printer in the table *and in the count*. Strangers are now a
+   separate list in the document — shown, never contacted, never counted.
+2. `7 of 8` read as `8 of 8`, a direct consequence of (1).
+3. The glyph/colour table was a module-level dict built at import, so it
+   captured the colour constants before `--plain` could blank them: every row
+   came out painted and unterminated when piped.
+4. The bus says `up=372m` and the beacon says `372`. Only a live bus could
+   show that, and it showed it as a traceback. Both shapes are normalised in
+   one place now.
+
+And one distinction that was wrong rather than crashing: a node that never
+announced was being reported as having a *silent agent*, which sends an
+operator to inspect a machine that is switched off. `silent` now means "it
+announced and its agent is not talking"; a node that is not there is `absent`.
+
 
 ### W7 · The wall — L — depends on W6, D3, D4
 

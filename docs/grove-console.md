@@ -192,19 +192,57 @@ rc-service nats status          # warden only; absent elsewhere, not stopped
 
 ---
 
+## 4a · Watching the room
+
+```
+copal grove watch               # a live table, redrawn every 3 seconds
+copal grove watch --every 10    # slower
+copal grove watch --once        # one frame, for a script or a screenshot
+copal grove state               # the same picture, once
+copal grove state --json        # the whole grove as one document
+copal grove notify --all-up     # exits 0 when every declared node is up
+copal grove browse              # what discovery actually said, unadorned
+```
+*written.* `watch` reads two sources and the second is allowed to be missing:
+beacons always, and the bus when there is a warden and this console has been
+enrolled onto it. **The bus is what makes it live** — a beacon is four minutes
+old at worst.
+
+With the bus off it still works and says so: the header reads
+`bus off: <why>`, the glyphs drop from `●` to `◐` — *announced*, not
+*confirmed live* — and temperature and agent age go blank rather than stale.
+Nothing claims to know what it cannot know.
+
+| | Means |
+|---|---|
+| `●` | up, and the bus heard from its agent |
+| `◐` | announced, but nothing live confirms it |
+| `○` | declared and never announced |
+
+The **agent** column is separate from all three, because an agent that died
+quietly is worse than no agent. `silent` means the node announced itself and
+its agent is not talking — a fault somebody can act on. A node that is not
+there at all is not silent, it is absent, and reporting that as silent sends an
+operator to look at a machine that is switched off.
+
+`notify` composes, which is the point of it:
+
+```
+copal grove notify --all-up && copal grove scene wake
+```
+
+---
+
 ## 5 · Designed, not built
 
 | | What it will do | Item |
 |---|---|---|
-| `copal grove watch` | a live table, redrawn — the wall without the TUI | M4 W6 |
-| `copal grove notify --all-up` | exits 0 when every declared node is up | M4 W6 |
-| `copal grove state --json` | the whole grove as one JSON document | M4 W6 |
 | the wall, the seat | the TUI of `grove-lab-report.md` §IV-B | M4 W7–W8 |
 | `copal grove gem …` | the work queue | M5 |
 
-`notify --all-up` is the morning's real primitive. "Tell me when all eight are
-up" at 08:31 is the difference between watching a screen for ten minutes and
-doing something else until it chimes.
+The wall is what remains. It will be a rendering of §4a's verbs and not a
+second way of knowing things — that is §12's rule, and building `watch` first
+is how it gets tested rather than merely stated.
 
 ---
 

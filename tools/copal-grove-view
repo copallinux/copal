@@ -1,0 +1,554 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson
+"""copal-grove-view -- the grove as one document, and as a table that redraws.
+
+This is milestone 4's W6, and W6 comes BEFORE the TUI on purpose.  §12 of the
+plan says anything the wall can do, `copal grove` can do, because the wall
+calls it.  The test of that rule is that the demo which closes M4 can be
+performed with these commands and no TUI at all -- so they are built first, and
+the wall becomes a rendering of them rather than a second way of knowing things.
+
+    copal grove state [--json]     the whole grove, once
+    copal grove watch [--every N]  the same thing, redrawn
+
+TWO SOURCES, AND THE SECOND ONE IS ALLOWED TO BE MISSING.
+
+  beacons   always.  Written by every node's own `copal-grove beacon`, refreshed
+            every four minutes.  Carries role, tags, arch, ram, uptime, scene.
+            It is a claim a node makes about itself and nothing here treats it
+            as more than that.
+  the bus   when there is a warden and this console has been enrolled onto it.
+            The agent publishes state every five seconds, so this is what makes
+            a table LIVE rather than four minutes stale.
+
+With the bus off, everything below still works and says so in the header.  That
+is requirement 5 of the milestone -- "do all of the above with the bus switched
+off, degraded but working" -- and it is the reason the beacon path is not
+treated as a fallback that can be allowed to rot.
+
+Called by tools/copal-grove.sh, which owns discovery, the grove name and the
+credential.  This program is handed a beacon file and an address; it does not
+browse, and it does not decide who is a member.
+"""
+
+import argparse
+import json
+import os
+import sys
+import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, "/usr/lib/copal")
+import copal_nats  # noqa: E402
+
+G, Y, R, D, B, C, Z = (
+    "\033[32m", "\033[33m", "\033[31m", "\033[2m", "\033[1m", "\033[36m", "\033[0m")
+
+
+def plain():
+    global G, Y, R, D, B, C, Z
+    G = Y = R = D = B = C = Z = ""
+
+
+# ------------------------------------------------------------- the beacon ---
+
+def read_beacons(path, grove):
+    """(members, strangers) from the tab-separated lines copal-grove.sh produces.
+
+    A BEACON THAT DOES NOT NAME THIS GROVE IS A STRANGER, and the check is
+    strict on purpose: an omitted `g=` used to fall through as a member, which
+    put a networked printer in the grove's table and its count. The plan's rule
+    is that a stranger is shown and never contacted, so it has to be somewhere
+    in this document -- but never among the nodes.
+    """
+    out, strangers = {}, []
+    try:
+        with open(path) as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        return out, strangers
+    for line in lines:
+        parts = line.split("\t")
+        if len(parts) < 3:
+            continue
+        nid, addr, txt = parts[0], parts[1], parts[2]
+        kv = dict(p.split("=", 1) for p in txt.split(";") if "=" in p)
+        if kv.get("g") != grove:
+            strangers.append({"id": kv.get("n") or nid, "address": addr,
+                              "grove": kv.get("g") or None})
+            continue
+        nid = kv.get("n") or nid
+        out[nid] = {
+            "id": nid, "address": addr,
+            "role": kv.get("r") or "node",
+            "score": intish(kv.get("s")),
+            "arch": kv.get("a") or "",
+            "ram_mb": intish(kv.get("m")),
+            "uptime_min": intish((kv.get("u") or "").rstrip("m")),
+            "tags": [t for t in (kv.get("t") or "").split(",") if t],
+            "scene": kv.get("c") or "",
+            "build": kv.get("b") or "",
+            "announced": True,
+        }
+    return out, strangers
+
+
+def intish(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def minutes(v):
+    """A count of minutes, from either shape the grove writes it in.
+
+    The beacon says `u=372m` and strips the suffix on the way in; the agent's
+    state line says `up=372m` and parse_state leaves it alone, because coercing
+    every value that starts with digits would quietly mangle a build id. So the
+    normalising happens here, once, where both sources meet -- which is where
+    the two shapes were first found to disagree, by a live bus and a traceback.
+    """
+    if isinstance(v, int):
+        return v
+    if isinstance(v, str) and v[:-1].isdigit() and v.endswith("m"):
+        return int(v[:-1])
+    return intish(v)
+
+
+# ---------------------------------------------------------------- the bus ---
+
+def read_bus(addr, seed, grove, seconds=2.0):
+    """What the agents are saying right now.  ({} , reason) when there is none.
+
+    A short listen rather than a subscription that stays open: `state` is a
+    question with an answer, and a console that held a connection open to
+    answer it would be the thing the grove depends on.  `watch` calls this once
+    a cycle, which is the same shape and keeps one code path.
+    """
+    if not addr or not seed:
+        return {}, "no warden announcing" if not addr else "no console identity"
+    conn = copal_nats.Nats(addr, 4222, seed=seed, name="copal-grove-view", timeout=6)
+    seen = {}
+    try:
+        conn.connect()
+        conn.subscribe("grove.%s.node.*.state" % grove)
+        conn.subscribe("grove.%s.hello" % grove)
+        conn.flush()
+        deadline = time.time() + seconds
+        while time.time() < deadline:
+            for subject, _sid, _reply, payload in conn.messages(0.4):
+                text = payload.decode("utf-8", "replace").strip()
+                if subject.endswith(".state"):
+                    nid = subject.split(".")[-2]
+                    seen.setdefault(nid, {}).update(parse_state(text))
+                    seen[nid]["heard"] = time.time()
+                elif subject.endswith(".hello"):
+                    nid = text.split()[0] if text.split() else ""
+                    if nid:
+                        seen.setdefault(nid, {})["heard"] = time.time()
+    except (copal_nats.NatsError, OSError) as exc:
+        return seen, str(exc)
+    finally:
+        conn.close()
+    return seen, None
+
+
+def parse_state(text):
+    """The line `copal-grove state` prints, which is the only telemetry
+    vocabulary this system has.  Unknown keys are kept: a newer node that
+    learned a field must not have it thrown away by an older console."""
+    out = {}
+    for token in text.split():
+        if "=" not in token:
+            continue
+        k, v = token.split("=", 1)
+        out[k] = intish(v) if v.lstrip("-").isdigit() else v
+    return out
+
+
+# ------------------------------------------------------------- assembling ---
+
+def assemble(grove, beacons, bus, expected, warden, degraded, strangers=()):
+    nodes = {}
+    for nid in sorted(set(beacons) | set(bus) | set(expected)):
+        b = beacons.get(nid, {})
+        s = bus.get(nid, {})
+        heard = s.get("heard")
+        node = {
+            "id": nid,
+            "address": b.get("address", ""),
+            "role": s.get("role") or b.get("role") or ("?" if not b else "node"),
+            "tags": b.get("tags", []),
+            "arch": s.get("arch") or b.get("arch", ""),
+            "ram_mb": intish(s.get("ram")) or b.get("ram_mb"),
+            "score": (intish(s.get("score")) if s.get("score") is not None
+                      else b.get("score")),
+            "uptime_min": (minutes(s.get("up")) if s.get("up") is not None
+                           else b.get("uptime_min")),
+            "temp_c": intish(s.get("temp")),
+            "scene": s.get("scene") or b.get("scene") or "",
+            "scene_min": intish(s.get("scene_min")),
+            "announced": bool(b),
+            "on_bus": bool(s),
+            "agent_s": intish(s.get("agent")),
+            "heard_s": int(time.time() - heard) if heard else None,
+            "declared": nid in expected,
+        }
+        # THE STATUS, and the three values are exactly the wall's three glyphs.
+        # "up" means something answered for it, and the bus answering counts for
+        # more than a beacon does because a beacon is four minutes old at worst.
+        if s:
+            node["status"] = "up"
+        elif b:
+            node["status"] = "up" if not degraded else "announced"
+        else:
+            node["status"] = "missing"
+        # An agent that died quietly is worse than no agent -- so the node
+        # being up and the agent being up are two facts, never one.
+        #
+        # THREE STATES AND NOT TWO. `silent` has to mean "the node announced
+        # itself and its agent is not talking", because that is a fault somebody
+        # can act on. A node that never announced at all is `absent`: its agent
+        # is not silent, it is simply not there, and reporting it as silent sends
+        # an operator to look at a machine that is switched off.
+        if s:
+            node["agent"] = "up"
+        elif not b:
+            node["agent"] = "absent"
+        elif degraded:
+            node["agent"] = "unknown"
+        else:
+            node["agent"] = "silent"
+        nodes[nid] = node
+
+    scenes = {}
+    for n in nodes.values():
+        if n["scene"]:
+            scenes.setdefault(n["scene"], []).append(n["id"])
+    return {
+        "grove": grove,
+        "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "warden": warden or None,
+        "bus": {"reachable": not degraded, "why": degraded or None},
+        "counts": {
+            "declared": len(expected),
+            "announced": sum(1 for n in nodes.values() if n["announced"]),
+            "on_bus": sum(1 for n in nodes.values() if n["on_bus"]),
+            "missing": sum(1 for n in nodes.values() if n["status"] == "missing"),
+        },
+        # NEVER A GLOBAL BOOLEAN. A room where six machines got the memo is the
+        # normal case and this has to be able to say so -- see the lab report
+        # §IV-D, which is why this is a mapping and not a string.
+        "scenes": scenes,
+        "nodes": [nodes[k] for k in sorted(nodes)],
+        # Shown, never contacted. Nothing in this program or the console ever
+        # opens a connection to one of these.
+        "strangers": list(strangers),
+    }
+
+
+# --------------------------------------------------------------- printing ---
+
+GLYPHS = {"up": "●", "announced": "◐", "missing": "○"}
+
+
+def glyph_for(status):
+    """Looked up when the row is drawn, never at import time.  A dict built up
+    at module level captured the colour constants before --plain could blank
+    them, which left every row painted and unterminated in a pipe."""
+    colour = {"up": G, "announced": Y, "missing": D}.get(status, D)
+    return colour, GLYPHS.get(status, "○")
+
+
+def render(doc, width=None):
+    n = doc["counts"]
+    lines = []
+    bus = ("%son the bus%s" % (G, Z) if doc["bus"]["reachable"]
+           else "%sbus off: %s%s" % (Y, doc["bus"]["why"], Z))
+    lines.append("")
+    lines.append("  %sCOPAL GROVE  %s%s%s   %s%d of %d up%s   %s"
+                 % (B, C, doc["grove"], Z, B, n["announced"], max(n["declared"], n["announced"]), Z, bus))
+    if doc["scenes"]:
+        parts = []
+        for scene, ids in sorted(doc["scenes"].items(), key=lambda kv: -len(kv[1])):
+            parts.append("%s%s%s %d" % (B, scene, Z, len(ids)))
+        lines.append("  %sscene%s  %s        %swarden%s %s"
+                     % (D, Z, "  ".join(parts), D, Z, doc["warden"] or "-"))
+    lines.append("")
+    lines.append("     %s%-14s %-8s %-10s %8s %6s %8s  %s%s"
+                 % (D, "NODE", "ROLE", "SCENE", "UPTIME", "TEMP", "AGENT", "ADDRESS", Z))
+    for node in doc["nodes"]:
+        colour, glyph = glyph_for(node["status"])
+        up = "%dm" % node["uptime_min"] if node["uptime_min"] is not None else "-"
+        temp = "%d°C" % node["temp_c"] if node["temp_c"] is not None else "-"
+        if node["agent"] == "up":
+            agent = "%s%ds%s" % (G, node["heard_s"] or 0, Z)
+        elif node["agent"] == "silent":
+            agent = "%ssilent%s" % (Y, Z)
+        else:
+            agent = "%s-%s" % (D, Z)
+        lines.append("   %s%s%s %-14s %-8s %-10s %8s %6s %8s  %s%s%s"
+                     % (colour, glyph, Z, node["id"], node["role"],
+                        node["scene"] or "-", up, temp, agent,
+                        D, node["address"] or "not announced", Z))
+    lines.append("")
+    missing = [x["id"] for x in doc["nodes"] if x["status"] == "missing"]
+    if missing:
+        lines.append("   %s!%s %d declared node(s) have not announced: %s"
+                     % (R, Z, len(missing), " ".join(missing)))
+    silent = [x["id"] for x in doc["nodes"]
+              if x["announced"] and x["agent"] == "silent"]
+    if silent:
+        lines.append("   %s!%s announced but not on the bus: %s"
+                     % (Y, Z, " ".join(silent)))
+        lines.append("     %sThe node is up and its agent is not. That is a"
+                     " different fault.%s" % (D, Z))
+    if doc.get("strangers"):
+        names = ["%s (%s)" % (x["address"], x["id"]) for x in doc["strangers"]]
+        lines.append("   %s!%s %d stranger(s) on this network: %s"
+                     % (Y, Z, len(names), "  ".join(names)))
+        lines.append("     %sSeen, never contacted. Not in the grove and not"
+                     " counted in it.%s" % (D, Z))
+    if missing or silent or doc.get("strangers"):
+        lines.append("")
+    return "\n".join(lines)
+
+
+# --------------------------------------------------------------- the verbs ---
+
+def collect(args):
+    # `watch` and `notify` loop, and a beacon file read once would leave them
+    # rendering the same four-minute-old picture forever. --refresh names the
+    # command that regenerates it -- `copal grove browse` -- so that discovery
+    # is still parsed in exactly one place and this program still does not
+    # browse for itself.
+    if args.refresh:
+        try:
+            import subprocess
+            out = subprocess.run(args.refresh, shell=True, capture_output=True,
+                                 text=True, timeout=30)
+            if out.stdout.strip():
+                with open(args.beacons, "w") as fh:
+                    fh.write(out.stdout)
+        except (OSError, subprocess.SubprocessError):
+            pass          # keep the last picture rather than blanking the table
+    beacons, strangers = read_beacons(args.beacons, args.grove)
+    seed = None
+    if args.seed and os.path.exists(args.seed):
+        with open(args.seed) as fh:
+            seed = fh.read().strip()
+    bus, why = read_bus(args.warden, seed, args.grove, args.listen)
+    expected = []
+    if args.expect and os.path.exists(args.expect):
+        with open(args.expect) as fh:
+            expected = [ln.strip() for ln in fh if ln.strip()]
+    return assemble(args.grove, beacons, bus, expected, args.warden, why,
+                    strangers)
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(add_help=True)
+    ap.add_argument("mode", choices=("state", "watch", "notify", "self-test"))
+    ap.add_argument("--grove", default="")
+    ap.add_argument("--beacons", default="")
+    ap.add_argument("--expect", default="")
+    ap.add_argument("--warden", default="")
+    ap.add_argument("--seed", default="")
+    ap.add_argument("--json", action="store_true")
+    ap.add_argument("--every", type=float, default=3.0)
+    ap.add_argument("--listen", type=float, default=2.0)
+    ap.add_argument("--once", action="store_true")
+    ap.add_argument("--plain", action="store_true")
+    ap.add_argument("--refresh", default="")
+    ap.add_argument("--all-up", action="store_true")
+    ap.add_argument("--timeout", type=float, default=600.0)
+    args = ap.parse_args(argv)
+
+    if args.mode == "self-test":
+        print("copal-grove-view: %d checks passed" % self_test())
+        return 0
+    if args.plain or not sys.stdout.isatty():
+        plain()
+
+    if args.mode == "state":
+        doc = collect(args)
+        if args.json:
+            print(json.dumps(doc, indent=2, sort_keys=True))
+        else:
+            print(render(doc))
+        return 0
+
+    if args.mode == "notify":
+        # Exits 0 when every declared node is up. The morning's real primitive:
+        # "tell me when all eight are here" is the difference between watching a
+        # screen for ten minutes and doing something else until it chimes.
+        deadline = time.time() + args.timeout
+        while True:
+            doc = collect(args)
+            declared = [n for n in doc["nodes"] if n["declared"]] or doc["nodes"]
+            up = [n for n in declared if n["status"] != "missing"]
+            sys.stderr.write("\r  %d of %d up   " % (len(up), len(declared)))
+            sys.stderr.flush()
+            if declared and len(up) == len(declared):
+                sys.stderr.write("\n")
+                print("all %d up" % len(declared))
+                return 0
+            if time.time() >= deadline:
+                sys.stderr.write("\n")
+                missing = [n["id"] for n in declared if n["status"] == "missing"]
+                print("timed out with %d missing: %s"
+                      % (len(missing), " ".join(missing)), file=sys.stderr)
+                return 1
+            time.sleep(args.every)
+
+    # watch
+    try:
+        while True:
+            doc = collect(args)
+            if not args.once:
+                sys.stdout.write("\033[H\033[J")
+            sys.stdout.write(render(doc) + "\n")
+            if not args.once:
+                sys.stdout.write("   %sredrawn %s -- Ctrl-C to stop%s\n"
+                                 % (D, doc["at"][11:], Z))
+            sys.stdout.flush()
+            if args.once:
+                return 0
+            time.sleep(args.every)
+    except KeyboardInterrupt:
+        return 0
+
+
+# -------------------------------------------------------------- self-test ---
+
+def self_test():
+    import tempfile
+    checks = 0
+    tmp = tempfile.mkdtemp(prefix="copal-view-test.")
+    bpath = os.path.join(tmp, "beacons")
+    with open(bpath, "w") as fh:
+        fh.write("museum-01\t10.0.0.11\tv=1;g=museum;n=museum-01;r=node;s=2048;"
+                 "a=aarch64;m=1024;u=372m;t=wall,north;c=show\n")
+        fh.write("museum-06\t10.0.0.16\tv=1;g=museum;n=museum-06;r=warden;s=3050;"
+                 "a=aarch64;m=512;u=12m;t=sdr;c=wake\n")
+        fh.write("intruder\t10.0.0.99\tv=1;g=elsewhere;n=intruder;r=node\n")
+
+    b, strangers = read_beacons(bpath, "museum")
+    assert set(b) == {"museum-01", "museum-06"}, "a foreign grove leaked in"
+    assert [x["id"] for x in strangers] == ["intruder"], strangers
+    assert b["museum-01"]["uptime_min"] == 372
+    assert b["museum-01"]["tags"] == ["wall", "north"]
+    assert b["museum-06"]["role"] == "warden"
+    checks += 4
+
+    # A BEACON WITH NO g= IS A STRANGER, not a member. It used to fall through
+    # as one, which put a printer in the grove's table and in its count.
+    with open(bpath, "a") as fh:
+        fh.write("epson-XY10\t10.0.0.44\tv=1;n=epson-XY10\n")
+    b2, s2 = read_beacons(bpath, "museum")
+    assert "epson-XY10" not in b2, "a beacon with no grove name was counted as a node"
+    assert any(x["id"] == "epson-XY10" for x in s2), s2
+    assert len(b2) == 2, b2
+    checks += 3
+
+    st = parse_state("id=museum-01 role=node score=2048 temp=47 up=372m ram=1024 "
+                     "arch=aarch64 tags=wall scene=show scene_min=14 agent=61")
+    assert st["temp"] == 47 and st["agent"] == 61 and st["scene"] == "show"
+    assert st["up"] == "372m", "an m-suffixed value must not be coerced"
+    st2 = parse_state("id=x newfield=7")
+    assert st2["newfield"] == 7, "an unknown field was thrown away"
+    checks += 3
+
+    # Degraded: no bus. Announced nodes are not claimed to be live, and the
+    # agent is 'unknown' rather than 'silent' -- with no bus we cannot tell.
+    doc = assemble("museum", b, {}, ["museum-01", "museum-06", "museum-07"],
+                   "10.0.0.16", "no warden announcing")
+    assert doc["bus"]["reachable"] is False
+    assert doc["counts"]["declared"] == 3
+    assert doc["counts"]["announced"] == 2
+    assert doc["counts"]["missing"] == 1
+    by = {n["id"]: n for n in doc["nodes"]}
+    assert by["museum-01"]["status"] == "announced"
+    assert by["museum-01"]["agent"] == "unknown"
+    assert by["museum-07"]["status"] == "missing"
+    assert by["museum-07"]["declared"] is True
+    checks += 7
+
+    # With the bus: live state wins, and the scene is per node and never a
+    # global boolean.
+    bus = {"museum-01": {"temp": 47, "scene": "show", "up": 372, "agent": 61,
+                         "heard": time.time() - 2},
+           "museum-06": {"temp": 51, "scene": "wake", "up": 12, "agent": 5,
+                         "heard": time.time() - 1}}
+    doc = assemble("museum", b, bus, ["museum-01", "museum-06"], "10.0.0.16", None)
+    assert doc["bus"]["reachable"] is True
+    by = {n["id"]: n for n in doc["nodes"]}
+    assert by["museum-01"]["temp_c"] == 47
+    assert by["museum-01"]["status"] == "up" and by["museum-01"]["agent"] == "up"
+    assert by["museum-01"]["heard_s"] is not None and by["museum-01"]["heard_s"] < 5
+    assert doc["scenes"] == {"show": ["museum-01"], "wake": ["museum-06"]}, doc["scenes"]
+    checks += 5
+
+    # THE TWO SHAPES OF A MINUTE COUNT. The bus says up=372m and the beacon
+    # says 372; both have to land as an int, and this is the traceback a live
+    # bus produced the first time they met.
+    assert minutes("372m") == 372 and minutes(372) == 372
+    assert minutes("") is None and minutes("2026-09-04.3") is None
+    live = assemble("museum", b, {"museum-01": {"up": "372m", "temp": "47",
+                                                "heard": time.time()}},
+                    ["museum-01"], "10.0.0.16", None)
+    got = {n["id"]: n for n in live["nodes"]}["museum-01"]
+    assert got["uptime_min"] == 372, got["uptime_min"]
+    assert got["temp_c"] == 47, got["temp_c"]
+    assert "372m" in render(live)
+    checks += 5
+
+    # A node that announced but whose agent is not talking, with the bus up:
+    # that is 'silent', and it is a different fault from the node being down.
+    doc = assemble("museum", b, {"museum-06": {"heard": time.time()}},
+                   ["museum-01", "museum-06"], "10.0.0.16", None)
+    by = {n["id"]: n for n in doc["nodes"]}
+    assert by["museum-01"]["agent"] == "silent", by["museum-01"]
+    assert by["museum-01"]["status"] == "up", "a silent agent is not a dead node"
+    checks += 2
+
+    # A declared node that never announced is ABSENT, not silent. Calling it
+    # silent sends an operator to inspect a machine that is switched off.
+    doc = assemble("museum", b, {"museum-01": {"heard": time.time()}},
+                   ["museum-01", "museum-07"], "10.0.0.16", None)
+    by = {n["id"]: n for n in doc["nodes"]}
+    assert by["museum-07"]["agent"] == "absent", by["museum-07"]
+    assert by["museum-07"]["status"] == "missing"
+    # museum-06 IS legitimately silent here -- it announced and is not on the
+    # bus -- so the check is that the silent line names it and not museum-07.
+    silent_line = [ln for ln in render(doc).splitlines() if "not on the bus" in ln]
+    assert silent_line and "museum-06" in silent_line[0], silent_line
+    assert "museum-07" not in silent_line[0], "an absent node was called silent"
+    checks += 4
+
+    # --plain must leave no escape behind. This is the colour bug: GLYPH was a
+    # module-level dict that captured the constants before plain() ran, so every
+    # row came out painted and unterminated when piped.
+    plain()
+    painted = render(assemble("museum", b, bus, ["museum-01"], "10.0.0.16", None,
+                              [{"id": "epson-XY10", "address": "10.0.0.44",
+                                "grove": None}]))
+    assert "\033" not in painted, "--plain still emitted an escape sequence"
+    assert "stranger" in painted, "the stranger line is missing"
+    checks += 2
+
+    # It renders in both, and the JSON is JSON.
+    assert "COPAL GROVE" in render(doc)
+    assert "silent" in render(doc)
+    assert json.loads(json.dumps(doc))["grove"] == "museum"
+    checks += 3
+
+    import shutil
+    shutil.rmtree(tmp, ignore_errors=True)
+    return checks
+
+
+if __name__ == "__main__":
+    sys.exit(main())

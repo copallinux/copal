@@ -27,6 +27,10 @@
 #   copal grove bus                put every enrolled node on the message bus
 #   copal grove bus --check        what the warden says the bus is doing
 #   copal grove logs [NODE]        the grove's logs, including nodes that died
+#   copal grove state [--json]     the whole grove as one document
+#   copal grove watch              the same thing, redrawn -- the wall, no TUI
+#   copal grove notify --all-up    exits 0 when every declared node is up
+#   copal grove browse             what discovery actually said, unadorned
 #
 # The day, once a grove directory exists (milestone 3):
 #   copal grove init               make groves/<name>/ from the template
@@ -62,6 +66,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ANSWERS="${COPAL_ANSWERS:-$ROOT/answers.txt}"
 HOME_COPAL="${COPAL_HOME:-$HOME/.copal}"
 NKEYS="$ROOT/tools/copal_nkeys.py"
+VIEW="$ROOT/tools/copal-grove-view"
 SERVICE="_copal-grove._tcp"
 TAB=$(printf '\t')
 
@@ -711,6 +716,104 @@ cmd_logs() {
     done
 }
 
+# ------------------------------------------------------- state and watch ---
+#
+# Milestone 4's W6, and it comes BEFORE the wall on purpose. §12's rule is that
+# anything the TUI can do, `copal grove` can do, because the TUI calls it -- and
+# the test of a rule like that is whether the demo which closes the milestone
+# can be performed without the TUI at all. So these are built first, and the
+# wall becomes a rendering of them rather than a second way of knowing things.
+#
+# The rendering lives in tools/copal-grove-view because it reads the BUS, and
+# the bus client is Python (D3). Discovery, the grove name and the credential
+# stay here. That program is handed a beacon file and an address; it does not
+# browse and it does not decide who is a member.
+view_run() {  # <mode> [extra args for the view]
+    _mode="$1"; shift
+    [ -f "$VIEW" ] || die "no $VIEW -- this is not a full checkout"
+    command -v python3 >/dev/null 2>&1 \
+        || die "the live views need python3 on this machine. 'copal grove ls' does not."
+    browse > "$TMP/vbeacons" 2>/dev/null || : > "$TMP/vbeacons"
+    expected_nodes > "$TMP/vexpect" 2>/dev/null || : > "$TMP/vexpect"
+    _waddr=""
+    _w=$(warden_of)
+    [ -n "$_w" ] && _waddr=${_w#*"$TAB"}
+    # THE REFRESH COMMAND, so that a loop sees new beacons rather than the same
+    # four-minute-old picture forever. It re-enters this program at `browse`,
+    # which keeps one parser for the beacon format.
+    _refresh="$0 browse --grove $GROVE"
+    [ -n "$VIA" ] && _refresh="$_refresh --via $VIA"
+    python3 "$VIEW" "$_mode" \
+        --grove "$GROVE" \
+        --beacons "$TMP/vbeacons" \
+        --expect "$TMP/vexpect" \
+        --warden "$_waddr" \
+        --seed "$CADIR/console.nk" \
+        --refresh "$_refresh" "$@"
+}
+
+# The beacon lines, unadorned. Exposed as a verb because the live views re-run
+# it to refresh, and because "what did discovery actually say" is a question
+# worth being able to ask directly when `ls` looks wrong.
+cmd_browse() {
+    while [ $# -gt 0 ]; do
+        take_common "$@" || die "unknown option '$1' for browse"
+        shift "$SHIFTN"
+    done
+    settle
+    browse
+}
+
+cmd_state() {
+    while [ $# -gt 0 ]; do
+        take_common "$@" || die "unknown option '$1' for state"
+        shift "$SHIFTN"
+    done
+    settle
+    if [ "$JSON" = 1 ]; then view_run state --json; else view_run state; fi
+}
+
+cmd_watch() {
+    _every=3; _once=0
+    while [ $# -gt 0 ]; do
+        if take_common "$@"; then shift "$SHIFTN"; continue; fi
+        case "$1" in
+            --every)   _every="${2:?--every needs seconds}"; shift 2 ;;
+            --every=*) _every="${1#*=}"; shift ;;
+            --once)    _once=1; shift ;;
+            -*) die "unknown option '$1' for watch" ;;
+            *)  ONLY="$1"; shift ;;
+        esac
+    done
+    settle
+    case "$_every" in ''|*[!0-9.]*) die "--every takes seconds" ;; esac
+    if [ "$_once" = 1 ]; then view_run watch --once --every "$_every"
+    else view_run watch --every "$_every"; fi
+}
+
+# "Tell me when all eight are up" is what the operator wants at 08:31, and it is
+# the difference between watching a screen for ten minutes and doing something
+# else until it chimes. Exits 0 when every declared node is up, non-zero on
+# timeout, and prints one line -- so it composes:
+#
+#     copal grove notify --all-up && copal grove scene wake
+cmd_notify() {
+    _all=0; _every=5
+    while [ $# -gt 0 ]; do
+        if take_common "$@"; then shift "$SHIFTN"; continue; fi
+        case "$1" in
+            --all-up)  _all=1; shift ;;
+            --every)   _every="${2:?--every needs seconds}"; shift 2 ;;
+            --every=*) _every="${1#*=}"; shift ;;
+            -*) die "unknown option '$1' for notify" ;;
+            *)  ONLY="$1"; shift ;;
+        esac
+    done
+    settle
+    [ "$_all" = 1 ] || die "notify takes --all-up. One node is 'copal grove watch NODE'."
+    view_run notify --all-up --every "$_every" --timeout "$TIMEOUT"
+}
+
 # --------------------------------------------------------------- run -------
 #
 # Fan-out. Every node gets the same verb, every node gets its own result line,
@@ -1210,6 +1313,10 @@ case "${1:-}" in
     inventory)         shift; cmd_inventory "$@" ;;
     bus)               shift; cmd_bus "$@" ;;
     logs|log)          shift; cmd_logs "$@" ;;
+    state)             shift; cmd_state "$@" ;;
+    watch)             shift; cmd_watch "$@" ;;
+    notify)            shift; cmd_notify "$@" ;;
+    browse)            shift; cmd_browse "$@" ;;
     help|-h|--help|'') usage ;;
     *) die "no grove verb called '$1'. Try: copal grove help" ;;
 esac
