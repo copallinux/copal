@@ -35,35 +35,79 @@
 # looks. Set a real one here; that is the whole point of this being a file you
 # can edit.
 #
+# THE GROVE. Answer the grove questions and this file stops describing one
+# machine and starts describing one machine OUT OF SEVERAL -- a named fleet
+# that shares a certificate authority, finds itself on the LAN, and is driven
+# from one console. See docs/grove-plan.md. Leave the grove name empty and
+# nothing below it is asked, nothing is installed, and the machine built is
+# exactly the standalone machine it has always been.
+#
+# --node N is what makes eight cards bearable: it re-writes answers.txt for
+# card N of the grove -- new hostname, new one-time enrolment token, every
+# other answer left alone -- without asking a single question. Eight cards is
+# one interview and seven of these.
+#
 # Usage:
 #   tools/copal-answers.sh              ask, then write answers.txt
 #   tools/copal-answers.sh --show       print the current answers, no password
 #   tools/copal-answers.sh --force      overwrite without confirming
+#   tools/copal-answers.sh --node N     card N of the grove; asks nothing
+#   tools/copal-answers.sh --node N --role warden --tags wall,sdr
 set -euo pipefail
 
 die()  { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 info() { printf '\033[36m==>\033[0m %s\n' "$*" >&2; }
 note() { printf '    %s\n' "$*" >&2; }
+# warn was used in four places before it existed. Under `set -euo pipefail` an
+# undefined command is exit 127, so every one of those recoveries -- "no such
+# key file, continuing without one" -- killed the script instead of recovering.
+warn() { printf '\033[33mwarning:\033[0m %s\n' "$*" >&2; }
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ANSWERS="$ROOT/answers.txt"
 CRYPT="$ROOT/tools/sha512-crypt.py"
 FORCE=0
 SHOW=0
-for a in "$@"; do
-    case "$a" in
+NODE=""
+ROLE_ARG=""
+TAGS_ARG=""
+TAGS_SET=0
+while [ $# -gt 0 ]; do
+    case "$1" in
         --force) FORCE=1 ;;
         --show)  SHOW=1 ;;
-        -h|--help) sed -n '5,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-        *) die "unknown argument '$a'. See --help." ;;
+        --node)  NODE="${2:-}"; shift ;;
+        --node=*) NODE="${1#*=}" ;;
+        --role)  ROLE_ARG="${2:-}"; shift ;;
+        --role=*) ROLE_ARG="${1#*=}" ;;
+        --tags)  TAGS_ARG="${2:-}"; TAGS_SET=1; shift ;;
+        --tags=*) TAGS_ARG="${1#*=}"; TAGS_SET=1 ;;
+        -h|--help) sed -n '5,36p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) die "unknown argument '$1'. See --help." ;;
     esac
+    shift
 done
+case "$NODE" in
+    ''|*[!0-9]*) [ -z "$NODE" ] || die "--node takes a number, not '$NODE'" ;;
+esac
+[ "$NODE" = 0 ] && die "--node counts from 1"
+if [ -n "$ROLE_ARG" ] || [ "$TAGS_SET" = 1 ]; then
+    [ -n "$NODE" ] || die "--role and --tags only mean anything with --node"
+fi
+case "${ROLE_ARG:-node}" in
+    node|warden|console) ;;
+    *) die "--role must be node, warden or console" ;;
+esac
 
 if [ "$SHOW" -eq 1 ]; then
     [ -f "$ANSWERS" ] || die "no answers.txt yet. Run: make answers"
     # The hash is a hash, but printing it invites shoulder-surfing a offline
     # crack, so it is shown as its presence only.
-    sed "s/^\\(COPAL_ROOT_PW_HASH=\\).*/\\1<set>/" "$ANSWERS"
+    # The token is single use and unspent until a node enrols, so it is worth
+    # the same masking as the hash -- a screenshot of --show should not be a
+    # working enrolment for somebody else's machine.
+    sed -e "s/^\\(COPAL_ROOT_PW_HASH=\\).*/\\1<set>/" \
+        -e "s/^\\(COPAL_GROVE_TOKEN=\\).\\{1,\\}/\\1<set>/" "$ANSWERS"
     exit 0
 fi
 
@@ -71,7 +115,7 @@ fi
 python3 "$CRYPT" --selftest >/dev/null 2>&1 \
     || die "sha512-crypt self-test failed -- refusing to write a hash I cannot trust"
 
-if [ -f "$ANSWERS" ] && [ "$FORCE" -eq 0 ]; then
+if [ -f "$ANSWERS" ] && [ "$FORCE" -eq 0 ] && [ -z "$NODE" ]; then
     info "answers.txt already exists."
     note "Its current values are the defaults below -- press Enter to keep each."
 fi
@@ -103,6 +147,166 @@ if [ -f "$ANSWERS" ]; then
     COPAL_MAIL_IMAP=$(get_answer COPAL_MAIL_IMAP)
     COPAL_MAIL_SMTP=$(get_answer COPAL_MAIL_SMTP)
     COPAL_AUTO=$(get_answer COPAL_AUTO)
+    COPAL_SSH_PASSWORD_LOGIN=$(get_answer COPAL_SSH_PASSWORD_LOGIN)
+    # The grove. COPAL_GROVE_PSK and COPAL_GROVE_CA are properties of the
+    # GROVE and must be identical on every card in it; index and token are
+    # properties of THE CARD and differ on every one. --node changes the
+    # second pair and nothing else, which is the whole reason it exists.
+    COPAL_GROVE=$(get_answer COPAL_GROVE)
+    COPAL_GROVE_SIZE=$(get_answer COPAL_GROVE_SIZE)
+    COPAL_GROVE_INDEX=$(get_answer COPAL_GROVE_INDEX)
+    COPAL_GROVE_ROLE=$(get_answer COPAL_GROVE_ROLE)
+    COPAL_GROVE_DISCOVERY=$(get_answer COPAL_GROVE_DISCOVERY)
+    COPAL_GROVE_CA=$(get_answer COPAL_GROVE_CA)
+    COPAL_GROVE_PSK=$(get_answer COPAL_GROVE_PSK)
+    COPAL_GROVE_TAGS=$(get_answer COPAL_GROVE_TAGS)
+fi
+
+# 16 bytes of urandom as hex, without depending on openssl or on a shell whose
+# $RANDOM is worth anything. od is in coreutils on the Mac and in busybox on
+# Alpine, so this is the one form that works in both places.
+rand_hex() { od -An -tx1 -N"${1:-16}" /dev/urandom | tr -d ' \n'; }
+
+# museum + 3 -> museum-03. Two digits because a fleet that reaches ten sorts
+# wrongly with one, and every list in the console is sorted by name.
+grove_hostname() { printf '%s-%02d' "$1" "$2"; }
+
+# SINGLE quotes, always, and this is not stylistic. A SHA-512 crypt hash
+# begins "$6$rounds=..." -- inside double quotes the shell expands $6 as a
+# positional parameter, which under `set -u` aborts copal-prep.sh outright and
+# under setup-alpine on the card silently truncates the hash to "$rounds=...",
+# locking the account. Names with an apostrophe are handled the POSIX way:
+# close the quote, escape the apostrophe, reopen.
+sq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
+
+write_answers() {
+# Written 0600 before anything goes in it, so there is no window where the
+# file exists and is world-readable.
+umask 077
+: > "$ANSWERS"
+cat > "$ANSWERS" <<EOF
+# Copal -- answers for an unattended install.  Written by: make answers
+#
+# Edit this by hand or re-run 'make answers'; either way copal-prep.sh picks it
+# up on the next build. Changing anything here means rebuilding the image for
+# it to take effect -- these values are baked onto the card, not read at boot.
+#
+# COPAL_ROOT_PW_HASH is a SHA-512 crypt hash, the same string /etc/shadow
+# holds. The password itself is not here and cannot be recovered from this.
+# Replace it by running 'make answers' again, not by editing this line.
+#
+# This file is listed in .gitignore. Keep it that way.
+
+COPAL_GIT_NAME=$(sq "${COPAL_GIT_NAME}")
+COPAL_GIT_EMAIL=$(sq "${COPAL_GIT_EMAIL}")
+COPAL_USER=$(sq "${COPAL_USER}")
+COPAL_HOSTNAME=$(sq "${COPAL_HOSTNAME}")
+COPAL_TIMEZONE=$(sq "${COPAL_TIMEZONE}")
+COPAL_KEYMAP=$(sq "${COPAL_KEYMAP}")
+COPAL_ROOT_PW_HASH=$(sq "${COPAL_ROOT_PW_HASH}")
+
+# Mail, if given: stage 12 seeds Thunderbird and Claws Mail from these so the
+# first start opens on the Inbox, not the account wizard. IMAP over TLS on
+# 993, SMTP over TLS on 465, password asked by the client on first use.
+COPAL_MAIL_ADDRESS=$(sq "${COPAL_MAIL_ADDRESS}")
+COPAL_MAIL_NAME=$(sq "${COPAL_MAIL_NAME}")
+COPAL_MAIL_IMAP=$(sq "${COPAL_MAIL_IMAP}")
+COPAL_MAIL_SMTP=$(sq "${COPAL_MAIL_SMTP}")
+
+# The .pub half of a key on this Mac. copal-prep.sh copies it to the card as
+# authorized_keys; the private key never leaves this machine.
+COPAL_SSH_KEY=$(sq "${COPAL_SSH_KEY}")
+# yes or no. 'no' means sshd accepts keys only.
+COPAL_SSH_PASSWORD_LOGIN=$(sq "${COPAL_SSH_PASSWORD_LOGIN}")
+
+# 1 = do not stop to ask anything the values above can answer.
+COPAL_AUTO=$(sq "${COPAL_AUTO:-1}")
+
+# --- the grove -------------------------------------------------------------
+# Empty COPAL_GROVE means a standalone machine and stage 16 does nothing at
+# all. Everything below is read by copal-prep.sh, copied to the card, and used
+# once by copal-init.sh; see docs/grove-plan.md for what each one becomes.
+#
+# Identical on every card in the grove:      GROVE, SIZE, CA, PSK, DISCOVERY
+# Different on every card in the grove:      INDEX, TOKEN, HOSTNAME, ROLE, TAGS
+#
+# Write the other cards with:  tools/copal-answers.sh --node 2
+COPAL_GROVE=$(sq "${COPAL_GROVE:-}")
+COPAL_GROVE_SIZE=$(sq "${COPAL_GROVE_SIZE:-}")
+COPAL_GROVE_INDEX=$(sq "${COPAL_GROVE_INDEX:-}")
+# node | warden | console -- a preference at first boot, not a fixed rank.
+COPAL_GROVE_ROLE=$(sq "${COPAL_GROVE_ROLE:-}")
+# Comma separated. Scenes assign work by tag, so a dongle can move boards.
+COPAL_GROVE_TAGS=$(sq "${COPAL_GROVE_TAGS:-}")
+# mdns | static | off
+COPAL_GROVE_DISCOVERY=$(sq "${COPAL_GROVE_DISCOVERY:-}")
+# The PUBLIC half of the grove certificate authority. Every card carries it so
+# that no machine is ever trusted on first sight. The private half stays in
+# ~/.copal/ca on the machine that ran this script and must never be on a card.
+COPAL_GROVE_CA=$(sq "${COPAL_GROVE_CA:-}")
+# A spam filter on the discovery beacon, not a credential: it is on every card,
+# so it says which grove a beacon claims to be from and proves nothing. The
+# certificate above is what actually decides. Do not promote this to a secret.
+COPAL_GROVE_PSK=$(sq "${COPAL_GROVE_PSK:-}")
+# One-time enrolment token, THIS CARD ONLY, burned when the node is signed. A
+# fresh one is generated every time this script runs, so a card that goes
+# missing cannot enrol a second time.
+COPAL_GROVE_TOKEN=$(sq "${COPAL_GROVE_TOKEN:-}")
+EOF
+chmod 600 "$ANSWERS"
+
+}
+
+summarise() {
+info "Wrote $ANSWERS (mode 600)"
+note ""
+note "  git identity   ${COPAL_GIT_NAME} <${COPAL_GIT_EMAIL}>"
+[ -n "$COPAL_MAIL_ADDRESS" ] && note "  mail           ${COPAL_MAIL_ADDRESS} via ${COPAL_MAIL_IMAP} / ${COPAL_MAIL_SMTP}"
+note "  user           ${COPAL_USER}"
+note "  hostname       ${COPAL_HOSTNAME}"
+note "  root password  stored as a SHA-512 hash, not recoverable"
+note "  ssh key        ${COPAL_SSH_KEY:-(none)}"
+note "  ssh passwords  $COPAL_SSH_PASSWORD_LOGIN"
+if [ -n "${COPAL_GROVE:-}" ]; then
+note "  grove          ${COPAL_GROVE} -- card ${COPAL_GROVE_INDEX} of ${COPAL_GROVE_SIZE}, role ${COPAL_GROVE_ROLE}"
+note "  grove tags     ${COPAL_GROVE_TAGS:-(none)}"
+note "  grove discovery ${COPAL_GROVE_DISCOVERY}"
+note "  grove CA       ${COPAL_GROVE_CA:-(none -- weaker; see docs/grove-plan.md)}"
+note "  enrolment      a fresh single-use token for this card"
+fi
+note ""
+note "The next 'make alldebug' builds images that install without stopping."
+}
+
+# --- --node N: card N of the grove, without an interview --------------------
+#
+# The seven cards after the first. Everything stays as it is except the three
+# things that MUST differ per card -- the index, the hostname derived from it,
+# and a fresh single-use enrolment token -- and nothing is asked, so this can
+# be run from a loop while cards are swapped.
+if [ -n "$NODE" ]; then
+    [ -f "$ANSWERS" ] || die "no answers.txt yet. Run 'make answers' first."
+    [ -n "${COPAL_GROVE:-}" ] \
+        || die "answers.txt has no grove. Run 'make answers' and name one."
+    [ -n "${COPAL_GROVE_SIZE:-}" ] && [ "$NODE" -le "$COPAL_GROVE_SIZE" ] \
+        || die "card $NODE of a grove of ${COPAL_GROVE_SIZE:-?}"
+    COPAL_GROVE_INDEX="$NODE"
+    COPAL_HOSTNAME=$(grove_hostname "$COPAL_GROVE" "$NODE")
+    COPAL_GROVE_TOKEN=$(rand_hex 16)
+    # The role drops back to 'node' rather than being carried, because there is
+    # one warden and it was almost certainly card 1. Carrying it would give a
+    # grove of eight machines that all prefer to be warden -- survivable, since
+    # the election sorts it out in two announcement intervals, but it is a
+    # confusing thing to read in a console and it is not what anybody meant.
+    # --role says otherwise. Tags DO carry, because they usually describe the
+    # fleet rather than the board; --tags is how the one with the dongle differs.
+    COPAL_GROVE_ROLE="${ROLE_ARG:-node}"
+    [ "$TAGS_SET" = 1 ] && COPAL_GROVE_TAGS="$TAGS_ARG"
+    write_answers
+    info "Card $NODE of $COPAL_GROVE_SIZE: $COPAL_HOSTNAME, role $COPAL_GROVE_ROLE, new enrolment token"
+    note "tags: ${COPAL_GROVE_TAGS:-(none)}"
+    note "Everything else is unchanged. Build the card, then --node $((NODE + 1))."
+    exit 0
 fi
 
 # The hostname pool -- 300 oceans, seas, lakes and rivers -- lives in
@@ -165,7 +369,136 @@ if [ -n "$COPAL_MAIL_ADDRESS" ]; then
 else
     COPAL_MAIL_NAME=""; COPAL_MAIL_IMAP=""; COPAL_MAIL_SMTP=""
 fi
-ask "Hostname"               "${COPAL_HOSTNAME:-$(random_hostname)}" COPAL_HOSTNAME
+# --- the grove -------------------------------------------------------------
+#
+# Asked before the hostname, because a grove NAMES the hostname: card 3 of the
+# grove 'museum' is 'museum-03' and there is nothing to pick. Answer nothing
+# here and the next question is the ordinary random-ocean one, which is what
+# every build up to now has had.
+printf '\n'
+note "A GROVE is a named fleet: several Copal machines on one LAN that trust"
+note "one certificate authority, find each other, and answer one console."
+note "Empty means a standalone machine -- everything below is then skipped."
+ask "Grove name (Enter: none)" "${COPAL_GROVE:-}" COPAL_GROVE
+
+# A grove name becomes a hostname, an mDNS label and an SSH principal, so it
+# has to survive all three. Lowercase letters, digits and dashes; that is the
+# intersection, and rejecting the rest here is cheaper than debugging a name
+# that resolves on one machine and not on another.
+if [ -n "$COPAL_GROVE" ]; then
+    case "$COPAL_GROVE" in
+        *[!a-z0-9-]*|-*|*-|'')
+            die "grove name must be lowercase letters, digits and inner dashes" ;;
+    esac
+    [ "${#COPAL_GROVE}" -le 24 ] \
+        || die "grove name is too long -- it has to leave room for '-08'"
+fi
+
+if [ -n "$COPAL_GROVE" ]; then
+    ask "  How many machines in the grove" "${COPAL_GROVE_SIZE:-8}" COPAL_GROVE_SIZE
+    ask "  Which one is THIS card"         "${COPAL_GROVE_INDEX:-1}" COPAL_GROVE_INDEX
+    case "$COPAL_GROVE_SIZE$COPAL_GROVE_INDEX" in
+        *[!0-9]*) die "the size and the index are numbers" ;;
+    esac
+    [ "$COPAL_GROVE_INDEX" -ge 1 ] || die "cards count from 1"
+    [ "$COPAL_GROVE_INDEX" -le "$COPAL_GROVE_SIZE" ] \
+        || die "card $COPAL_GROVE_INDEX of a grove of $COPAL_GROVE_SIZE"
+
+    # The role is a STARTING role, not a fixed one. Any node can end up warden:
+    # the election in docs/grove-plan.md scores hardware and uptime and the
+    # answer here only decides what the machine tries to be on its first boot.
+    note ""
+    note "  node    an ordinary member -- the right answer for all eight"
+    note "  warden  prefers to be the rendezvous and log sink at first boot"
+    note "  console runs the operator's console as well as being a node"
+    ask "  Role (node | warden | console)" "${COPAL_GROVE_ROLE:-node}" COPAL_GROVE_ROLE
+    case "$COPAL_GROVE_ROLE" in
+        node|warden|console) ;;
+        *) die "role must be node, warden or console" ;;
+    esac
+
+    ask "  Tags, comma separated (Enter: none)" "${COPAL_GROVE_TAGS:-}" COPAL_GROVE_TAGS
+
+    note ""
+    note "  mdns    announce on the LAN and be found -- avahi is installed"
+    note "  static  no announcing; the console reads a list of addresses"
+    note "  off     no discovery of any kind"
+    ask "  Discovery (mdns | static | off)" "${COPAL_GROVE_DISCOVERY:-mdns}" COPAL_GROVE_DISCOVERY
+    case "$COPAL_GROVE_DISCOVERY" in
+        mdns|static|off) ;;
+        *) die "discovery must be mdns, static or off" ;;
+    esac
+
+    # THE CERTIFICATE AUTHORITY, and the only part of this that is a secret
+    # worth anything. The PUBLIC half travels on every card and is what lets a
+    # node verify the console and the console verify the node. The PRIVATE half
+    # stays on this Mac in ~/.copal/ca and must never be written to a card --
+    # a CA private key on an SD card in a museum is the grove's whole security
+    # sitting in a slot anyone can pull.
+    _cadir="$HOME/.copal/ca"
+    _ca="${COPAL_GROVE_CA:-$_cadir/${COPAL_GROVE}_ca.pub}"
+    if [ ! -f "$_ca" ]; then
+        note ""
+        note "No certificate authority for grove '$COPAL_GROVE' yet."
+        note "It signs host certificates (so no machine is ever trusted on"
+        note "first sight) and 8-hour user certificates (so a stolen one"
+        note "expires by itself). The private half never leaves this Mac."
+        printf '  Create one now? [Y/n]: ' >&2
+        IFS= read -r _mkca || true
+        case "${_mkca:-y}" in
+            [Nn]*) note "No CA. The grove falls back to plain keys -- weaker."; _ca="" ;;
+            *)
+                mkdir -p "$_cadir" && chmod 700 "$_cadir"
+                if ssh-keygen -t ed25519 -a 100 -C "copal grove CA $COPAL_GROVE" \
+                              -f "$_cadir/${COPAL_GROVE}_ca"; then
+                    _ca="$_cadir/${COPAL_GROVE}_ca.pub"
+                    info "Created $_ca"
+                    note "Back up $_cadir/${COPAL_GROVE}_ca. Losing it means"
+                    note "re-enrolling every machine in the grove by hand."
+                else
+                    warn "ssh-keygen did not complete -- continuing without a CA"
+                    _ca=""
+                fi ;;
+        esac
+    fi
+    # The same check the login key gets, for the same reason: what goes on a
+    # card must be the .pub half and nothing else.
+    if [ -n "$_ca" ]; then
+        if ! grep -qE '^(ssh-(ed25519|rsa)|ecdsa-sha2-)' "$_ca" 2>/dev/null; then
+            warn "$_ca is not an OpenSSH public key -- ignoring it"
+            note "Never put a CA private key here. Only the .pub half travels."
+            _ca=""
+        fi
+    fi
+    COPAL_GROVE_CA="$_ca"
+
+    # The pre-shared key is a SPAM FILTER on the beacon, and calling it
+    # anything more is a mistake the plan spends a paragraph on: it is on every
+    # card, so it identifies a grove and authenticates nobody. It stops the
+    # console's candidate list from filling with whatever else on the segment
+    # fancies calling itself 'museum-03'. The CA does the actual deciding.
+    [ -n "${COPAL_GROVE_PSK:-}" ] || COPAL_GROVE_PSK=$(rand_hex 16)
+
+    # The enrolment token is per CARD and single use. Regenerated here every
+    # time, which is why --node is safe to run seven times: card 4 cannot enrol
+    # as card 3, and a card that goes missing enrols zero further times.
+    COPAL_GROVE_TOKEN=$(rand_hex 16)
+
+    COPAL_HOSTNAME=$(grove_hostname "$COPAL_GROVE" "$COPAL_GROVE_INDEX")
+    info "This card is $COPAL_HOSTNAME -- card $COPAL_GROVE_INDEX of $COPAL_GROVE_SIZE"
+    note "Build this card, then: make answers-node N=2   -- and so on to $COPAL_GROVE_SIZE."
+else
+    COPAL_GROVE_SIZE=""; COPAL_GROVE_INDEX=""; COPAL_GROVE_ROLE=""
+    COPAL_GROVE_TAGS=""; COPAL_GROVE_DISCOVERY=""; COPAL_GROVE_CA=""
+    COPAL_GROVE_PSK="";  COPAL_GROVE_TOKEN=""
+fi
+
+printf '\n'
+if [ -n "$COPAL_GROVE" ]; then
+    ask "Hostname"           "$COPAL_HOSTNAME"                       COPAL_HOSTNAME
+else
+    ask "Hostname"           "${COPAL_HOSTNAME:-$(random_hostname)}" COPAL_HOSTNAME
+fi
 ask "Timezone"               "${COPAL_TIMEZONE:-US/Pacific}" COPAL_TIMEZONE
 ask "Keymap"                 "${COPAL_KEYMAP:-us us}"     COPAL_KEYMAP
 
@@ -312,66 +645,5 @@ else
 fi
 note "Change it by hand in answers.txt if that is not what you want."
 
-# SINGLE quotes, always, and this is not stylistic. A SHA-512 crypt hash
-# begins "$6$rounds=..." -- inside double quotes the shell expands $6 as a
-# positional parameter, which under `set -u` aborts copal-prep.sh outright and
-# under setup-alpine on the card silently truncates the hash to "$rounds=...",
-# locking the account. Names with an apostrophe are handled the POSIX way:
-# close the quote, escape the apostrophe, reopen.
-sq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
-
-# Written 0600 before anything goes in it, so there is no window where the
-# file exists and is world-readable.
-umask 077
-: > "$ANSWERS"
-cat > "$ANSWERS" <<EOF
-# Copal -- answers for an unattended install.  Written by: make answers
-#
-# Edit this by hand or re-run 'make answers'; either way copal-prep.sh picks it
-# up on the next build. Changing anything here means rebuilding the image for
-# it to take effect -- these values are baked onto the card, not read at boot.
-#
-# COPAL_ROOT_PW_HASH is a SHA-512 crypt hash, the same string /etc/shadow
-# holds. The password itself is not here and cannot be recovered from this.
-# Replace it by running 'make answers' again, not by editing this line.
-#
-# This file is listed in .gitignore. Keep it that way.
-
-COPAL_GIT_NAME=$(sq "${COPAL_GIT_NAME}")
-COPAL_GIT_EMAIL=$(sq "${COPAL_GIT_EMAIL}")
-COPAL_USER=$(sq "${COPAL_USER}")
-COPAL_HOSTNAME=$(sq "${COPAL_HOSTNAME}")
-COPAL_TIMEZONE=$(sq "${COPAL_TIMEZONE}")
-COPAL_KEYMAP=$(sq "${COPAL_KEYMAP}")
-COPAL_ROOT_PW_HASH=$(sq "${COPAL_ROOT_PW_HASH}")
-
-# Mail, if given: stage 12 seeds Thunderbird and Claws Mail from these so the
-# first start opens on the Inbox, not the account wizard. IMAP over TLS on
-# 993, SMTP over TLS on 465, password asked by the client on first use.
-COPAL_MAIL_ADDRESS=$(sq "${COPAL_MAIL_ADDRESS}")
-COPAL_MAIL_NAME=$(sq "${COPAL_MAIL_NAME}")
-COPAL_MAIL_IMAP=$(sq "${COPAL_MAIL_IMAP}")
-COPAL_MAIL_SMTP=$(sq "${COPAL_MAIL_SMTP}")
-
-# The .pub half of a key on this Mac. copal-prep.sh copies it to the card as
-# authorized_keys; the private key never leaves this machine.
-COPAL_SSH_KEY=$(sq "${COPAL_SSH_KEY}")
-# yes or no. 'no' means sshd accepts keys only.
-COPAL_SSH_PASSWORD_LOGIN=$(sq "${COPAL_SSH_PASSWORD_LOGIN}")
-
-# 1 = do not stop to ask anything the values above can answer.
-COPAL_AUTO=$(sq "${COPAL_AUTO:-1}")
-EOF
-chmod 600 "$ANSWERS"
-
-info "Wrote $ANSWERS (mode 600)"
-note ""
-note "  git identity   ${COPAL_GIT_NAME} <${COPAL_GIT_EMAIL}>"
-[ -n "$COPAL_MAIL_ADDRESS" ] && note "  mail           ${COPAL_MAIL_ADDRESS} via ${COPAL_MAIL_IMAP} / ${COPAL_MAIL_SMTP}"
-note "  user           ${COPAL_USER}"
-note "  hostname       ${COPAL_HOSTNAME}"
-note "  root password  stored as a SHA-512 hash, not recoverable"
-note "  ssh key        ${COPAL_SSH_KEY:-(none)}"
-note "  ssh passwords  $COPAL_SSH_PASSWORD_LOGIN"
-note ""
-note "The next 'make alldebug' builds images that install without stopping."
+write_answers
+summarise

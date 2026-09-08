@@ -1650,6 +1650,8 @@ bindings, the account model, the SD-card wear analysis — is in
 | `docs/copal-handbook.md` | The original Copal handbook. Alpine, the card, the stages, the desktop, reference |
 | `docs/lab-report.md` | Bring-up record for the Pi Zero 1 and Zero 2 W, IEEE format |
 | `docs/development-report.md` | Architecture, verification method and results, known defects |
+| `docs/grove-plan.md` | **Copal Grove** — a fleet of Copal machines on one LAN: discovery, certificates, the message bus, scenes, and the build order |
+| `docs/grove-lab-report.md` | What Timbuktu, Veyon and Xen Orchestra each got right, and the console a grove should have. IEEE format |
 
 ## Repository policy
 

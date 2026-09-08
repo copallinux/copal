@@ -85,7 +85,7 @@ model_of = $(patsubst pizero%,zero%,$(1))
 .DEFAULT_GOAL := help
 .PHONY: alldebug build-all-debug imagedebug freshdebug purge \
 	help menu flow targets boards configure require-tools vm graphical check \
-        fresh auto image refresh utm utm-x86 layout layout-auto answers answers-show lint space clean distclean \
+        fresh auto image refresh utm utm-x86 layout layout-auto answers answers-show answers-node lint space clean distclean \
         all cache build-all
 
 help:
@@ -108,6 +108,7 @@ help:
 	@printf '  make layout     arrange the four VM windows on screen\n'
 	@printf '  make layout-auto  the same, then log in and start the install\n'
 	@printf '  make answers    identity and root password for an unattended install\n'
+	@printf '  make answers-node N=2   card N of a grove -- asks nothing; see docs/grove-plan.md\n'
 	@printf '                  Creates the VM only if there is not one already. Never replaces one.\n'
 	@printf '\n'
 	@printf '\033[1m  Building the VM image\033[0m\n'
@@ -381,9 +382,26 @@ layout-auto:
 answers:
 	@tools/copal-answers.sh
 
-# What is on file now, with the hash withheld.
+# What is on file now, with the hash and the enrolment token withheld.
 answers-show:
 	@tools/copal-answers.sh --show
+
+# Card N of a grove, without repeating the interview. The grove's name, size,
+# certificate authority and shared answers stay exactly as they are; the
+# hostname becomes NAME-0N and a fresh single-use enrolment token is written,
+# so that eight cards cost one interview and seven of these. Build the card
+# between each one -- the answers file describes whichever card is next.
+#
+#   make answers            once, naming the grove
+#   make image MODEL=zero2  card 1
+#   make answers-node N=2
+#   make image MODEL=zero2  card 2   ... and so on
+#
+# The role drops back to 'node' on every card but the first, since there is one
+# warden. ROLE= and TAGS= say otherwise: make answers-node N=3 TAGS=sdr,north
+answers-node:
+	@test -n "$(N)" || { printf '\033[31merror:\033[0m usage: make answers-node N=2 [ROLE=warden] [TAGS=sdr,north]\n'; exit 1; }
+	@tools/copal-answers.sh --node $(N) $(if $(ROLE),--role $(ROLE)) $(if $(TAGS),--tags $(TAGS))
 
 
 utm-x86:

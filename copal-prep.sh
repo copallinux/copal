@@ -416,6 +416,27 @@ CFG_SSH_PASSWORD_LOGIN="${CFG_SSH_PASSWORD_LOGIN:-${COPAL_SSH_PASSWORD_LOGIN:-}}
 CFG_ROOT_PW_HASH="${CFG_ROOT_PW_HASH:-${COPAL_ROOT_PW_HASH:-}}"
 CFG_AUTO_ANSWERS="${CFG_AUTO_ANSWERS:-${COPAL_AUTO:-0}}"
 
+# THE GROVE, carried and not interpreted. This script does nothing with any of
+# these except copy them to the card; stage 16 on the machine is what reads
+# them, and stage 16 does nothing at all when the grove name is empty -- which
+# is every answers.txt written before groves existed, and every standalone
+# build since. See docs/grove-plan.md. Assigned OUTSIDE the answers-file block
+# above, unconditionally, because the heredoc that writes the card expands all
+# of them and this script runs under 'set -u': an unset one is not an empty
+# line on the card, it is the end of the build.
+CFG_GROVE="${CFG_GROVE:-${COPAL_GROVE:-}}"
+CFG_GROVE_SIZE="${CFG_GROVE_SIZE:-${COPAL_GROVE_SIZE:-}}"
+CFG_GROVE_INDEX="${CFG_GROVE_INDEX:-${COPAL_GROVE_INDEX:-}}"
+CFG_GROVE_ROLE="${CFG_GROVE_ROLE:-${COPAL_GROVE_ROLE:-}}"
+CFG_GROVE_TAGS="${CFG_GROVE_TAGS:-${COPAL_GROVE_TAGS:-}}"
+CFG_GROVE_DISCOVERY="${CFG_GROVE_DISCOVERY:-${COPAL_GROVE_DISCOVERY:-}}"
+CFG_GROVE_PSK="${CFG_GROVE_PSK:-${COPAL_GROVE_PSK:-}}"
+CFG_GROVE_TOKEN="${CFG_GROVE_TOKEN:-${COPAL_GROVE_TOKEN:-}}"
+# A PATH on this Mac, not a key. The key itself is copied onto the card beside
+# the login key further down; what lands in the card's answers file is only the
+# basename, because the path this Mac used means nothing on a Raspberry Pi.
+CFG_GROVE_CA="${CFG_GROVE_CA:-${COPAL_GROVE_CA:-}}"
+
 # --- defaults written into the answer file on the card ----------------------
 # setup-alpine reads these non-interactively, so first boot asks almost nothing.
 CFG_KEYMAP="${CFG_KEYMAP:-us us}"
@@ -1879,6 +1900,32 @@ COPAL_ROOT_PW_HASH='${CFG_ROOT_PW_HASH}'
 COPAL_SSH_PASSWORD_LOGIN='${CFG_SSH_PASSWORD_LOGIN}'
 COPAL_AUTO='${CFG_AUTO_ANSWERS}'
 COPAL_USER='${CFG_USER}'
+
+# THE GROVE. An empty name here means a standalone machine and stage 16 skips
+# itself entirely, which is what every build did before groves existed.
+#
+#   GROVE, SIZE, CA, PSK, DISCOVERY   the same on every card in the fleet
+#   INDEX, TOKEN, ROLE, TAGS          different on every card in the fleet
+#
+# Single quotes, for the reason spelled out above the password hash.
+COPAL_GROVE='${CFG_GROVE}'
+COPAL_GROVE_SIZE='${CFG_GROVE_SIZE}'
+COPAL_GROVE_INDEX='${CFG_GROVE_INDEX}'
+COPAL_GROVE_ROLE='${CFG_GROVE_ROLE}'
+COPAL_GROVE_TAGS='${CFG_GROVE_TAGS}'
+COPAL_GROVE_DISCOVERY='${CFG_GROVE_DISCOVERY}'
+# A filename on THIS card, not the path the Mac knew it by. The public half of
+# the grove certificate authority is copied here as grove_ca.pub, and stage 16
+# installs it as the authority sshd trusts for user certificates and the one
+# the console verifies this machine against. Empty means no authority was
+# given and the grove falls back to plain keys.
+COPAL_GROVE_CA='${CFG_GROVE_CA:+grove_ca.pub}'
+# Identifies which grove a discovery beacon claims to belong to. It is on every
+# card, so it authenticates nobody -- it keeps the console list clean, and the
+# certificate above is what actually decides. See docs/grove-plan.md, part 4.
+COPAL_GROVE_PSK='${CFG_GROVE_PSK}'
+# Single use, this card only, burned the first time this machine is signed.
+COPAL_GROVE_TOKEN='${CFG_GROVE_TOKEN}'
 ANSWERS
 
 # THE BOOT CONFIGURATION, which is the one part of this script that is genuinely
@@ -2153,6 +2200,32 @@ elif [ -n "$CFG_SSHKEY" ]; then
     warn "no such key file: $CFG_SSHKEY -- continuing without one"
 else
     warn "no SSH public key found on this Mac -- ${CFG_USER} will be password-only"
+fi
+
+# The grove certificate authority, PUBLIC half, under a fixed name so the card
+# is identical whatever the file was called on this Mac. This is what lets a
+# node verify the console and the console verify the node without either of
+# them ever having met, which is the thing that makes a self-discovering fleet
+# safe rather than merely convenient.
+#
+# The refusal below is the important line. A private key here would put the
+# whole grove's authority on an SD card in a museum, in a slot anyone can pull,
+# and it is an easy mistake to make -- the private key and the public key live
+# side by side and differ by four characters of filename. So the check is not
+# "does this look like a key" but "is this the public half", and failing it
+# stops the build rather than warning about it.
+if [ -n "$CFG_GROVE" ] && [ -n "$CFG_GROVE_CA" ]; then
+    [ -f "$CFG_GROVE_CA" ] || die "grove CA not found: $CFG_GROVE_CA"
+    if grep -q 'PRIVATE KEY' "$CFG_GROVE_CA"; then
+        die "$CFG_GROVE_CA is a PRIVATE key. Only the .pub half may go on a card."
+    fi
+    grep -qE '^(ssh-(ed25519|rsa)|ecdsa-sha2-)' "$CFG_GROVE_CA" \
+        || die "$CFG_GROVE_CA is not an OpenSSH public key"
+    cp "$CFG_GROVE_CA" "$MNT/grove_ca.pub"
+    info "Grove: $CFG_GROVE, card ${CFG_GROVE_INDEX:-?} of ${CFG_GROVE_SIZE:-?}, CA $(awk '{print $1, $NF}' "$CFG_GROVE_CA")"
+elif [ -n "$CFG_GROVE" ]; then
+    warn "grove '$CFG_GROVE' has no certificate authority -- enrolment will fall"
+    warn "back to plain keys, which is weaker. See docs/grove-plan.md section 5."
 fi
 
 # ------------------------------------------------------- Mini vMac, staged ---
