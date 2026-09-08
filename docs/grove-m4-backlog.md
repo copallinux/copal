@@ -441,32 +441,64 @@ operator to inspect a machine that is switched off. `silent` now means "it
 announced and its agent is not talking"; a node that is not there is `absent`.
 
 
-### W7 · The wall — L — depends on W6, D3, D4
+### W7 · The wall — L — depends on W6, D3, D4 — **written**
 
 `tools/copal-grove-console.py`, curses, stdlib only, invoked as
 `copal grove console`.
 
-- [ ] The wall: a tile per node, the layout in the lab report §IV-B. Status
-      glyph, thumbnail (per D4's tiers), temperature, current job, warden
-      marker, last-seen for the ones that are gone.
-- [ ] The header: grove name, count up of count declared, **the scene and since
-      when** — and the scene shown **per node**, never as a global boolean. Six
-      machines got the memo is the normal case and the interface must be able
-      to say so.
-- [ ] The stranger line: machines on the segment that are not in the grove,
-      seen and never contacted.
-- [ ] Selection, and the verb bar. In M4, `Scene`, `Run`, `Power`, `Snapshot`,
-      `Notify` and `Log` are live; `Control`, `Observe`, `Exchange`, `Send` and
-      `Message` are present and say "L6, not built" when pressed — a menu that
-      lies about what it can do is worse than one that is honest and short.
-- [ ] **`Control` on a multi-selection is refused, and the refusal is
-      implemented rather than merely documented.** Broadcasting keystrokes to
-      eight machines is a way to reach eight different broken states with one
-      gesture. The operation actually wanted is `Scene`, which is declarative
-      and reports per node.
-- [ ] **`Esc` returns to the wall from anywhere and never asks.** The one rule
-      the interface must not break is that the operator cannot get stuck inside
-      a machine.
+**The milestone's architectural acceptance test is met, and it is the one that
+mattered:** the TUI calls `copal grove`, never the network. It runs
+`copal grove state --json` for its picture and `copal grove scene|run|logs|
+notify` for its verbs. It opens no socket, holds no credential and knows no
+subject names — it is handed `"$0"` and re-enters the console rather than
+reaching past it. Every screen is a rendering of a command a person could have
+typed.
+
+- [x] A tile per node: status glyph, scene, temperature, agent age, warden
+      marker, and *not announced* for the ones that are gone.
+- [x] Where the thumbnail will go (W5), each tile draws the one continuous
+      quantity the grove already publishes — temperature — as a half-block bar,
+      D4's default tier. A real reading rather than a placeholder pretending to
+      be a picture, and thermal throttling is the museum's actual failure.
+- [x] The header: grove, count up of count declared, bus reachability, and
+      **the scene per node** — `show 5  rest 1  wake 1  since 14m` — never a
+      global boolean.
+- [x] The stranger line. Seen, never contacted.
+- [x] Selection and the verb bar. `Scene`, `Run`, `Power`, `Snapshot`,
+      `Notify`, `Log` are live; `Control`, `Observe`, `Exchange`, `Send`,
+      `Message` are present, dimmed, and say **"L6, not built"** in the bar
+      itself and again when pressed. A menu that lies about what it can do is
+      worse than one that is honest and short.
+- [x] **`Control` on a multi-selection is refused, and the refusal is
+      implemented rather than documented.** It names what to do instead —
+      `Scene`, which is declarative and reports per node — and it is checked
+      before the not-built notice, because the refusal is a property of the
+      design and the notice is a property of today.
+- [x] **`Esc` returns to the wall from anywhere and never asks.** Tested from
+      every overlay, with an assertion that `Esc` can never quit.
+
+**Rendering is a pure function.** `frame()` turns a state document into styled
+lines; curses paints them and `--once` prints them with ANSI. That is what lets
+the wall be tested and screenshotted without a terminal, and it is why there is
+not one curses call in the layout code. 58 checks in
+`copal-grove-console.py --self-test`.
+
+**Two layout bugs, both caught by assertions rather than by looking:**
+
+1. Eleven verbs on one line overflowed 80 columns. A wall that wraps is a wall
+   that scrolls, which is the one thing a wall is for not doing. The bar is two
+   lines now, split into what works and what does not — which is the honest
+   split rather than a way of fitting. `clip()` now enforces the width for
+   every line, because the next person will add a verb.
+2. A node with no temperature rendered a "no reading" cell narrower than a
+   drawn bar, which shifted every tile to its right. Tile rows are now pinned
+   to `TILE_W` by a check that walks a node with no reading, a node that never
+   announced, an over-long id and an over-long scene name.
+
+**Not yet done: on hardware.** It has been run against a fixture grove of eight
+and a real `nats-server` with seven agents publishing, and again with the bus
+off. No Pi.
+
 
 ### W8 · The seat — M — depends on W7
 

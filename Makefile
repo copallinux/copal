@@ -568,10 +568,13 @@ lint: | $(BUILDDIR)
 	    && printf '  ok      tools/copal-grove-agent\n'
 	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-grove-view \
 	    && printf '  ok      tools/copal-grove-view\n'
+	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-grove-console.py \
+	    && printf '  ok      tools/copal-grove-console.py\n'
 	@python3 tools/copal_nkeys.py self-test | sed 's/^/  ok      /'
 	@python3 tools/copal_nats.py self-test | sed 's/^/  ok      /'
 	@python3 tools/copal-grove-agent --self-test 2>/dev/null | sed 's/^/  ok      /'
 	@python3 tools/copal-grove-view self-test | sed 's/^/  ok      /'
+	@python3 tools/copal-grove-console.py --self-test | sed 's/^/  ok      /'
 	@sed -n "/^    cat > \/usr\/lib\/copal\/copal_nkeys.py <<'COPALNKEYS'$$/,/^COPALNKEYS$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.nkeys.lint.py
 	@test -s $(BUILDDIR)/.nkeys.lint.py \

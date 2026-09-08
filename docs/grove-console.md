@@ -233,11 +233,54 @@ copal grove notify --all-up && copal grove scene wake
 
 ---
 
+## 4b · The wall
+
+```
+copal grove console             # every node at once, in a terminal
+copal grove console --once      # one frame, for a script or a screenshot
+```
+*written.* A tile per node: status glyph, scene, temperature as a half-block
+bar, agent age, and `W` on the warden. The header carries the grove, the count,
+whether the bus is reachable, and **the scene per node** — `show 5  rest 1
+wake 1` — never as one word for the whole room.
+
+| Key | |
+|---|---|
+| arrows or `hjkl` | move the cursor |
+| `space` | select or deselect the node under it |
+| `a` / `A` | select all / none |
+| `S` `r` `p` `k` `n` `L` | Scene, Run, Power, Snapshot, Notify, Log |
+| `c` `o` `e` `s` `m` | Control, Observe, Exchange, Send, Message — **L6, not built** |
+| `?` | the keys, and which half is real |
+| `Esc` | back to the wall, from anywhere, without asking |
+| `q` | quit |
+
+The verb bar is two lines because the split is honest: what works, then what
+does not. The second line says *L6, not built* on its face — a menu that lies
+about what it can do is worse than one that is honest and short.
+
+**`Control` on a multi-selection is refused**, and the refusal is implemented
+rather than documented. It names what you actually want instead. See §7.
+
+**The wall calls `copal grove` and never the network.** It runs
+`copal grove state --json` for its picture and the ordinary verbs for its
+actions, so every screen is a rendering of a command you could have typed. That
+is the property that keeps the console from becoming the thing the grove
+depends on, and it is why `watch` was built before the wall.
+
+Where a thumbnail will go, each tile draws temperature as a bar. Thumbnails are
+W5 and are not built; a bar is a real reading rather than a placeholder
+pretending to be a picture, and thermal throttling is what actually goes wrong
+in a gallery.
+
+---
+
 ## 5 · Designed, not built
 
 | | What it will do | Item |
 |---|---|---|
-| the wall, the seat | the TUI of `grove-lab-report.md` §IV-B | M4 W7–W8 |
+| the seat | one node full size, with its log — `grove-lab-report.md` §IV-B | M4 W8 |
+| thumbnails | a picture per tile, adaptive rate | M4 W5 |
 | `copal grove gem …` | the work queue | M5 |
 
 The wall is what remains. It will be a rendering of §4a's verbs and not a

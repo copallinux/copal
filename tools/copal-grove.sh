@@ -31,6 +31,7 @@
 #   copal grove watch              the same thing, redrawn -- the wall, no TUI
 #   copal grove notify --all-up    exits 0 when every declared node is up
 #   copal grove browse             what discovery actually said, unadorned
+#   copal grove console            the wall: every node at once, in a terminal
 #
 # The day, once a grove directory exists (milestone 3):
 #   copal grove init               make groves/<name>/ from the template
@@ -67,6 +68,7 @@ ANSWERS="${COPAL_ANSWERS:-$ROOT/answers.txt}"
 HOME_COPAL="${COPAL_HOME:-$HOME/.copal}"
 NKEYS="$ROOT/tools/copal_nkeys.py"
 VIEW="$ROOT/tools/copal-grove-view"
+CONSOLE="$ROOT/tools/copal-grove-console.py"
 SERVICE="_copal-grove._tcp"
 TAB=$(printf '\t')
 
@@ -814,6 +816,42 @@ cmd_notify() {
     view_run notify --all-up --every "$_every" --timeout "$TIMEOUT"
 }
 
+# ------------------------------------------------------------ console -----
+#
+# The wall. W7, and the milestone's architectural acceptance test lives in it:
+# THE TUI CALLS THIS PROGRAM, NEVER THE NETWORK. It runs `copal grove state
+# --json` for its picture and `copal grove scene|run|logs|notify` for its verbs,
+# so every screen it draws is a rendering of a command a person could have
+# typed. If that stops being true the console has become the thing the grove
+# depends on, which is the failure §12 exists to prevent.
+#
+# It is handed "$0" for that reason -- it re-enters this file rather than
+# reaching past it.
+cmd_console() {
+    _once=""; _keys=""
+    while [ $# -gt 0 ]; do
+        if take_common "$@"; then shift "$SHIFTN"; continue; fi
+        case "$1" in
+            --once)  _once=1; shift ;;
+            --keys)  _keys="${2:?--keys needs a string}"; shift 2 ;;
+            --keys=*) _keys="${1#*=}"; shift ;;
+            -*) die "unknown option '$1' for console" ;;
+            *)  ONLY="$1"; shift ;;
+        esac
+    done
+    settle
+    [ -f "$CONSOLE" ] || die "no $CONSOLE -- this is not a full checkout"
+    command -v python3 >/dev/null 2>&1 \
+        || die "the wall needs python3 here. 'copal grove watch' needs it too;
+    'copal grove ls' and 'copal grove run' do not, and they are the ones that
+    have to work when everything else does not."
+    if [ -n "$_once" ]; then
+        python3 "$CONSOLE" --grove "$GROVE" --grove-cmd "$0" --once --keys "$_keys"
+    else
+        python3 "$CONSOLE" --grove "$GROVE" --grove-cmd "$0"
+    fi
+}
+
 # --------------------------------------------------------------- run -------
 #
 # Fan-out. Every node gets the same verb, every node gets its own result line,
@@ -1317,6 +1355,7 @@ case "${1:-}" in
     watch)             shift; cmd_watch "$@" ;;
     notify)            shift; cmd_notify "$@" ;;
     browse)            shift; cmd_browse "$@" ;;
+    console|wall)      shift; cmd_console "$@" ;;
     help|-h|--help|'') usage ;;
     *) die "no grove verb called '$1'. Try: copal grove help" ;;
 esac

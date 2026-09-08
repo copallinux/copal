@@ -284,6 +284,7 @@ copal grove logs museum-06      # the logs of a node that is not here any more
 copal grove watch               # the wall, as a table, without the TUI
 copal grove notify --all-up     # exits 0 when every declared node is up
 copal grove state --json        # the whole grove as one document
+copal grove console             # the wall: every node at once, in a terminal
 ```
 
 **The images are raw MBR disks — dd them straight to a card:**
@@ -1673,7 +1674,7 @@ break anything.
 The grove is three of its five milestones in, and the fourth has started. Eight
 cards can be written, they announce themselves, the authority signs them, one
 verb reaches all of them, and a day is five scene files that can be applied to
-the whole room and reported per node. Of milestone 4, five of ten work items are
+the whole room and reported per node. Of milestone 4, six of ten work items are
 written: the warden runs `nats-server`, every node has an ed25519 bus identity
 it generated itself and an agent standing on the bus with it, the warden
 collects every node's log to its card so that a Pi which died at 11:00 can be
@@ -1681,8 +1682,10 @@ asked about at 16:00, and the permission list the server enforces is rendered
 on the warden from invariant 5 — which a real `nats-server` has been watched
 enforcing, since `make bus-test` starts one and checks that a node cannot
 publish as another node. `copal grove watch` renders the grove as a live table
-from the bus and degrades to beacons when the bus is off. None of it has run on
-a Pi yet. **The wall itself is still only a design**, in [`docs/grove-plan.md`](docs/grove-plan.md) and
+from the bus and degrades to beacons when the bus is off, and `copal grove
+console` is the wall itself — a tile per node in a terminal, which calls
+`copal grove` and never the network. None of it has run on a Pi yet. **The seat,
+thumbnails and notifications are still only a design**, in [`docs/grove-plan.md`](docs/grove-plan.md) and
 [`docs/grove-m4-backlog.md`](docs/grove-m4-backlog.md) — as is Nix, which would
 give a fleet bit-identical closures instead of eight afternoons of `apk` drift,
 at the price of every 32-bit board in the table. None of this has run on eight real Pis: it has run on one machine
