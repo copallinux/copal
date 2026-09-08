@@ -54,6 +54,9 @@ ID_OK = set("abcdefghijklmnopqrstuvwxyz0123456789-")
 # caller before they arrive: `grove` against ID_OK by render_users, and `nid`
 # the same.  Nothing here interpolates anything a network could choose.
 
+ROLES = ("node", "warden", "console")
+
+
 def perms_for(grove, nid, role):
     """(publish allow-list, subscribe allow-list) for one member."""
     if role == "console":
@@ -62,19 +65,35 @@ def perms_for(grove, nid, role):
         # node's shape.
         return (["grove.%s.cmd.>" % grove],
                 ["grove.%s.>" % grove])
-    if role != "node":
-        raise ValueError("role is 'node' or 'console', not %r" % role)
-    return (["grove.%s.node.%s.>" % (grove, nid),
-             "grove.%s.log.%s" % (grove, nid),
-             "grove.%s.ack.%s.>" % (grove, nid),
-             "grove.%s.gem.>" % grove,
-             "grove.%s.hello" % grove],
-            ["grove.%s.cmd.>" % grove,
-             "grove.%s.work.>" % grove])
+    if role not in ("node", "warden"):
+        raise ValueError("role is one of %s, not %r" % (", ".join(ROLES), role))
+
+    # A node publishes under its own id and nowhere else.  This is invariant 5.
+    publish = ["grove.%s.node.%s.>" % (grove, nid),
+               "grove.%s.log.%s" % (grove, nid),
+               "grove.%s.ack.%s.>" % (grove, nid),
+               "grove.%s.gem.>" % grove,
+               "grove.%s.hello" % grove]
+    subscribe = ["grove.%s.cmd.>" % grove,
+                 "grove.%s.work.>" % grove]
+
+    # THE WARDEN IS A NODE THAT ALSO COLLECTS LOGS, and this is the whole of
+    # the difference.  W4 has it subscribe to every node's log subject and
+    # write per-node dated files, which a plain node's list does not permit --
+    # correctly, since a node has no business reading another node's log.
+    #
+    # It is a SUBSCRIBE grant and never a publish one: the warden may read what
+    # the grove says and still cannot say anything in another node's name. A
+    # compromised warden costs the grove its log sink and its queue. It does
+    # not let the warden forge telemetry, which is what invariant 5 is for and
+    # why §7 can call the warden a convenience rather than an authority.
+    if role == "warden":
+        subscribe = subscribe + ["grove.%s.log.>" % grove]
+    return (publish, subscribe)
 
 
 def parse_members(text):
-    """`<id> <nkey> <node|console>` lines -> [(id, nkey, role)].
+    """`<id> <nkey> <node|warden|console>` lines -> [(id, nkey, role)].
 
     Every refusal below is a refusal the warden makes before it writes
     anything.  A membership list arrives over ssh from a console holding an
@@ -88,12 +107,13 @@ def parse_members(text):
             continue
         parts = line.split()
         if len(parts) != 3:
-            raise ValueError("line %d: want '<id> <nkey> <node|console>'" % n)
+            raise ValueError("line %d: want '<id> <nkey> <node|warden|console>'" % n)
         nid, nkey, role = parts
         if not nid or set(nid) - ID_OK:
             raise ValueError("line %d: %r is not a usable node id" % (n, nid))
-        if role not in ("node", "console"):
-            raise ValueError("line %d: role is 'node' or 'console', not %r" % (n, role))
+        if role not in ROLES:
+            raise ValueError("line %d: role is one of %s, not %r"
+                             % (n, ", ".join(ROLES), role))
         try:
             kind, _raw = copal_nkeys.decode_public(nkey)
         except ValueError as exc:
@@ -153,6 +173,7 @@ class Nats:
         self.name = name
         self.timeout = float(timeout)
         self.sock = None
+        self.peer_closed = False   # set when recv() returns nothing
         self.info = {}
         self.errors = []          # every -ERR seen, in order
         # Messages can arrive during flush() -- a client subscribed to a
@@ -174,6 +195,11 @@ class Nats:
         except socket.timeout:
             raise NatsError("timed out waiting for the server")
         if not chunk:
+            # Distinguished from an idle timeout on purpose. messages() is
+            # allowed to swallow "nothing arrived"; it must never swallow
+            # "the warden went away", or an agent would sit in a tight loop
+            # believing it was merely quiet.
+            self.peer_closed = True
             raise NatsError("the server closed the connection")
         self._buf += chunk
 
@@ -286,7 +312,8 @@ class Nats:
                 line = self._line(deadline)
                 self._absorb(line, deadline)
         except NatsError:
-            pass
+            if self.peer_closed:
+                raise
         out, self._pending = self._pending, []
         return out
 
@@ -446,6 +473,15 @@ def self_test():
         assert not any(other in s for s in pub + sub), "a node's list names another node"
         assert not any(s == "grove.museum.>" for s in pub + sub), "a node got the console's wildcard"
         checks += 2
+
+    # The warden gets exactly one thing a node does not, and it is a
+    # subscription. Anything else would make it an authority.
+    npub, nsub = perms_for("museum", "museum-06", "node")
+    wpub, wsub = perms_for("museum", "museum-06", "warden")
+    assert wpub == npub, "the warden was given a publish grant a node lacks"
+    assert set(wsub) - set(nsub) == {"grove.museum.log.>"}, wsub
+    assert "grove.museum.log.>" not in nsub, "a plain node may read every log"
+    checks += 3
 
     for bad, why in [
         ("museum-01 %s admin" % pubs["museum-01"], "role"),

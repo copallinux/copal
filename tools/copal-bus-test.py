@@ -115,7 +115,7 @@ def main():
 
         rows = copal_nats.parse_members("\n".join([
             "museum-01 %s node" % pubs["museum-01"],
-            "museum-02 %s node" % pubs["museum-02"],
+            "museum-02 %s warden" % pubs["museum-02"],
             "console %s console" % pubs["console"],
         ]))
         users = os.path.join(tmp, "grove-users.conf")
@@ -177,7 +177,31 @@ def main():
         errs = one.flush()
         check("MAY NOT subscribe to the whole grove",
               any("Permissions Violation" in e for e in errs), str(errs))
+        one.subscribe("grove.%s.log.>" % GROVE)
+        errs = one.flush()
+        check("MAY NOT read every node's log",
+              any("Permissions Violation" in e for e in errs), str(errs))
         one.close()
+
+        # ---- the warden: one extra grant, and it is a subscription -----
+        print("\n  As museum-02, which is the warden:")
+        war = copal_nats.Nats("127.0.0.1", port, seed=seeds["museum-02"],
+                              name="museum-02", timeout=8)
+        war.connect()
+        check("connects with its own nkey", True)
+        war.subscribe("grove.%s.log.>" % GROVE)
+        errs = war.flush()
+        check("may collect every node's log", not errs, str(errs))
+        ok, errs = refused(war, "grove.%s.node.museum-01.state" % GROVE)
+        check("MAY NOT publish as museum-01 either", ok,
+              "being the warden bought a publish grant it should not have")
+        ok, errs = refused(war, "grove.%s.cmd.all" % GROVE)
+        check("MAY NOT issue a command", ok, str(errs))
+        war.subscribe("grove.%s.>" % GROVE)
+        errs = war.flush()
+        check("MAY NOT subscribe to the whole grove",
+              any("Permissions Violation" in e for e in errs), str(errs))
+        war.close()
 
         # ---- the console ----------------------------------------------
         print("\n  As the console:")

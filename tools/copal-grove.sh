@@ -26,6 +26,7 @@
 #   copal grove inventory          an Ansible inventory, out of discovery
 #   copal grove bus                put every enrolled node on the message bus
 #   copal grove bus --check        what the warden says the bus is doing
+#   copal grove logs [NODE]        the grove's logs, including nodes that died
 #
 # The day, once a grove directory exists (milestone 3):
 #   copal grove init               make groves/<name>/ from the template
@@ -617,10 +618,17 @@ cmd_bus() {
             continue
         fi
         _k=$(ssh_as_operator "$_addr" 'bus key' 2>/dev/null | tr -d '\r' | head -1)
+        # THE WARDEN GETS ONE GRANT A NODE DOES NOT -- a subscription to every
+        # node's log subject, which is what W4's collector runs on. It is a
+        # subscribe and never a publish, so the warden still cannot say
+        # anything in another node's name. §7 calls it a convenience rather
+        # than an authority, and this is that sentence in the permission list.
+        _role=node
+        [ "$_id" = "$_wid" ] && _role=warden
         case "$_k" in
-            U?*) printf '%s %s node\n' "$_id" "$_k" >> "$TMP/members"
+            U?*) printf '%s %s %s\n' "$_id" "$_k" "$_role" >> "$TMP/members"
                  _n=$((_n + 1))
-                 printf "    ${G}✓${Z} %-14s %s\n" "$_id" "$_k" >&2 ;;
+                 printf "    ${G}✓${Z} %-14s %-8s %s\n" "$_id" "$_role" "$_k" >&2 ;;
             *)   warn "$_id: no bus key -- it answered '${_k:-nothing}'"
                  note "That node may predate milestone 4. Re-run stage 16 on it." ;;
         esac
@@ -634,7 +642,7 @@ cmd_bus() {
     # the only member that is allowed to do either.
     _ck=$(console_nkey) || die "no console identity, and the bus needs one"
     printf 'console %s console\n' "$_ck" >> "$TMP/members"
-    printf "    ${G}✓${Z} %-14s %s\n" "console" "$_ck" >&2
+    printf "    ${G}✓${Z} %-14s %-8s %s\n" "console" "console" "$_ck" >&2
 
     info "Installing the membership on the warden, $_wid."
     if ssh_as_operator_stdin "$_waddr" 'bus users' < "$TMP/members"; then
@@ -648,6 +656,59 @@ cmd_bus() {
     result before it installs anything, so a refusal here means the bus is
     still running on whatever it had before."
     fi
+}
+
+# -------------------------------------------------------------- logs -------
+#
+# The grove's logs, out of the warden's collector. THE PROPERTY THAT MATTERS
+# is that this answers for a node that is not here: a Pi that died at 11:00 is
+# asked about at 16:00, and every other view in the console shows live
+# machines. This one does not, on purpose.
+cmd_logs() {
+    _days=1; _follow=0
+    while [ $# -gt 0 ]; do
+        if take_common "$@"; then shift "$SHIFTN"; continue; fi
+        case "$1" in
+            --since)   _days="${2:?--since needs a number of days}"; shift 2 ;;
+            --since=*) _days="${1#*=}"; shift ;;
+            --follow|-f) _follow=1; shift ;;
+            -*) die "unknown option '$1' for logs" ;;
+            *)  ONLY="$1"; shift ;;
+        esac
+    done
+    settle
+    case "$_days" in ''|*[!0-9]*) die "--since takes a number of days, e.g. --since 3" ;; esac
+    [ -f "$OPKEY" ] || die "no operator certificate here. Run: copal grove login"
+
+    _w=$(warden_of)
+    [ -n "$_w" ] || die "no node in grove '$GROVE' is announcing itself as the warden.
+
+    The collector lives on the warden, so there is nowhere to read from. The
+    lines are not lost -- they are on that machine's card. Bring it up, or say
+    which node is the warden, and ask again."
+    _wid=${_w%%"$TAB"*}; _waddr=${_w#*"$TAB"}
+    _who=${ONLY:-all}
+
+    if [ "$_follow" = 0 ]; then
+        ssh_as_operator "$_waddr" "logs $_who $_days" \
+            || die "$_wid did not answer. Is the collector running there?"
+        return 0
+    fi
+
+    # --follow is a poll and says so. A streaming subscription would need the
+    # console to hold a bus connection open, and §12's rule is that the console
+    # is three faces on ONE read model -- adding a second path here would be
+    # the first crack in it. Three seconds is well inside what an operator
+    # watching a room notices.
+    info "Following grove '$GROVE' from $_wid. Ctrl-C to stop."
+    : > "$TMP/seen"
+    while :; do
+        if ssh_as_operator "$_waddr" "logs $_who $_days" > "$TMP/now" 2>/dev/null; then
+            comm -13 "$TMP/seen" "$TMP/now" 2>/dev/null || diff "$TMP/seen" "$TMP/now" 2>/dev/null | sed -n 's/^> //p'
+            cat "$TMP/now" > "$TMP/seen"
+        fi
+        sleep 3
+    done
 }
 
 # --------------------------------------------------------------- run -------
@@ -1148,6 +1209,7 @@ case "${1:-}" in
     status)            shift; cmd_status "$@" ;;
     inventory)         shift; cmd_inventory "$@" ;;
     bus)               shift; cmd_bus "$@" ;;
+    logs|log)          shift; cmd_logs "$@" ;;
     help|-h|--help|'') usage ;;
     *) die "no grove verb called '$1'. Try: copal grove help" ;;
 esac

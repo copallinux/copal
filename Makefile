@@ -498,6 +498,16 @@ RADBEEPER_SRC ?= $(HOME)/code/radbeeper/radbeeper
 ## This is the fix when lint says the embedded copy has drifted -- edit
 ## radbeeper in its own checkout, run this, commit both.
 .PHONY: sync-radbeeper
+## sync-agent: copy tools/copal-grove-agent into the heredoc in copal-prep.sh.
+sync-agent:
+	@python3 -c 'import sys;\
+	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
+	m="    cat > /usr/bin/copal-grove-agent <<\x27COPALAGENT\x27\n";\
+	i=s.index(m)+len(m);j=s.index("\nCOPALAGENT\n",i);\
+	open(p,"w").write(s[:i]+prog.rstrip("\n")+s[j:])' $(PREP) tools/copal-grove-agent
+	@printf '  ok      tools/copal-grove-agent -> $(PREP)\n'
+	@$(MAKE) --no-print-directory lint
+
 ## sync-nats: copy tools/copal_nats.py into the heredoc in copal-prep.sh.
 sync-nats:
 	@python3 -c 'import sys;\
@@ -554,8 +564,11 @@ lint: | $(BUILDDIR)
 	    && printf '  ok      tools/copal_nats.py\n'
 	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-bus-test.py \
 	    && printf '  ok      tools/copal-bus-test.py\n'
+	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-grove-agent \
+	    && printf '  ok      tools/copal-grove-agent\n'
 	@python3 tools/copal_nkeys.py self-test | sed 's/^/  ok      /'
 	@python3 tools/copal_nats.py self-test | sed 's/^/  ok      /'
+	@python3 tools/copal-grove-agent --self-test 2>/dev/null | sed 's/^/  ok      /'
 	@sed -n "/^    cat > \/usr\/lib\/copal\/copal_nkeys.py <<'COPALNKEYS'$$/,/^COPALNKEYS$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.nkeys.lint.py
 	@test -s $(BUILDDIR)/.nkeys.lint.py \
@@ -574,7 +587,15 @@ lint: | $(BUILDDIR)
 	    && printf '  ok      copal_nats.py in $(PREP) matches tools/\n' \
 	    || { printf '\033[31merror:\033[0m copal_nats.py in $(PREP) has drifted -- run: make sync-nats\n'; \
 	         diff -u tools/copal_nats.py $(BUILDDIR)/.nats.lint.py | head -20; exit 1; }
-	@rm -f $(BUILDDIR)/.nkeys.lint.py $(BUILDDIR)/.nats.lint.py
+	@sed -n "/^    cat > \/usr\/bin\/copal-grove-agent <<'COPALAGENT'$$/,/^COPALAGENT$$/p" $(PREP) \
+	    | sed '1d;$$d' > $(BUILDDIR)/.agent.lint.py
+	@test -s $(BUILDDIR)/.agent.lint.py \
+	    || { printf '\033[31merror:\033[0m could not extract copal-grove-agent from $(PREP)\n'; exit 1; }
+	@cmp -s $(BUILDDIR)/.agent.lint.py tools/copal-grove-agent \
+	    && printf '  ok      copal-grove-agent in $(PREP) matches tools/\n' \
+	    || { printf '\033[31merror:\033[0m copal-grove-agent in $(PREP) has drifted -- run: make sync-agent\n'; \
+	         diff -u tools/copal-grove-agent $(BUILDDIR)/.agent.lint.py | head -20; exit 1; }
+	@rm -f $(BUILDDIR)/.nkeys.lint.py $(BUILDDIR)/.nats.lint.py $(BUILDDIR)/.agent.lint.py
 	@sed -n "/^    cat > \/usr\/bin\/copal-grove <<'COPALGROVE'$$/,/^COPALGROVE$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.copal-grove.lint.sh
 	@test -s $(BUILDDIR)/.copal-grove.lint.sh && sh -n $(BUILDDIR)/.copal-grove.lint.sh \

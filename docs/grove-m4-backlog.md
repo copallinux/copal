@@ -303,23 +303,34 @@ it, and `parse_members()` still refuses bad checksums, duplicate ids, ids that
 are not ids, roles that are not roles, an empty list, and a grove name carrying
 a quote.
 
-### W3 · The node agent — M — depends on W1, W2
+### W3 · The node agent — M — depends on W1, W2 — **written**
 
-A long-running process on every node, `copal-grove-agent`, added to the
-embedded node tool in `copal-prep.sh` and supervised by OpenRC.
+`tools/copal-grove-agent`, embedded in `copal-prep.sh` and supervised by
+OpenRC. It runs as the **`copal-grove` service account and not as root**: it is
+a second doorway to the same verb list the forced command guards, so it must
+not be a wider doorway. That is also why the node's bus seed is owned by that
+account rather than by root.
 
-- [ ] Publishes `hello` every 10 s and `node.<id>.state` on change, at most
-      every 5 s. The payload is the same fields `copal-grove state` already
-      prints — reuse it, do not invent a second telemetry vocabulary.
-- [ ] Subscribes `cmd.>`; validates the envelope from §6 (`v`, `corr`, `verb`,
+- [x] Publishes `hello` every 10 s and `node.<id>.state` on change, at most
+      every 5 s. The payload is the line `copal-grove state` already prints,
+      verbatim, with `agent=` appended — no second telemetry vocabulary.
+- [x] Subscribes `cmd.>`; validates the envelope from §6 (`v`, `corr`, `verb`,
       `args`, `iss`, `exp`, `once`); **executes only through
-      `/usr/bin/copal-grove-exec`**, the same forced-command verb list SSH
-      uses. A verb that is not allowed over SSH must not become allowed by
-      arriving over NATS. Publishes `ack.<id>.<corr>`.
-- [ ] Honours `exp`: a command that sat in a stream while the node was off does
-      not fire at four in the afternoon. Honours `once`: redelivery is safe.
-- [ ] Reconnects with backoff, and **runs happily with no warden at all** —
-      that is the normal state during a handover.
+      `/usr/bin/copal-grove-exec`**, by setting `SSH_ORIGINAL_COMMAND` exactly
+      as sshd does. The agent parses no verbs of its own and holds no list of
+      its own to fall out of date. Publishes `ack.<id>.<corr>`.
+- [x] Honours `exp`, and `once` — the seen-list is on disk, so redelivery is
+      safe across a restart and not only within one. Capped at 500 and
+      rewritten rather than grown.
+- [x] Reconnects with backoff (2s → 60s), and **runs happily with no warden at
+      all**. No warden is not an error and never exits; `copal_nats` grew a
+      `peer_closed` flag so that "the warden went away" cannot be mistaken for
+      "nothing arrived", which would have been a tight loop.
+
+**Not yet done: the acceptance test.** Killing a warden mid-day and watching
+the agent find the new one within 30 s is a claim about two machines. The pure
+logic — addressing, the envelope, idempotence across a restart, the tail — has
+30 checks in `copal-grove-agent --self-test`, which `make lint` runs.
 
 **Acceptance:** kill the warden mid-day; the agent reconnects to the new one
 within 30 s without losing its state, and `copal grove run` over SSH keeps
@@ -329,17 +340,32 @@ working throughout — which is invariant 8 and the reason it is written down.
 will show a node as fine while it is deaf. It must publish its own start and
 the console must show "agent last seen" separately from "node last seen".
 
-### W4 · The log collector — S — depends on W1
+### W4 · The log collector — S — depends on W1 — **written**
 
-- [ ] Warden subscribes `grove.<g>.log.>` and writes **per-node dated files**
-      under `/var/log/copal-grove/<id>/YYYY-MM-DD.log`. This is deliberately
-      the same shape stage 10 already uses for the Geiger counter's per-counter
-      logs — a pattern this repository has already tested on a Pi.
-- [ ] Rotation and a cap, because /var/log is tmpfs on a node (stage 3) and the
-      warden's is not. The warden's collector directory must be on the card,
-      and it must have a ceiling.
-- [ ] `copal grove logs [--node ID] [--since T] [--follow]`, the command the
-      TUI's log view will call.
+- [x] The warden subscribes `grove.<g>.log.>` and writes **per-node dated
+      files** under `/var/log/copal-grove/<id>/YYYY-MM-DD.log`, the same shape
+      stage 10 uses for the counter's per-counter logs. It is a branch of the
+      agent's dispatch loop rather than a second process: one connection, one
+      service, and the warden is a node like the others.
+- [x] **This needed a third role in the permission model.** Invariant 5 gives a
+      node `subscribe` on `cmd.>` and `work.>` only, so a warden could not read
+      what it was supposed to collect. `perms_for()` now knows `warden`, whose
+      one extra grant is `subscribe grove.<g>.log.>` — a subscribe and never a
+      publish, so the warden can read the grove and still cannot say anything
+      in another node's name. §7 calls it a convenience rather than an
+      authority; this is that sentence in the config file. `bus-test` checks
+      both edges of the exception.
+- [x] A cap of 64 MB across every node, oldest whole files first and never
+      today's, because the warden's `/var/log` is on the card. The node's own
+      is tmpfs, which is exactly why the warden's copy has to survive a reboot.
+- [x] `copal grove logs [NODE] [--since DAYS] [--follow]`. `--follow` is a
+      three-second poll and says so: streaming would mean the console holding a
+      bus connection open, which is the first crack in §12's one read model.
+      Dates come from filenames rather than date arithmetic, so it stays right
+      for a node that was off for a week.
+
+**Not yet done: the acceptance test**, which is a node powered off at 11:00 and
+asked about at 16:00 — two machines and five hours.
 
 **Acceptance — and this is the one that matters:** a node is powered off at
 11:00; at 16:00 `copal grove logs --node museum-06` still returns its lines.

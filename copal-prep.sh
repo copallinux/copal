@@ -20495,6 +20495,7 @@ grove_install_tools() {
 #   copal-grove bus-users      render the membership from stdin (warden, root)
 #   copal-grove bus-config     rewrite /etc/nats/nats.conf (warden, root)
 #   copal-grove bus-state      what this node's half of the bus is doing
+#   copal-grove logs ID [DAYS] the collected logs (warden), even for a dead node
 #   copal-grove status         what this machine thinks it is
 set -eu
 D=/etc/copal/grove
@@ -20506,6 +20507,8 @@ HOSTKEY=/etc/ssh/ssh_host_ed25519_key.pub
 HOSTCERT=/etc/ssh/ssh_host_ed25519_key-cert.pub
 NKEYS=/usr/lib/copal/copal_nkeys.py
 NATSPY=/usr/lib/copal/copal_nats.py
+ACCT=copal-grove
+COLLECT=/var/log/copal-grove
 BUSDIR=/etc/nats
 SEED=$D/nkey.seed
 
@@ -20792,7 +20795,9 @@ bus_key() {
             || { echo "could not generate a seed" >&2; return 1; }
         ( umask 077; printf '%s\n' "$_new" > "$SEED" )
         chmod 0600 "$SEED"
-        chown root:root "$SEED" 2>/dev/null || true
+        # The AGENT needs this, and the agent is deliberately not root. Root
+        # can still read it; nothing else on the machine can.
+        chown "$ACCT:$ACCT" "$SEED" 2>/dev/null || true
     fi
     python3 "$NKEYS" public "$(cat "$SEED")"
 }
@@ -20849,6 +20854,34 @@ bus_users() {
     grep -c '{ nkey:' "$BUSDIR/grove-users.conf" | sed 's/$/ members on the bus/'
 }
 
+# THE COLLECTED LOGS, on the warden. Read-only, and it deliberately does not
+# care whether the node whose lines these are is currently up. The failure the
+# museum will actually hit is a Pi that died at 11:00 and is asked about at
+# 16:00; a reader that only serves live machines answers the wrong question.
+#
+# Dates come from the filenames rather than from date arithmetic -- one fewer
+# thing to be wrong about across a busybox, and it stays right when a node was
+# off for a week and its newest file is not today's.
+logs_read() {  # <id|all> [how many days]
+    _who=${1:-all}; _days=${2:-1}
+    case "$_who" in
+        all) : ;;
+        ''|*[!a-z0-9-]*) echo "not a node id: $_who" >&2; return 1 ;;
+    esac
+    case "$_days" in ''|*[!0-9]*) _days=1 ;; esac
+    [ -d "$COLLECT" ] || { echo "nothing collected on this node" >&2; return 1; }
+    if [ "$_who" = all ]; then _dirs="$COLLECT/"*; else _dirs="$COLLECT/$_who"; fi
+    for _dir in $_dirs; do
+        [ -d "$_dir" ] || continue
+        _n=$(basename "$_dir")
+        # shellcheck disable=SC2012 -- these are our own dated filenames
+        ls "$_dir"/*.log 2>/dev/null | sort | tail -n "$_days" | while read -r _f; do
+            [ -f "$_f" ] || continue
+            sed "s|^|$_n	|" "$_f"
+        done
+    done
+}
+
 bus_state() {
     if [ "$(role_now)" = warden ]; then
         printf 'role       warden\n'
@@ -20881,8 +20914,9 @@ case "${1:-status}" in
     bus-users)    bus_users ;;
     bus-address)  bus_address ;;
     bus-state)    bus_state ;;
+    logs)         shift; logs_read "$@" ;;
     status)       status ;;
-    help|-h|--help) sed -n '4,15p' "$0" | sed 's/^# \{0,1\}//' ;;
+    help|-h|--help) sed -n '4,16p' "$0" | sed 's/^# \{0,1\}//' ;;
     *) echo "no such verb: $1" >&2; exit 2 ;;
 esac
 COPALGROVE
@@ -20966,6 +21000,17 @@ case "$1" in
             state) exec /usr/bin/copal-grove bus-state ;;
             *) refuse "bus takes key, users or state" ;;
         esac ;;
+    logs)
+        # THE GROVE'S logs, from the warden's collector -- not this machine's
+        # own forced-command log, which is `log tail` below. Read-only, and it
+        # answers for nodes that are no longer here, which is its whole point.
+        case "${2:-all}" in
+            ''|*[!a-z0-9-]*) refuse "logs takes a node id, or all" ;;
+        esac
+        case "${3:-1}" in
+            ''|*[!0-9]*) refuse "logs takes a number of days" ;;
+        esac
+        exec /usr/bin/copal-grove logs "${2:-all}" "${3:-1}" ;;
     log)
         [ "${2:-}" = tail ] || refuse "log takes tail [N]"
         exec tail -n "${3:-20}" "$LOG" ;;
@@ -21437,6 +21482,9 @@ ID_OK = set("abcdefghijklmnopqrstuvwxyz0123456789-")
 # caller before they arrive: `grove` against ID_OK by render_users, and `nid`
 # the same.  Nothing here interpolates anything a network could choose.
 
+ROLES = ("node", "warden", "console")
+
+
 def perms_for(grove, nid, role):
     """(publish allow-list, subscribe allow-list) for one member."""
     if role == "console":
@@ -21445,19 +21493,35 @@ def perms_for(grove, nid, role):
         # node's shape.
         return (["grove.%s.cmd.>" % grove],
                 ["grove.%s.>" % grove])
-    if role != "node":
-        raise ValueError("role is 'node' or 'console', not %r" % role)
-    return (["grove.%s.node.%s.>" % (grove, nid),
-             "grove.%s.log.%s" % (grove, nid),
-             "grove.%s.ack.%s.>" % (grove, nid),
-             "grove.%s.gem.>" % grove,
-             "grove.%s.hello" % grove],
-            ["grove.%s.cmd.>" % grove,
-             "grove.%s.work.>" % grove])
+    if role not in ("node", "warden"):
+        raise ValueError("role is one of %s, not %r" % (", ".join(ROLES), role))
+
+    # A node publishes under its own id and nowhere else.  This is invariant 5.
+    publish = ["grove.%s.node.%s.>" % (grove, nid),
+               "grove.%s.log.%s" % (grove, nid),
+               "grove.%s.ack.%s.>" % (grove, nid),
+               "grove.%s.gem.>" % grove,
+               "grove.%s.hello" % grove]
+    subscribe = ["grove.%s.cmd.>" % grove,
+                 "grove.%s.work.>" % grove]
+
+    # THE WARDEN IS A NODE THAT ALSO COLLECTS LOGS, and this is the whole of
+    # the difference.  W4 has it subscribe to every node's log subject and
+    # write per-node dated files, which a plain node's list does not permit --
+    # correctly, since a node has no business reading another node's log.
+    #
+    # It is a SUBSCRIBE grant and never a publish one: the warden may read what
+    # the grove says and still cannot say anything in another node's name. A
+    # compromised warden costs the grove its log sink and its queue. It does
+    # not let the warden forge telemetry, which is what invariant 5 is for and
+    # why §7 can call the warden a convenience rather than an authority.
+    if role == "warden":
+        subscribe = subscribe + ["grove.%s.log.>" % grove]
+    return (publish, subscribe)
 
 
 def parse_members(text):
-    """`<id> <nkey> <node|console>` lines -> [(id, nkey, role)].
+    """`<id> <nkey> <node|warden|console>` lines -> [(id, nkey, role)].
 
     Every refusal below is a refusal the warden makes before it writes
     anything.  A membership list arrives over ssh from a console holding an
@@ -21471,12 +21535,13 @@ def parse_members(text):
             continue
         parts = line.split()
         if len(parts) != 3:
-            raise ValueError("line %d: want '<id> <nkey> <node|console>'" % n)
+            raise ValueError("line %d: want '<id> <nkey> <node|warden|console>'" % n)
         nid, nkey, role = parts
         if not nid or set(nid) - ID_OK:
             raise ValueError("line %d: %r is not a usable node id" % (n, nid))
-        if role not in ("node", "console"):
-            raise ValueError("line %d: role is 'node' or 'console', not %r" % (n, role))
+        if role not in ROLES:
+            raise ValueError("line %d: role is one of %s, not %r"
+                             % (n, ", ".join(ROLES), role))
         try:
             kind, _raw = copal_nkeys.decode_public(nkey)
         except ValueError as exc:
@@ -21536,6 +21601,7 @@ class Nats:
         self.name = name
         self.timeout = float(timeout)
         self.sock = None
+        self.peer_closed = False   # set when recv() returns nothing
         self.info = {}
         self.errors = []          # every -ERR seen, in order
         # Messages can arrive during flush() -- a client subscribed to a
@@ -21557,6 +21623,11 @@ class Nats:
         except socket.timeout:
             raise NatsError("timed out waiting for the server")
         if not chunk:
+            # Distinguished from an idle timeout on purpose. messages() is
+            # allowed to swallow "nothing arrived"; it must never swallow
+            # "the warden went away", or an agent would sit in a tight loop
+            # believing it was merely quiet.
+            self.peer_closed = True
             raise NatsError("the server closed the connection")
         self._buf += chunk
 
@@ -21669,7 +21740,8 @@ class Nats:
                 line = self._line(deadline)
                 self._absorb(line, deadline)
         except NatsError:
-            pass
+            if self.peer_closed:
+                raise
         out, self._pending = self._pending, []
         return out
 
@@ -21830,6 +21902,15 @@ def self_test():
         assert not any(s == "grove.museum.>" for s in pub + sub), "a node got the console's wildcard"
         checks += 2
 
+    # The warden gets exactly one thing a node does not, and it is a
+    # subscription. Anything else would make it an authority.
+    npub, nsub = perms_for("museum", "museum-06", "node")
+    wpub, wsub = perms_for("museum", "museum-06", "warden")
+    assert wpub == npub, "the warden was given a publish grant a node lacks"
+    assert set(wsub) - set(nsub) == {"grove.museum.log.>"}, wsub
+    assert "grove.museum.log.>" not in nsub, "a plain node may read every log"
+    checks += 3
+
     for bad, why in [
         ("museum-01 %s admin" % pubs["museum-01"], "role"),
         ("museum-01 %s node\nmuseum-01 %s node" % (pubs["museum-01"], pubs["museum-01"]), "twice"),
@@ -21927,6 +22008,559 @@ if __name__ == "__main__":
     sys.exit(main(sys.argv))
 COPALNATS
     chmod 0644 /usr/lib/copal/copal_nats.py
+    cat > /usr/bin/copal-grove-agent <<'COPALAGENT'
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson
+"""copal-grove-agent -- this node's standing presence on the grove's bus.
+
+Runs on every node, supervised by OpenRC, as the `copal-grove` service account
+and NOT as root.  That is the same account the forced command lands in over
+ssh, and it matters: this program's whole job is to be a second doorway to the
+same small list of verbs, so it must not be a wider doorway.
+
+WHAT IT DOES
+
+  publishes  hello                every 10 s -- presence
+             node.<id>.state      on change, at most every 5 s -- telemetry
+             log.<id>             lines appended to /var/log/copal-grove.log
+             ack.<id>.<corr>      the result of every command it ran
+  subscribes cmd.>                commands, filtered to this node
+             log.>                ONLY when this node is the warden (W4)
+
+THE ONE RULE.  A command that arrives over NATS is executed by handing it to
+/usr/bin/copal-grove-exec, exactly as sshd hands it one, through the same
+SSH_ORIGINAL_COMMAND variable.  This program parses no verbs of its own and
+has no list of its own to fall out of date.  A verb that is not allowed over
+ssh cannot become allowed by arriving over the bus, and adding a verb still
+means editing one file.
+
+RUNNING WITH NO WARDEN IS NORMAL, not an error.  During a handover there is no
+bus at all for twenty seconds, and `copal grove run` over ssh keeps working
+throughout -- that is the layering rule and this program is the layer that is
+allowed to be absent.  So: no warden means wait and look again, quietly, and
+never means exit.
+
+THE TRAP THIS FILE EXISTS TO AVOID.  An agent that dies quietly is worse than
+no agent, because the wall shows a node as fine while it is deaf.  So the agent
+publishes its own start, its state carries `agent=` with its own uptime, and
+the console shows "agent last seen" apart from "node last seen".
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+
+sys.path.insert(0, "/usr/lib/copal")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
+import copal_nats  # noqa: E402
+
+D = "/etc/copal/grove"
+SEED = os.path.join(D, "nkey.seed")
+EXEC = "/usr/bin/copal-grove-exec"
+GROVE_TOOL = "/usr/bin/copal-grove"
+NODE_LOG = "/var/log/copal-grove.log"
+SEEN = "/var/lib/copal-grove/seen"          # `once` values already run
+COLLECT = "/var/log/copal-grove"            # the warden's collector directory
+COLLECT_CAP = 64 * 1024 * 1024              # bytes, across every node
+
+HELLO_EVERY = 10.0
+STATE_MIN_GAP = 5.0
+TICK = 1.0
+BACKOFF = (2, 4, 8, 15, 30, 30, 60)
+ID_OK = re.compile(r"^[a-z0-9-]{1,64}$")
+START = time.time()
+
+
+def field(name):
+    try:
+        with open(os.path.join(D, name)) as fh:
+            return fh.read().strip()
+    except OSError:
+        return ""
+
+
+def log(msg):
+    sys.stderr.write("copal-grove-agent: %s\n" % msg)
+    sys.stderr.flush()
+
+
+def run_tool(*args):
+    try:
+        out = subprocess.run([GROVE_TOOL] + list(args), capture_output=True,
+                             text=True, timeout=20)
+        return out.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+# ------------------------------------------------------------- discovery ---
+
+def find_warden():
+    """(address, id) of the node announcing itself as warden, or (None, None).
+
+    Read out of the same beacons `copal grove ls` reads, through the node
+    tool's own `browse`, so there is one parser for that format and it is not
+    this file.  DISCOVERY ANNOUNCES, IT NEVER AUTHORIZES: a wrong answer here
+    costs a failed connection, because the bus still demands a signature the
+    liar cannot produce.
+    """
+    best = None
+    for line in run_tool("browse").splitlines():
+        parts = line.split("\t")
+        if len(parts) < 3:
+            continue
+        nid, addr, txt = parts[0], parts[1], parts[2]
+        kv = dict(p.split("=", 1) for p in txt.split(";") if "=" in p)
+        if kv.get("g") != field("name") or kv.get("r") != "warden":
+            continue
+        score = int(kv.get("s") or 0)
+        if best is None or score > best[0]:
+            best = (score, addr, kv.get("n") or nid)
+    return (best[1], best[2]) if best else (None, None)
+
+
+# ----------------------------------------------------------- idempotence ---
+
+class Seen:
+    """The `once` values already acted on, so redelivery is safe across a
+    restart as well as within one.  Capped and rewritten rather than grown --
+    /var/lib on a node is small and this is a hint, not a ledger."""
+
+    LIMIT = 500
+
+    def __init__(self, path):
+        self.path = path
+        self.items = []
+        try:
+            with open(path) as fh:
+                self.items = [ln.strip() for ln in fh if ln.strip()]
+        except OSError:
+            pass
+
+    def __contains__(self, key):
+        return key in self.items
+
+    def add(self, key):
+        if key in self.items:
+            return
+        self.items.append(key)
+        self.items = self.items[-self.LIMIT:]
+        try:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            tmp = self.path + ".new"
+            with open(tmp, "w") as fh:
+                fh.write("\n".join(self.items) + "\n")
+            os.replace(tmp, self.path)
+        except OSError:
+            pass          # a node that cannot remember is noisy, not broken
+
+
+# -------------------------------------------------------------- the tail ---
+
+class Tail:
+    """New lines appended to a file since last look, surviving truncation and
+    rotation.  /var/log on a node is tmpfs (stage 3), so this file goes away at
+    every boot -- which is exactly why the warden keeps a copy that does not."""
+
+    def __init__(self, path):
+        self.path = path
+        self.pos = None
+        self.ino = None
+
+    def lines(self, limit=200):
+        try:
+            st = os.stat(self.path)
+        except OSError:
+            return []
+        if self.ino != st.st_ino:            # rotated, or first look
+            self.ino, self.pos = st.st_ino, st.st_size
+            return []
+        if st.st_size < self.pos:            # truncated
+            self.pos = 0
+        if st.st_size == self.pos:
+            return []
+        try:
+            with open(self.path, "r", errors="replace") as fh:
+                fh.seek(self.pos)
+                data = fh.read(256 * 1024)
+                self.pos = fh.tell()
+        except OSError:
+            return []
+        return [ln for ln in data.splitlines() if ln.strip()][:limit]
+
+
+# --------------------------------------------------------- the collector ---
+
+def collect(node_id, payload):
+    """One log line, from one node, onto the warden's card.
+
+    PER-NODE DATED FILES, the same shape stage 10 uses for the counter's logs.
+    The acceptance test for W4 is a node powered off at 11:00 whose lines are
+    still readable at 16:00, so nothing here may key on the node being up.
+    """
+    if not ID_OK.match(node_id):
+        return                      # a subject is not a path until it is checked
+    day = time.strftime("%Y-%m-%d")
+    d = os.path.join(COLLECT, node_id)
+    try:
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, day + ".log"), "a") as fh:
+            fh.write(payload.decode("utf-8", "replace").rstrip("\n") + "\n")
+    except OSError as exc:
+        log("collector: %s" % exc)
+
+
+def enforce_cap():
+    """A ceiling, because the warden's /var/log is on the card and a chatty
+    node should cost the grove its oldest logs rather than its root filesystem.
+    Oldest whole files go first; today's is never the one deleted."""
+    files = []
+    for root, _dirs, names in os.walk(COLLECT):
+        for name in names:
+            if not name.endswith(".log"):
+                continue
+            path = os.path.join(root, name)
+            try:
+                files.append((os.path.getmtime(path), os.path.getsize(path), path))
+            except OSError:
+                pass
+    total = sum(f[1] for f in files)
+    if total <= COLLECT_CAP:
+        return
+    today = time.strftime("%Y-%m-%d") + ".log"
+    for _mtime, size, path in sorted(files):
+        if total <= COLLECT_CAP:
+            break
+        if os.path.basename(path) == today:
+            continue
+        try:
+            os.unlink(path)
+            total -= size
+            log("collector: capped, removed %s" % path)
+        except OSError:
+            pass
+
+
+# ---------------------------------------------------------- the commands ---
+
+def wanted_by_me(subject, grove, node_id, tags):
+    """Is this command addressed to this node?  cmd.> is one subscription and
+    the filtering is here, because a node may not subscribe more narrowly than
+    its credential allows and there is no reason it should have to."""
+    base = "grove.%s.cmd." % grove
+    if not subject.startswith(base):
+        return False
+    rest = subject[len(base):]
+    if rest == "all":
+        return True
+    if rest == "node." + node_id:
+        return True
+    if rest.startswith("tag."):
+        return rest[4:] in tags
+    return False
+
+
+def execute(envelope, seen):
+    """Hand one command to the forced command and report what it said."""
+    verb = envelope.get("verb")
+    args = envelope.get("args") or []
+    if not isinstance(args, list) or not isinstance(verb, str):
+        return False, "malformed verb or args"
+    command = " ".join([verb] + [str(a) for a in args])
+    env = dict(os.environ)
+    env["SSH_ORIGINAL_COMMAND"] = command
+    env["SSH_CLIENT"] = "bus"       # so the node's own log says where it came from
+    try:
+        out = subprocess.run([EXEC], env=env, capture_output=True,
+                             text=True, timeout=120)
+    except subprocess.TimeoutExpired:
+        return False, "timed out"
+    except OSError as exc:
+        return False, str(exc)
+    once = envelope.get("once")
+    if once:
+        seen.add(str(once))
+    text = (out.stdout or out.stderr or "").strip()[:900]
+    return out.returncode == 0, text
+
+
+def validate(envelope, seen, now):
+    """The envelope of plan §6.  Every one of these fields exists because the
+    museum case is a machine that was turned off when you sent the message."""
+    if not isinstance(envelope, dict):
+        return "not an object"
+    if envelope.get("v") != 1:
+        return "envelope version %r is not 1" % envelope.get("v")
+    if not envelope.get("corr"):
+        return "no correlation id"
+    if not envelope.get("verb"):
+        return "no verb"
+    exp = envelope.get("exp")
+    if exp is not None:
+        try:
+            if float(exp) < now:
+                return "expired"
+        except (TypeError, ValueError):
+            return "unreadable exp"
+    once = envelope.get("once")
+    if once and str(once) in seen:
+        return "already done"
+    return None
+
+
+# ---------------------------------------------------------------- session ---
+
+def session(conn, grove, node_id, tags, is_warden, seen, tail):
+    """One connection's life.  Returns when it ends; the caller reconnects."""
+    subj = lambda s: "grove.%s.%s" % (grove, s)   # noqa: E731
+    conn.subscribe(subj("cmd.>"))
+    if is_warden:
+        conn.subscribe(subj("log.>"))
+    conn.flush()
+
+    # ITS OWN START, on the wire, so that "the agent came back" is an event
+    # somebody can see rather than an absence somebody has to notice.
+    conn.publish(subj("node.%s.state" % node_id), run_tool("state"))
+    conn.publish(subj("log.%s" % node_id),
+                 "%s agent started, pid %d"
+                 % (time.strftime("%Y-%m-%dT%H:%M:%S"), os.getpid()))
+    conn.flush()
+
+    last_hello = 0.0
+    last_state = 0.0
+    last_cap = time.time()
+    previous = None
+
+    while True:
+        now = time.time()
+
+        if now - last_hello >= HELLO_EVERY:
+            conn.publish(subj("hello"), "%s %d" % (node_id, int(now - START)))
+            last_hello = now
+
+        if now - last_state >= STATE_MIN_GAP:
+            state = run_tool("state")
+            if state and state != previous:
+                conn.publish(subj("node.%s.state" % node_id),
+                             "%s agent=%d" % (state, int(now - START)))
+                previous, last_state = state, now
+
+        for line in tail.lines():
+            conn.publish(subj("log.%s" % node_id), line)
+
+        if is_warden and now - last_cap > 300:
+            enforce_cap()
+            last_cap = now
+
+        # flush() is also the liveness check: it raises if the warden has gone,
+        # which is what ends this session and starts the backoff.
+        conn.flush()
+
+        for subject, _sid, _reply, payload in conn.messages(TICK):
+            if is_warden and subject.startswith("grove.%s.log." % grove):
+                collect(subject.rsplit(".", 1)[-1], payload)
+                continue
+            if not wanted_by_me(subject, grove, node_id, tags):
+                continue
+            try:
+                envelope = json.loads(payload.decode("utf-8", "replace"))
+            except ValueError:
+                log("a command that was not JSON, ignored")
+                continue
+            why = validate(envelope, seen, time.time())
+            corr = str(envelope.get("corr") or "?")
+            if why:
+                log("command %s refused: %s" % (corr, why))
+                conn.publish(subj("ack.%s.%s" % (node_id, corr)),
+                             json.dumps({"ok": False, "why": why, "node": node_id}))
+                continue
+            ok, text = execute(envelope, seen)
+            conn.publish(subj("ack.%s.%s" % (node_id, corr)),
+                         json.dumps({"ok": ok, "out": text, "node": node_id}))
+            conn.flush()
+
+
+def main():
+    grove = field("name")
+    if not grove:
+        log("this machine is not in a grove -- nothing to do")
+        return 0
+    if not os.path.exists(SEED):
+        log("no bus identity yet. The console has not enrolled this node onto")
+        log("the bus. From the console:  copal grove bus")
+        return 0
+    try:
+        with open(SEED) as fh:
+            seed = fh.read().strip()
+    except OSError as exc:
+        log("cannot read this node's bus identity: %s" % exc)
+        return 1
+
+    node_id = run_tool("id") or os.uname().nodename
+    tags = [t for t in re.split(r"[,\s]+", field("tags")) if t]
+    seen = Seen(SEEN)
+    tail = Tail(NODE_LOG)
+    attempt = 0
+
+    log("agent for %s in grove %s, tags %s" % (node_id, grove, tags or "none"))
+
+    while True:
+        is_warden = field("role") == "warden"
+        addr, wid = find_warden()
+        if not addr:
+            # NOT AN ERROR. Twenty seconds of no warden is what a handover
+            # looks like, and every verb over ssh is unaffected.
+            time.sleep(BACKOFF[min(attempt, len(BACKOFF) - 1)])
+            attempt = min(attempt + 1, len(BACKOFF) - 1)
+            continue
+
+        conn = copal_nats.Nats(addr, 4222, seed=seed, name=node_id, timeout=10)
+        try:
+            conn.connect()
+            log("on the bus at %s (warden %s)" % (addr, wid))
+            attempt = 0
+            session(conn, grove, node_id, tags, is_warden, seen, tail)
+        except copal_nats.NatsError as exc:
+            log("bus: %s" % exc)
+        except OSError as exc:
+            log("bus: %s" % exc)
+        finally:
+            conn.close()
+        time.sleep(BACKOFF[min(attempt, len(BACKOFF) - 1)])
+        attempt = min(attempt + 1, len(BACKOFF) - 1)
+
+
+# -------------------------------------------------------------- self-test ---
+#
+# The parts that can be checked without a bus, a warden or a Pi: addressing,
+# the envelope, idempotence across a restart, the tail, and the one place a
+# subject becomes a path.  `make lint` runs this.
+
+def self_test():
+    import shutil
+    import tempfile
+    global COLLECT
+    checks = 0
+    tmp = tempfile.mkdtemp(prefix="copal-agent-test.")
+    try:
+        # -- addressing: cmd.> is one subscription, filtered here ---------
+        tags = ["wall", "north"]
+        for subject, want in [
+            ("grove.museum.cmd.all", True),
+            ("grove.museum.cmd.node.museum-03", True),
+            ("grove.museum.cmd.node.museum-04", False),
+            ("grove.museum.cmd.tag.wall", True),
+            ("grove.museum.cmd.tag.sdr", False),
+            ("grove.museum.cmd.tag.north", True),
+            ("grove.othergrove.cmd.all", False),
+            ("grove.museum.log.museum-03", False),
+            ("grove.museum.cmd.", False),
+        ]:
+            got = wanted_by_me(subject, "museum", "museum-03", tags)
+            assert got == want, "%s -> %s, wanted %s" % (subject, got, want)
+            checks += 1
+
+        # -- the envelope of plan §6 --------------------------------------
+        seen = Seen(os.path.join(tmp, "seen"))
+        now = 1789042000.0
+        good = {"v": 1, "corr": "a3f1", "verb": "scene",
+                "args": ["apply", "rest"], "iss": "grove-operator",
+                "exp": now + 60, "once": "2026-09-08T09:14:22Z"}
+        assert validate(good, seen, now) is None, validate(good, seen, now)
+        checks += 1
+        for broken, why in [
+            ({**good, "v": 2}, "version"),
+            ({**good, "v": None}, "version"),
+            (dict(good, corr=""), "correlation"),
+            (dict(good, verb=""), "verb"),
+            (dict(good, exp=now - 1), "expired"),
+            (dict(good, exp="soon"), "unreadable"),
+            ("not an object", "not an object"),
+        ]:
+            got = validate(broken, seen, now)
+            assert got and why in got, "%r -> %r, wanted %s" % (broken, got, why)
+            checks += 1
+
+        # A command with no exp never expires, which is deliberate: `exp` is
+        # the console's promise about staleness, not a required field.
+        assert validate({"v": 1, "corr": "x", "verb": "state"}, seen, now) is None
+        checks += 1
+
+        # -- idempotence, and across a restart ----------------------------
+        seen.add("2026-09-08T09:14:22Z")
+        assert validate(good, seen, now) == "already done"
+        again = Seen(os.path.join(tmp, "seen"))
+        assert validate(good, again, now) == "already done", "a restart forgot"
+        checks += 2
+        for i in range(Seen.LIMIT + 50):
+            again.add("k%d" % i)
+        assert len(again.items) == Seen.LIMIT, len(again.items)
+        checks += 1
+
+        # -- the tail: appends, truncation, rotation ----------------------
+        path = os.path.join(tmp, "node.log")
+        open(path, "w").close()
+        tail = Tail(path)
+        assert tail.lines() == []              # first look establishes a mark
+        with open(path, "a") as fh:
+            fh.write("one\ntwo\n")
+        assert tail.lines() == ["one", "two"]
+        assert tail.lines() == []
+        with open(path, "w") as fh:            # truncated
+            fh.write("three\n")
+        assert tail.lines() == ["three"]
+        checks += 4
+
+        # -- A SUBJECT IS NOT A PATH UNTIL IT IS CHECKED ------------------
+        COLLECT = os.path.join(tmp, "collect")
+        collect("museum-06", b"a real line")
+        day = time.strftime("%Y-%m-%d") + ".log"
+        written = os.path.join(COLLECT, "museum-06", day)
+        assert os.path.exists(written), "the collector wrote nothing"
+        assert open(written).read().strip() == "a real line"
+        checks += 2
+        for evil in ("../../etc", "..", "a/b", "", "Museum-06", "x" * 80):
+            collect(evil, b"should not land")
+            assert not os.path.exists(os.path.join(tmp, "etc")), evil
+        assert sorted(os.listdir(COLLECT)) == ["museum-06"], os.listdir(COLLECT)
+        checks += 1
+
+        # -- the cap removes the oldest and never today's -----------------
+        global COLLECT_CAP
+        keep = COLLECT_CAP
+        try:
+            old_dir = os.path.join(COLLECT, "museum-01")
+            os.makedirs(old_dir, exist_ok=True)
+            for name in ("2026-09-01.log", "2026-09-02.log"):
+                with open(os.path.join(old_dir, name), "w") as fh:
+                    fh.write("x" * 4096)
+                os.utime(os.path.join(old_dir, name), (1, 1))
+            COLLECT_CAP = 100
+            enforce_cap()
+            assert not os.path.exists(os.path.join(old_dir, "2026-09-01.log"))
+            assert os.path.exists(written), "the cap deleted today's file"
+            checks += 2
+        finally:
+            COLLECT_CAP = keep
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return checks
+
+
+if __name__ == "__main__":
+    try:
+        if "--self-test" in sys.argv or "self-test" in sys.argv[1:2]:
+            print("copal-grove-agent: %d checks passed" % self_test())
+            sys.exit(0)
+        sys.exit(main())
+    except KeyboardInterrupt:
+        sys.exit(0)
+COPALAGENT
+    chmod 0755 /usr/bin/copal-grove-agent
     if ! command -v python3 >/dev/null 2>&1; then
         warn "no python3 here -- the bus needs it and will stay off"
         return 1
@@ -21946,6 +22580,56 @@ COPALNATS
         return 1
     fi
     note "bus modules installed; RFC 8032 vectors and the wire both check out"
+
+    # THE AGENT RUNS AS THE SERVICE ACCOUNT AND NOT AS ROOT. It is a second
+    # doorway to the same verb list the forced command already guards, so it
+    # must not be a wider doorway. /var/lib/copal-grove is where it remembers
+    # which commands it has already run, so that redelivery is safe across a
+    # restart and not only within one.
+    install -d -m 0750 -o "$GROVE_ACCT" -g "$GROVE_ACCT" /var/lib/copal-grove 2>/dev/null \
+        || install -d -m 0750 /var/lib/copal-grove
+    cat > /etc/init.d/copal-grove-agent <<'AGENTRC'
+#!/sbin/openrc-run
+# copal-grove-agent -- this node's presence on the bus. Written by stage 16.
+#
+# Runs as copal-grove, not root: it is the same doorway sshd's forced command
+# is, reached a different way, and it hands every command it receives to
+# /usr/bin/copal-grove-exec rather than acting on one itself.
+#
+# It starts whether or not there is a warden, and whether or not this node has
+# been put on the bus yet, because both of those are ordinary states and a
+# service that refuses to start in them is a service somebody has to remember
+# to start later.
+name="copal-grove-agent"
+description="Copal grove bus agent"
+command="/usr/bin/copal-grove-agent"
+command_user="copal-grove:copal-grove"
+command_background=true
+pidfile="/run/copal-grove-agent.pid"
+output_log="/var/log/copal-grove-agent.log"
+error_log="/var/log/copal-grove-agent.log"
+respawn_delay=5
+respawn_max=0
+
+depend() {
+	need localmount net
+	after copal-grove nats sshd avahi-daemon
+}
+
+start_pre() {
+	if [ ! -s /etc/copal/grove/name ]; then
+		einfo "This machine is not in a grove -- nothing to announce."
+		return 1
+	fi
+	checkpath -d -m 0750 -o copal-grove:copal-grove /var/lib/copal-grove
+	checkpath -f -m 0644 -o copal-grove:copal-grove /var/log/copal-grove-agent.log
+	return 0
+}
+AGENTRC
+    chmod 0755 /etc/init.d/copal-grove-agent
+    rc-update add copal-grove-agent default >/dev/null 2>&1 \
+        && note "copal-grove-agent added to the default runlevel" \
+        || warn "could not add copal-grove-agent to the default runlevel"
 }
 
 # THE DEFAULT MEMBERSHIP IS A LOCK WITH NO KEY.
@@ -22026,6 +22710,14 @@ grove_warden_bus() {
     # JetStream's store. Root-owned and 0700 because it will hold the grove's
     # log stream, and /var/log on a node is tmpfs (stage 3) while this is not.
     install -d -m 0700 /var/lib/nats
+
+    # THE COLLECTOR'S DIRECTORY, and it has to be made here because the agent
+    # runs as copal-grove and /var/log is root's. It is on the card and not in
+    # tmpfs on purpose: the failure the museum will actually hit is a Pi that
+    # died at 11:00 and is asked about at 16:00, and a collector that lost its
+    # files at the last reboot answers the wrong question.
+    install -d -m 0755 -o "$GROVE_ACCT" -g "$GROVE_ACCT" /var/log/copal-grove 2>/dev/null \
+        || install -d -m 0755 /var/log/copal-grove
 
     [ -f /usr/lib/copal/copal_nkeys.py ] \
         || { warn "no key format on this node -- not starting the bus"; return 1; }
