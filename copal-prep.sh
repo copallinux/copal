@@ -20195,6 +20195,643 @@ stage_lockroot() {
     commit_reminder
 }
 
+# ------------------------------------------------ stage 16: the grove -------
+#
+# A GROVE is a named set of Copal machines on one LAN that trust one
+# certificate authority. This stage turns an ordinary Copal machine into one of
+# them: it announces itself, it accepts a host certificate, and it answers a
+# console. docs/grove-plan.md is the whole design.
+#
+# THREE PROPERTIES OF THIS STAGE, all deliberate:
+#
+#   IT IS OPT-OUT BY DEFAULT. A card with no COPAL_GROVE in its answers skips
+#   the lot and the machine is exactly what it has always been. Every build
+#   made before groves existed is that card.
+#
+#   IT RUNS LAST, like stage 13, because it changes who can reach the machine.
+#   Anything that changes the answer to "who may log in" belongs after the
+#   machine is otherwise finished.
+#
+#   IT CANNOT LOCK YOU OUT. Two rules keep that true. HostCertificate is NOT
+#   written here -- sshd refuses to start when it points at a file that does
+#   not exist yet, so it is added by install-cert at the moment the file
+#   appears. And every sshd_config change is validated with `sshd -t` and
+#   rolled back on failure, exactly as stage 6 does it.
+GROVE_DIR=/etc/copal/grove
+GROVE_CA=/etc/ssh/copal_grove_ca.pub
+GROVE_BEGIN='# >>> copal grove >>>'
+GROVE_END='# <<< copal grove <<<'
+GROVE_ACCT=copal-grove
+
+# The same quote-agnostic reader the password uses, generalised. answers.txt is
+# setup-alpine's file: sourcing it here would set thirty of its variables in
+# this shell as a side effect, and one value is wanted.
+answers_grove() {  # <key> -- prints the value, or fails
+    [ -f "$ANSWERS" ] || return 1
+    _v=$(sed -n "s/^$1=['\"]\{0,1\}//p" "$ANSWERS" \
+            | sed "s/['\"]\{0,1\}[[:space:]]*\$//" | head -1)
+    [ -n "$_v" ] || return 1
+    printf '%s\n' "$_v"
+}
+
+grove_joined() { [ -s "$GROVE_DIR/name" ]; }
+
+grove_write_identity() {
+    mkdir -p "$GROVE_DIR"
+    chmod 0755 "$GROVE_DIR"
+    for _f in name size index role tags discovery; do
+        _k=$(printf 'COPAL_GROVE_%s' "$(echo "$_f" | tr '[:lower:]' '[:upper:]')")
+        [ "$_f" = name ] && _k=COPAL_GROVE
+        answers_grove "$_k" > "$GROVE_DIR/$_f" 2>/dev/null || : > "$GROVE_DIR/$_f"
+        chmod 0644 "$GROVE_DIR/$_f"
+    done
+    # The beacon key and the enrolment token are the two files here that are
+    # not world readable. Neither is a credential in the sense the certificate
+    # is -- see the plan -- but a token is single use and unspent, and a
+    # world-readable one is an enrolment anybody with a shell can race.
+    for _f in psk token; do
+        _k=$(printf 'COPAL_GROVE_%s' "$(echo "$_f" | tr '[:lower:]' '[:upper:]')")
+        answers_grove "$_k" > "$GROVE_DIR/$_f" 2>/dev/null || : > "$GROVE_DIR/$_f"
+        chmod 0600 "$GROVE_DIR/$_f"
+    done
+    note "grove $(cat "$GROVE_DIR/name"), card $(cat "$GROVE_DIR/index") of $(cat "$GROVE_DIR/size")"
+}
+
+grove_install_ca() {
+    _src=""
+    for _c in "$BOOT/grove_ca.pub" /media/*/grove_ca.pub; do
+        [ -f "$_c" ] && { _src="$_c"; break; }
+    done
+    if [ -z "$_src" ]; then
+        warn "no grove_ca.pub on the boot partition."
+        note "Without the authority's public half this machine cannot verify a"
+        note "certificate, and the console cannot verify this machine. Build the"
+        note "card again with a CA named in answers.txt: copal grove ca --create"
+        return 1
+    fi
+    # It must be the PUBLIC half, and this is the last place that can catch a
+    # private key having been put on a card. copal-prep.sh refuses to write one;
+    # a hand-assembled card has had no such check.
+    if grep -q 'PRIVATE KEY' "$_src"; then
+        warn "$_src is a PRIVATE key. Refusing to install it."
+        note "The whole grove's authority does not belong on an SD card."
+        return 1
+    fi
+    grep -qE '^(ssh-(ed25519|rsa)|ecdsa-sha2-)' "$_src" \
+        || { warn "$_src is not an OpenSSH public key"; return 1; }
+    install -m 0644 -o root -g root "$_src" "$GROVE_CA"
+    note "authority: $(ssh-keygen -l -f "$GROVE_CA" 2>/dev/null | awk '{print $2}')"
+}
+
+grove_service_account() {
+    # A service account with no password, no home worth anything, and a shell
+    # only because ForceCommand needs one to exec. It is the account the
+    # console's automation lands in, and it is NOT the account a person uses:
+    # those are two jobs, and the grove keeps them apart exactly as stages 1
+    # and 13 keep root and the user apart.
+    if ! id "$GROVE_ACCT" >/dev/null 2>&1; then
+        adduser -S -D -H -s /bin/sh -h /var/empty "$GROVE_ACCT" >/dev/null 2>&1 \
+            || { warn "could not create the $GROVE_ACCT account"; return 1; }
+        note "created the $GROVE_ACCT service account (no password, no home)"
+    fi
+    passwd -l "$GROVE_ACCT" >/dev/null 2>&1 || true
+
+    # Principals. A certificate says which of these it carries; this file says
+    # which this machine will accept. Two lists that have to agree, and neither
+    # is a key -- that is the whole point of certificates.
+    mkdir -p /etc/ssh/principals
+    chmod 0755 /etc/ssh/principals
+    printf 'grove-operator\n' > "/etc/ssh/principals/$GROVE_ACCT"
+    printf 'grove-human\n'    > "/etc/ssh/principals/$PI_USER"
+    chmod 0644 "/etc/ssh/principals/$GROVE_ACCT" "/etc/ssh/principals/$PI_USER"
+
+    # doas, narrowly. The service account may halt the machine and rewrite its
+    # own beacon, and may not do anything else. Written to /etc/doas.d/ so an
+    # apk upgrade of doas has no edited file to argue about, and syntax-checked
+    # before it is left in place -- a doas.d file doas rejects makes doas
+    # refuse EVERY command on the machine, including the one that would fix it.
+    mkdir -p /etc/doas.d
+    cat > /etc/doas.d/copal-grove.conf <<'GROVEDOAS'
+# Written by Copal stage 16. The grove service account, and nothing else.
+# Three commands, by full path, with no password. Not a blanket rule: an
+# 8-hour operator certificate must not be a root shell.
+permit nopass copal-grove as root cmd /sbin/poweroff
+permit nopass copal-grove as root cmd /sbin/reboot
+permit nopass copal-grove as root cmd /usr/bin/copal-grove args beacon
+GROVEDOAS
+    chmod 0640 /etc/doas.d/copal-grove.conf
+    if ! doas -C /etc/doas.d/copal-grove.conf >/dev/null 2>&1; then
+        warn "doas rejected /etc/doas.d/copal-grove.conf -- removing it"
+        warn "$(doas -C /etc/doas.d/copal-grove.conf 2>&1 | head -2)"
+        rm -f /etc/doas.d/copal-grove.conf
+        return 1
+    fi
+    note "doas: $GROVE_ACCT may poweroff, reboot and rewrite its beacon"
+}
+
+grove_sshd_policy() {
+    [ -f "$SSHCFG" ] || { warn "no $SSHCFG"; return 1; }
+    cp "$SSHCFG" "$SSHCFG.copal-grove.bak"
+
+    # AT THE BOTTOM, and this is the one place the grove's block cannot follow
+    # stage 6's example. Stage 6 puts its policy FIRST because sshd takes the
+    # first value it finds for each keyword. But everything after a `Match`
+    # belongs to that Match until the next one, so a block containing a Match
+    # placed at the top would swallow the entire rest of the file into it.
+    _tmp="$SSHCFG.copal-grove.new"
+    { sed "/$GROVE_BEGIN/,/$GROVE_END/d" "$SSHCFG"
+      printf '%s\n' "$GROVE_BEGIN"
+      echo '# Written by Copal stage 16. Delete this block to leave the grove;'
+      echo '# nothing outside it was modified. LAST on purpose: a Match block'
+      echo '# claims every line after it, so this cannot go at the top.'
+      printf 'TrustedUserCAKeys %s\n' "$GROVE_CA"
+      echo 'AuthorizedPrincipalsFile /etc/ssh/principals/%u'
+      echo '#'
+      echo '# HostCertificate is deliberately NOT here. sshd refuses to start'
+      echo '# when it names a file that does not exist, and the certificate does'
+      echo '# not exist until the console signs one. copal-grove install-cert'
+      echo '# adds the line at the moment the file appears.'
+      echo '#'
+      printf 'Match User %s\n' "$GROVE_ACCT"
+      echo '    ForceCommand /usr/bin/copal-grove-exec'
+      echo '    PermitTTY no'
+      echo '    X11Forwarding no'
+      echo '    AllowTcpForwarding no'
+      echo '    AllowAgentForwarding no'
+      echo '    PermitOpen none'
+      echo '    PasswordAuthentication no'
+      printf '%s\n' "$GROVE_END"
+    } > "$_tmp" || { warn "could not write $_tmp"; return 1; }
+    mv "$_tmp" "$SSHCFG"
+
+    # AllowUsers. Stage 6 wrote a list with exactly one name on it, so without
+    # this the service account is refused before ForceCommand is ever reached
+    # -- and the failure looks like a network problem rather than a policy one.
+    # Done through copal-ssh where it exists, so the block stays owned by the
+    # one thing that writes it.
+    if have copal-ssh; then
+        copal-ssh users "$PI_USER" "$GROVE_ACCT" >/dev/null 2>&1 \
+            && note "AllowUsers: $PI_USER and $GROVE_ACCT"
+    elif grep -q '^AllowUsers' "$SSHCFG"; then
+        sed -i "s/^AllowUsers .*/AllowUsers $PI_USER $GROVE_ACCT/" "$SSHCFG"
+        note "AllowUsers: $PI_USER and $GROVE_ACCT"
+    fi
+
+    if sshd -t 2>/dev/null; then
+        note "sshd -t: config is valid"
+    else
+        warn "sshd rejected the new config -- restoring the previous one:"
+        sshd -t 2>&1 | sed 's/^/      /'
+        cp "$SSHCFG.copal-grove.bak" "$SSHCFG"
+        return 1
+    fi
+    rc-service sshd status >/dev/null 2>&1 && rc-service sshd reload >/dev/null 2>&1 || true
+    return 0
+}
+
+grove_discovery() {
+    _mode=$(cat "$GROVE_DIR/discovery" 2>/dev/null || echo mdns)
+    case "$_mode" in
+        mdns)
+            say "Installing avahi for mDNS discovery"
+            apk add avahi avahi-tools dbus >/dev/null 2>&1 \
+                || { warn "could not install avahi -- discovery stays off"; return 1; }
+            rc-update add dbus default >/dev/null 2>&1 || true
+            rc-update add avahi-daemon default >/dev/null 2>&1 || true
+            rc-service dbus start >/dev/null 2>&1 || true
+            rc-service avahi-daemon start >/dev/null 2>&1 || true
+            /usr/bin/copal-grove beacon >/dev/null 2>&1 \
+                && note "announcing as $(hostname) on _copal-grove._tcp" \
+                || warn "the beacon was not written -- try: copal-grove beacon"
+            ;;
+        static|off)
+            note "discovery is '$_mode' -- nothing is announced, and the console"
+            note "reads a written list instead. Everything else works the same." ;;
+        *)  warn "unknown discovery mode '$_mode' -- treating it as off" ;;
+    esac
+    # The service exists whatever the mode: it is what keeps the beacon's
+    # changing fields -- role, score, uptime -- from being a boot-time snapshot
+    # that is wrong by lunchtime.
+    cat > /etc/init.d/copal-grove <<'GROVERC'
+#!/sbin/openrc-run
+# copal-grove -- keep this node's beacon current.
+#
+# Not a daemon and not a listener. It rewrites the announcement every few
+# minutes because three of the fields in it change while the machine runs: the
+# election score (uptime is a term in it), the role, and the rolling key that
+# stamps the beacon with its five-minute window. A beacon written once at boot
+# is a beacon that is wrong by lunchtime.
+name="copal-grove"
+description="Copal grove beacon"
+command="/usr/bin/copal-grove"
+command_args="watch"
+command_background=true
+pidfile="/run/copal-grove.pid"
+
+depend() {
+	need localmount
+	after avahi-daemon sshd
+}
+
+start_pre() {
+	if [ ! -s /etc/copal/grove/name ]; then
+		einfo "This machine is not in a grove -- nothing to announce."
+		return 1
+	fi
+	return 0
+}
+GROVERC
+    chmod 0755 /etc/init.d/copal-grove
+    rc-update add copal-grove default >/dev/null 2>&1 \
+        && note "copal-grove added to the default runlevel" \
+        || warn "could not add copal-grove to the default runlevel"
+    rc-service copal-grove restart >/dev/null 2>&1 || true
+}
+
+# The node program and the forced command. Both are small on purpose: a node's
+# half of a fleet system should be readable in one sitting by whoever has to
+# fix it at nine in the morning.
+grove_install_tools() {
+    cat > /usr/bin/copal-grove <<'COPALGROVE'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# copal-grove -- this node's half of a Copal grove. Written by stage 16.
+#
+#   copal-grove state          one line of facts, for the console
+#   copal-grove beacon         rewrite the mDNS announcement
+#   copal-grove watch          rewrite it every 4 minutes (the service)
+#   copal-grove browse         what this machine can see, in the console's format
+#   copal-grove score          this node's warden election score
+#   copal-grove install-cert   install a host certificate read on stdin (root)
+#   copal-grove status         what this machine thinks it is
+set -eu
+D=/etc/copal/grove
+SERVICE=_copal-grove._tcp
+PORT=7420
+AVAHI_FILE=/etc/avahi/services/copal-grove.service
+CA=/etc/ssh/copal_grove_ca.pub
+HOSTKEY=/etc/ssh/ssh_host_ed25519_key.pub
+HOSTCERT=/etc/ssh/ssh_host_ed25519_key-cert.pub
+
+f() { cat "$D/$1" 2>/dev/null || true; }        # a field, or nothing
+uptime_min() { awk '{ printf "%d", $1 / 60 }' /proc/uptime 2>/dev/null || echo 0; }
+ram_mb() { awk '/MemTotal/ { printf "%d", $2 / 1024 }' /proc/meminfo 2>/dev/null || echo 0; }
+temp_c() {
+    for t in /sys/class/thermal/thermal_zone*/temp; do
+        [ -r "$t" ] || continue
+        awk '{ printf "%d", ($1 > 1000) ? $1 / 1000 : $1 }' "$t"; return 0
+    done
+    printf '?'
+}
+wired() {  # 1 when an ethernet link is actually up
+    for l in /sys/class/net/e*/operstate; do
+        [ -r "$l" ] && [ "$(cat "$l")" = up ] && { echo 1; return; }
+    done
+    echo 0
+}
+display_running() { pgrep -x Xorg >/dev/null 2>&1 || pgrep -x Hyprland >/dev/null 2>&1; }
+
+# THE ELECTION, and it is a sort rather than a consensus algorithm. Eight
+# machines on one switch do not have the partition problem Raft exists to
+# solve, and an algorithm nobody in the building can debug at nine in the
+# morning is a liability. Every node computes this, publishes it, and the
+# highest score that is currently announcing takes the role.
+#
+# The -500 is the interesting term: the machine driving the visitor-facing
+# display should not also be the machine hosting the queue. Encoding that as a
+# score rather than as configuration means it stays true when the display moves
+# to a different board tomorrow.
+score() {
+    _u=$(uptime_min); [ "$_u" -gt 1440 ] && _u=1440
+    _s=$(( 1000 * $(wired) + $(ram_mb) + _u ))
+    display_running && _s=$(( _s - 500 ))
+    echo "$_s"
+}
+
+# The rolling beacon key. A SPAM FILTER and not a credential: it is on every
+# card in the grove, so it names a grove and authenticates nobody. It keeps the
+# console's list from filling with whatever else on the segment fancies calling
+# itself by one of our names. The certificate is what decides.
+beacon_key() {
+    _p=$(f psk); [ -n "$_p" ] || return 0
+    command -v openssl >/dev/null 2>&1 || return 0
+    printf '%s' "$(hostname)$(f name)$(( $(date +%s) / 300 ))" \
+        | openssl dgst -sha256 -hmac "$_p" -r 2>/dev/null | cut -c1-16
+}
+
+role_now() {
+    _r=$(f role); [ -n "$_r" ] || _r=node
+    echo "$_r"
+}
+
+beacon() {
+    [ -s "$D/name" ] || { echo "not in a grove" >&2; return 1; }
+    [ "$(f discovery)" = mdns ] || return 0
+    mkdir -p /etc/avahi/services
+    _t=$AVAHI_FILE.new
+    {
+        echo '<?xml version="1.0" standalone="no"?>'
+        echo '<!DOCTYPE service-group SYSTEM "avahi-service.dtd">'
+        echo '<!-- Written by copal-grove. Edits are overwritten every 4 minutes. -->'
+        echo '<service-group>'
+        echo '  <name replace-wildcards="yes">%h</name>'
+        echo '  <service>'
+        printf '    <type>%s</type>\n' "$SERVICE"
+        printf '    <port>%s</port>\n' "$PORT"
+        printf '    <txt-record>v=1</txt-record>\n'
+        printf '    <txt-record>g=%s</txt-record>\n' "$(f name)"
+        printf '    <txt-record>n=%s</txt-record>\n' "$(hostname)"
+        printf '    <txt-record>r=%s</txt-record>\n' "$(role_now)"
+        printf '    <txt-record>s=%s</txt-record>\n' "$(score)"
+        printf '    <txt-record>a=%s</txt-record>\n' "$(uname -m)"
+        printf '    <txt-record>m=%s</txt-record>\n' "$(ram_mb)"
+        printf '    <txt-record>u=%sm</txt-record>\n' "$(uptime_min)"
+        printf '    <txt-record>t=%s</txt-record>\n' "$(f tags)"
+        [ -f /etc/copal/build ] \
+            && printf '    <txt-record>b=%s</txt-record>\n' \
+                "$(sed -n 's/^COPAL_BUILD_ID=//p' /etc/copal/build | tr -d '"' | head -1)"
+        _k=$(beacon_key); [ -n "$_k" ] && printf '    <txt-record>k=%s</txt-record>\n' "$_k"
+        echo '  </service>'
+        echo '</service-group>'
+    } > "$_t"
+    mv "$_t" "$AVAHI_FILE"
+    chmod 0644 "$AVAHI_FILE"
+}
+
+# The service. A loop and a sleep rather than a cron entry, because the
+# interval is shorter than cron's minute granularity is comfortable with and
+# because this has to stop when OpenRC stops it.
+watch_loop() {
+    while :; do
+        beacon || true
+        sleep 240
+    done
+}
+
+# What this machine can see. THE FORMAT IS THE CONSOLE'S: id, address, TXT --
+# tab separated -- so that `copal grove ls --via thisnode` on a Mac gets the
+# same lines it would have browsed for itself. A Mac has no avahi-browse, and
+# scripting dns-sd is worse than asking a machine that already knows.
+browse() {
+    command -v avahi-browse >/dev/null 2>&1 || { echo "no avahi-browse here" >&2; return 1; }
+    avahi-browse -rpt "$SERVICE" 2>/dev/null | awk -F';' '
+        $1 == "=" {
+            addr = $8; txt = $10
+            gsub(/"/, "", txt); gsub(/ +/, ";", txt)
+            id = $4
+            n = split(txt, kv, ";")
+            for (i = 1; i <= n; i++) if (kv[i] ~ /^n=/) id = substr(kv[i], 3)
+            print id "\t" addr "\t" txt
+        }' | sort -u
+}
+
+state() {
+    printf 'id=%s role=%s score=%s temp=%s up=%sm ram=%s arch=%s tags=%s\n' \
+        "$(hostname)" "$(role_now)" "$(score)" "$(temp_c)" "$(uptime_min)" \
+        "$(ram_mb)" "$(uname -m)" "$(f tags)"
+}
+
+# Enrolment, the node's half. Reads a certificate on stdin and refuses it
+# unless all three of these hold:
+#
+#   it is a HOST certificate                   -- not a user one
+#   its public key is THIS machine's host key  -- not some other machine's
+#   its signing CA is the grove's CA           -- not anybody else's
+#
+# A certificate is public, so accepting one is not in itself dangerous; the
+# checks are here because installing the WRONG one makes this machine
+# unreachable, and an unreachable Pi in a museum is a trip with a screwdriver.
+install_cert() {
+    [ "$(id -u)" = 0 ] || { echo "install-cert must run as root" >&2; return 1; }
+    [ -f "$CA" ] || { echo "no grove CA at $CA" >&2; return 1; }
+    _t=$(mktemp /tmp/grove-cert.XXXXXX) || return 1
+    cat > "$_t"
+    [ -s "$_t" ] || { echo "nothing on stdin" >&2; rm -f "$_t"; return 1; }
+
+    _info=$(ssh-keygen -L -f "$_t" 2>/dev/null) \
+        || { echo "not a certificate" >&2; rm -f "$_t"; return 1; }
+    case "$_info" in
+        *"host certificate"*) : ;;
+        *) echo "not a HOST certificate" >&2; rm -f "$_t"; return 1 ;;
+    esac
+    _certkey=$(printf '%s\n' "$_info" | sed -n 's/.*Public key: [^ ]* \(SHA256:[^ ]*\).*/\1/p' | head -1)
+    _mykey=$(ssh-keygen -l -f "$HOSTKEY" 2>/dev/null | awk '{print $2}')
+    [ -n "$_certkey" ] && [ "$_certkey" = "$_mykey" ] \
+        || { echo "that certificate is for a different host key" >&2; rm -f "$_t"; return 1; }
+    _signer=$(printf '%s\n' "$_info" | sed -n 's/.*Signing CA: [^ ]* \(SHA256:[^ ]*\).*/\1/p' | head -1)
+    _ca=$(ssh-keygen -l -f "$CA" 2>/dev/null | awk '{print $2}')
+    [ -n "$_signer" ] && [ "$_signer" = "$_ca" ] \
+        || { echo "signed by another authority, not this grove's" >&2; rm -f "$_t"; return 1; }
+
+    install -m 0644 -o root -g root "$_t" "$HOSTCERT"
+    rm -f "$_t"
+
+    # NOW the HostCertificate line can exist, because now the file does. sshd
+    # refuses to start when it names one that does not, so this is the one
+    # order that cannot lock the machine out.
+    if ! grep -q "^HostCertificate $HOSTCERT" /etc/ssh/sshd_config; then
+        cp /etc/ssh/sshd_config /etc/ssh/sshd_config.cert.bak
+        sed -i "s|^TrustedUserCAKeys .*|&\nHostCertificate $HOSTCERT|" /etc/ssh/sshd_config
+        if ! sshd -t 2>/dev/null; then
+            cp /etc/ssh/sshd_config.cert.bak /etc/ssh/sshd_config
+            echo "sshd rejected HostCertificate -- reverted, certificate not in use" >&2
+            return 1
+        fi
+    fi
+    rc-service sshd status >/dev/null 2>&1 && rc-service sshd reload >/dev/null 2>&1 || true
+
+    # The token is single use, and this is the use. Kept rather than deleted,
+    # so that "this machine has already enrolled" is a question with an answer.
+    if [ -s "$D/token" ]; then
+        mv "$D/token" "$D/token.spent"
+        chmod 0600 "$D/token.spent"
+        : > "$D/token"; chmod 0600 "$D/token"
+    fi
+    beacon >/dev/null 2>&1 || true
+    echo "installed: $(printf '%s\n' "$_info" | sed -n 's/^ *Valid: //p' | head -1)"
+}
+
+status() {
+    printf 'grove      %s\n' "$(f name)"
+    printf 'node       %s (card %s of %s)\n' "$(hostname)" "$(f index)" "$(f size)"
+    printf 'role       %s, score %s\n' "$(role_now)" "$(score)"
+    printf 'tags       %s\n' "$(f tags)"
+    printf 'discovery  %s\n' "$(f discovery)"
+    if [ -f "$CA" ]; then
+        printf 'authority  %s\n' "$(ssh-keygen -l -f "$CA" 2>/dev/null | awk '{print $2}')"
+    else
+        printf 'authority  none installed\n'
+    fi
+    if [ -f "$HOSTCERT" ]; then
+        printf 'enrolled   yes, %s\n' \
+            "$(ssh-keygen -L -f "$HOSTCERT" 2>/dev/null | sed -n 's/^ *Valid: //p' | head -1)"
+    else
+        printf 'enrolled   no -- run "copal grove enrol" from the console\n'
+    fi
+}
+
+case "${1:-status}" in
+    state)        state ;;
+    beacon)       beacon ;;
+    watch)        watch_loop ;;
+    browse)       browse ;;
+    score)        score ;;
+    id)           hostname ;;
+    role)         role_now ;;
+    install-cert) install_cert ;;
+    status)       status ;;
+    help|-h|--help) sed -n '4,12p' "$0" | sed 's/^# \{0,1\}//' ;;
+    *) echo "no such verb: $1" >&2; exit 2 ;;
+esac
+COPALGROVE
+    chmod 0755 /usr/bin/copal-grove
+
+    cat > /usr/bin/copal-grove-exec <<'COPALGROVEEXEC'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# copal-grove-exec -- the forced command the console's automation lands in.
+#
+# THIS FILE IS THE SECURITY BOUNDARY, and it is the difference between "the
+# console can run commands on eight Pis" and "anything holding an 8-hour
+# certificate can run anything on eight Pis". sshd_config sends every login as
+# the copal-grove account here with no shell, no tty and no forwarding, and
+# what arrives is parsed as A VERB LIST rather than executed as a command.
+#
+# Adding a verb means adding a case below. There is deliberately no escape
+# hatch, no "raw", and no pass-through: a verb this file does not know is a
+# refusal and a line in the log, not an attempt.
+set -eu
+LOG=/var/log/copal-grove.log
+D=/etc/copal/grove
+
+logline() { printf '%s %s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "${SSH_CLIENT%% *}" "$*" >> "$LOG" 2>/dev/null || true; }
+refuse()  { logline "REFUSED ${SSH_ORIGINAL_COMMAND:-<empty>}"; echo "refused: $*" >&2; exit 3; }
+
+# Deliberate word splitting: what arrives is a list of words, and treating it
+# as one is the whole point. shellcheck disable=SC2086 -- quoting this would
+# make "power off" a single verb nothing matches.
+# shellcheck disable=SC2086
+set -- ${SSH_ORIGINAL_COMMAND:-}
+[ $# -gt 0 ] || refuse "nothing to do"
+logline "$*"
+
+case "$1" in
+    state)    exec /usr/bin/copal-grove state ;;
+    status)   exec /usr/bin/copal-grove status ;;
+    id)       exec hostname ;;
+    score)    exec /usr/bin/copal-grove score ;;
+    uptime)   exec uptime ;;
+    beacon)   exec doas /usr/bin/copal-grove beacon ;;
+    power)
+        case "${2:-}" in
+            off)    logline "POWEROFF"; exec doas /sbin/poweroff ;;
+            reboot) logline "REBOOT";   exec doas /sbin/reboot ;;
+            *) refuse "power takes off or reboot" ;;
+        esac ;;
+    snapshot)
+        # Stage 11 put this here. "Get ready for the next user" is a snapshot
+        # restore and a session restart, which is seconds rather than the
+        # minutes a reimage would cost.
+        [ "${2:-}" = restore ] || refuse "snapshot takes restore"
+        [ -x /usr/local/bin/copal-snapshot ] || refuse "no copal-snapshot on this machine"
+        exec doas /usr/local/bin/copal-snapshot restore ;;
+    scene)
+        # Recorded, not yet acted on: scenes are milestone 3 in the plan. The
+        # verb exists now so that the console and the node agree about its
+        # spelling before anything depends on it.
+        [ "${2:-}" = apply ] || refuse "scene takes apply NAME"
+        [ -n "${3:-}" ] || refuse "which scene?"
+        printf '%s\n' "$3" > "$D/scene" 2>/dev/null || refuse "cannot record the scene"
+        echo "scene recorded: $3 (applying is milestone 3)" ;;
+    log)
+        [ "${2:-}" = tail ] || refuse "log takes tail [N]"
+        exec tail -n "${3:-20}" "$LOG" ;;
+    *) refuse "no verb called '$1'" ;;
+esac
+COPALGROVEEXEC
+    chmod 0755 /usr/bin/copal-grove-exec
+    : > /var/log/copal-grove.log 2>/dev/null || true
+    chown "$GROVE_ACCT" /var/log/copal-grove.log 2>/dev/null || true
+    chmod 0644 /var/log/copal-grove.log 2>/dev/null || true
+    note "installed copal-grove and copal-grove-exec"
+}
+
+stage_grove() {
+    say "Stage 16: the grove -- this machine as one of several"
+
+    _g=$(answers_grove COPAL_GROVE || true)
+    if [ -z "$_g" ]; then
+        cat <<'MSG'
+
+    THIS CARD IS NOT PART OF A GROVE, and that is the ordinary case.
+
+    A grove is a named set of Copal machines on one LAN that trust one
+    certificate authority: they find each other, prove themselves, and answer
+    one console. Eight Raspberry Pis in a museum, switched on together each
+    morning, is what it was built for.
+
+    Nothing about it can be turned on from here, because the parts that matter
+    are decided on the machine that WRITES the card:
+
+        make answers            name a grove; it offers to make the authority
+        make answers-node N=2   card 2, card 3, ... without another interview
+
+    Both write into answers.txt, copal-prep.sh puts them on the card, and this
+    stage picks them up at the next install. See docs/grove-plan.md.
+
+MSG
+        return 0
+    fi
+
+    cat <<MSG
+
+    GROVE: $_g
+
+    This machine is card $(answers_grove COPAL_GROVE_INDEX || echo '?') of $(answers_grove COPAL_GROVE_SIZE || echo '?').
+
+    What this stage does:
+
+      - records the grove's name, this card's index, role and tags
+      - installs the grove's certificate authority, PUBLIC half, so that
+        nothing on this network is ever trusted on first sight
+      - creates the '$GROVE_ACCT' service account, which the console's
+        automation lands in and which cannot get a shell
+      - points sshd at the authority, and binds that account to one forced
+        command that accepts a list of verbs and refuses everything else
+      - installs avahi and announces this machine, if discovery is mdns
+
+    What it does NOT do:
+
+      - open anything to the internet
+      - put a private key anywhere
+      - change how you log in. Your own account is untouched
+
+    Afterwards, from the console:   copal grove ls   then   copal grove enrol
+
+MSG
+    confirm_yes "Join grove '$_g'?" || { note "Nothing changed."; return 0; }
+
+    grove_write_identity
+    grove_install_ca      || warn "continuing without an authority -- enrolment will not work"
+    grove_install_tools
+    grove_service_account || warn "the service account is incomplete"
+    grove_sshd_policy     || warn "sshd was left as it was"
+    grove_discovery       || true
+
+    say "Stage 16 complete."
+    note ""
+    note "This machine is $(hostname), card $(cat "$GROVE_DIR/index" 2>/dev/null) of grove $_g."
+    note "It is announcing itself. It has NOT been enrolled: no certificate has"
+    note "been signed for it yet, and until one is, the console will show it as a"
+    note "candidate rather than a node. From the machine that holds the authority:"
+    note ""
+    note "    copal grove ls        -- it should appear with a '?'"
+    note "    copal grove enrol     -- checks its token, signs, installs"
+    note "    copal grove ls        -- a '✓'"
+    note ""
+    note "On this machine: copal-grove status"
+}
+
 stage_verify() {
     say "Verification"
     note "root filesystem : $(df -h / | awk 'NR==2 {print $1, $2, $5" used"}')"
@@ -20317,6 +20954,7 @@ auto_manifest() {
 12|Software|The application catalogue|4
 14|Workshop|CAD, 3D printing, EDA, LaTeX, trackers|6
 9|Emulators|Mini vMac and VICE (compiles from source)|6
+16|Grove|Join the named fleet, and announce it|4
 13|Handover|Hand root over to the admin user|4
 MANIFEST
 }
@@ -21042,7 +21680,15 @@ auto_run() {
     what happened afterwards.
 
     Stage 11 (snapshots) is skipped. It wants to shrink the root partition
-    and create a third one, and that is not a thing to do unattended.
+    and create a third one, and that is not a thing to do unattended. Stage 15
+    (SD card care) is skipped too: it is a menu of things to read, and it
+    changes nothing unless you choose one.
+
+    Stage 16 (the grove) runs, and answers its one question with yes. A card
+    written for a grove joins it, announces itself on the LAN, and waits to be
+    enrolled from the console -- which is the whole point of writing eight
+    cards unattended. A card with no grove named in answers.txt prints what a
+    grove is and changes nothing, which is every card built before today.
 
 MSG
     auto_state_load || { AUTO_DONE=""; auto_state_save; }
@@ -21105,6 +21751,7 @@ MSG
             12) AUTO_DEFAULT=a; stage_apps ;;        # the whole catalogue
             13) stage_lockroot ;;
             14) AUTO_DEFAULT=a; stage_workshop ;;    # every bundle
+            16) stage_grove ;;                       # a no-op with no grove named
         esac
         _rc=$?
         set -e
@@ -22380,6 +23027,9 @@ while :; do
                                and SID. Each bundle says what this port lacks
    15) SD card and logs       what actually wears a card and what does not;
                                log policy, and a genuinely read-only root
+   16) The grove              join a named fleet: announce on the LAN, trust
+                               one certificate authority, answer one console.
+                               Skipped entirely on a card with no grove on it
     r) Reboot
     v) Verify and show state
     q) Quit
@@ -22387,7 +23037,7 @@ while :; do
     Suggested next: $SUGGEST
 MSG
 
-    ask "Choose [1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/a/r/v/q]:"
+    ask "Choose [1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16/a/r/v/q]:"
     case "$REPLY" in
         r|R) if confirm_yes "Reboot now?"; then
                  say "Rebooting. Log back in as ROOT (not $PI_USER), then run:  sh /boot/copal-init.sh"
@@ -22411,6 +23061,7 @@ MSG
         13) stage_lockroot ;;
         14) stage_workshop ;;
         15) stage_sdcard ;;
+        16) stage_grove ;;
         a|A) auto_run ;;
         v|V) stage_verify ;;
         q|Q|"") say "Nothing further changed. Transcript: $LOG"; exit 0 ;;

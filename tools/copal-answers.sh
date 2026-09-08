@@ -254,7 +254,31 @@ COPAL_GROVE_PSK=$(sq "${COPAL_GROVE_PSK:-}")
 COPAL_GROVE_TOKEN=$(sq "${COPAL_GROVE_TOKEN:-}")
 EOF
 chmod 600 "$ANSWERS"
+record_token
+}
 
+# THE TOKEN LEDGER, and the reason it has to exist: answers.txt only ever holds
+# the token for the card being written NEXT. The console has to check card 3's
+# token months after card 8 was written, so each one is recorded here as it is
+# generated, and `copal grove enrol` marks it spent once the node is signed.
+#
+# One unused entry per hostname. Re-running for the same card supersedes the
+# old token rather than adding to it -- two live tokens for one machine would
+# mean the check has two right answers, which is not a check.
+record_token() {
+    [ -n "${COPAL_GROVE:-}" ] || return 0
+    [ -n "${COPAL_GROVE_TOKEN:-}" ] || return 0
+    _led="$HOME/.copal/groves/$COPAL_GROVE"
+    mkdir -p "$_led" || return 0
+    chmod 700 "$HOME/.copal" "$HOME/.copal/groves" "$_led" 2>/dev/null || true
+    _f="$_led/tokens"
+    : >> "$_f"
+    # awk rather than `grep -v`: grep exits 1 when it prints nothing, which is
+    # exactly the empty-ledger case, and the rewrite would then be skipped.
+    awk -F'\t' -v h="$COPAL_HOSTNAME" '!($1 == h && $3 == "unused")' "$_f" > "$_f.new" \
+        && mv "$_f.new" "$_f"
+    printf '%s\t%s\tunused\n' "$COPAL_HOSTNAME" "$COPAL_GROVE_TOKEN" >> "$_f"
+    chmod 600 "$_f"
 }
 
 summarise() {

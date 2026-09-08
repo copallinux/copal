@@ -23,6 +23,7 @@ set -eu
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PREP="$HERE/copal-prep.sh"
+GROVERUN="$HERE/tools/copal-grove.sh"
 
 B='\033[1m'; D='\033[2m'; C='\033[36m'; G='\033[32m'; Y='\033[33m'; R='\033[31m'; Z='\033[0m'
 [ -t 1 ] || { B=''; D=''; C=''; G=''; Y=''; R=''; Z=''; }
@@ -662,6 +663,14 @@ usage() {
     say "  copal vm ${C}start|stop|status|delete|refresh|ip${Z} --target ${C}T${Z}"
     say "  ${D}T is aarch64 or x86_64${Z}"
     say ""
+    say "${B}  A grove -- several machines, one console${Z}"
+    say "  copal grove ls                  what is on the network, and what it proved"
+    say "  copal grove ca --create         make this grove's certificate authority"
+    say "  copal grove enrol               sign every candidate that has a token"
+    say "  copal grove login               an 8-hour operator certificate"
+    say "  copal grove run ${C}VERB${Z}             one verb, every node, a result each"
+    say "  ${D}copal grove help for the rest. See docs/grove-plan.md${Z}"
+    say ""
     say "${B}  Everything${Z}"
     say "  copal all                       cache, build all, register both VMs"
     say ""
@@ -681,6 +690,7 @@ case "${1:-}" in
     cache)     shift; cmd_cache "$@"; exit $? ;;
     card)      shift; board_or_die "${1:-}"; MODEL="$1" exec "$PREP" ;;
     vm)        shift; exec "$UTMRUN" "$@" ;;
+    grove)     shift; exec "$GROVERUN" "$@" ;;
     all)       shift; cmd_all "$@"; exit $? ;;
     targets|boards|--targets) board_list; exit 0 ;;
     check|--check)            check_host; exit 0 ;;

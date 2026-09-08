@@ -14,7 +14,7 @@
 disk for a PC, or a virtual machine under UTM on an Apple Silicon Mac.**
 
 This is [Copal Linux](docs/copal-handbook.md) — the Raspberry Pi Zero installer
-— rebuilt as a *hybrid* installer. The same fifteen stages that turn a diskless
+— rebuilt as a *hybrid* installer. The same sixteen stages that turn a diskless
 Alpine into a persistent ext4 system with a tiling desktop now run on whichever
 of those three media you point them at, and the two UTM targets exist so that
 the other three can be verified without a card, a Pi, or a reboot cycle.
@@ -266,6 +266,12 @@ copal vm start --target aarch64 # also stop, status, delete, refresh, ip
 
 copal all                       # cache, build every board, register both VMs
 copal targets | copal check | copal flow | copal help
+
+copal grove ls                  # what is on the network, and what it has proved
+copal grove ca --create         # this grove's certificate authority, once
+copal grove enrol               # sign every candidate that carries a token
+copal grove login               # an 8-hour operator certificate
+copal grove run power off       # one verb, every node, a result each
 ```
 
 **The images are raw MBR disks — dd them straight to a card:**
@@ -287,6 +293,23 @@ labels its boot partition `COPALBOOT`, so two builds cannot have theirs mounted
 at once — `copal-prep.sh` refuses rather than writing into the other build's
 disk. `make -j` cannot help here, and `make all` disables it rather than letting
 you find out the hard way.
+
+**`copal grove` is the odd one out: it acts on machines that already exist.**
+Every other verb writes a card. The grove verbs talk to Copal machines already
+running on the LAN. `ls` browses for beacons and prints a row per machine —
+`✓` proved by certificate, `?` found but not yet enrolled, `✗` signed by
+somebody else's authority. `enrol` checks each candidate's single-use token
+against the ledger written when its card was made, signs its host key and
+installs the certificate. `run` fans one verb out over every enrolled node and
+prints a result each. A Mac has no `avahi-browse`, so `--via HOST` asks a node
+to browse on its behalf — the Mac is the certificate authority, not the eyes.
+
+**A beacon never authorizes anything.** mDNS has no authentication of any kind
+and anything on the segment can answer any query, so discovery only ever fills
+a *candidate* list; a certificate is what decides. The pre-shared key in the
+beacon is a spam filter, and the first person to promote it to a credential
+will have broken the design without noticing. The whole architecture is
+[`docs/grove-plan.md`](docs/grove-plan.md); stage 16 is the target's half of it.
 
 ---
 
@@ -322,7 +345,7 @@ you are in tells you what your options are and which machine you are talking to:
 |---|---|---|---|
 | `./copal` | this Mac | which target, and whether to start at all | never — writes nothing |
 | `copal-prep.sh` | this Mac | who the admin user is, and what medium gets written | one step, twice confirmed |
-| `copal-init.sh` | the target | which of the fifteen stages run, and in what order | stage 3 reboots; the rest are re-runnable |
+| `copal-init.sh` | the target | which of the sixteen stages run, and in what order | stage 3 reboots; the rest are re-runnable |
 | `copal-menu`, `copal-center`, `copal-config` | the target's desktop | what is installed, and what to launch | no |
 
 ```mermaid
@@ -333,7 +356,7 @@ flowchart TD
     C -->|"answer <b>image</b>,<br/>or pass --image"| E["a .img file"]
     D --> F["put it in the Pi or the PC<br/>and power on"]
     E --> G["<b>copal-vm.sh</b> — QEMU, headless or serial<br/><b>utm/utm-vm.sh</b> — a registered UTM machine"]
-    F --> H["<b>copal-init.sh</b><br/>fifteen stages, on the target"]
+    F --> H["<b>copal-init.sh</b><br/>sixteen stages, on the target"]
     G --> H
     H --> I["stages 1, 2, 3 — a real root filesystem"]
     I --> J["stage 4 — X.Org and i3"]
@@ -344,7 +367,7 @@ flowchart TD
 Everything left of `copal-init.sh` happens on the Mac and takes about ten
 minutes. Everything right of it happens on the machine being built and takes
 between twenty minutes and several hours, depending entirely on how many of
-the fifteen stages you ask for. The split falls there because macOS cannot
+the sixteen stages you ask for. The split falls there because macOS cannot
 create an ext4 filesystem.
 
 ### Step 0 — ask the Mac what it can do
@@ -1129,7 +1152,7 @@ WHAT IS IN THIS FOLDER
 
 **The images are sparse.** A 64g image reports 64 GB to `ls -lh` and occupies
 only what has actually been written to it — about 550 MB fresh, 15–25 GB after
-a full fifteen-stage run. Every size above is `du`, the real one. Reporting the
+a full sixteen-stage run. Every size above is `du`, the real one. Reporting the
 ceiling would make each of those numbers wrong by two orders of magnitude, and
 `ls -lh build/copal-vm.img` is why people think this repository eats their disk.
 
@@ -1183,7 +1206,7 @@ you know it is there, and left for you to delete by hand.
 
 ---
 
-## The anatomy — three machines, one file, fifteen stages
+## The anatomy — three machines, one file, sixteen stages
 
 Copal is named for tree resin caught halfway to amber: hardened, but not yet
 stone. The design follows the metaphor more closely than the name suggests.
@@ -1211,7 +1234,7 @@ flowchart LR
     end
     subgraph TARGET["3 · THE MACHINE — runs, never writes cards"]
         direction TB
-        T1["<b>copal-init.sh</b><br/>fifteen stages, run as root"]
+        T1["<b>copal-init.sh</b><br/>sixteen stages, run as root"]
         T2["<b>/usr/local/bin/copal-*</b><br/>written BY the stages, for you"]
         T1 --> T2
     end
@@ -1232,25 +1255,27 @@ Everything on the Mac. None of it runs on the target.
 | Script | Runs where | Purpose |
 |---|---|---|
 | `copal` | Mac | The front door. A flow chart, a target menu, and a briefing per board — equipment, CPU, minimum requirements — shown *before* anything is erased. Writes nothing. |
-| `copal-prep.sh` | Mac | The whole distribution. Partitions the medium, fetches and SHA256-verifies the Alpine payload, lays down firmware and bootloader, and writes `copal-init.sh`. 15,186 lines, of which 12,833 are the heredoc. |
+| `copal-prep.sh` | Mac | The whole distribution. Partitions the medium, fetches and SHA256-verifies the Alpine payload, lays down firmware and bootloader, and writes `copal-init.sh`. 23,463 lines, of which 20,729 are the heredoc. |
 | `copal-vm.sh` | Mac | Boots an image under plain QEMU. `--check` boots headless, greps the serial log for a login prompt, exits non-zero if it never came up — the thing to run after changing the installer. |
 | `utm/utm-vm.sh` | Mac | Wraps an image in a registered UTM machine: NAT, SSH, a serial console, and the shared folder. |
 | `fetch-minivmac.sh` | Mac | Assembles the Mini vMac working set on demand, so no binaries are vendored. |
+| `tools/copal-grove.sh` | Mac, or a node | The console for a fleet. Discovers the grove, holds its certificate authority, enrols nodes and fans one verb out over all of them. Reached as `copal grove`. |
 | `Makefile` · `bin/*.sh` | Mac | One command per intention. `bin/` shortcuts are two lines each and hand straight to `make`, so they cannot disagree with it. |
 
 And the one that crosses:
 
 | Script | Runs where | Purpose |
 |---|---|---|
-| `copal-init.sh` | Target, as root | **Generated, never edited.** It exists only as a heredoc inside `copal-prep.sh` until a medium is written. Fifteen stages, run in any order, each idempotent enough to re-run. |
+| `copal-init.sh` | Target, as root | **Generated, never edited.** It exists only as a heredoc inside `copal-prep.sh` until a medium is written. Sixteen stages, run in any order, each idempotent enough to re-run. |
 
 That "generated, never edited" is why `make lint` extracts it and runs `sh -n`
 on the file it *becomes*: a syntax error inside a heredoc is invisible to every
 check that reads the generator, and would land on the hardware instead.
 
-### The fifteen stages
+### The sixteen stages
 
-Roughly: 1–3 make it a computer, 4–6 make it usable, 7–15 make it yours.
+Roughly: 1–3 make it a computer, 4–6 make it usable, 7–15 make it yours, and
+16 makes it one of several.
 
 | | Stage | What it settles |
 |---|---|---|
@@ -1269,6 +1294,7 @@ Roughly: 1–3 make it a computer, 4–6 make it usable, 7–15 make it yours.
 | 13 | hand over root | lock root, log in as yourself with `doas`. **Checks first, run it last** |
 | 14 | the workshop | CAD, KiCad, ngspice, LaTeX, trackers |
 | 15 | SD card care | what actually wears a card; log policy; a genuinely read-only root |
+| 16 | the grove | join a named fleet: one certificate authority, an mDNS beacon, one console. **Skipped entirely on a card with no grove named** |
 
 ### What the machine gains
 
@@ -1286,6 +1312,7 @@ these stay.
 | `copal-install` · `copal-guide` | Fetch one catalogue entry; read the plain-text guides |
 | `copal-logs` · `copal-debug` | The log collection, and the switch that is off by default |
 | `copal-ssh` · `copal-logflush` · `copal-splash` | SSH policy; RAM logs down to the card; the key bindings on the wallpaper |
+| `copal-grove` | Written by stage 16, on a card that named a grove: the beacon, this node's facts, and the half of enrolment that runs here |
 | `snapshot` · `mountdsk` | rsync snapshots; mount a disk image |
 
 ### Why one file, and not packages
@@ -1364,7 +1391,7 @@ utm/utm-vm.sh ip --target aarch64     # -> 192.168.64.7
 ssh root@192.168.64.7
 ```
 
-Either way the point is the same: once the guest is on the network, the fifteen
+Either way the point is the same: once the guest is on the network, the sixteen
 stages can be driven over SSH with real output and real scrollback instead of
 through a VM console window.
 
@@ -1604,17 +1631,24 @@ built by a version that had the leak repairs itself instead of staying broken.
 
 ### Still to do
 
-Today `copal-init.sh` is a 9,600-line quoted heredoc inside `copal-prep.sh`.
+Today `copal-init.sh` is a 20,729-line quoted heredoc inside `copal-prep.sh`.
 Making it a real file is the single most valuable structural change available —
 it becomes editable, `shellcheck`-able and testable — but it is a refactor of
 working code, so it happens *after* the two VMs can prove a refactor did not
 break anything.
 
+The grove is two of its five milestones in. Eight cards can be written, they
+announce themselves, the authority signs them, and one verb reaches all of
+them — enough to end a museum's working day with `copal grove run power off`.
+Scenes, the message bus and the wall, and the work the grove computes are
+designed in [`docs/grove-plan.md`](docs/grove-plan.md) and not yet written. None
+of it has run on eight real Pis; it has run on one machine and a fixture.
+
 ## Sizing
 
 `IMAGE_SIZE` defaults to **64g**, which yields a 4 GB FAT boot partition and
 **~60 GiB of root**. The image is sparse — a fresh one is about 550 MB on disk
-and grows only as it is written, reaching 15–25 GB after a full fifteen-stage
+and grows only as it is written, reaching 15–25 GB after a full sixteen-stage
 run. The number is a ceiling, not an allocation.
 
 It used to default to 16g, and that was too small for what this builds: minus
@@ -1647,6 +1681,8 @@ bindings, the account model, the SD-card wear analysis — is in
 | `build/cache/` | The download cache: checksum-verified Alpine payloads and GRUB ISOs. Survives `make clean`, removed by `make distclean` |
 | `fetch-minivmac.sh` | Assembles the Mini vMac working set on demand — nothing binary is tracked here |
 | `tools/minivmac/` | Mini vMac launcher scripts |
+| `tools/copal-grove.sh` | The console for a grove, reached as `copal grove`. Discovery, the certificate authority, enrolment, and one verb over every node |
+| `tools/copal-answers.sh` | Writes `answers.txt`. `make answers` interviews once; `make answers-node N=` writes card *N* of a grove without asking again |
 | `docs/copal-handbook.md` | The original Copal handbook. Alpine, the card, the stages, the desktop, reference |
 | `docs/lab-report.md` | Bring-up record for the Pi Zero 1 and Zero 2 W, IEEE format |
 | `docs/development-report.md` | Architecture, verification method and results, known defects |
