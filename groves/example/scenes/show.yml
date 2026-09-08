@@ -1,0 +1,19 @@
+# scene: the exhibit runs — screens on, today's program up, nothing blanking
+---
+# THE DAY. This is the scene the museum is in while there are people in the
+# room, and it is the one a node converges to on its own if it pulls (see
+# copal_pull_playbook in group_vars).
+#
+# It needs no password: nothing here becomes root. The screen belongs to the
+# account Ansible is already logged in as.
+
+- name: show
+  hosts: all
+  gather_facts: false
+  vars:
+    copal_scene: show
+    copal_display_state: "on"
+    copal_display_blank_minutes: 0        # an exhibit must never blank
+  roles:
+    - role: copal_node
+    - role: copal_display

@@ -1,0 +1,66 @@
+---
+# The screen. X11 only, and that is a stated gap rather than an oversight: the
+# exhibit session is i3 under startx, which stage 4 installs, and a Hyprland
+# node needs the Wayland equivalents of every command below. The plan lists it
+# as open, and the console should not have to know which kind of node it is
+# talking to. Today it does.
+#
+# NO become ANYWHERE IN THIS ROLE. Ansible logs in as the account that owns the
+# session, which is the same account stage 4 autologins on tty1, so talking to
+# its X server needs no privilege at all -- it needs the right DISPLAY. A role
+# that reached for root here would make every scene that touches a screen ask
+# for a password, and the whole point of `rest` is that it is one press.
+
+- name: is there an X server on this node
+  ansible.builtin.command: pgrep -x Xorg
+  register: copal_xorg
+  changed_when: false
+  failed_when: false
+
+- name: a node with no display is not a failure, it is a headless node
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} has no X server -- skipping the screen"
+  when: copal_xorg.rc != 0
+
+- name: the screen
+  when: copal_xorg.rc == 0
+  environment:
+    DISPLAY: "{{ copal_display_number }}"
+    XAUTHORITY: "/home/{{ copal_display_user }}/.Xauthority"
+  block:
+    - name: wake the screen and set the blanking policy
+      # xset s 0 0 / dpms 0 0 0 is "never blank", which is what an exhibit
+      # wants and what a desktop does not. `rest` passes minutes and gets the
+      # opposite.
+      ansible.builtin.command: >-
+        xset dpms {{ (copal_display_blank_minutes | int) * 60 }}
+             {{ (copal_display_blank_minutes | int) * 60 }}
+             {{ (copal_display_blank_minutes | int) * 60 }}
+      changed_when: true
+      when: copal_display_state == "on"
+
+    - name: unblank now
+      ansible.builtin.command: xset dpms force on
+      changed_when: true
+      when: copal_display_state == "on"
+
+    - name: blank the screen
+      ansible.builtin.command: xset dpms force off
+      changed_when: true
+      when: copal_display_state != "on"
+
+    - name: today's program is running
+      # setsid, so the program survives this SSH session closing. Idempotent by
+      # asking first: a scene applied twice must not start a second copy.
+      ansible.builtin.shell: |
+        if pgrep -f {{ copal_display_app | quote }} >/dev/null 2>&1; then
+            echo already
+        else
+            setsid {{ copal_display_app }} >/dev/null 2>&1 &
+            echo started
+        fi
+      register: copal_app
+      changed_when: "'started' in copal_app.stdout"
+      when:
+        - copal_display_state == "on"
+        - copal_display_app | length > 0

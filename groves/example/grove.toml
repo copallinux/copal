@@ -1,0 +1,84 @@
+# The grove file for @GROVE@.
+#
+# What is true about the ROOM rather than about a machine: which nodes there
+# are, how their power is switched, and what each scene needs before it can
+# run. It is read by `copal grove` and by nothing on a node.
+#
+# It is parsed by a deliberately small reader -- [sections], key = "value", and
+# flat arrays of strings. Keep it to that. Anything that wants more structure
+# than this belongs in group_vars/all.yml, where Ansible does the parsing and
+# gets a real YAML library to do it with. That is why the attachments the plan
+# sketches as [[attachment]] tables live there instead: the console never reads
+# them, so making the console able to parse them would be work for nobody.
+
+[grove]
+name = "@GROVE@"
+user = "@USER@"
+ca   = "@CA@"
+
+# The machines that are SUPPOSED to be here. `copal grove wait` reads this, and
+# it has to be written down rather than discovered: a node that never comes up
+# can only be noticed by a list that was expecting it. Leave it empty and the
+# console assumes @GROVE@-01 .. @GROVE@-NN from the size in answers.txt.
+nodes = []
+
+# --------------------------------------------------------------------------
+[power]
+# READ 9.1 OF docs/grove-plan.md BEFORE CHANGING THIS.
+#
+# A RASPBERRY PI CANNOT BE WOKEN BY WAKE-ON-LAN. There is no standby rail
+# feeding the NIC, so a powered-off Pi cannot be reached by anything at all on
+# the network. Any morning automation that assumes otherwise is buying hardware
+# for a thing that will not work. Two honest options:
+#
+#   always-on   nothing is switched, because nothing is ever off. A Pi Zero 2
+#               idling with HDMI blanked is about 0.7 W; eight of them for
+#               sixteen overnight hours is under a tenth of a kilowatt-hour.
+#               This is almost always the right answer and it costs nothing.
+#   command     the console runs `on` and `off` once per node, substituting
+#               {hub}, {port} and {node}. uhubctl against a per-port switchable
+#               USB hub, or curl against a smart plug with a LOCAL http api --
+#               a plug that requires a vendor cloud account fails invariant 6
+#               and should not be bought.
+method = "always-on"
+on   = "uhubctl -a on  -l {hub} -p {port}"
+off  = "uhubctl -a off -l {hub} -p {port}"
+hub  = "1-1"
+ports = []
+# ports = ["@GROVE@-01:1", "@GROVE@-02:2", "@GROVE@-03:3"]
+
+# --------------------------------------------------------------------------
+# One section per scene: what the console must do before and after the
+# playbook, and whether the playbook needs root on the node.
+#
+# `become = true` means the scene runs doas on the node, and stage 1 configured
+# doas as `permit persist :wheel` -- it asks for a password. Ansible asks once
+# and reuses it for every host, and every card written from one answers.txt has
+# the same password, so it is one prompt for the whole grove:
+#
+#     copal grove scene wake --pass
+#
+# A site that wants an unattended morning writes a narrow nopass rule into
+# /etc/doas.d for exactly the commands its scenes run. That is a real choice
+# with a real cost, and it belongs to the site rather than to this repository.
+
+[scenes.wake]
+power  = "on"
+wait   = "180"
+become = true
+
+[scenes.show]
+become = false
+
+[scenes.reset]
+become = true
+
+[scenes.rest]
+become = false
+
+[scenes.sleep]
+become = false
+# poweroff needs no password: stage 1 wrote `permit nopass :wheel cmd
+# /sbin/poweroff` into /etc/doas.d/wheel.conf, which is what makes the end of
+# the day the one scene that never asks for anything.
+# power = "off-after"

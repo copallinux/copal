@@ -25,6 +25,13 @@
 #   copal grove status NODE        one node's facts
 #   copal grove inventory          an Ansible inventory, out of discovery
 #
+# The day, once a grove directory exists (milestone 3):
+#   copal grove init               make groves/<name>/ from the template
+#   copal grove scene              which scenes this grove has
+#   copal grove scene NAME         apply one: wake, show, reset, rest, sleep
+#   copal grove power on|off       the machines a console can switch (see 9.1)
+#   copal grove wait               block until the grove has announced itself
+#
 # Options most verbs take:
 #   --grove NAME   which grove (default: the one named in answers.txt)
 #   --via HOST     browse from HOST over ssh instead of browsing here. macOS
@@ -36,6 +43,10 @@
 #   --user NAME    the login account on the nodes (default: from answers.txt)
 #   --all          with ls, also list strangers -- machines on this network
 #                  that are not in the grove
+#   --json         with inventory, JSON for Ansible instead of an INI file
+#   --check        with scene, ansible's dry run: report, change nothing
+#   --pass         with scene, ask for the doas password once and reuse it
+#   --timeout N    with wait, how long to wait for beacons (default 120s)
 set -eu
 
 B='\033[1m'; D='\033[2m'; C='\033[36m'; G='\033[32m'; Y='\033[33m'; R='\033[31m'; Z='\033[0m'
@@ -64,6 +75,7 @@ answer() {  # <key>
 }
 
 GROVE=""; VIA=""; TAG=""; ONLY=""; LOGIN_USER=""; HOURS=8; SHOW_ALL=0; CREATE=0
+JSON=0; CHECK=0; ASKPASS=0; TIMEOUT=120
 SHIFTN=0
 
 # Sets SHIFTN and returns 0 when it consumed the argument, 1 when it did not.
@@ -86,6 +98,11 @@ take_common() {
         --hours=*) HOURS="${1#*=}" ;;
         --all)     SHOW_ALL=1 ;;
         --create)  CREATE=1 ;;
+        --json)    JSON=1 ;;
+        --check)   CHECK=1 ;;
+        --pass|--ask-become-pass) ASKPASS=1 ;;
+        --timeout)   TIMEOUT="${2:?--timeout needs seconds}"; SHIFTN=2 ;;
+        --timeout=*) TIMEOUT="${1#*=}" ;;
         *) return 1 ;;
     esac
     return 0
@@ -108,6 +125,15 @@ settle() {
     [ -n "$LOGIN_USER" ] || LOGIN_USER=$(answer COPAL_USER)
     [ -n "$LOGIN_USER" ] || LOGIN_USER=user
     PSK=$(answer COPAL_GROVE_PSK)
+    # TWO DIRECTORIES, and the split is invariant 7 rather than tidiness.
+    # GDIR is ~/.copal/groves/<name>: private state -- the operator key, the
+    # token ledger, host keys. SDIR is groves/<name> in a git checkout: the
+    # scenes and the roles, which are what actually gets executed on eight
+    # machines and therefore have to be reviewable, committed and signed. The
+    # grove executes what the repository says, not what the network says, and
+    # a scene living in a dotfile directory nobody diffs is how that stops
+    # being true.
+    SDIR="${COPAL_GROVE_DIR:-$ROOT/groves/$GROVE}"
 }
 conf_get() {  # <key> -- from ~/.copal/groves/<grove>/grove.conf
     [ -f "$GDIR/grove.conf" ] || return 0
@@ -560,7 +586,7 @@ cmd_status() {
     _addr=$(printf '%s' "$_row" | cut -f2)
     _txt=$(printf '%s' "$_row" | cut -f3)
     printf "\n${B}%s${Z}  ${D}%s${Z}\n\n" "$_id" "$_addr"
-    for _pair in "g grove" "r role" "a arch" "m ram-MB" "b build" "t tags" "u uptime" "s score"; do
+    for _pair in "g grove" "r role" "a arch" "m ram-MB" "b build" "t tags" "u uptime" "s score" "c scene"; do
         _k=${_pair%% *}; _l=${_pair#* }
         _v=$(txt_get "$_txt" "$_k"); [ -n "$_v" ] || continue
         printf '    %-9s %s\n' "$_l" "$_v"
@@ -576,12 +602,78 @@ cmd_status() {
 }
 
 # Discovery paying for itself: nobody edits a host list.
+# The rows every inventory format is built from: one line per ENROLLED node,
+# id, address, and the facts its beacon carried. Enrolled only, and that is the
+# invariant rather than a filter -- an inventory is a list of machines this
+# console is about to run commands on, and a candidate has proved nothing.
+inventory_rows() {
+    selected | while IFS="$TAB" read -r _id _addr _txt; do
+        [ "$(cert_state "$_addr")" = enrolled ] || continue
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+            "$_id" "$_addr" \
+            "$(txt_get "$_txt" r)" "$(txt_get "$_txt" t)" \
+            "$(txt_get "$_txt" a)" "$(txt_get "$_txt" m)" "$(txt_get "$_txt" s)"
+    done
+}
+
+# Ansible's dynamic-inventory JSON, which is what groves/<name>/inventory/
+# copal_grove.py shells out to. Written here rather than in that script so
+# there is ONE implementation of "which machines are in this grove", and it is
+# the one that checks certificates.
+inventory_json() {
+    inventory_rows | awk -F'\t' -v grove="$GROVE" -v user="$LOGIN_USER" '
+        function j(v) { gsub(/\\/, "\\\\", v); gsub(/"/, "\\\"", v); return "\"" v "\"" }
+        function hostlist(s,   a, n, i, out) {
+            n = split(s, a, " "); out = ""
+            for (i = 1; i <= n; i++) if (a[i] != "")
+                out = out (out == "" ? "" : ", ") j(a[i])
+            return out
+        }
+        {
+            id = $1; ids[++n] = id
+            addr[id] = $2; role[id] = ($3 == "" ? "node" : $3); tags[id] = $4
+            arch[id] = $5; ram[id] = $6; score[id] = $7
+            members = members " " id
+            byrole[role[id]] = byrole[role[id]] " " id
+            m = split($4, t, ",")
+            for (i = 1; i <= m; i++) if (t[i] != "") bytag[t[i]] = bytag[t[i]] " " id
+        }
+        END {
+            printf "{\n  \"_meta\": {\n    \"hostvars\": {\n"
+            for (i = 1; i <= n; i++) {
+                id = ids[i]
+                printf "      %s: {", j(id)
+                printf "\"ansible_host\": %s, ", j(addr[id])
+                printf "\"ansible_user\": %s, ", j(user)
+                printf "\"copal_grove\": %s, ", j(grove)
+                printf "\"copal_role\": %s, ", j(role[id])
+                printf "\"copal_arch\": %s, ", j(arch[id])
+                printf "\"copal_ram_mb\": %s, ", (ram[id] == "" ? "null" : ram[id] + 0)
+                printf "\"copal_score\": %s, ", (score[id] == "" ? "null" : score[id] + 0)
+                printf "\"copal_tags\": [%s]", hostlist(gensub_commas(tags[id]))
+                printf "}%s\n", (i < n ? "," : "")
+            }
+            printf "    }\n  },\n"
+            printf "  \"all\": { \"children\": [%s] },\n", j(grove)
+            printf "  %s: { \"hosts\": [%s] }", j(grove), hostlist(members)
+            for (r in byrole) printf ",\n  %s: { \"hosts\": [%s] }", j(r), hostlist(byrole[r])
+            for (t in bytag)  printf ",\n  %s: { \"hosts\": [%s] }", j("tag_" t), hostlist(bytag[t])
+            printf "\n}\n"
+        }
+        function gensub_commas(s) { gsub(/,/, " ", s); return s }
+    '
+}
+
 cmd_inventory() {
     while [ $# -gt 0 ]; do
         take_common "$@" || die "unknown option '$1' for inventory"
         shift "$SHIFTN"
     done
     settle
+    if [ "$JSON" = 1 ]; then
+        inventory_json
+        return 0
+    fi
     printf '# generated by copal grove inventory -- do not edit\n'
     printf '[%s]\n' "$GROVE"
     # The count goes through a file rather than a variable: the loop is the
@@ -609,10 +701,310 @@ cmd_inventory() {
     fi
 }
 
-usage() { sed -n '5,38p' "$0" | sed 's/^# \{0,1\}//' >&2; }
+# ---------------------------------------------------------- the grove file --
+#
+# A DELIBERATELY SMALL READER, and it is not a TOML parser. It handles what a
+# grove file actually holds -- [section] headers, key = "value", and flat
+# arrays of strings -- and ignores anything else rather than guessing at it.
+# The alternative was a real TOML library, which means a Python dependency on
+# the console for a file with nine values in it, or two hundred lines of awk
+# that would be wrong in ways nobody notices until a museum opens.
+#
+# Anything this cannot express belongs in a scene, where Ansible parses it.
+toml_get() {  # <section> <key> -- the value, or an array one item per line
+    [ -f "$SDIR/grove.toml" ] || return 0
+    awk -v want="$1" -v key="$2" '
+        /^[[:space:]]*#/ { next }
+        /^[[:space:]]*\[/ { sec = $0
+            gsub(/^[[:space:]]*\[+|\]+[[:space:]]*$/, "", sec); next }
+        {
+            eq = index($0, "=")
+            if (!eq || sec != want) next
+            k = substr($0, 1, eq - 1); v = substr($0, eq + 1)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", k)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+            if (k != key) next
+            if (v ~ /^"/)      { v = substr(v, 2); sub(/".*$/, "", v); print v }
+            else if (v ~ /^\[/) {
+                gsub(/^\[|\].*$/, "", v)
+                n = split(v, a, ",")
+                for (i = 1; i <= n; i++) {
+                    gsub(/^[[:space:]]*"?|"?[[:space:]]*$/, "", a[i])
+                    if (a[i] != "") print a[i]
+                }
+            }
+            else { sub(/[[:space:]]*#.*$/, "", v); print v }
+            exit
+        }' "$SDIR/grove.toml"
+}
+
+need_scenes() {
+    [ -d "$SDIR" ] || die "no grove directory at $SDIR -- run: copal grove init"
+    [ -d "$SDIR/scenes" ] || die "$SDIR has no scenes/ directory in it"
+}
+
+# --------------------------------------------------------------- init ------
+#
+# groves/<name>/ from groves/example/. The template is real, committed files
+# rather than heredocs in this script for one reason: they are Ansible, and
+# Ansible that lives inside a shell script cannot be linted, diffed or run by
+# anybody who has not first extracted it.
+cmd_init() {
+    while [ $# -gt 0 ]; do
+        take_common "$@" || die "unknown option '$1' for init"
+        shift "$SHIFTN"
+    done
+    settle
+    _tpl="$ROOT/groves/example"
+    [ -d "$_tpl" ] || die "no template at $_tpl"
+    [ ! -e "$SDIR" ] || die "$SDIR already exists -- edit it, or remove it deliberately"
+    mkdir -p "$SDIR" || die "could not make $SDIR"
+    cp -R "$_tpl/." "$SDIR/" || die "could not copy the template into $SDIR"
+
+    # No `sed -i`: it takes an argument on macOS and does not on Linux, and
+    # this repository runs on both. Write beside the file and move it over.
+    _fp=$(ca_fingerprint 2>/dev/null || true)
+    find "$SDIR" -type f -print | while IFS= read -r _f; do
+        sed -e "s|@GROVE@|$GROVE|g" -e "s|@USER@|$LOGIN_USER|g" \
+            -e "s|@CA@|${_fp:-unknown -- run copal grove ca --create}|g" \
+            "$_f" > "$_f.copal-new" && mv "$_f.copal-new" "$_f"
+    done
+    chmod 0755 "$SDIR/inventory/copal_grove.py" 2>/dev/null || true
+
+    info "Wrote $SDIR"
+    note "grove.toml         the grove file -- power, attachments, what a scene needs"
+    note "scenes/            wake, show, reset, rest, sleep"
+    note "roles/             what a scene actually does on a node"
+    note "inventory/         the host list, out of discovery. Never edited by hand"
+    note ""
+    note "It is meant to be committed. The grove executes what the repository"
+    note "says, not what the network says, so a scene nobody can diff is a scene"
+    note "nobody can trust. Then:   copal grove scene"
+}
+
+# ------------------------------------------------------------- power -------
+#
+# SECTION 9.1 OF THE PLAN, IN CODE: A RASPBERRY PI CANNOT BE WOKEN BY
+# WAKE-ON-LAN. There is no standby rail feeding the NIC, so any plan that says
+# "WoL at 08:30" cannot be built, and a console that implies otherwise costs a
+# museum its morning. What CAN be switched is the power itself, and that is a
+# property of the room and not of the machine -- a switchable USB hub, a relay,
+# a smart plug with a local API. So the grove file names one command per
+# direction and a node-to-port list, and this runs them.
+#
+# THE PORT LIST IS THE SOURCE OF TRUTH HERE, not discovery, and that is the
+# whole point: a machine that is switched off is not announcing, so anything
+# that iterated over beacons would find nothing to switch on and report a
+# cheerful nothing-to-do.
+power_port() {  # <id>
+    toml_get power ports | awk -F: -v id="$1" '$1 == id { print $2; exit }'
+}
+power_apply() {  # <on|off>
+    _dir="$1"
+    _m=$(toml_get power method); [ -n "$_m" ] || _m=always-on
+    case "$_m" in
+        always-on)
+            note "power: always-on. Nothing to switch -- the nodes stay up, which"
+            note "is the recommendation in the plan and needs no hardware."
+            return 0 ;;
+        command) : ;;
+        *) warn "power method '$_m' is not one this console knows"; return 1 ;;
+    esac
+    _tpl=$(toml_get power "$_dir")
+    [ -n "$_tpl" ] || { warn "the grove file has no [power] $_dir command"; return 1; }
+    _hub=$(toml_get power hub)
+    _any=0
+    for _pair in $(toml_get power ports); do
+        _id=${_pair%%:*}; _port=${_pair#*:}
+        [ -z "$ONLY" ] || [ "$ONLY" = "$_id" ] || continue
+        _any=1
+        # The command comes from a file in a git checkout, which is invariant 7
+        # and the reason running it is acceptable: the console executes what the
+        # repository says. A grove file is as trusted as the console itself.
+        _cmd=$(printf '%s' "$_tpl" \
+            | sed -e "s|{hub}|$_hub|g" -e "s|{port}|$_port|g" -e "s|{node}|$_id|g")
+        if sh -c "$_cmd" >/dev/null 2>&1; then
+            printf "    ${G}ok${Z}    %-14s power %s\n" "$_id" "$_dir" >&2
+        else
+            printf "    ${R}FAIL${Z}  %-14s %s\n" "$_id" "$_cmd" >&2
+        fi
+    done
+    if [ "$_any" = 0 ]; then
+        warn "no node in [power] ports -- every machine here needs a human at a plug"
+        return 1
+    fi
+}
+cmd_power() {
+    _dir=""
+    while [ $# -gt 0 ]; do
+        if take_common "$@"; then shift "$SHIFTN"; continue; fi
+        case "$1" in on|off) _dir="$1" ;; *) die "power takes on or off" ;; esac
+        shift
+    done
+    settle
+    [ -n "$_dir" ] || die "copal grove power on|off"
+    [ -f "$SDIR/grove.toml" ] || die "no grove file at $SDIR/grove.toml -- run: copal grove init"
+    info "power $_dir"
+    power_apply "$_dir"
+}
+
+# -------------------------------------------------------------- wait -------
+#
+# The morning's honest question: are they all here yet? Declared nodes, not
+# discovered ones -- a node that never announces is the answer, and it can only
+# be missed by a list that was built from what announced.
+expected_nodes() {
+    _e=$(toml_get grove nodes)
+    if [ -n "$_e" ]; then printf '%s\n' "$_e"; return 0; fi
+    # No list in the grove file: fall back to the naming stage 16 gives a card,
+    # <grove>-NN, for as many cards as the interview said there were.
+    _n=$(answer COPAL_GROVE_SIZE); [ -n "$_n" ] || return 0
+    _i=1
+    while [ "$_i" -le "$_n" ]; do
+        printf '%s-%02d\n' "$GROVE" "$_i"
+        _i=$((_i + 1))
+    done
+}
+wait_for_nodes() {  # <seconds>
+    _deadline=$(( $(date +%s) + $1 ))
+    expected_nodes > "$TMP/expect"
+    if [ ! -s "$TMP/expect" ]; then
+        warn "no expected node list -- nothing to wait for"
+        return 0
+    fi
+    info "waiting for $(wc -l < "$TMP/expect" | tr -d ' ') nodes, up to ${1}s"
+    : > "$TMP/seen"
+    while :; do
+        rm -f "$TMP/beacons"          # the cache is per invocation; this polls
+        beacons > "$TMP/now" 2>/dev/null || : > "$TMP/now"
+        while IFS= read -r _id; do
+            grep -qx "$_id" "$TMP/seen" 2>/dev/null && continue
+            if awk -F'\t' -v id="$_id" '$1 == id { found = 1 } END { exit !found }' "$TMP/now"; then
+                printf '%s\n' "$_id" >> "$TMP/seen"
+                printf "    ${G}up${Z}    %-14s\n" "$_id" >&2
+            fi
+        done < "$TMP/expect"
+        [ "$(wc -l < "$TMP/seen")" -ge "$(wc -l < "$TMP/expect")" ] && { info "all here"; return 0; }
+        [ "$(date +%s)" -ge "$_deadline" ] && break
+        sleep 5
+    done
+    while IFS= read -r _id; do
+        grep -qx "$_id" "$TMP/seen" 2>/dev/null \
+            || printf "    ${R}--${Z}    %-14s never announced\n" "$_id" >&2
+    done < "$TMP/expect"
+    warn "gave up after ${1}s. The scene will run on the nodes that are here."
+    return 1
+}
+cmd_wait() {
+    while [ $# -gt 0 ]; do
+        take_common "$@" || die "unknown option '$1' for wait"
+        shift "$SHIFTN"
+    done
+    settle
+    wait_for_nodes "$TIMEOUT"
+}
+
+# ------------------------------------------------------------- scene -------
+#
+# A scene is a named, declarative, idempotent state of the whole grove, and
+# applying one twice does nothing the second time. "Today's task is different"
+# is one file changed rather than eight machines touched.
+#
+# THE CONSOLE DOES THREE THINGS HERE AND ANSIBLE DOES THE FOURTH. Power cannot
+# be done over SSH to a machine that is off, and waiting for beacons cannot be
+# done by a playbook whose inventory is the thing being waited for, so those
+# two are the console's. Recording what the grove is now doing is the
+# console's. Everything that happens ON a node is Ansible's, because a
+# playbook is reviewable and a shell loop over ssh is not.
+#
+# Ansible logs in as the HUMAN account with the operator certificate, not as
+# the copal-grove service account: that account has a forced command by
+# design, and a forced command cannot run a module. Host keys are checked
+# normally and that is not a compromise -- `copal grove trust` put the CA in
+# known_hosts, so every node in the grove validates without a prompt and a host
+# key that CHANGES is an error rather than a warning to press through.
+scene_list() {
+    printf "\n${B}Scenes in ${C}%s${Z}\n\n" "$SDIR/scenes"
+    for _f in "$SDIR"/scenes/*.yml; do
+        [ -f "$_f" ] || { note "none yet"; break; }
+        _n=$(basename "$_f" .yml)
+        # The one-line description is the file's own '# scene:' comment, so it
+        # cannot drift from the playbook the way a table in a README does.
+        _d=$(sed -n 's/^# scene: *//p' "$_f" | head -1)
+        printf "    ${C}%-8s${Z} %s\n" "$_n" "$_d"
+    done
+    printf "\n    ${D}copal grove scene NAME    --check to report without changing${Z}\n\n"
+}
+cmd_scene() {
+    _name=""
+    while [ $# -gt 0 ]; do
+        if take_common "$@"; then shift "$SHIFTN"; continue; fi
+        case "$1" in -*) die "unknown option '$1' for scene" ;; esac
+        _name="$1"; shift
+    done
+    settle; need_scenes
+    [ -n "$_name" ] || { scene_list; return 0; }
+    _play="$SDIR/scenes/$_name.yml"
+    [ -f "$_play" ] || die "no scene called '$_name' in $SDIR/scenes"
+    command -v ansible-playbook >/dev/null 2>&1 \
+        || die "no ansible-playbook on this console. Install ansible-core, or use 'copal grove run' for one verb"
+    [ -s "$OPKEY-cert.pub" ] || die "no operator certificate. Run: copal grove login"
+
+    _power=$(toml_get "scenes.$_name" power)
+    if [ "$_power" = on ]; then
+        info "$_name: power first -- a machine that is off cannot be configured"
+        power_apply on || warn "power step incomplete -- carrying on with what is up"
+        _w=$(toml_get "scenes.$_name" wait); [ -n "$_w" ] || _w="$TIMEOUT"
+        wait_for_nodes "$_w" || true
+    fi
+
+    if [ "$(toml_get "scenes.$_name" become)" = true ] && [ "$ASKPASS" = 0 ]; then
+        note "this scene becomes root on the nodes. If doas asks for a password,"
+        note "re-run it as: copal grove scene $_name --pass"
+    fi
+
+    _limit=""
+    [ -z "$ONLY" ] || _limit="$ONLY"
+    [ -z "$TAG" ]  || _limit="tag_$TAG"
+
+    set -- ansible-playbook -i "$SDIR/inventory/copal_grove.py" "$_play"
+    [ "$CHECK" = 0 ]   || set -- "$@" --check --diff
+    [ "$ASKPASS" = 0 ] || set -- "$@" --ask-become-pass
+    [ -z "$_limit" ]   || set -- "$@" --limit "$_limit"
+    if [ "$CHECK" = 1 ]; then info "scene $_name (check: nothing will change)"
+    else                       info "scene $_name"; fi
+
+    _rc=0
+    COPAL_GROVE="$GROVE" \
+    COPAL_GROVE_USER="$LOGIN_USER" \
+    ANSIBLE_CONFIG="$SDIR/ansible.cfg" \
+    ANSIBLE_PRIVATE_KEY_FILE="$OPKEY" \
+    "$@" || _rc=$?
+
+    if [ "$_rc" = 0 ] && [ "$CHECK" = 0 ]; then
+        printf '%s\t%s\n' "$_name" "$(date '+%Y-%m-%dT%H:%M:%S')" > "$GDIR/scene"
+        # The grove is now in a named state, and the console can say since when.
+        info "grove '$GROVE' is $_name since $(cut -f2 "$GDIR/scene")"
+        if [ "$(toml_get "scenes.$_name" power)" = "off-after" ]; then
+            info "$_name: cutting power, now that every node has halted itself"
+            power_apply off || warn "some ports were not switched"
+        fi
+    elif [ "$_rc" != 0 ]; then
+        warn "ansible-playbook exited $_rc -- the grove is in no named state"
+    fi
+    return "$_rc"
+}
+
+# The header, up to the first line that is not a comment. It used to be a
+# hardcoded line range, which silently truncated the moment the header grew.
+usage() { awk 'NR >= 5 { if ($0 !~ /^#/) exit; sub(/^# ?/, ""); print }' "$0" >&2; }
 
 case "${1:-}" in
     ls)                shift; cmd_ls "$@" ;;
+    init)              shift; cmd_init "$@" ;;
+    scene|scenes)      shift; cmd_scene "$@" ;;
+    power)             shift; cmd_power "$@" ;;
+    wait)              shift; cmd_wait "$@" ;;
     ca)                shift; cmd_ca "$@" ;;
     trust)             shift; cmd_trust "$@" ;;
     login)             shift; cmd_login "$@" ;;

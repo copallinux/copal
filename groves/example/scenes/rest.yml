@@ -1,0 +1,20 @@
+# scene: the quiet period — screens dark, machines up, nothing lost
+---
+# THE QUIET PERIOD. Screens off, nodes still up. This is not sleep: nothing is
+# powered down, nothing is halted, and coming back is one press rather than a
+# boot.
+#
+# It is also the answer to the power question for most sites. A Pi Zero 2
+# idling with HDMI blanked is about 0.7 W. Eight of them, sixteen hours a
+# night, is under a tenth of a kilowatt-hour -- which is less than the cost of
+# the hardware that would be needed to switch them off properly.
+
+- name: rest
+  hosts: all
+  gather_facts: false
+  vars:
+    copal_scene: rest
+    copal_display_state: "off"
+  roles:
+    - role: copal_node
+    - role: copal_display

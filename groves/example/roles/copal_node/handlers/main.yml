@@ -1,0 +1,8 @@
+---
+- name: rewrite the beacon
+  # The beacon carries the node's role, score and uptime, so anything that
+  # changes those should be announced rather than waited for. The service
+  # rewrites it every four minutes anyway; this is just not waiting.
+  ansible.builtin.command: doas /usr/bin/copal-grove beacon
+  changed_when: false
+  failed_when: false

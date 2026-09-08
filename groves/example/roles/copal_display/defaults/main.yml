@@ -1,0 +1,6 @@
+---
+copal_display_state: "on"          # on = visible, off = blanked
+copal_display_number: ":0"
+copal_display_user: "@USER@"
+copal_display_app: ""              # the exhibit program, if the scene starts one
+copal_display_blank_minutes: 0

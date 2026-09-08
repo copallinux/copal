@@ -1,0 +1,127 @@
+---
+# What is true of every node in the grove, whatever it is for.
+
+- name: this is a Copal machine that has joined a grove
+  # Stage 16 wrote /etc/copal/grove. Its absence means the card was built
+  # before groves existed, or was built without one -- which is not a failure
+  # of this play so much as a machine that was never invited.
+  ansible.builtin.stat:
+    path: /etc/copal/grove/name
+  register: copal_grove_marker
+
+- name: refuse to configure a machine that is not in this grove
+  ansible.builtin.fail:
+    msg: >-
+      {{ inventory_hostname }} has no /etc/copal/grove -- it is not a grove
+      node. Rebuild its card with a grove named in answers.txt, or run stage 16
+      on it. Nothing was changed here.
+  when: not copal_grove_marker.stat.exists
+
+- name: the packages this grove wants everywhere
+  community.general.apk:
+    name: "{{ copal_node_packages }}"
+    state: present
+  become: true
+  when: copal_node_packages | length > 0
+  notify: rewrite the beacon
+
+# ---------------------------------------------------------------------------
+# Attachments. `require: false` on an entry means a missing server is reported
+# and the play continues -- see group_vars/all.yml for why that is not
+# laziness.
+- name: mount the attachments
+  ansible.posix.mount:
+    src: "{{ item.src }}"
+    path: "{{ item.path }}"
+    fstype: "{{ item.fstype | default('nfs4') }}"
+    opts: "{{ item.opts | default('soft,timeo=50,retrans=2') }}"
+    state: mounted
+  become: true
+  loop: "{{ copal_attachments }}"
+  loop_control:
+    label: "{{ item.name }} -> {{ item.path }}"
+  register: copal_mounts
+  # ignore_errors and NOT failed_when: a failed_when referring to the register
+  # it is producing is evaluated per item against a variable that does not
+  # exist yet. This keeps failed: true on each result and lets the two tasks
+  # below decide what it meant.
+  ignore_errors: true
+
+- name: a required attachment that did not mount is a stop
+  ansible.builtin.fail:
+    msg: >-
+      {{ item.item.name }} is marked required and did not mount:
+      {{ item.msg | default('no reason given') }}
+  loop: "{{ copal_mounts.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('?') }}"
+  when:
+    - item is failed
+    - item.item.require | default(false)
+
+- name: say which optional attachments are not there
+  ansible.builtin.debug:
+    msg: >-
+      {{ item.item.name }} did not mount and is not required -- this node is
+      running degraded, not broken.
+  loop: "{{ copal_mounts.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('?') }}"
+  when:
+    - item is failed
+    - not (item.item.require | default(false))
+
+# ---------------------------------------------------------------------------
+- name: record which scene this node is in
+  # One word in one file, so that the node's own `copal-grove state` and the
+  # console agree about what the grove is doing. The console records the same
+  # name on its side; when the two disagree, the node is right.
+  # NO become. Stage 16 leaves this one file owned by the login account,
+  # because a scene name is a LABEL and not a permission: everything in the
+  # directory beside it stays root's. That is what lets `show` and `rest` --
+  # the two scenes a museum applies most often -- run without a password.
+  ansible.builtin.copy:
+    dest: /etc/copal/grove/scene
+    content: "{{ copal_scene }}\n"
+    mode: "0644"
+  notify: rewrite the beacon
+
+# ---------------------------------------------------------------------------
+# THE PULL HALF, and it is opt-in for a reason: ansible-core on the node costs
+# about 50 MB of a card that has other uses, and a museum that only ever
+# pushes never needs it.
+- name: the pull half -- ansible on the node
+  when: copal_pull_repo | length > 0
+  become: true
+  block:
+    - name: ansible-core and git, on the node
+      community.general.apk:
+        name: [ansible-core, git]
+        state: present
+
+    - name: the pull job
+      # /etc/periodic/hourly is busybox crond's, which is what Alpine runs --
+      # there is no systemd timer here and no RandomizedDelaySec, so the
+      # randomised delay is the first line of the job. Without it eight Pis
+      # clone from one git server in the same second, every hour.
+      ansible.builtin.copy:
+        dest: /etc/periodic/hourly/copal-pull
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          # Written by the copal_node role. The machine that was switched off
+          # during the push converges here instead.
+          sleep "$(awk 'BEGIN { srand(); print int(rand() * 300) }')"
+          exec ansible-pull \
+              --url {{ copal_pull_repo | quote }} \
+              --checkout {{ copal_pull_branch | quote }} \
+              --verify-commit \
+              --only-if-changed \
+              {{ copal_pull_playbook | quote }} \
+              >> /var/log/copal-pull.log 2>&1
+
+    - name: crond is running, or the job above is a file nothing reads
+      ansible.builtin.service:
+        name: crond
+        state: started
+        enabled: true

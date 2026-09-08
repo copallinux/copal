@@ -691,6 +691,95 @@ It remains an attachment: a site that wants k3s on top of a Copal grove installs
 it as one, and `geerlingguy/k3s-ansible` ported to `apk` is the honest starting
 point.
 
+### Nix, and what it would actually buy a grove
+
+The proposal is worth taking seriously and it splits into two questions that
+have different answers: **Nix as a package manager on a Copal machine**, and
+**Nix as the way one command reaches eight machines**. The second is the
+stronger of the two by a distance.
+
+#### The problem it solves, which `apk` does not
+
+Eight machines running `apk add` on eight different afternoons are eight
+machines running eight slightly different things. Alpine's repositories move,
+`apk` resolves against whatever is current, and the grove drifts — quietly,
+and in a way that only shows up when one node renders the exhibit differently
+from the other seven. Nix's answer is that a package is a store path, a store
+path is a hash of everything that went into it, and a closure copied to eight
+machines is *the same bits* on all eight. For a fleet whose entire value is
+that it behaves identically, that is the right shape.
+
+It is also the right shape for **the gem runner in M5**. A gem is currently
+"a program the runner directory knows how to start". A gem could be a closure:
+the console builds it once, copies it, and every node runs bit-identical work.
+Reproducible results out of a grove that computes things is worth more than it
+sounds — it is the difference between an exhibit and an experiment.
+
+#### Where it goes: an attachment, and a copy verb
+
+**`nix copy` is the remote-command story, and the forced command already has
+the right shape for it.** `nix copy --to ssh-ng://museum-03` needs the far end
+to run `nix-store --serve`, which is not a shell — it is one program speaking
+one protocol on stdin and stdout. That is exactly what invariant 4 asks for,
+so it is one more verb in `/usr/bin/copal-grove-exec` beside `power` and
+`snapshot`:
+
+```
+    nix-serve)  exec doas /nix/var/nix/profiles/default/bin/nix-store --serve --write ;;
+```
+
+with the honest note that `--write` lets anything that reaches it add paths to
+the store, which is why it sits behind a host certificate and a user
+certificate and not behind a password.
+
+The build itself happens on the console, never on a node, and that is not a
+preference. **Evaluating nixpkgs wants one to two gigabytes of RAM.** A Pi
+Zero 2 has 512 MB. So the shape is: evaluate and build where there is memory,
+copy the closure where there is not — which is the same shape as the `nix copy`
+verb above, and the same shape as the plan's answer for the model endpoint.
+The Pis are, again, head clients.
+
+#### What it costs, stated before anybody buys into it
+
+1. **It excludes a third of the board table.** `cache.nixos.org` builds
+   `x86_64-linux` and `aarch64-linux`. It does not build `armv6l` or `armv7l`,
+   so `zero` (Pi Zero / Zero W / Pi 1) and `pi2b` would compile every package
+   from source on a single core — which is not slow, it is impossible in any
+   useful sense. Nix is a `zero2` / `pi4` / `pi5` / `pc` / `vm` feature, and a
+   grove with an original Zero in it is a grove where half the fleet cannot
+   have this.
+2. **Alpine is musl and Nix is glibc.** This works — everything in
+   `/nix/store` carries its own glibc, which is the whole point of the store —
+   but it is a supported-in-practice arrangement rather than a tested-by-anyone
+   one, and it should be proved on hardware before it is promised.
+3. **There is no systemd here.** The multi-user daemon ships a systemd unit and
+   Copal runs OpenRC, so it is either a single-user install (one operator, no
+   daemon, simplest) or a hand-written `/etc/init.d/nix-daemon`. Single-user is
+   the honest default for a museum with one operator.
+4. **The store is big.** A modest closure is gigabytes. The default image has
+   room; the 16g image the README already calls too small has none, and stage
+   15's SD-card argument deserves a measurement rather than an assumption —
+   the store is written once and read forever, which is kind to a card, but the
+   *first* copy of a desktop closure is not.
+
+#### What it does not change
+
+**Nix is not how Copal installs itself, and this is not a small distinction.**
+The README argues at length that one shell script on a FAT partition beats a
+package manager for the install path, because the failure being designed around
+is *no network yet*: no index to be stale, no key to expire, no service to be
+down. Nix at install time is the exact opposite of that argument. Nix on top,
+after stage 3, as a thing a user opts into for their own profile, contradicts
+nothing.
+
+So: an **attachment** in the sense of §11 — configured, not installed, declared
+per site, and a grove without it is a grove with a smaller vocabulary rather
+than a broken one. `copal grove nix copy <path>` and a `nix-serve` verb are a
+milestone of their own, after the wall and before the gems, and the first thing
+that milestone should produce is not code but a measurement: a store on a Zero 2
+on a real card, and how long `nix copy` of one small closure actually takes over
+100BASE-TX.
+
 ---
 
 ## 12 · The console
@@ -723,10 +812,10 @@ depends on.
 | `tools/copal-answers.sh` | a grove section — name, size, index, role, tags, discovery mode, CA, PSK, per-card token; the CA is created here if it does not exist; `--node N` writes card N with a fresh token and asks nothing (`--role`, `--tags` for the board that differs) | **done** |
 | `Makefile` | `make answers-node N=2 [ROLE=warden] [TAGS=sdr,north]` | **done** |
 | `copal-prep.sh` | read `COPAL_GROVE_*` from `answers.txt`, carry them to the card uninterpreted, and copy the CA's public half on as `grove_ca.pub` — refusing outright if it is a private key | **done** |
-| `copal-prep.sh` | **stage 16** — avahi and the beacon, the CA into `sshd_config`, the forced command, `nats-server` on a warden, the runner directory, first enrolment | M1–M2 |
-| `tools/copal-grove.sh` | signing, enrolment, inventory | M2 |
-| `copal` | `copal grove …` — the console's command face | M2 |
-| `groves/<name>/` | the grove file, scenes, roles, dynamic inventory | M3 |
+| `copal-prep.sh` | **stage 16** — avahi and the beacon, the CA into `sshd_config`, the forced command, first enrolment. `nats-server` on a warden and the runner directory are still M4–M5 | **done** |
+| `tools/copal-grove.sh` | signing, enrolment, inventory, and the scene verbs — `init`, `scene`, `power`, `wait` | **done** |
+| `copal` | `copal grove …` — the console's command face | **done** |
+| `groves/<name>/` | the grove file, scenes, roles, dynamic inventory; `copal grove init` writes one from `groves/example/` | **done** |
 | `docs/grove-plan.md` | this file | **done** |
 | `docs/grove-lab-report.md` | the survey and the interface design | **done** |
 
@@ -769,6 +858,9 @@ warden.
 Five milestones. Each one is useful on its own, and each one is a thing that can
 be demonstrated to somebody before the next is started.
 
+M1, M2 and M3 are built. What follows M3 is the console proper, and the work
+the grove computes.
+
 **M1 · Eight cards and a list.** `make answers` learns the grove; eight cards
 get written; every node advertises; `copal grove ls` prints the table with
 `✓ / ? / !`. No commands yet. *This alone replaces a spreadsheet of IP
@@ -784,6 +876,12 @@ museum's morning.*
 
 **M4 · The bus and the wall.** `nats-server` on the warden, telemetry, log
 collection, thumbnails, and the TUI. *This alone is the console.*
+
+**M4½ · Nix, if it measures well.** A `nix-serve` verb behind the forced
+command, `copal grove nix copy`, and closures instead of `apk` for the things
+that must be identical on every node. It is placed here rather than earlier
+because it excludes `zero` and `pi2b` entirely, and because the first thing it
+owes anybody is a measurement rather than code. See §11.
 
 **M5 · Gems.** JetStream work queue, the runner directory, `smallpt`, then the
 SDR job, then decay seeding. *This is the exhibit.*
@@ -824,6 +922,17 @@ Open questions, honestly held:
   thing it is watching. Probably: both, with the Mac authoritative for the CA.
 - **Two groves, one PSK.** Sites that clone a card between groves will do this,
   and the failure mode should be a clear error rather than a subtle one.
+- **Whether Nix is worth its store on a card.** §11 argues the shape is right —
+  build on the console, copy closures to nodes — and that the cost is a
+  gigabytes-large store on an SD card and the loss of every 32-bit board. Both
+  halves of that need a measurement on a Zero 2 with a real card before a line
+  of it is written.
+- **The doas password at 09:00.** Two scenes become root on the node, so
+  `--pass` asks once per run. A site that wants a genuinely unattended morning
+  writes a narrow nopass rule for exactly the commands its scenes run. That is
+  a real security decision and it deliberately belongs to the site, but the
+  grove should probably help it be written correctly rather than leaving
+  everybody to invent it.
 
 ---
 

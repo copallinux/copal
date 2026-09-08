@@ -20254,6 +20254,17 @@ grove_write_identity() {
         answers_grove "$_k" > "$GROVE_DIR/$_f" 2>/dev/null || : > "$GROVE_DIR/$_f"
         chmod 0600 "$GROVE_DIR/$_f"
     done
+    # THE SCENE FILE IS THE ONE THING HERE THE OPERATOR OWNS, and it is a
+    # deliberate hole in an otherwise root-owned directory. A scene name is a
+    # LABEL -- wake, show, rest -- and not a permission: nothing reads it to
+    # decide what is allowed, only to report what the grove is doing. Owning it
+    # is what lets the two scenes a museum applies most often, `show` and
+    # `rest`, run without asking anybody for a password at 09:00. Everything
+    # else in this directory stays root's, including the CA and the token.
+    [ -f "$GROVE_DIR/scene" ] || printf 'none\n' > "$GROVE_DIR/scene"
+    chmod 0644 "$GROVE_DIR/scene"
+    chown "$PI_USER" "$GROVE_DIR/scene" 2>/dev/null \
+        || warn "could not give $GROVE_DIR/scene to $PI_USER -- scenes will need a password"
     note "grove $(cat "$GROVE_DIR/name"), card $(cat "$GROVE_DIR/index") of $(cat "$GROVE_DIR/size")"
 }
 
@@ -20318,6 +20329,16 @@ grove_service_account() {
 permit nopass copal-grove as root cmd /sbin/poweroff
 permit nopass copal-grove as root cmd /sbin/reboot
 permit nopass copal-grove as root cmd /usr/bin/copal-grove args beacon
+# The forced command's `snapshot restore` verb runs this, and without a rule
+# naming it doas refused -- so the verb existed, was documented, and could
+# never once have worked. `args restore` and not a bare cmd: restore is the
+# only subcommand automation has any business calling.
+permit nopass copal-grove as root cmd /usr/local/bin/copal-snapshot args restore
+# The operator's own account, for one command: rewriting the announcement this
+# machine already broadcasts every four minutes. A scene that changes a node's
+# role or tags should say so immediately rather than at the next tick, and a
+# beacon is public information -- this grants nothing that listening does not.
+permit nopass :wheel cmd /usr/bin/copal-grove args beacon
 GROVEDOAS
     chmod 0640 /etc/doas.d/copal-grove.conf
     if ! doas -C /etc/doas.d/copal-grove.conf >/dev/null 2>&1; then
@@ -20326,7 +20347,7 @@ GROVEDOAS
         rm -f /etc/doas.d/copal-grove.conf
         return 1
     fi
-    note "doas: $GROVE_ACCT may poweroff, reboot and rewrite its beacon"
+    note "doas: $GROVE_ACCT may poweroff, reboot, restore a snapshot and rewrite its beacon"
 }
 
 grove_sshd_policy() {
@@ -20547,6 +20568,7 @@ beacon() {
         printf '    <txt-record>m=%s</txt-record>\n' "$(ram_mb)"
         printf '    <txt-record>u=%sm</txt-record>\n' "$(uptime_min)"
         printf '    <txt-record>t=%s</txt-record>\n' "$(f tags)"
+        printf '    <txt-record>c=%s</txt-record>\n' "$(scene_now)"
         [ -f /etc/copal/build ] \
             && printf '    <txt-record>b=%s</txt-record>\n' \
                 "$(sed -n 's/^COPAL_BUILD_ID=//p' /etc/copal/build | tr -d '"' | head -1)"
@@ -20585,10 +20607,22 @@ browse() {
         }' | sort -u
 }
 
+# The scene this node believes it is in, and for how long. THE AGE IS THE
+# FILE'S OWN MTIME rather than a timestamp written beside the name, so that
+# every way of setting a scene -- the console's playbook, the forced command,
+# an operator with an editor -- keeps it correct without having to know it
+# exists. "Resting since 14:02" is a fact about a file.
+scene_now() { f scene | head -1 | tr -d ' \t'; }
+scene_min() {
+    [ -f "$D/scene" ] || { echo 0; return; }
+    _m=$(stat -c %Y "$D/scene" 2>/dev/null) || { echo 0; return; }
+    echo $(( ( $(date +%s) - _m ) / 60 ))
+}
+
 state() {
-    printf 'id=%s role=%s score=%s temp=%s up=%sm ram=%s arch=%s tags=%s\n' \
+    printf 'id=%s role=%s score=%s temp=%s up=%sm ram=%s arch=%s tags=%s scene=%s scene_min=%s\n' \
         "$(hostname)" "$(role_now)" "$(score)" "$(temp_c)" "$(uptime_min)" \
-        "$(ram_mb)" "$(uname -m)" "$(f tags)"
+        "$(ram_mb)" "$(uname -m)" "$(f tags)" "$(scene_now)" "$(scene_min)"
 }
 
 # Enrolment, the node's half. Reads a certificate on stdin and refuses it
@@ -20657,6 +20691,7 @@ status() {
     printf 'role       %s, score %s\n' "$(role_now)" "$(score)"
     printf 'tags       %s\n' "$(f tags)"
     printf 'discovery  %s\n' "$(f discovery)"
+    printf 'scene      %s, for %s minutes\n' "$(scene_now)" "$(scene_min)"
     if [ -f "$CA" ]; then
         printf 'authority  %s\n' "$(ssh-keygen -l -f "$CA" 2>/dev/null | awk '{print $2}')"
     else
@@ -20736,13 +20771,22 @@ case "$1" in
         [ -x /usr/local/bin/copal-snapshot ] || refuse "no copal-snapshot on this machine"
         exec doas /usr/local/bin/copal-snapshot restore ;;
     scene)
-        # Recorded, not yet acted on: scenes are milestone 3 in the plan. The
-        # verb exists now so that the console and the node agree about its
-        # spelling before anything depends on it.
+        # THIS RECORDS A SCENE. IT DOES NOT APPLY ONE, and the difference is
+        # the point rather than a limitation. Applying a scene is Ansible's
+        # job, from a playbook in a git checkout on the console, because that
+        # is reviewable and a verb that took arbitrary instructions over the
+        # wire is exactly what invariant 7 forbids. What this is for is the
+        # node agreeing with the console about the label -- and for saying it
+        # over the one channel that still works when everything above SSH is
+        # down.
         [ "${2:-}" = apply ] || refuse "scene takes apply NAME"
         [ -n "${3:-}" ] || refuse "which scene?"
+        case "$3" in
+            *[!a-z0-9-]*|'') refuse "a scene name is lowercase letters, digits and dashes" ;;
+        esac
         printf '%s\n' "$3" > "$D/scene" 2>/dev/null || refuse "cannot record the scene"
-        echo "scene recorded: $3 (applying is milestone 3)" ;;
+        logline "SCENE $3"
+        echo "scene: $3" ;;
     log)
         [ "${2:-}" = tail ] || refuse "log takes tail [N]"
         exec tail -n "${3:-20}" "$LOG" ;;

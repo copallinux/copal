@@ -1,0 +1,65 @@
+# scene: the end of the day — flush the logs, halt, and confirm each one went
+---
+# THE END OF THE DAY. Two things make this different from every other scene.
+#
+# THE LOGS ARE IN RAM. Stage 3 puts /var/log on tmpfs, which is what stops a
+# runaway process filling an SD card, and it means an unflushed log is a log
+# that never existed. copal-logflush is stage 15's answer and it runs first.
+#
+# HALTING BREAKS THE CONNECTION IT ARRIVES ON. A poweroff that Ansible waits
+# for is a poweroff that always looks like a failure, so it is fired and not
+# waited for -- and then the console CHECKS, from outside, that the port
+# actually went away. "I told eight machines to shut down" and "eight machines
+# shut down" are different claims and only the second one may be printed.
+#
+# No password: stage 1 wrote `permit nopass :wheel cmd /sbin/poweroff`.
+
+- name: sleep
+  hosts: all
+  gather_facts: false
+  vars:
+    copal_scene: sleep
+  tasks:
+    - name: record the scene before the machine stops being able to
+      ansible.builtin.copy:
+        dest: /etc/copal/grove/scene
+        content: "sleep\n"
+        mode: "0644"
+
+    - name: flush the RAM logs down to the card
+      ansible.builtin.command: /usr/local/bin/copal-logflush
+      changed_when: true
+      failed_when: false
+
+    - name: halt
+      # async 1 / poll 0: fire it and do not wait. The connection dies with the
+      # machine, which is success here and looks like failure to anything that
+      # waits for an exit status.
+      ansible.builtin.command: doas /sbin/poweroff
+      async: 1
+      poll: 0
+      changed_when: true
+
+    - name: confirm it actually went
+      # From the console, not from the node -- the node is in no position to
+      # report anything by now. A machine still answering on 22 after two
+      # minutes did not shut down, and that is the loud red the console shows.
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        state: stopped
+        timeout: 120
+      delegate_to: localhost
+      register: copal_down
+      # ignore_errors, not failed_when: false. The second one sets failed to
+      # false, and then the task below that asks "did this fail?" can never
+      # fire -- which would mean a machine that refused to shut down was
+      # reported as having shut down.
+      ignore_errors: true
+
+    - name: name the ones that are still up
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }} is STILL ANSWERING on port 22 after two
+          minutes. It did not shut down. Somebody has to look at it.
+      when: copal_down is failed

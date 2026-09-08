@@ -1,0 +1,51 @@
+---
+# Everything a scene needs to know that is not a fact about one machine.
+# Ansible parses this, which is why the structured things live here rather
+# than in grove.toml -- see the comment at the top of that file.
+
+copal_grove_name: "@GROVE@"
+
+# ---------------------------------------------------------------------------
+# ATTACHMENTS -- environment, not distribution. Network filesystems and model
+# endpoints differ per site and change without a rebuild, so baking them into
+# the image would make the image site-specific. A missing attachment is a
+# DEGRADED grove, never a broken boot, and the options below are what make
+# that true: `soft` with a short timeo, and require: false.
+#
+# `hard` mounts plus a NAS that is still booting is a room full of hung Pis at
+# 09:00, and it is the single most common way to turn a good morning into a
+# reinstall.
+copal_attachments: []
+# copal_attachments:
+#   - name: treasure
+#     src: "10.0.0.5:/mnt/tank/grove/@GROVE@"
+#     path: /mnt/treasure
+#     fstype: nfs4
+#     opts: "nfsvers=4.2,ro,soft,timeo=50,retrans=2"
+#     require: false
+
+# Packages every node in this grove should have, beyond what the install gave
+# it. Kept short on purpose: a Pi Zero 2 has 512 MB and an SD card, and a grove
+# is not a place to discover that a package pulled in a desktop.
+copal_node_packages: []
+
+# ---------------------------------------------------------------------------
+# THE PULL HALF. Push is the console pressing a button; pull is for the machine
+# that was switched off during the push. A Pi unplugged all week comes back,
+# pulls, and converges without anybody remembering it existed.
+#
+# Leave the repo empty and no pull is configured at all -- which is the right
+# default, because ansible-core on a node costs about 50 MB and a Zero 2 has
+# other plans for it.
+copal_pull_repo: ""
+copal_pull_branch: main
+copal_pull_playbook: "groves/@GROVE@/scenes/show.yml"
+
+# ---------------------------------------------------------------------------
+# The display. X11 today: the exhibit session is i3 under startx, started by
+# stage 4. A Hyprland node needs the Wayland equivalents and the plan says so
+# openly -- wayvnc and a compositor-specific idle inhibitor -- and the console
+# should not have to care which kind of node it is talking to. It does today.
+copal_display_user: "@USER@"
+copal_display_number: ":0"
+copal_display_blank_minutes: 0        # 0 disables blanking during show

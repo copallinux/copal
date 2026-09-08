@@ -272,6 +272,11 @@ copal grove ca --create         # this grove's certificate authority, once
 copal grove enrol               # sign every candidate that carries a token
 copal grove login               # an 8-hour operator certificate
 copal grove run power off       # one verb, every node, a result each
+
+copal grove init                # groves/<name>/ -- the grove file and its scenes
+copal grove scene               # which scenes this grove has
+copal grove scene wake          # the museum's morning, on every node at once
+copal grove scene sleep         # flush the logs, halt, confirm each one went
 ```
 
 **The images are raw MBR disks — dd them straight to a card:**
@@ -310,6 +315,25 @@ a *candidate* list; a certificate is what decides. The pre-shared key in the
 beacon is a spam filter, and the first person to promote it to a credential
 will have broken the design without noticing. The whole architecture is
 [`docs/grove-plan.md`](docs/grove-plan.md); stage 16 is the target's half of it.
+
+**A scene is a day, written down.** `wake`, `show`, `reset`, `rest`, `sleep` —
+each one a named, declarative, idempotent state of the whole grove, applied to
+every node at once and reporting per node. Applying one twice does nothing the
+second time, and "today's task is different" is one file changed rather than
+eight machines touched. They are Ansible playbooks in
+[`groves/<name>/`](groves/), committed to git, because the grove executes what
+the repository says and not what the network says. The console does the three
+things a playbook cannot — switch the power on, wait for the beacons, and
+record what the grove is now doing — and Ansible does everything that happens
+on a node.
+
+**A Raspberry Pi cannot be woken by Wake-on-LAN.** There is no standby rail
+feeding the NIC, so any morning automation built on it will not work, and a
+museum should know that before it buys anything. `wake` supports switched power
+— `uhubctl` on a per-port hub, or a smart plug with a *local* API — and
+defaults to `always-on`, which is almost always the right answer: a Pi Zero 2
+idling with its display blanked is about 0.7 W, and eight of them overnight is
+under a tenth of a kilowatt-hour.
 
 ---
 
@@ -1637,12 +1661,15 @@ it becomes editable, `shellcheck`-able and testable — but it is a refactor of
 working code, so it happens *after* the two VMs can prove a refactor did not
 break anything.
 
-The grove is two of its five milestones in. Eight cards can be written, they
-announce themselves, the authority signs them, and one verb reaches all of
-them — enough to end a museum's working day with `copal grove run power off`.
-Scenes, the message bus and the wall, and the work the grove computes are
-designed in [`docs/grove-plan.md`](docs/grove-plan.md) and not yet written. None
-of it has run on eight real Pis; it has run on one machine and a fixture.
+The grove is three of its five milestones in. Eight cards can be written, they
+announce themselves, the authority signs them, one verb reaches all of them,
+and a day is five scene files that can be applied to the whole room and
+reported per node. The message bus and the wall, and the work the grove
+computes, are designed in [`docs/grove-plan.md`](docs/grove-plan.md) and not
+yet written — as is Nix, which would give a fleet bit-identical closures
+instead of eight afternoons of `apk` drift, at the price of every 32-bit board
+in the table. None of this has run on eight real Pis: it has run on one machine
+and a fixture, and the playbooks have never met an Ansible.
 
 ## Sizing
 
@@ -1682,6 +1709,7 @@ bindings, the account model, the SD-card wear analysis — is in
 | `fetch-minivmac.sh` | Assembles the Mini vMac working set on demand — nothing binary is tracked here |
 | `tools/minivmac/` | Mini vMac launcher scripts |
 | `tools/copal-grove.sh` | The console for a grove, reached as `copal grove`. Discovery, the certificate authority, enrolment, and one verb over every node |
+| `groves/` | One directory per grove: the grove file, the scenes, the roles and the dynamic inventory. Committed on purpose — a scene runs on eight machines at once, so it has to be reviewable |
 | `tools/copal-answers.sh` | Writes `answers.txt`. `make answers` interviews once; `make answers-node N=` writes card *N* of a grove without asking again |
 | `docs/copal-handbook.md` | The original Copal handbook. Alpine, the card, the stages, the desktop, reference |
 | `docs/lab-report.md` | Bring-up record for the Pi Zero 1 and Zero 2 W, IEEE format |

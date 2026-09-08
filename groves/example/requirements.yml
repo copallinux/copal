@@ -1,0 +1,9 @@
+---
+# Two collections, on the CONSOLE only. Nothing is installed on a node by this
+# file. If you installed the `ansible` package rather than `ansible-core` you
+# already have both, and this file is documentation.
+#
+#   ansible-galaxy collection install -r requirements.yml
+collections:
+  - name: community.general      # the apk module, and the doas become plugin
+  - name: ansible.posix          # mount, for attachments

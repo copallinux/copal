@@ -1,0 +1,52 @@
+# scene: between visitors — quit what they left open, restore home, start clean
+---
+# BETWEEN VISITORS. Copal already had this: stage 11 puts rsync snapshots on a
+# third partition, so "get ready for the next person" is a restore and a
+# session restart -- seconds, rather than the minutes a reimage costs.
+#
+# It becomes root, so it asks for a password once:
+#
+#     copal grove scene reset --pass
+#
+# The password-free path to the same effect is the forced command, which has
+# its own narrow doas rule and needs no shell:
+#
+#     copal grove run snapshot restore
+#
+# Both exist on purpose. Invariant 8: every layer has to be removable and
+# leave a console somebody can still work with.
+
+- name: reset
+  hosts: all
+  gather_facts: false
+  vars:
+    copal_scene: reset
+  # pre_tasks, NOT tasks. Ansible runs roles before tasks whatever order they
+  # appear in the file, and a restore that happened after copal_display had
+  # already relaunched the program would restore the home directory out from
+  # underneath a running session.
+  pre_tasks:
+    - name: is there a snapshot tool on this node
+      ansible.builtin.stat:
+        path: /usr/local/bin/copal-snapshot
+      register: copal_snap
+
+    - name: restore the user's home from the last snapshot
+      ansible.builtin.command: /usr/local/bin/copal-snapshot restore
+      become: true
+      register: copal_restore
+      changed_when: true
+      when: copal_snap.stat.exists
+
+    - name: say which nodes have no snapshots to restore
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }} has no copal-snapshot -- stage 11 was never
+          run here. Nothing was restored and nothing was harmed.
+      when: not copal_snap.stat.exists
+
+  roles:
+    - role: copal_node
+    - role: copal_display
+      vars:
+        copal_display_state: "on"
