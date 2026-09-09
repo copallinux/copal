@@ -14,7 +14,7 @@ frame once the list passes about a hundred rows; and wofi 1.5's user-bound keys
 never close the picker at all, so an arrow key cannot switch panes from inside
 wofi. A fourth fault surfaced on the way: *Shut down* from the menu started an
 i3 nag bar through Xwayland and hung. All four are fixed in `copal-prep.sh`
-stage 16. The menu now opens in about 0.2 s from a cached list, the arrows work
+stage 17. The menu now opens in about 0.2 s from a cached list, the arrows work
 by way of a Hyprland submap, and the session entries stand at the top level of
 the right pane.
 
@@ -32,7 +32,7 @@ between the two.
 |---|---|
 | Guest | Alpine 3.24 aarch64, Hyprland 0.54.3, waybar, wofi 1.5.3, foot, llvmpipe (see `visual-debugging-lab-report.md`) |
 | Display | 1280×800, scale 1 |
-| Menu | `copal-menu` as written by stage 16 into `/usr/local/bin` (heredoc identical to `origin/antiquity-desktop`) |
+| Menu | `copal-menu` as written by stage 17 into `/usr/local/bin` (heredoc identical to `origin/antiquity-desktop`) |
 | Instruments | `grim` for screenshots, `hyprctl layers` for wofi's PID and geometry, Hyprland's event socket (`.socket2.sock`) for submap and layer events, `wtype` 0.4 (unpacked from the apk, not installed) to inject keys, `magick` to measure whether a region had been painted |
 
 ## Method
@@ -205,4 +205,4 @@ is open is wanted or should be hidden.
 | `copal-prep.sh`, `copal-halt` heredoc | asks with wofi on Wayland, logs out with `hyprctl`, detaches under `WAYLAND_DISPLAY` too |
 | `copal-prep.sh`, `copal-install` heredoc | `copal-menu --rebuild-all` as `DOAS_USER` after a successful install |
 | `copal-prep.sh`, stage 4 after `copal-halt` | `/etc/init.d/copal-unplug` in the shutdown runlevel, on a Raspberry Pi only |
-| On this guest, live | `~/.local/bin/copal-menu` and `~/.local/bin/copal-halt` shadow `/usr/local/bin` until stage 16 re-runs; the submap block is in `~/.config/hypr/hyprland.conf` |
+| On this guest, live | `~/.local/bin/copal-menu` and `~/.local/bin/copal-halt` shadow `/usr/local/bin` until stage 17 re-runs; the submap block is in `~/.config/hypr/hyprland.conf` |

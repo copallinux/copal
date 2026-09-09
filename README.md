@@ -2035,7 +2035,7 @@ that the installer *downloads* is not covered by it, and some of it is not
 redistributable at all.
 
 Copal stands on other people's work and says so: diinki's *Linux Antiquity*
-(the theme, stage 16), Omarchy (the shape of the menu), Alpine, Hyprland and
+(the theme, stage 17), Omarchy (the shape of the menu), Alpine, Hyprland and
 wofi. It attributes them in the code and the docs, reports defects to them
 with reproductions, keeps its own changes visible in a public fork, and sends
 a pull request only when the maintainer or their users ask for one — the
