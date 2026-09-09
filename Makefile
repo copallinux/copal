@@ -14,6 +14,8 @@
 #   make sd-zero2      write a physical card for a Pi Zero 2 W
 #   make img-pc        write a bootable disk image for a PC
 #   make lint          syntax-check both scripts, including the generated one
+#   make redeploy      inside the guest: install this checkout's installer onto
+#                      the running machine and re-run stages (STAGES=17)
 #   make space         what is here, what it costs, and which target removes it
 #   make clean         empties build/, keeping build/cache. Reports what it freed
 #   make distclean     clean, and the download cache with it
@@ -85,8 +87,9 @@ model_of = $(patsubst pizero%,zero%,$(1))
 .DEFAULT_GOAL := help
 .PHONY: alldebug build-all-debug imagedebug freshdebug purge \
 	help menu flow targets boards configure require-tools vm graphical check \
-        fresh auto image refresh utm utm-x86 layout layout-auto answers answers-show answers-node lint space clean distclean \
-        all cache build-all
+        fresh auto image refresh utm utm-x86 layout layout-auto answers answers-show lint space clean distclean \
+        all cache build-all release capture video screens verify gallery chain walkthrough release-cast logs utm-export install \
+        redeploy redeploy-check answers-node
 
 help:
 	@printf '\nCopal Linux -- make targets\n\n'
@@ -143,6 +146,8 @@ help:
 	@printf '\n'
 	@printf '\033[1m  Housekeeping\033[0m\n'
 	@printf '  make lint       sh -n on copal-prep.sh and on the copal-init.sh it generates\n'
+	@printf '  make redeploy   \033[2m(run this INSIDE the guest)\033[0m install this checkout onto the\n'
+	@printf '                  machine you are on and re-run stages. \033[2mmake redeploy STAGES=17\033[0m\n'
 	@printf '  make space      what is taking up room and which target removes it. Removes nothing\n'
 	@printf '  make purge      everything: images, payloads, logs AND the UTM machines\n'
 	@printf '                  \033[2mAsks first. Their virtual disks go too -- make purge YES=1 to skip the prompt\033[0m\n'
@@ -349,6 +354,35 @@ utm: image
 	@printf '\033[36m==>\033[0m Started. Find its address with: %s ip --target aarch64\n' '$(UTMRUN)'
 	@printf '    \033[2m%s\033[0m\n' 'Serial console: the VM window toolbar -> Displays -> Serial 1'
 
+# UTM keeps its own copy of the disk -- `create` converts the raw image into a
+# qcow2 inside the bundle -- so an install done in UTM does NOT change
+# $(IMG). This pulls it back out, which is what makes `make screens`,
+# `make verify` and `make logs` see the system you actually installed rather
+# than the pristine one they were built from.
+#
+# The machine has to be stopped: converting a disk out from under a running
+# guest copies a half-written filesystem.
+utm-export:
+	@$(UTMRUN) stop --target aarch64 >/dev/null 2>&1 || true
+	@$(UTMRUN) export --target aarch64 --image $(IMG)
+
+# Boot the image with its console on THIS terminal, and say what to type. The
+# install itself is hours and happens inside the guest -- this is only the
+# door into it.
+#
+# QEMU rather than UTM on purpose: copal-vm.sh writes straight to $(IMG), so
+# everything installed here is in the file that make screens photographs. In
+# UTM it would land in UTM's own qcow2 instead (see utm-export).
+install: image
+	@printf '\n\033[1mThe install happens inside the guest.\033[0m Once it boots:\n\n'
+	@printf '    login:  \033[36mroot\033[0m   (no password yet)\n'
+	@printf '    run:    \033[36msh /media/vda1/copal-init.sh\033[0m\n'
+	@printf '    pick:   \033[36mf\033[0m      server / medium / full monty\n\n'
+	@printf '  Stage 3 reboots the guest by itself; let it come back.\n'
+	@printf '  When it has finished, quit QEMU with \033[1mCtrl-A\033[0m then \033[1mX\033[0m,\n'
+	@printf '  then run \033[36mmake screens\033[0m to photograph the desktop.\n\n'
+	$(VMRUN) $(IMG)
+
 # Arrange the four VM windows -- two serial consoles into the bottom corners,
 # the two graphical ones pushed off the bottom edge but still clickable.
 #
@@ -365,6 +399,206 @@ layout:
 # between the two is "tidy the desktop" and "begin an hour of work".
 layout-auto:
 	@$(UTMRUN) layout --autotype
+
+
+# --------------------------------------------------------------- release ---
+#
+# The images on the web page, regenerated from a real install rather than
+# refreshed by hand and hoped to still be true. Documentation that drifts from
+# the thing it documents is worse than none, and screenshots drift silently --
+# nothing fails when they go stale.
+#
+# WHAT IT ACTUALLY DOES. Builds a clean image, boots it, drives an install
+# over the VM's serial console with expect, and records that console with
+# asciinema; agg renders the cast to a GIF, and the stills are cut from the
+# SAME recording rather than from a second boot. One install, one truth: two
+# recordings of two installs disagree about hostname and timing, and a page
+# whose images contradict each other reads as mocked up even when every frame
+# is real.
+#
+# No screen recording is involved and nothing has to be watched. The install
+# is a text transcript on a serial console, so the characters ARE the artifact
+# -- see tools/capture-media.sh for why a video of a terminal is the wrong
+# container for it.
+#
+# LEVEL and MINUTES are the two knobs: which install level to record (s, m or
+# f) and how long to record for. A full install is hours; the default records
+# the first twelve minutes, which is the part with anything to see.
+LEVEL   ?= f
+MINUTES ?= 12
+
+# A RECORDING IS PUBLISHED; A BUILD IS NOT. copal-prep.sh offers this Mac's
+# git identity as the default the target suggests, and stage 1 prints it --
+# so a capture of a normal build puts a real name and a real email address
+# into a GIF on a public web page. That is the same leak .gitignore exists to
+# prevent, arriving by a route .gitignore cannot see.
+#
+# So a release build is given a neutral identity instead of this Mac's. It is
+# not a redaction after the fact -- the identity never reaches the image, so
+# there is nothing in the transcript to scrub and no way to forget.
+PURGE ?= 0
+CAPTURE_NAME  ?= Copal
+CAPTURE_EMAIL ?= copal@example.invalid
+
+capture:
+	@tools/capture-media.sh --image $(IMG) --level $(LEVEL) --minutes $(MINUTES)
+
+# The same recording, encoded as video as well as GIF. A GIF belongs on the
+# web page -- it plays inline with no player and no controls -- and a video
+# belongs everywhere else: a release page, a talk, anything that wants
+# scrubbing or a length a GIF would be absurd at. Both come out of one cast,
+# so they cannot show different installs.
+video:
+	@tools/capture-media.sh --image $(IMG) --level $(LEVEL) --minutes $(MINUTES) --video
+
+# Real screenshots of the graphical console, taken by QEMU's own monitor
+# rather than by a person with a camera. The serial console is text and a
+# compositor does not draw to it, so this is the only automatic route to a
+# picture of the desktop -- see tools/capture-screens.sh.
+#
+# Wants an image with a desktop ALREADY INSTALLED: it boots one and
+# photographs what comes up, which is not the same job as installing it.
+SHOTS    ?= 6
+SHOTWAIT ?= 150
+screens:
+	@tools/capture-screens.sh --image $(IMG) --out docs/media \
+	    --shots $(SHOTS) --wait $(SHOTWAIT)
+
+# Is this image the one this checkout would build, and is this checkout the
+# newest there is? Six questions nobody can answer from memory. --boot also
+# runs it, which is the difference between "an image exists" and "a system
+# was built".
+verify:
+	@tools/verify-build.sh --image $(IMG)
+
+verify-boot:
+	@tools/verify-build.sh --image $(IMG) --boot
+
+# The gallery, generated from whatever docs/media actually holds rather than
+# maintained by hand -- so it can never list an image the last capture
+# renamed or never produced.
+gallery:
+	@python3 tools/build-gallery.py
+
+# The guided version of `make release`: runs the automatic parts and stops at
+# the two things a script cannot do on this Mac -- approving an Accessibility
+# prompt, and photographing a desktop. Both are announced, waited for, and
+# checked afterwards, so a skipped screenshot leaves an honest empty slot
+# rather than a silent one. See docs/AUTOMATION.md.
+# PURGE means the same thing here as everywhere else: 0 keeps the payload
+# cache, 1 empties build/ and deletes the UTM machines first. It is a make
+# VARIABLE, not a flag -- `make walkthrough --no-purge` cannot work, because
+# make takes --no-purge for itself before the recipe ever sees it.
+walkthrough:
+	@tools/release-walkthrough.sh \
+	    $(if $(filter 1,$(PURGE)),,--no-purge) \
+	    --minutes $(MINUTES) --level $(LEVEL)
+
+# Gather every log a run produced -- the Mac's build transcripts, the install
+# transcript off the image's FAT partition, and the guest's own logs if it is
+# reachable -- into build/logs/<timestamp>, with a summary that greps for the
+# things worth worrying about. The image is attached and detached in a trap,
+# so a collection never leaves a mount behind.
+logs:
+	@tools/collect-logs.sh --image $(IMG)
+
+# Record the release pipeline ITSELF -- the Mac side, not the guest's install.
+#
+# The cast is written OUTSIDE build/, and that is not a preference: the first
+# attempt recorded into build/ and `make release PURGE=1` deleted the file
+# mid-recipe, because purging build/ is one of the steps being recorded. A
+# recording of a process that destroys the directory it is being written to
+# has to live somewhere that process does not touch.
+RELEASE_CAST ?= /tmp/copal-release-pipeline.cast
+release-cast:
+	@asciinema rec --overwrite \
+	    --command "make release PURGE=$(PURGE) MINUTES=$(MINUTES)" \
+	    "$(RELEASE_CAST)"
+	@agg --speed 6 --font-family "JetBrains Mono,Menlo,monospace" \
+	    --theme "181818,d0daed,121212,ff723e,a0675d,fccf8a,666c93,87704f,92bbcc,d0daed,5e5e5e,ff723e,a0675d,fccf8a,666c93,87704f,92bbcc,fce2ab" \
+	    "$(RELEASE_CAST)" docs/media/release-pipeline.gif
+	@printf '\033[36m==>\033[0m docs/media/release-pipeline.gif\n'
+	@python3 tools/build-gallery.py
+
+# ----------------------------------------------------------------- chain ---
+#
+# WHICH TARGET CALLS WHICH. `make help` lists what each target does; this says
+# how they fit together, which is the thing that is genuinely hard to see in a
+# Makefile -- the recursive $(MAKE) calls inside recipes are invisible to
+# `make -n` until you run it, and invisible to the help text entirely.
+#
+# Hand-written and therefore capable of drifting. It is checked by `make lint`
+# against the targets that actually exist, so a chain naming a target that has
+# been renamed fails rather than misleading.
+chain:
+	@printf '\n\033[1mCopal -- how the targets chain\033[0m\n\n'
+	@printf '  \033[36mONE COMMAND, START TO FINISH\033[0m\n'
+	@printf '    make release PURGE=1\n'
+	@printf '      └─ purge YES=1        empty build/, delete both UTM machines\n'
+	@printf '      └─ auto               ./copal build $(MODEL) --auto   (unattended, needs no tty)\n'
+	@printf '      └─ verify             stamp vs checkout vs remote\n'
+	@printf '      └─ video              record the install, render GIF + mp4 + stills\n'
+	@printf '      └─ gallery            regenerate docs/gallery.html from docs/media\n\n'
+	@printf '  \033[36mBUILDING\033[0m\n'
+	@printf '    make image              build $(IMG) if it is missing\n'
+	@printf '    make fresh              delete it first, build again      (asks at each step)\n'
+	@printf '    make auto               the same, unattended               (script(1) supplies a tty)\n'
+	@printf '    make all                cache + every board + both UTM machines\n\n'
+	@printf '  \033[36mINSTALLING (hours, inside the guest)\033[0m\n'
+	@printf '    make install            boot it in QEMU and tell you what to type\n'
+	@printf '      then                  make screens   photograph the desktop\n'
+	@printf '    \033[2mor install in UTM, then:\033[0m\n'
+	@printf '    make utm                register + start a UTM machine\n'
+	@printf '    make utm-export         pull UTM'"'"'s disk back into $(IMG)   <- do not skip\n\n'
+	@printf '  \033[36mRUNNING IT\033[0m\n'
+	@printf '    make vm                 QEMU, serial console on THIS terminal   <- scriptable\n'
+	@printf '    make graphical          QEMU, a window\n'
+	@printf '    make check              QEMU headless; exits non-zero if no login prompt\n'
+	@printf '    make layout             arrange the UTM windows\n'
+	@printf '    make layout-auto        ...and type the install into them (needs Accessibility)\n\n'
+	@printf '  \033[36mCHECKING AND CAPTURING\033[0m\n'
+	@printf '    make verify             six questions about image, source and remote\n'
+	@printf '    make verify-boot        the same, and boot it\n'
+	@printf '    make capture            record an install  (GIF + stills)\n'
+	@printf '    make video              the same, plus mp4/webm\n'
+	@printf '    make screens            QEMU screendump of an INSTALLED desktop\n'
+	@printf '    make gallery            rebuild docs/gallery.html\n\n'
+	@printf '  \033[36mCLEARING UP\033[0m\n'
+	@printf '    make clean              build artefacts, keep the payload cache\n'
+	@printf '    make distclean          those and the cache\n'
+	@printf '    make purge              those and the UTM machines        (asks; YES=1 skips)\n\n'
+	@printf '  \033[2mbin/*.sh are two-line shortcuts that exec the same targets, so they\n'
+	@printf '  cannot disagree with this. bin/vm.sh is make vm, and so on.\033[0m\n\n'
+	@printf '  Variables: MODEL=$(MODEL)  LEVEL=$(LEVEL)  MINUTES=$(MINUTES)  PURGE=0\n\n'
+
+# A CLEAN IMAGE, and it has to be clean rather than merely current: the guided
+# screen is the first thing the page shows, and it only appears on a machine
+# that has never been installed -- no apkovl, root still a tmpfs. Capturing
+# over a half-built image records the resume path instead, which is a
+# different and much less interesting screen.
+#
+# `auto`, not `fresh`: both build, but fresh gates each step on a read from
+# /dev/tty and there is no terminal in a release run. auto supplies one with
+# script(1), which is the whole reason that target exists. The image is
+# removed first so auto has nothing to resume from.
+# PURGE=1 empties build/ and deletes the UTM machines first. Off by default,
+# and that default is deliberate: purge destroys the payload cache (a
+# re-download) and any VM disk, and "regenerate the web page's images" should
+# not quietly cost somebody an hour and a virtual machine they were using.
+# `make release PURGE=1` is the from-nothing version, and it says so.
+release: | require-tools $(BUILDDIR)
+	@printf '\033[36m==>\033[0m \033[1mRelease capture\033[0m -- a clean image, then a recorded install\n'
+	@if [ "$(PURGE)" = 1 ]; then \
+	    printf '\033[36m==>\033[0m PURGE=1 -- emptying build/ and removing the UTM machines\n'; \
+	    $(MAKE) --no-print-directory purge YES=1; \
+	fi
+	@rm -f $(IMG)
+	@CFG_GIT_NAME='$(CAPTURE_NAME)' CFG_GIT_EMAIL='$(CAPTURE_EMAIL)' \
+	    $(MAKE) --no-print-directory auto MODEL=$(MODEL)
+	@$(MAKE) --no-print-directory verify
+	@$(MAKE) --no-print-directory video
+	@$(MAKE) --no-print-directory gallery
+	@printf '\033[36m==>\033[0m Media regenerated in docs/media. Review, then commit.\n'
 
 # Collect the answers an unattended install needs -- identity, login name, and
 # the root password, which is the one thing setup-alpine has no answer-file
@@ -546,6 +780,74 @@ sync-radbeeper:
 	@printf '  ok      %s -> $(PREP)\n' "$(RADBEEPER_SRC)"
 	@$(MAKE) --no-print-directory lint
 
+# THE HOST'S /bin/sh IS NOT THE TARGET'S. macOS ships bash as /bin/sh, and bash
+# parses things busybox ash refuses -- so `sh -n` here can pass a file that the
+# machine this whole repository exists to build cannot read. One shipped that
+# way: a lone backtick in an unquoted heredoc, inside a help message, opening a
+# command substitution that ran to the end of the file. bash -n: fine. The
+# guest: "syntax error: unexpected end of file", on the first login, with
+# nothing installed.
+#
+# dash is the closest POSIX parser most Macs can get (brew install dash), and
+# busybox itself is better still if it is there. Neither present is not a
+# failure -- it is a line saying which check did not run, because a lint that
+# quietly stops checking is worse than one that admits it.
+POSIX_SH := $(shell for c in dash /bin/dash busybox; do command -v $$c >/dev/null 2>&1 && { echo $$c; break; }; done)
+
+define POSIX_PARSE_INIT
+	@if [ -z "$(POSIX_SH)" ]; then \
+	    printf '  \033[33mskip\033[0m    POSIX parse -- no dash or busybox here (brew install dash)\n'; \
+	    printf '          bash -n passed, but the target runs busybox ash, which is stricter\n'; \
+	else \
+	    _p="$(POSIX_SH)"; case "$$_p" in *busybox) _p="busybox sh" ;; esac; \
+	    $$_p -n $(BUILDDIR)/.copal-init.lint.sh \
+	        && printf '  ok      copal-init.sh parses under %s (the target'"'"'s parser)\n' "$$_p" \
+	        || { printf '\033[31merror:\033[0m copal-init.sh does not parse under %s -- this would ship\n' "$$_p"; exit 1; }; \
+	fi
+endef
+
+# The scripts INSIDE that file, which the first check cannot see: to the shell
+# reading copal-init.sh they are heredoc data, and they are only parsed on the
+# target, when something runs them. Every one that starts #!/bin/sh is pulled
+# out and parsed here -- copal-bar, copal-widgets, copal-menu, copal-halt and
+# the thirty-odd others.
+#
+# ONLY THE SINGLE-QUOTED, WRITTEN-IN-ONE-GO ONES. A `cat > f <<DELIM` without
+# quotes is expanded as it is written, so what lands on the target is not what
+# is in this file; and copal-startx is assembled from two heredocs, an
+# unquoted half and a quoted one, so neither half is a whole script to parse.
+# Checking those would mean re-implementing the shell's expansion here to find
+# out what the file will say, which is a worse bug factory than the thing it
+# would catch.
+define POSIX_PARSE_EMBEDDED
+	@if [ -n "$(POSIX_SH)" ]; then \
+	    _p="$(POSIX_SH)"; case "$$_p" in *busybox) _p="busybox sh" ;; esac; \
+	    _d=$(BUILDDIR)/.embedded.lint; rm -rf $$_d; mkdir -p $$_d; \
+	    awk '/^[ \t]*cat > [^ ]+ <<'"'"'[A-Z0-9_]+'"'"'[ \t]*$$/ { \
+	            delim = $$0; sub(/^.*<<'"'"'/, "", delim); sub(/'"'"'[ \t]*$$/, "", delim); \
+	            path = $$0; sub(/^[ \t]*cat > /, "", path); sub(/ <<.*$$/, "", path); \
+	            n = split(path, parts, "/"); name = parts[n]; \
+	            out = ""; first = 1; body = ""; \
+	            while ((getline line) > 0) { \
+	                if (line == delim) break; \
+	                if (first) { if (line !~ /^#!\/bin\/sh/) { body = ""; break } first = 0 } \
+	                body = body line "\n"; \
+	            } \
+	            if (body != "") printf "%s", body > (dir "/" name); \
+	        }' dir="$$_d" $(BUILDDIR)/.copal-init.lint.sh; \
+	    _n=0; _bad=""; \
+	    for _f in $$_d/*; do \
+	        [ -f "$$_f" ] || continue; _n=$$((_n+1)); \
+	        $$_p -n "$$_f" 2>/dev/null || _bad="$$_bad $$(basename $$_f)"; \
+	    done; \
+	    rm -rf $$_d; \
+	    if [ -n "$$_bad" ]; then \
+	        printf '\033[31merror:\033[0m embedded script(s) do not parse under %s:%s\n' "$$_p" "$$_bad"; exit 1; \
+	    fi; \
+	    printf '  ok      %s embedded /bin/sh scripts parse under %s\n' "$$_n" "$$_p"; \
+	fi
+endef
+
 lint: | $(BUILDDIR)
 	@sh -n $(PREP) && printf '  ok      copal-prep.sh\n'
 	@sh -n $(VMRUN) && printf '  ok      copal-vm.sh\n'
@@ -557,6 +859,8 @@ lint: | $(BUILDDIR)
 	         rm -f $(BUILDDIR)/.copal-init.lint.sh; exit 1; }
 	@sh -n $(BUILDDIR)/.copal-init.lint.sh \
 	    && printf '  ok      copal-init.sh (generated, %s lines)\n' "$$(wc -l < $(BUILDDIR)/.copal-init.lint.sh | xargs)"
+	@$(POSIX_PARSE_INIT)
+	@$(POSIX_PARSE_EMBEDDED)
 	@rm -f $(BUILDDIR)/.copal-init.lint.sh
 	@for _s in bin/*.sh; do sh -n "$$_s" || exit 1; done; \
 	    printf '  ok      bin/*.sh (%s shortcuts)\n' "$$(ls bin/*.sh | wc -l | xargs)"
@@ -645,6 +949,180 @@ lint: | $(BUILDDIR)
 	    exit 1; }; \
 	printf '  ok      every shortcut names a real target\n'
 
+# ------------------------------------------------------------- redeploying ---
+#
+# EVERY OTHER TARGET IN THIS FILE RUNS ON THE MAC AND WRITES A CARD. This one
+# runs on the machine the card made, from the checkout stage 7 puts at
+# ~/code/copal, and it is the loop that was missing: edit a stage, see it, on
+# the machine itself, without writing an image or pushing a commit.
+#
+#     make redeploy               install this checkout's installer, then the menu
+#     make redeploy STAGES=17     ...and re-run stage 17, unattended
+#     make redeploy STAGES=4,17   several, in that order
+#     make redeploy-check         say what would change, change nothing
+#     make redeploy PULL=1        pull first, without being asked
+#     make redeploy PULL=0        never ask, never pull
+#
+# WHAT IT ACTUALLY DOES, because none of it is magic:
+#
+#   0. Looks at the checkout: which branch, whether it is dirty, and whether
+#      the tracking branch has commits this tree does not. If it is behind, it
+#      ASKS before pulling -- because the reason to run this target is usually
+#      an edit you have not committed, and a target that silently pulled on
+#      top of that would be reaching into your working tree. PULL=1 answers
+#      yes without asking, PULL=0 skips the question, and no tty is PULL=0.
+#   1. sh -n on copal-prep.sh, and on the copal-init.sh extracted out of it.
+#      A syntax error in the heredoc survives every check that reads the
+#      generator alone, and this target's whole job is to install that heredoc.
+#   2. `copal -U --from .`, which extracts it again, checks it parses, backs
+#      up the installed copy as copal-init.sh.bak and writes the new one onto
+#      the boot partition, remounting it read-write if it has to.
+#   3. `copal --stage $(STAGES) --auto` if STAGES is set -- every question in
+#      those stages answered automatically, which is what you want from a
+#      Makefile and not what you want at a terminal.
+#
+# Nothing here is destructive in a way a rebuild is: the stages are the same
+# re-runnable stages the menu offers, and stage 17 moves any config it
+# replaces into ~/copal-theme-backups/ rather than deleting it.
+#
+# THE GUARD IS THE POINT of the first three lines. Running this on the Mac
+# would find no boot partition and no copal, and the failure would be some
+# confusing thing about /boot rather than "you are on the wrong machine".
+STAGES ?=
+
+# Unset means "ask, if there is somebody to ask". 1 pulls, 0 does not.
+PULL ?=
+
+# doas rather than sudo: Copal locks root in stage 13 and doas is what it
+# installs. Empty when already root, so this works from a root shell too.
+DOAS = $(shell [ "$$(id -u)" = 0 ] || command -v doas 2>/dev/null || command -v sudo 2>/dev/null)
+
+define GUEST_GUARD
+	@_b=''; for _d in /boot /media/*; do [ -f "$$_d/answers.txt" ] && { _b="$$_d"; break; }; done; \
+	if [ -z "$$_b" ]; then \
+	    printf '\033[31merror:\033[0m this target runs INSIDE a Copal machine, not on the Mac.\n'; \
+	    printf '  No answers.txt under /boot or /media/*, so there is no Copal install here.\n'; \
+	    printf '  On the Mac you want: \033[36mmake fresh\033[0m (build an image) or \033[36mmake vm\033[0m (boot one).\n'; \
+	    printf '  In the guest: \033[36mcd ~/code/copal && make redeploy\033[0m\n'; \
+	    exit 1; \
+	fi; \
+	printf '  boot partition  %s\n' "$$_b"
+endef
+
+# WHERE THIS CHECKOUT STANDS, before anything is installed from it. Reported
+# always, because "I redeployed and my change was not in it" is nearly always
+# one of these three lines -- wrong branch, uncommitted edit, or a tree that
+# was never the tree you thought.
+#
+# git fetch is given a timeout: a guest with no network yet is the normal case
+# on a fresh install, and a redeploy must not hang for two minutes on a DNS
+# lookup before doing the local work it could always have done.
+# STOPFILE is how one recipe line tells the next one not to bother. Each line
+# of a recipe is its own shell, so an `exit 0` after the pull would end that
+# line and nothing else -- make would carry on and install anyway. A file is
+# the smallest thing that crosses that boundary. Cleared at the start of every
+# run so a killed one cannot leave a stale veto behind.
+STOPFILE = /tmp/.copal-redeploy-stop
+
+define GIT_STATE
+	@rm -f $(STOPFILE)
+	@if git -C "$(CURDIR)" rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+	    _br=$$(git -C "$(CURDIR)" rev-parse --abbrev-ref HEAD 2>/dev/null); \
+	    _sh=$$(git -C "$(CURDIR)" rev-parse --short HEAD 2>/dev/null); \
+	    _dirty=$$(git -C "$(CURDIR)" status --porcelain 2>/dev/null | wc -l | tr -d ' '); \
+	    printf '  checkout        %s @ %s' "$$_br" "$$_sh"; \
+	    [ "$$_dirty" = 0 ] && printf '\n' || printf ' \033[33m(%s file(s) with local changes)\033[0m\n' "$$_dirty"; \
+	else \
+	    printf '  checkout        \033[33mnot a git checkout -- nothing to pull\033[0m\n'; \
+	fi
+endef
+
+# The pull, offered rather than done. Three ways it declines without asking:
+# not a git tree, no tracking branch, or nothing to pull.
+#
+# A DIRTY TREE IS NOT AN ERROR HERE, it is the usual reason to be running this
+# at all -- so it is reported and the pull is not offered, rather than the
+# other way round. Stash or commit first if you did want both.
+#
+# AND IT STOPS AFTER PULLING. A pull can change this Makefile, and make has
+# already read the old one: the recipe running now is the previous version,
+# and carrying on would install a tree that make itself is out of step with.
+# So it says what happened and asks for the command again, which costs one
+# line of typing and cannot be wrong.
+define GIT_PULL
+	@if ! git -C "$(CURDIR)" rev-parse --is-inside-work-tree >/dev/null 2>&1; then :; \
+	elif [ "$(PULL)" = 0 ]; then :; \
+	elif ! git -C "$(CURDIR)" rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then \
+	    printf '  upstream        \033[2mnone -- this branch tracks nothing, so nothing to pull\033[0m\n'; \
+	elif [ -n "$$(git -C "$(CURDIR)" status --porcelain 2>/dev/null)" ]; then \
+	    printf '  upstream        \033[2mnot checked: local changes here, which is usually the point\033[0m\n'; \
+	else \
+	    _to=''; command -v timeout >/dev/null 2>&1 && _to='timeout 20'; \
+	    $$_to git -C "$(CURDIR)" fetch --quiet 2>/dev/null || \
+	        printf '  upstream        \033[2mcould not fetch (no network?) -- using what is here\033[0m\n'; \
+	    _behind=$$(git -C "$(CURDIR)" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo 0); \
+	    if [ "$$_behind" -gt 0 ] 2>/dev/null; then \
+	        _u=$$(git -C "$(CURDIR)" rev-parse --abbrev-ref '@{u}'); \
+	        printf '  upstream        \033[33m%s is %s commit(s) ahead of this tree\033[0m\n' "$$_u" "$$_behind"; \
+	        _do="$(PULL)"; \
+	        if [ -z "$$_do" ]; then \
+	            if [ -t 0 ]; then \
+	                printf '  pull them first? [y/N] '; read _a </dev/tty || _a=n; \
+	                case "$$_a" in [Yy]*) _do=1 ;; *) _do=0 ;; esac; \
+	            else \
+	                _do=0; \
+	                printf '  \033[2mnot asking (no terminal) -- make redeploy PULL=1 to pull\033[0m\n'; \
+	            fi; \
+	        fi; \
+	        if [ "$$_do" = 1 ]; then \
+	            git -C "$(CURDIR)" pull --ff-only || { \
+	                printf '\033[31merror:\033[0m pull failed -- sort the checkout out first\n'; exit 1; }; \
+	            : > $(STOPFILE); \
+	            printf '\n  Pulled. \033[33mRun the same command again\033[0m -- make read the old\n'; \
+	            printf '  Makefile before the pull, so this one stops here rather than\n'; \
+	            printf '  installing a tree it is out of step with.\n\n'; \
+	            exit 0; \
+	        fi; \
+	    fi; \
+	fi
+endef
+
+redeploy-check: lint
+	$(GUEST_GUARD)
+	$(GIT_STATE)
+	@if command -v copal >/dev/null 2>&1; then \
+	    $(DOAS) copal --check --from "$(CURDIR)"; \
+	else \
+	    printf '\033[33mnote:\033[0m no "copal" front door installed -- redeploy would run the\n'; \
+	    printf '  extracted copal-init.sh straight from /tmp instead.\n'; \
+	fi
+
+redeploy: lint
+	$(GUEST_GUARD)
+	$(GIT_STATE)
+	$(GIT_PULL)
+	@if [ -f $(STOPFILE) ]; then rm -f $(STOPFILE); exit 0; fi; \
+	if command -v copal >/dev/null 2>&1; then \
+	    $(DOAS) copal -U --from "$(CURDIR)" || exit 1; \
+	    if [ -n "$(STAGES)" ]; then \
+	        printf '\n  Running stage(s) %s, unattended.\n\n' '$(STAGES)'; \
+	        exec $(DOAS) copal --stage "$(STAGES)" --auto; \
+	    else \
+	        printf '\n  Installed. Now: \033[36mcopal\033[0m for the menu, or\n'; \
+	        printf '        \033[36mmake redeploy STAGES=17\033[0m to re-run a stage straight away.\n\n'; \
+	    fi; \
+	else \
+	    printf '  no "copal" front door here -- running the extracted installer from /tmp\n'; \
+	    sed -n "/^cat > .*copal-init\.sh\" <<.COPALINIT.$$/,/^COPALINIT$$/p" $(PREP) \
+	        | sed '1d;$$d' > /tmp/copal-init.redeploy.sh; \
+	    test -s /tmp/copal-init.redeploy.sh || { printf '\033[31merror:\033[0m extraction failed\n'; exit 1; }; \
+	    if [ -n "$(STAGES)" ]; then \
+	        exec $(DOAS) sh /tmp/copal-init.redeploy.sh --stage "$(STAGES)" --auto; \
+	    else \
+	        exec $(DOAS) sh /tmp/copal-init.redeploy.sh; \
+	    fi; \
+	fi
+
 # --------------------------------------------------------------- cleaning ---
 #
 # Three levels, and what separates them is the cost of undoing them:
@@ -690,8 +1168,8 @@ LEGACY   = copal-*.img copal-*-efivars.fd efivars.fd .copal-init.lint.sh \
            copal-prep-auto*.log copal-vm-check.log run-log-*.txt *.log
 # Generated per-machine configuration -- the same list .gitignore carries, and
 # deliberately the same list, so the two cannot drift apart.
-SECRETS  = copal.conf copal-git answers.txt usercfg.txt authorized_keys \
-           firstrun.log copal-auto copal-timings
+SECRETS  = copal.conf copal-git copal-repos answers.txt usercfg.txt \
+           authorized_keys firstrun.log copal-auto copal-timings
 # Finder droppings. Not big, but they are folder clutter and they travel.
 CRUFT    = .DS_Store ._* .Spotlight-V100 .Trashes
 

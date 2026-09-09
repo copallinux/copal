@@ -109,7 +109,7 @@ hyprctl keyword render:cm_enabled 1        # revert
 waybar was bisected by generating one-module and two-module configs from the
 real one and measuring each for three seconds. Only once a cause was isolated
 was anything written to disk, and then only to the files Copal reserves for the
-user: `~/.config/hypr/local.conf` (sourced last, never rewritten by stage 16)
+user: `~/.config/hypr/local.conf` (sourced last, never rewritten by stage 17)
 and `~/.config/waybar/config`.
 
 ## IV. Results
@@ -320,7 +320,7 @@ Mac.
    For a client, generate a reduced config and run it beside the real one.
 5. **Persist** only what the measurement proved, and only in
    `~/.config/hypr/local.conf` or the client's own config — never in
-   `hyprland.conf`, which stage 16 rewrites.
+   `hyprland.conf`, which stage 17 rewrites.
 6. **Record**: run the probe (§VII) with a label, and paste its summary line
    into the restart log (§VIII).
 
@@ -444,10 +444,10 @@ To check it after a restart: `pgrep -a spice-vdagent copal-vmclip`, then
 | `docs/img/gfx-*.png` | before/after evidence for §IV.B |
 | `docs/visual-debugging-lab-report.md` | this report |
 
-All three config files are the user-owned copies; stage 16 will regenerate
+All three config files are the user-owned copies; stage 17 will regenerate
 `~/.config/waybar/config` and `~/.config/foot/foot.ini` from the installer
 until the same changes are made in `copal-prep.sh` (§V). `local.conf`
-survives stage 16 by design.
+survives stage 17 by design.
 
 ## XI. The terminal in the desktop's theme (2 Sep 2026, evening)
 
@@ -514,5 +514,5 @@ originals from §IV are still beside them.
 **Open.** Switching a theme in Antiquity's Themes menu writes `settings.json`
 but does not re-run the script; `onCurrentThemeChanged` in `Config.qml` is
 where a one-line `Process` would do it, on the antiquity-desktop branch, where
-stage 16 also still writes the hades foot.ini and should call
+stage 17 also still writes the hades foot.ini and should call
 `copal-terminal-theme` instead.

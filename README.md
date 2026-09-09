@@ -125,6 +125,13 @@ One thing to know, and one thing that can still go wrong:
   `ttyS0`, not `ttyAMA0`. It is a plain UART with a driver built into the
   kernel, so it works before anything has come out of modloop.
 
+- **The display is accelerated on aarch64**, through `virtio-ramfb-gl`: VirGL
+  drawing on the Mac's GPU via Metal, plus a plain framebuffer the firmware can
+  draw on, so the UEFI menu and the boot messages are visible rather than the
+  window sitting black until Linux binds a driver. In the guest, `copal-gpu`
+  reports whether the acceleration actually took and names the first layer that
+  did not. `GPU=plain utm/utm-vm.sh create ...` goes back to no acceleration.
+
 ### 2 · Log in as root — there is no password yet
 
 At the login prompt type `root` and press **Enter** at the password prompt.
@@ -141,17 +148,27 @@ the whole thing by itself. Answer **yes**. (Answer no and you get the ordinary
 stage menu, where you pick each stage yourself — that is [Step
 5](#step-5--the-stage-menu-on-the-target).)
 
-### 3 · The three answers it needs, all near the start
+### 3 · The four answers it needs, all near the start
 
 Full automatic answers every question except these:
 
-1. **Who you are** — a name and email for git commits. The Mac that wrote the
-   image offers its own git identity as the default, so this is usually just
-   Enter.
-2. **A root password.** `setup-alpine` asks for it, and there is no answer-file
+1. **Who you are** — a name and email for git commits. If `make answers`
+   wrote them into answers.txt they are offered here, and this is just Enter;
+   otherwise the prompt is empty. The installer never reads the Mac's own git
+   config.
+2. **What you came here to work on** — the repositories to check out into
+   `~/code`. One URL per prompt, Enter on an empty one to finish, Enter on the
+   first one to skip. Stage 7 clones them while the install still has a
+   network, then builds them (`copal-build`) and puts what they make on
+   `PATH` — birdshot, the camera application, among them. `make answers` can
+   settle this in advance, in which case stage 1 only shows the list. See
+   `copal-guide code` on the machine. Copal itself is cloned to `~/code/copal`
+   whatever you answer here — the repository the machine is built from, as a
+   checkout you can edit and push.
+3. **A root password.** `setup-alpine` asks for it, and there is no answer-file
    variable for a password — this is the one thing a full-automatic install
    cannot fill in for you.
-3. **The same password, twice more.** Once to confirm it, then again for your
+4. **The same password, twice more.** Once to confirm it, then again for your
    own account. **Type the same thing all three times.**
 
 Then walk away. It takes hours. It reboots itself once, part-way through stage
@@ -891,8 +908,10 @@ Then the menu itself:
    13) Hand over root         lock the root account and log in as 'user'
                                with doas instead. Checks first; run it last
    14) The workshop           CAD and 3D printing for the Ender 3, KiCad and
-                               gerbers, ngspice, LaTeX and maths, trackers
-                               and SID. Each bundle says what this port lacks
+                               gerbers, ngspice, the ADI instrument stack
+                               (ADALM2000, Pluto, libiio -- mostly compiled),
+                               LaTeX and maths, trackers and SID. Each bundle
+                               says what this port lacks
    15) SD card and logs       what actually wears a card and what does not;
                                log policy, and a genuinely read-only root
     r) Reboot
@@ -964,9 +983,12 @@ Stage 3's reboot is survived by a marker file on the boot partition plus a
 resume block in the new root's `/root/.profile`, so logging back in as root
 picks the install up where it stopped. The run ends with a second reboot, asked
 for with a ten-second window to refuse it. It stops exactly once, in the first
-minute, for two things `setup-alpine` has no answer-file variable for: the
-**root password** and the **git identity** (offered from this Mac's config, so
-Enter accepts). After that you can walk away. It takes hours.
+minute, for the things `setup-alpine` has no answer-file variable for: the
+**root password**, the **git identity** (offered from answers.txt if `make
+answers` set it, otherwise asked with no default) and the **repositories to
+check out into `~/code`**, which
+stage 7 clones. `make answers` settles all but the password in advance. After
+that you can walk away. It takes hours.
 
 A stage that fails warns and the run carries on, so one bad package cannot cost
 you the other ten stages — which is why the summary at the end matters more than
@@ -1052,12 +1074,43 @@ and there are four ways in:
 | Keys | What it opens |
 |---|---|
 | `Super`+`space`, or `Super`+`d` | **dmenu** — everything on `PATH`. Type a few letters, Enter runs it |
-| `Super`+`z` | **copal-menu** — a clickable menu, rebuilt from what is actually installed each time it runs, with an *Install software* branch listing the rest of the catalogue |
-| `Super`+`c` | **copal-center** — one window listing the whole catalogue, installed or not, with a button that either runs it or fetches it |
+| `Super`+`z` | **copal-menu** — a clickable menu built from what is actually installed (cached, and rebuilt by itself when something is installed), with an *Install software* branch listing the rest of the catalogue |
+| `Super`+`Shift`+`c` | **copal-center** — one window listing the whole catalogue, installed or not, with a button that either runs it or fetches it |
 | `Super`+`,` | **copal-config** — users and groups, hostname, services, SSH, boot options. Asks `doas` for the root it needs |
 | `Super`+`/`, or `Super`+`F1` | the key list, floating. Shown once at login, because a tiling WM with no menus is unusable until you know the bindings |
 | `Super`+`Shift`+`g` | the other guides |
 | `Super`+`Return` / `Super`+`e` / `Super`+`t` | terminal / file manager / `htop` |
+
+#### Copy and paste, on the same keys everywhere
+
+`Super`+`c`, `Super`+`x`, `Super`+`v`, and `Super`+`Ctrl`+`v` for the history.
+This is [Omarchy's universal clipboard](https://manuals.omamix.org/2/the-basics/universal-clipboard),
+adopted here more or less unchanged, and it is the change most likely to be
+noticed on the first day.
+
+The problem it solves: a terminal needs `Ctrl`+`Shift`+`C` because `Ctrl`+`C`
+has meant *interrupt* since before X existed and is not being given back — and
+every other program needs `Ctrl`+`C`. So before you can copy anything you have
+to know which kind of window you are in. `copal-clip` asks the window manager
+what has focus and sends whichever chord that window actually wants, so the
+same four keys work in all of them.
+
+There is a reason it lands harder here than it does on Omarchy. **Caps Lock is
+already a second Super on this system** — it has to be, because under UTM the
+Mac eats the real Super chords. So the unified clipboard is `CapsLock`+`C` and
+`CapsLock`+`V`, under the left little finger, which is about as close to `Cmd`+`C`
+and `Cmd`+`V` as a PC keyboard is going to get.
+
+Two things to know. The history is recorded by `copal-clip watch`, started by
+the session — one `xclip` call a second into `~/.cache/copal/clipboard`, capped
+at a hundred entries. Where `cliphist` is installed (aarch64 only; Alpine has no
+armhf build, which is why the fallback exists at all) it hands over to that
+instead. And *cut* in a terminal copies rather than deletes, because the text on
+the screen is not the clipboard's to remove — Omarchy documents the same
+exception.
+
+Two bindings moved to make room: `copal-center` is now `Super`+`Shift`+`c`, and
+"split downwards" is `Super`+`Shift`+`v`.
 
 `copal-menu` and `copal-center` exist for the one thing a flat launcher can
 never do: show you what you could install but have not. Software you do not have
@@ -1073,7 +1126,9 @@ than from `PATH`, and the entries you do not have hand off to `copal-install`.
 > maps **Caps Lock to a second Super**, with not one binding moved. Where Super
 > is eaten by macOS anyway — Spotlight, the app switcher, the screenshot keys —
 > there is a second binding on `Ctrl`+`Alt`. One rule: *where Super is eaten,
-> press Ctrl+Alt.*
+> press Ctrl+Alt.* The launcher, reached most often, also answers to
+> `Alt`+`Space` — Option is beside Command and macOS reserves nothing on it —
+> and to a right-click on the desktop.
 
 ### When it does not come up
 
@@ -1111,6 +1166,37 @@ The order to try things in, cheapest first:
    stop it for good, `doas rm /etc/copal/autostart-desktop`. If X fails while
    autostart is on you land at a shell on `tty1` rather than a black screen:
    the block runs `startx` and lets it fail, and `/var/log/Xorg.0.log` says why.
+10. **Start the desktop with `copal-session`, not with `start-hyprland`.** Both
+    are on `PATH` and both tab-complete from `start`, which is how people find
+    the wrong one. `copal-session` reads `/etc/copal/session` and does two
+    things upstream's launcher does not: it wraps the compositor in
+    `dbus-run-session`, so `mako`, the portal and the polkit agent can find each
+    other, and it creates `XDG_RUNTIME_DIR`.
+
+    That second one used to be the difference between a session and this:
+
+    ```
+    ERR from start-hyprland ]: failed to obtain hyprland version string (bad json)
+    CRIT ]: Critical error thrown: XDG_RUNTIME_DIR is not set!
+    ```
+
+    Both lines are the same root cause. On a systemd or elogind machine,
+    `logind` creates `/run/user/<uid>` at login and exports that variable;
+    Copal carries **seatd**, which brokers the DRM and input devices — the
+    other half of what `logind` does — and not this half. So nothing set it,
+    and `hyprctl` could not find the compositor's socket under
+    `$XDG_RUNTIME_DIR/hypr` either, which it reported as bad JSON.
+
+    It is now set for **every login shell** in
+    `/etc/profile.d/copal-xdg-runtime.sh`, which fixes `start-hyprland`, bare
+    `Hyprland`, `wl-copy` / `wl-paste` (and therefore the unified clipboard),
+    `wofi` and `hyprctl` in one place. The directory is `/tmp/xdg-runtime-<uid>`,
+    created 0700, and its ownership is *checked* rather than assumed — `/tmp` is
+    world-writable and that path is predictable, so a directory you do not own is
+    refused rather than used. `copal-session` keeps its own copy of the same
+    ceremony, because `profile.d` is only read by login shells.
+
+    `copal-session` is still the front door, for the `dbus-run-session` half.
 
 
 ### Cleaning up — disk space, and the files that carry your name
@@ -1282,6 +1368,13 @@ card, and does nothing it does not have to. **Nothing travels between them but
 one shell script** — which is what makes `copal -U` a single fetch rather than
 a package manager.
 
+The one path that runs the other way is for developing the installer, not for
+using it: on a Copal machine with a checkout (stage 7 puts one at
+`~/code/copal`), `copal -U --from ~/code/copal` installs *that tree's*
+`copal-init.sh`, and `copal --stage 17 --auto` re-runs a stage with no menu.
+`make redeploy STAGES=17` in the checkout is both, with `make lint` first. It
+only runs in the guest — on the Mac it says so and stops.
+
 ### What each script is for
 
 Everything on the Mac. None of it runs on the target.
@@ -1326,7 +1419,7 @@ Roughly: 1–3 make it a computer, 4–6 make it usable, 7–15 make it yours, a
 | 11 | snapshots | rsync snapshots on a third partition |
 | 12 | applications | the catalogue — 316 small programs |
 | 13 | hand over root | lock root, log in as yourself with `doas`. **Checks first, run it last** |
-| 14 | the workshop | CAD, KiCad, ngspice, LaTeX, trackers |
+| 14 | the workshop | CAD, KiCad, ngspice, the ADI instruments (libiio, ADALM2000, Pluto), LaTeX, trackers |
 | 15 | SD card care | what actually wears a card; log policy; a genuinely read-only root |
 | 16 | the fleet | join a named fleet: one certificate authority, an mDNS beacon, one console. **Skipped entirely on a card with no fleet named** |
 
@@ -1347,6 +1440,10 @@ these stay.
 | `copal-logs` · `copal-debug` | The log collection, and the switch that is off by default |
 | `copal-ssh` · `copal-logflush` · `copal-splash` | SSH policy; RAM logs down to the card; the key bindings on the wallpaper |
 | `copal-fleet` | Written by stage 16, on a card that named a fleet: the beacon, this node's facts, and the half of enrolment that runs here |
+| `copal-code` | The checkouts in `~/code` — the list, and cloning or pulling from it. `~/code/copal` is always there, listed or not |
+| `copal-build` | Compile the checkouts in `~/code` and install what they make into `~/.local/bin`: cmake, cargo, npm and cc65 shapes, by shape rather than by name. Run by `copal-code` after every sync |
+| `copal-camera` | The camera application — birdshot, built from `~/code`, or `$CAMERA`. The Camera menu entry, Super+Shift+B and the `camera` desk role all ask it |
+| `copal-fonts` | The font sets — coding faces with and without ligatures, console/TTY, the IBM PC pack — and which font the text console uses |
 | `snapshot` · `mountdsk` | rsync snapshots; mount a disk image |
 
 ### Why one file, and not packages
@@ -1362,6 +1459,172 @@ trusted, and replaced by copying one file over another.
 It is also what makes the whole system inspectable. There is no state hidden in
 a database: what the machine will do is a file you can read, and what it has
 done is a transcript beside it.
+
+---
+
+## The editor
+
+Neovim, configured as an IDE, with no plugin manager and no plugins — and
+arranged to feel like [Omarchy's editor](https://manuals.omamix.org/2/the-applications/neovim),
+which is LazyVim.
+
+Those two sentences look like they contradict each other. They do not, and the
+distinction is the whole design: **the keys are copied and the machinery is
+not.** LazyVim is a set of conventions about which key does what, wrapped around
+a set of plugins that make those things possible. On this hardware the
+conventions are free and the plugins are not, so the conventions are taken and
+the plugins are replaced with the built-ins they were written to paper over.
+
+Why actual LazyVim is not viable here, in order of how decisive it is:
+
+1. **Treesitter.** LazyVim compiles a parser per language, with `gcc`, the first
+   time you open a file of that language. On one ARMv6 core that is most of an
+   hour, and it then wants more memory than a Pi Zero has. This one is not
+   negotiable and nothing else on the list matters next to it.
+2. **`nvim-lspconfig` and `nvim-cmp` are solving a problem the editor no longer
+   has.** They existed because Neovim had no built-in LSP client configuration
+   and no built-in completion. Since 0.11 it has both; Alpine v3.24 ships 0.12.
+
+So what is actually installed:
+
+| Omarchy / LazyVim has | Copal uses instead |
+|---|---|
+| `which-key` — `Space` opens a menu of what `Space` can do | a floating window and a table, in `~/.config/nvim/keys.lua`. Neovim's own `timeoutlen` does the "press and wait" part, which is all which-key's visible behaviour is |
+| `telescope` / `fzf-lua` — the file, buffer and grep pickers | `fzf` in a floating terminal — the same `fzf` the shell already has — with `ripgrep` behind the grep, into the quickfix list |
+| `neo-tree` — the sidebar | `netrw`, with neo-tree's five letters (`a` `A` `d` `r` `m`) bound onto it, so a LazyVim key list is true here too |
+| `lazygit.nvim` | `lazygit` in a floating terminal, which is all the plugin does either |
+| `nvim-lspconfig`, `mason`, `nvim-cmp` | `vim.lsp.config`, `vim.lsp.enable` and `vim.lsp.completion` — built in since 0.11 |
+| `omarchy-theme-hotreload.lua` | `~/.config/nvim/theme.lua` — same job, same size, see below |
+| `:LazyExtras` to add a language | one row in `lsp_catalogue()` in `copal-prep.sh`, which is also where Kate's and Emacs's copies of the same table come from |
+
+The leader is **Space**, which is LazyVim's, and that is the point of it: every
+LazyVim key list anyone has ever published is also a key list for this editor.
+`<leader><Space>` finds a file, `<leader>e` is the sidebar, `<leader>sg` greps
+the project, `<leader>gg` is lazygit, `<leader>ca` is a code action,
+`Shift`+`H` / `Shift`+`L` walk the buffers. Press `Space` and wait half a second
+for the menu, or run `:Keys`. `:Lsp` says which language servers are actually
+attached, which is the first question when `gd` does nothing.
+
+Two things Copal has that LazyVim does not ship by default, both because they
+are the navigation people miss most when they leave a graphical IDE:
+`<leader>ci` and `<leader>co` — the LSP **call hierarchy**, *what calls this
+function* and *what does this function call*.
+
+`~/.vimrc` is the half `vim` also gets — options, `:make`, Termdebug, buffers,
+netrw. `~/.config/nvim/` holds the three Lua files on top of it: `theme.lua`,
+`keys.lua`, `lsp.lua`, loaded in that order. Any of them can be deleted; you
+lose that layer and nothing else.
+
+### Themes, and the editor following the desktop
+
+Omarchy keeps its editor in lockstep with the rest of the desktop with a
+symlink, a setup script and a watcher plugin. None of that needs LazyVim, so all
+three are here:
+
+```
+~/.config/copal/current/theme  ->  /usr/local/share/copal/themes/<name>/
+                                        └── neovim.lua
+```
+
+`copal-theme` lists the themes and moves the symlink. A running Neovim notices
+within about three seconds and repaints — nothing is restarted, and adding a
+theme is adding a directory with a `neovim.lua` in it.
+
+The two shipped themes are the two looks Copal actually has: **tokyo-night**,
+which is stage 4's palette — the same six hex values already in the i3 config,
+the `Xresources` and the status bar — and **antiquity**, which is Linux
+Antiquity's *helios* palette, the light half that stage 17's `kitty.conf` paints
+the terminal with. Stage 17 moves the symlink when it installs that desktop, so
+the editor changes with the desktop and not separately.
+
+The watcher **polls** — one `stat` every three seconds, only while an editor is
+open. That is deliberate and the comment in the file says so: switching theme
+does not modify a file, it replaces a *symlink*, and `inotify` on a link path
+watches whatever that link resolved to when the watch was set. The old theme's
+file never changes, so the event never comes. `fs_poll` stats through the link
+and sees a different inode.
+
+Colour depth is asked for rather than assumed: 24-bit highlights where
+`COLORTERM` says the terminal can do it, a 256-colour fallback where it cannot,
+because on a Zero the console and `urxvt` are not `kitty`.
+
+---
+
+## Wayland, X.Org, and what happens in November 2026
+
+Copal ships **two** desktops on purpose, and the reason is a transition that has
+a date on it.
+
+- **Stage 4** — X.Org and i3. Runs on everything, including a Pi Zero, because
+  it renders on the CPU into the framebuffer via `fbdev` and asks nothing of the
+  GPU.
+- **Stage 17** — Hyprland and the Linux Antiquity theme, on Wayland. `aarch64`
+  and `x86_64` only: Alpine packages no Hyprland for `armhf` or `armv7`, and a
+  Zero's VideoCore has no GLES driver worth the name regardless.
+
+> **The bar is waybar, not quickshell.** Linux Antiquity's bar, radial taskbar,
+> widgets and launcher are 99 QML files for **quickshell**, which is packaged in
+> no Alpine repository — not community, not testing, not edge. Without a stand-in
+> the desktop is the wallpaper and your windows: no clock, no workspace
+> indicator, no list of what is open. So **waybar** draws it instead — the same
+> bar Omarchy uses, with `hyprland/workspaces`, `hyprland/window`, `wlr/taskbar`
+> (a real clickable window list), clock, cpu, memory, disk, network, volume and
+> the tray, styled in the theme's own *helios* palette read out of its
+> `Config.qml`. The theme's 18px half-width QML bar is **not** imitated in CSS;
+> faking it would be a bad tribute, so the palette and the iconless, typographic
+> character carry over and the layout is an honest waybar.
+> `copal-bar` decides which shell runs and prefers quickshell, so the day Alpine
+> packages it the real shell returns with nothing edited.
+>
+> The **desktop widgets** — the big clock and the date that sit on the
+> wallpaper under your windows — come from a second waybar on the bottom
+> layer (`copal-widgets --off` hides them). The theme's own widgets need one
+> more thing than a quickshell: upstream ships no `widgets.json`, which is the
+> whole model `WidgetScreen.qml` draws from, so they are invisible on a fresh
+> install of the theme anywhere until somebody places them in the settings
+> window. `copal-widgets --seed` writes that file per monitor at login.
+
+That split is not a hedge, but the ground under it is moving:
+
+| When | What |
+|---|---|
+| July 2025 | Wayback announced — an X11-compatibility layer that runs a rootless Xwayland session on a Wayland compositor, so X11 window managers keep working with no X server underneath. Stated goal: production-ready "next year" |
+| January 2026 | Wayback 0.3 preview, in the Alpine stable repositories |
+| May 2026 | Alpine 3.24 — Wayback available, not the default |
+| **November 2026** | target for **Alpine 3.25 to ship Wayback as the default X11 replacement** |
+
+Worth being precise about what that is and is not. It is **not** a removal of
+X.Org from the repositories on that date. It is Wayback becoming the *default*
+session, with X.Org remaining installable as a fallback through a transition
+period of some length. And it is not a rewrite of i3 either — Wayback's entire
+point is that an X11 window manager runs unmodified on top of it.
+
+What it means for this project, concretely:
+
+- **Nothing changes on a Pi Zero, and that is the important half.** Wayback is a
+  Wayland compositor with Xwayland on top, so it needs what Wayland needs.
+  On hardware with no usable GLES driver, `xf86-video-fbdev` and a real X server
+  remain the only thing that works. Stage 4 is the desktop for that hardware
+  today and it will still be the desktop for it after 3.25.
+- **On `aarch64` the choice gets simpler, not harder.** Today stage 4 and stage
+  16 are two different desktops with two different themes. Under Wayback the
+  same i3 configuration could run on the Wayland stack, which would make stage 4
+  a *session choice* rather than a fork in the road.
+- **The risk to watch is the packages around X, not X itself.** A distribution
+  that stops treating X.Org as the default eventually stops testing the things
+  that only matter under it — `xf86-video-fbdev`, `setxkbmap`, `xmodmap`,
+  `xclip`, `xdotool`. Four of those five are load-bearing here, and two of them
+  are the unified clipboard. Every one is installed with `add_optional` and
+  guarded at runtime, which is why: the day one of them stops being built for
+  `armhf`, the desktop comes up with one feature missing and a sentence saying
+  which, rather than not at all.
+
+No action is being taken on this yet, deliberately. Alpine 3.25 is not released,
+Wayback is not the default anywhere, and pre-emptively porting to a stack that
+does not run on half this project's target hardware would be trading something
+that works for something that might. The plan is to re-test stage 4 under
+Wayback when 3.25 ships and add it as a third session if it holds up — not to
+replace anything.
 
 ---
 
@@ -1451,11 +1714,11 @@ target.
   Makefile's unattended targets and any scripted caller should use.
 - Non-interactive runs never block; the prompt is guarded on a tty.
 
-The git identity is offered the same way. It is read from *this Mac's* git
-config and proposed as the default the target will suggest in stage 1 — but it
-is now shown and confirmed rather than baked in silently, and declining leaves
-it empty so the target asks instead. Whoever writes the card is usually, but
-not always, whoever will commit from the machine it boots.
+The git identity is offered the same way, from answers.txt: shown and
+confirmed before it goes onto the card, and declining leaves it empty so the
+target asks instead. The installer no longer reads *this Mac's* git config as
+a fallback. Whoever writes the card is usually, but not always, whoever will
+commit from the machine it boots, and `make answers` is where that is settled.
 
 ## Consoles
 
@@ -1748,6 +2011,7 @@ bindings, the account model, the SD-card wear analysis — is in
 | `docs/fleet-plan.md` | **Copal Fleet** — Copal machines on one LAN, run as one: discovery, certificates, the message bus, scenes, and the build order |
 | `docs/fleet-lab-report.md` | What Timbuktu, Veyon and Xen Orchestra each got right, and the console a fleet should have. IEEE format |
 | `docs/fleet-m4-backlog.md` | **The next milestone, ready to resume.** The bus and the wall, broken into ten work items with acceptance tests, three blocking decisions, and the demo that closes it |
+| `docs/interface-report.md` | Interface simplification for the technically capable user — the design position, IEEE format |
 
 ## Repository policy
 
@@ -1769,3 +2033,10 @@ no history and no blobs. The archive, binaries and history intact, stays at
 MIT — see [`LICENSE`](LICENSE). The scope matters here: third-party material
 that the installer *downloads* is not covered by it, and some of it is not
 redistributable at all.
+
+Copal stands on other people's work and says so: diinki's *Linux Antiquity*
+(the theme, stage 17), Omarchy (the shape of the menu), Alpine, Hyprland and
+wofi. It attributes them in the code and the docs, reports defects to them
+with reproductions, keeps its own changes visible in a public fork, and sends
+a pull request only when the maintainer or their users ask for one — the
+reasoning is in [`docs/upstream-policy.md`](docs/upstream-policy.md).

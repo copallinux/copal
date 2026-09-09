@@ -68,6 +68,21 @@ both; with `ansible-core` alone:
 ansible-galaxy collection install -r fleets/<name>/requirements.yml
 ```
 
+Plus **eyes**, if this console is a Linux machine that is not itself a node:
+
+```sh
+doas apk add avahi-tools dbus
+doas rc-service dbus start && doas rc-service avahi-daemon start
+```
+
+This is the one prerequisite nothing installs for you, and the asymmetry is
+worth naming. A **node** gets it from stage 16 whenever its card says
+`DISCOVERY=mdns`. A **Mac** never gets it, by design — it browses `--via` a
+node, because the Mac is the certificate authority, not the eyes. A separate
+Linux console falls between the two and has to be told once. Without it every
+verb that reads a beacon stops with the command above; `--via HOST` and a
+written `nodes` list are the two ways round it.
+
 On a **node**: `python3`, which stage 7 installs, and nothing else. A node
 without it is still fully drivable by `copal fleet run`, which needs nothing
 but sshd — invariant 8, in the one place it is most likely to be needed.

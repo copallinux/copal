@@ -164,13 +164,36 @@ conf_get() {  # <key> -- from ~/.copal/fleets/<fleet>/fleet.conf
 #   COPAL_FLEET_BEACONS   a file of beacon lines. Testing, and a browse
 #                         captured somewhere else.
 #   avahi-browse          this machine can see the segment. Linux, Alpine, and
-#                         a console running ON a node.
+#                         a console running ON a node. Heard nothing and there
+#                         is a nodes file? Fall through to it -- see below.
 #   --via HOST            ask a node to browse for us. The macOS path.
 #   nodes file            a written-down list, for discovery=static.
 beacons() {
     [ -f "$TMP/beacons" ] || browse > "$TMP/beacons"
     cat "$TMP/beacons"
 }
+# The advice printed when there is no way to browse. It fires at exactly the
+# moment somebody needs a package name, so it has to be the RIGHT one: Alpine
+# calls it avahi-tools, Debian calls it avahi-utils, and naming the other
+# distribution's package to somebody at a prompt is worse than naming none.
+# A Mac has neither and never will -- that is what --via exists for, and
+# saying so here is cheaper than a doc somebody reads afterwards.
+browse_help() {
+    if [ "$(uname -s)" = Darwin ]; then
+        printf 'a Mac has no avahi-browse and never will --\n'
+        printf '    pass --via HOST to ask a node that can already see the fleet,'
+    elif command -v apk >/dev/null 2>&1; then
+        printf 'this machine can see the segment once avahi is on it:\n'
+        printf '    doas apk add avahi-tools dbus\n'
+        printf '    doas rc-service dbus start && doas rc-service avahi-daemon start\n'
+        printf '    or pass --via HOST,'
+    elif command -v apt-get >/dev/null 2>&1; then
+        printf 'sudo apt-get install avahi-utils, or pass --via HOST,'
+    else
+        printf 'install avahi-browse, whatever this system calls it,'
+    fi
+}
+
 browse() {
     if [ -n "${COPAL_FLEET_BEACONS:-}" ]; then
         [ -f "$COPAL_FLEET_BEACONS" ] || die "no such beacon file: $COPAL_FLEET_BEACONS"
@@ -193,8 +216,18 @@ browse() {
                 n = split(txt, kv, ";")
                 for (i = 1; i <= n; i++) if (kv[i] ~ /^n=/) id = substr(kv[i], 3)
                 print id "\t" addr "\t" txt
-            }' | sort -u
-        return 0
+            }' | sort -u > "$TMP/avahi"
+        # A SILENT SEGMENT IS NOT THE SAME ANSWER AS NO WAY TO ASK. If avahi
+        # heard something, that is the answer. If it heard nothing and a
+        # written list exists, fall through and read it -- otherwise merely
+        # installing avahi-tools would make the static list unreachable, and
+        # the escape hatch for a fleet whose discovery is off would be shut
+        # by the package that is supposed to be for the fleet where it is on.
+        # With no list either, empty is the honest answer and not an error:
+        # browsing worked, nobody answered.
+        if [ -s "$TMP/avahi" ] || [ ! -f "$NODES_FILE" ]; then
+            cat "$TMP/avahi"; return 0
+        fi
     fi
     if [ -f "$NODES_FILE" ]; then
         # A static list carries no TXT record, so it claims nothing -- which is
@@ -204,7 +237,9 @@ browse() {
             | awk -v f="$FLEET" 'NF >= 2 { print $1 "\t" $2 "\t" "f=" f }'
         return 0
     fi
-    die "nothing to browse with. Install avahi-utils, pass --via HOST, or write $NODES_FILE"
+    die "nothing to browse with.
+    $(browse_help)
+    or write $NODES_FILE"
 }
 
 txt_get() {  # <txt blob> <key>
@@ -319,7 +354,8 @@ cmd_ls() {
 # who cannot, and it costs one extra browse.
 strangers() {
     if ! command -v avahi-browse >/dev/null 2>&1; then
-        note "strangers need avahi-browse on this machine"; return 0
+        note "strangers need avahi-browse on this machine"
+        note "$(browse_help)"; return 0
     fi
     beacons | cut -f2 | sort -u > "$TMP/mine"
     printf "    ${Y}Strangers${Z} ${D}-- on this network, not in the fleet${Z}\n"

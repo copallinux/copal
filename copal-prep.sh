@@ -150,10 +150,25 @@ hint() { printf '    \033[2m%s\033[0m\n' "$*" >&2; }
 # Every command is printed as it would be typed, prefixed with '$', before it
 # runs -- before, so a command that hangs has already told you what it is.
 
-BUILD_PHASES=""          # name<TAB>seconds, one per line, in order
+# The phase records live in a file rather than in a shell variable, and that
+# is not a stylistic choice. fetch_payload is called as
+#
+#     SRC=$(fetch_payload | tail -n1)
+#
+# -- a command substitution, and a pipeline besides -- so everything it does
+# happens in a subshell. It opens the Payload and Extract phases in there,
+# prints their "took" lines from in there, and then the subshell exits and
+# takes every assignment with it. The parent reached the exit trap with an
+# empty list, returned early, and printed no table and wrote no .tsv: the two
+# phases that WERE timed were the two that could not survive being timed. A
+# file outlives the subshell; a variable cannot.
+BUILD_STATE="${TMPDIR:-/tmp}/copal-build-$$"
+BUILD_PHASE_LOG="$BUILD_STATE/phases"   # name<TAB>seconds, one per line, in order
+BUILD_PHASE_OPEN="$BUILD_STATE/open"    # name<TAB>started, for the phase running now
+mkdir -p "$BUILD_STATE" 2>/dev/null || true
+: > "$BUILD_PHASE_LOG" 2>/dev/null || true
+: > "$BUILD_PHASE_OPEN" 2>/dev/null || true
 BUILD_T0=$(date +%s)
-PHASE_NAME=""
-PHASE_T0=""
 
 hms_host() {  # seconds -> "1h 02m 03s" / "2m 03s" / "9s"
     _h=$1
@@ -165,18 +180,22 @@ hms_host() {  # seconds -> "1h 02m 03s" / "2m 03s" / "9s"
 
 phase() {  # <name> -- closes the previous phase, opens this one
     phase_end
-    PHASE_NAME="$1"
-    PHASE_T0=$(date +%s)
+    printf '%s\t%s\n' "$1" "$(date +%s)" > "$BUILD_PHASE_OPEN" 2>/dev/null || true
+    # A name longer than the rule would ask printf for a negative width, which
+    # is an error rather than a short line. Three dashes is still a banner.
+    _pad=$(( 60 - ${#1} )); [ "$_pad" -lt 3 ] && _pad=3
     printf '\n\033[1;35m--- %s \033[0m\033[2m%s\033[0m\n' "$1" \
-        "$(printf '%*s' $(( 60 - ${#1} )) '' | tr ' ' '-')" >&2
+        "$(printf '%*s' "$_pad" '' | tr ' ' '-')" >&2
 }
 
 phase_end() {
-    [ -n "$PHASE_NAME" ] || return 0
-    _pe=$(( $(date +%s) - PHASE_T0 ))
-    BUILD_PHASES="${BUILD_PHASES}${PHASE_NAME}\t${_pe}\n"
-    printf '\033[2m    %s took %s\033[0m\n' "$PHASE_NAME" "$(hms_host "$_pe")" >&2
-    PHASE_NAME=""
+    [ -s "$BUILD_PHASE_OPEN" ] || return 0
+    _pn=$(cut -f1 "$BUILD_PHASE_OPEN")
+    _pt=$(cut -f2 "$BUILD_PHASE_OPEN")
+    : > "$BUILD_PHASE_OPEN"
+    _pe=$(( $(date +%s) - _pt ))
+    printf '%s\t%s\n' "$_pn" "$_pe" >> "$BUILD_PHASE_LOG"
+    printf '\033[2m    %s took %s\033[0m\n' "$_pn" "$(hms_host "$_pe")" >&2
 }
 
 # run <command...>  -- print it, run it, time it, report failure.
@@ -214,17 +233,17 @@ runq() {
 build_time_report() {
     phase_end
     _bt=$(( $(date +%s) - BUILD_T0 ))
-    [ -n "$BUILD_PHASES" ] || return 0
+    [ -s "$BUILD_PHASE_LOG" ] || return 0
     printf '\n\033[1m  Image build -- where the time went\033[0m\n' >&2
     printf '  %s\n' '------------------------------------------------------------' >&2
-    printf '%b' "$BUILD_PHASES" | awk -F'\t' -v tot="$_bt" '
+    awk -F'\t' -v tot="$_bt" '
         $1 != "" {
             pct = (tot > 0) ? $2 * 100 / tot : 0
             n = int(pct / 4)
             bar = ""
             for (i = 0; i < 25; i++) bar = bar (i < n ? "=" : " ")
             printf "  %-26.26s %6ds %5.1f%%  [%s]\n", $1, $2, pct, bar
-        }' >&2
+        }' "$BUILD_PHASE_LOG" >&2
     printf '  %s\n' '------------------------------------------------------------' >&2
     printf '  %-26.26s %6ds\n\n' "total" "$_bt" >&2
     # Machine-readable beside the image, same idea as the guest's
@@ -236,7 +255,7 @@ build_time_report() {
             printf '#copal-build-times v1\n'
             printf '#build\t%s\t%s\t%s\n' "${BUILD_ID:-?}" "${BUILD_DATE:-?}" "${MODEL:-${ARCH:-?}}"
             printf '#phase\tseconds\n'
-            printf '%b' "$BUILD_PHASES"
+            cat "$BUILD_PHASE_LOG"
             printf 'total\t%s\n' "$_bt"
         } > "$_tf" 2>/dev/null && info "Build timings: $_tf"
     fi
@@ -402,6 +421,7 @@ if [ -f "$COPAL_ANSWERS" ]; then
     CFG_MAIL_NAME="${CFG_MAIL_NAME-${COPAL_MAIL_NAME-}}"
     CFG_MAIL_IMAP="${CFG_MAIL_IMAP-${COPAL_MAIL_IMAP-}}"
     CFG_MAIL_SMTP="${CFG_MAIL_SMTP-${COPAL_MAIL_SMTP-}}"
+    CFG_GIT_REPOS="${CFG_GIT_REPOS-${COPAL_GIT_REPOS-}}"
     CFG_USER="${CFG_USER:-${COPAL_USER:-}}"
     CFG_HOSTNAME="${CFG_HOSTNAME:-${COPAL_HOSTNAME:-}}"
     CFG_TIMEZONE="${CFG_TIMEZONE:-${COPAL_TIMEZONE:-}}"
@@ -541,22 +561,23 @@ CFG_SSHKEY="${CFG_SSHKEY:-}"
 
 # Git identity for ${CFG_USER} on the Pi -- the name and email that end up on
 # the "author" line of every commit made there. Nothing here is a credential
-# and nothing verifies it; GitHub matches commits to an account by the address,
-# which is why the sensible default is the one this Mac already commits under.
+# and nothing verifies it; GitHub matches commits to an account by the address.
 #
-# Taken from this Mac's git config because the person writing the card is the
-# person who will be committing on the machine it boots. It is only a PROPOSAL:
-# it goes onto the card as a default, the Pi offers it at the prompt in stage 1,
-# and whatever is answered there wins from then on (see copal-git, below).
-#
-# Set CFG_GIT_NAME / CFG_GIT_EMAIL to override, or either to "" to leave the
-# prompt on the Pi empty.
-if [ -z "${CFG_GIT_NAME+set}" ]; then
-    CFG_GIT_NAME=$(git config --global --get user.name 2>/dev/null || true)
-fi
-if [ -z "${CFG_GIT_EMAIL+set}" ]; then
-    CFG_GIT_EMAIL=$(git config --global --get user.email 2>/dev/null || true)
-fi
+# FROM THE ANSWERS FILE, AND FROM NOWHERE ELSE. This used to fall back to the
+# Mac's own `git config --global` when answers.txt did not name one, on the
+# reasoning that whoever writes the card usually commits from the machine it
+# boots. Usually is the problem: a card written on somebody else's Mac, or on
+# this one for somebody else, arrived proposing a name that was never asked
+# for, and a proposal that is merely accepted with Enter is a default in
+# everything but name. Now: COPAL_GIT_NAME / COPAL_GIT_EMAIL in answers.txt
+# (`make answers` writes them, and does offer this Mac's config at ITS prompt,
+# where it is seen and confirmed), or CFG_GIT_NAME / CFG_GIT_EMAIL in the
+# environment for one build. Nothing named anywhere means stage 1 asks on the
+# target with an empty prompt. It is still only a PROPOSAL there: Enter accepts
+# it, anything typed replaces it, and the answer is what stage 7 applies (see
+# copal-git, below).
+CFG_GIT_NAME="${CFG_GIT_NAME-}"
+CFG_GIT_EMAIL="${CFG_GIT_EMAIL-}"
 # copal.conf is sourced by copal-init.sh, so these two strings become shell
 # words on the Pi. A double quote, a backslash, a backtick or a '$' in a name
 # would end the string early or expand to something else entirely -- at best a
@@ -570,6 +591,68 @@ CFG_MAIL_ADDRESS=$(sanitise_conf_value "${CFG_MAIL_ADDRESS:-}")
 CFG_MAIL_NAME=$(sanitise_conf_value "${CFG_MAIL_NAME:-}")
 CFG_MAIL_IMAP=$(sanitise_conf_value "${CFG_MAIL_IMAP:-}")
 CFG_MAIL_SMTP=$(sanitise_conf_value "${CFG_MAIL_SMTP:-}")
+
+# The repositories to check out into ~/code on the machine -- the work you
+# actually intend to do there, cloned while the install still has a network and
+# a person nearby, rather than remembered as a chore for the first login.
+#
+# A PROPOSAL, exactly like the identity above: it rides across in copal.conf,
+# stage 1 shows it and lets you add to it, and the answer given there is what
+# stage 7 clones. Space-separated -- a URL cannot contain a space, so nothing
+# more elaborate is needed, and a list that survives being one shell word is a
+# list copal.conf can carry without a second file on the card.
+#
+# THE DEFAULT IS THIS ACCOUNT'S WORK. It used to be empty, on the reasoning
+# that guessing which repositories somebody wants is not a thing this can do.
+# That reasoning holds for a stranger's card and not for this one: the machine
+# exists to work on these, and arriving without them means doing by hand, at
+# the first login, the one job the install was already positioned to do.
+#
+# Every public repository under github.com/vonglurt (copal itself excepted,
+# see below), and Team Yodacon's under github.com/yodacon: yodacon, the
+# centre that ties the 1997 ConEx plugin to its descendants, and gonex, the
+# game. yodacon carries gonex and the konex fork as SUBMODULES, which is why
+# copal-code clones with --recurse-submodules -- konex arrives that way, and
+# is not listed on its own. gonex is listed on its own as well because it is
+# the one that builds into a program (copal-build, Go), and yodacon's Makefile
+# finds it either place.
+#
+# Still only a PROPOSAL. Stage 1 lists them and Enter accepts; answering the
+# prompt replaces the list outright, and an empty answer is recorded as an
+# empty answer. Nothing here is forced on a machine whose owner said no.
+#
+# copal itself is NOT in this list -- it is the built-in floor under it, see
+# COPAL_SELF_URL in the init script -- so it arrives whatever is answered here
+# and does not need to be typed twice.
+#
+# https form, because that is the one that works with no key anywhere. It is
+# not necessarily the form that gets used: copal-code tries the ssh remote
+# first and falls back to this, so a machine holding a key pushes without
+# further setup and a machine holding none still clones. See clone_one().
+CFG_GIT_REPOS="${CFG_GIT_REPOS:-\
+https://github.com/vonglurt/urfinkel.git \
+https://github.com/vonglurt/ascitty.git \
+https://github.com/vonglurt/codexofconquest.git \
+https://github.com/vonglurt/birdshot.git \
+https://github.com/yodacon/yodacon.git \
+https://github.com/yodacon/gonex.git}"
+
+# Override it in answers.txt (COPAL_GIT_REPOS), or in the environment for one
+# build:
+#
+#   CFG_GIT_REPOS="https://github.com/you/dotfiles https://github.com/you/site" make pi4
+#
+# Anything git understands is fine -- https, ssh, git://. Note that an ssh URL
+# needs a key the MACHINE holds, which is not the key copal-prep.sh copies onto
+# the card (that one authorises you INTO the machine, not the machine out to
+# GitHub), so https is the shape that works without further setup.
+# Whitespace of any kind, including newlines from a heredoc in answers.txt,
+# collapses to single spaces: one shell word per URL is the whole contract.
+# BEFORE sanitise_conf_value, not after -- that function strips control
+# characters, which a newline is, and a list flattened by it would arrive as
+# two URLs run together into one nonsense one.
+CFG_GIT_REPOS=$(printf '%s' "${CFG_GIT_REPOS:-}" | tr -s ' \t\n' ' ' | sed 's/^ //; s/ $//')
+CFG_GIT_REPOS=$(sanitise_conf_value "$CFG_GIT_REPOS")
 
 # Why a second partition:
 #
@@ -729,6 +812,35 @@ esac
 # UTC, and ISO 8601, because this gets compared against timestamps written on
 # the machine itself and a local time with no offset cannot be.
 BUILD_DATE="${BUILD_DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+
+# WHICH SOURCE BUILT IT. BUILD_ID answers "is this the image I built an hour
+# ago"; this answers the different and more useful question "what was the
+# installer when it did". Without it, an image and a checkout can disagree by
+# a hundred commits and nothing on either side can tell.
+#
+# Three fields, because they fail differently:
+#   REV       the exact commit, for looking the source up later
+#   DESCRIBE  the nearest tag, which is what a person calls a version
+#   DIRTY     whether the tree had uncommitted edits at build time -- the
+#             one field that makes REV a lie when it is set, and therefore
+#             the one worth recording rather than quietly dropping
+#
+# Every one degrades to "(not a git checkout)" rather than failing: this
+# script is meant to work from a tarball with no .git at all.
+_git_here() { git -C "$(dirname "$0")" "$@" 2>/dev/null; }
+if _git_here rev-parse --git-dir >/dev/null; then
+    BUILD_GIT_REV="${BUILD_GIT_REV:-$(_git_here rev-parse HEAD)}"
+    BUILD_GIT_DESCRIBE="${BUILD_GIT_DESCRIBE:-$(_git_here describe --tags --always --dirty 2>/dev/null || echo "$BUILD_GIT_REV")}"
+    if [ -n "$(_git_here status --porcelain 2>/dev/null)" ]; then
+        BUILD_GIT_DIRTY=yes
+    else
+        BUILD_GIT_DIRTY=no
+    fi
+else
+    BUILD_GIT_REV="(not a git checkout)"
+    BUILD_GIT_DESCRIBE="(not a git checkout)"
+    BUILD_GIT_DIRTY="unknown"
+fi
 # An explicit ARCH wins, but only silently when it agrees with MODEL. A board
 # and an architecture that contradict each other is a mistake worth stopping
 # for -- it is the exact mistake that produced the rainbow-screen hang.
@@ -924,7 +1036,12 @@ on_exit() {
     # its time went -- which is exactly when that is most worth knowing, and
     # is the reason this is in the exit trap rather than at the end of the
     # script. Failures are silent about their cost otherwise.
-    build_time_report 2>/dev/null || true
+    # NOT redirected: every line this prints goes to stderr, so the
+    # 2>/dev/null that used to sit here threw away the whole table -- the
+    # exact opposite of the paragraph above. Failures inside it are still
+    # swallowed by '|| true', which is all the trap actually needs.
+    build_time_report || true
+    rm -rf "$BUILD_STATE" 2>/dev/null || true
     if [ -n "${IMAGE_DEV:-}" ] && [ -e "${IMAGE_DEV:-/nonexistent}" ]; then
         printf '\033[33mReleasing %s (%s).\033[0m\n' "$IMAGE_DEV" "${IMAGE_PATH:-image}" >&2
         release_image
@@ -1233,12 +1350,12 @@ WHO
     done
     info "Admin account: $CFG_USER"
 
-    # The git identity is a PROPOSAL taken from this Mac's own git config, and
-    # it is offered rather than assumed for the same reason: whoever writes the
-    # card is usually but not always whoever will commit from the machine.
-    # Declining leaves the field empty and stage 1 asks on the target instead.
+    # The git identity is a PROPOSAL from the answers file (or the
+    # environment), shown here so that a card written for somebody else is
+    # not written under this file's name by habit. Declining leaves the field
+    # empty and stage 1 asks on the target instead.
     if [ -n "${CFG_GIT_NAME}${CFG_GIT_EMAIL}" ]; then
-        printf '\n    Git identity for commits made on the machine, taken from this Mac:\n' >&2
+        printf '\n    Git identity for commits made on the machine, from the answers file:\n' >&2
         printf '        %s <%s>\n' "${CFG_GIT_NAME:-(no name)}" "${CFG_GIT_EMAIL:-no email}" >&2
         printf '    Offer that as the default on the target? [Y/n]: ' >&2
         read -r _reply < /dev/tty || _reply=""
@@ -1461,6 +1578,7 @@ if [ "$IMAGE_MODE" -eq 1 ]; then
         "${IMAGE_PATH:+Path  : $IMAGE_PATH}" \
         "" \
         "Boot the result with UTM or QEMU. Nothing here can damage a disk."
+    phase "Create image"
     attach_image
 else
     step "Identify the SD card" \
@@ -1683,6 +1801,7 @@ if [ "$NOW_FINGERPRINT" != "$DISK_FINGERPRINT" ]; then
 fi
 info "Re-checked /dev/$DISK: still the device you selected."
 
+phase "Partition"
 ERASED=1
 # MBRFormat: the Pi firmware reads an MBR/FDisk partition table, not GPT.
 # MS-DOS FAT32 boot partition, remainder left as free space for ext4 later.
@@ -1729,6 +1848,7 @@ step "Set the bootable flag on partition 1" \
     "If it fails the script warns and continues -- the Pi firmware usually" \
     "boots without the active flag."
 
+phase "Boot flag"
 info "Marking partition 1 bootable..."
 printf 'f 1\nw\ny\nq\n' | sudo fdisk -e "/dev/$DISK" >/dev/null 2>&1 \
     || warn "could not set the bootable flag (usually harmless; continuing)"
@@ -1750,6 +1870,7 @@ step "Copy the Alpine payload onto ${BOOT_LABEL}" \
     "" \
     "May take several minutes on a slow card."
 
+phase "Copy payload"
 # COPYFILE_DISABLE stops macOS writing ._AppleDouble sidecar files.
 info "Copying payload to $MNT ..."
 export COPYFILE_DISABLE=1
@@ -1780,6 +1901,7 @@ step "Write the answer file, firmware settings and first-run script" \
     "This script carries the instructions there instead of leaving them for" \
     "you to retype at the console."
 
+phase "Generated files"
 info "Writing answers.txt, usercfg.txt and copal-init.sh..."
 
 # See LBUOPTS below for what this is and why it differs by platform.
@@ -2146,6 +2268,7 @@ PI_MAIL_ADDRESS="${CFG_MAIL_ADDRESS}"
 PI_MAIL_NAME="${CFG_MAIL_NAME}"
 PI_MAIL_IMAP="${CFG_MAIL_IMAP}"
 PI_MAIL_SMTP="${CFG_MAIL_SMTP}"
+PI_GIT_REPOS="${CFG_GIT_REPOS}"
 CONF
 
 # Build identity, its own file rather than a line in copal.conf: it is read by
@@ -2160,8 +2283,12 @@ COPAL_BUILD_TARGET="${MODEL:-$ARCH}"
 COPAL_BUILD_ARCH="${ARCH}"
 COPAL_ALPINE_VER="${ALPINE_VER}"
 COPAL_PAYLOAD_FETCHED="${PAYLOAD_DATE}"
+COPAL_GIT_REV="${BUILD_GIT_REV}"
+COPAL_GIT_DESCRIBE="${BUILD_GIT_DESCRIBE}"
+COPAL_GIT_DIRTY="${BUILD_GIT_DIRTY}"
 BUILDINFO
 info "Build ${BUILD_ID} -- ${BUILD_DATE}, Alpine ${ALPINE_VER}, payload ${PAYLOAD_DATE}"
+info "Source  ${BUILD_GIT_DESCRIBE}$([ "$BUILD_GIT_DIRTY" = yes ] && printf ' (UNCOMMITTED CHANGES)')"
 
 # The debug marker, on the FAT partition where stage 1 will find it. A file
 # rather than a line in copal.conf, so that deleting it is the whole of
@@ -2183,7 +2310,14 @@ fi
 if [ -n "${CFG_GIT_NAME}${CFG_GIT_EMAIL}" ]; then
     info "Git identity offered: ${CFG_GIT_NAME:-(no name)} <${CFG_GIT_EMAIL:-no email}> -- stage 1 asks, Enter accepts"
 else
-    warn "no git identity on this Mac -- stage 1 will ask for one with no default"
+    warn "no git identity in the answers file -- stage 1 will ask for one with no default"
+fi
+
+if [ -n "$CFG_GIT_REPOS" ]; then
+    info "Repositories offered for ~/code -- stage 1 confirms, stage 7 clones:"
+    for _r in $CFG_GIT_REPOS; do info "  $_r"; done
+else
+    info "No repositories proposed for ~/code -- stage 1 asks, Enter skips"
 fi
 
 # The SSH public key, copied as a plain file next to it. Public keys are not
@@ -2291,6 +2425,26 @@ stage_rom() {  # <source file> <destination file>
     return 1
 }
 
+# The scripts and theme directories copal-init.sh installs from beside
+# itself: stage 4 takes tools/copal-terminal-theme and, through
+# copal_write_themes, tools/copal-theme and themes/*/ (theme.conf and
+# neovim.lua each). $(dirname "$0") on the target is this partition, so
+# they go next to the script. Without this the stages warn and skip them
+# -- which is what happened on the guest bench before it was noticed.
+info "Staging tools/ and themes/ on ${BOOT_LABEL}..."
+_here="$(cd "$(dirname "$0")" && pwd)"
+rm -rf "$MNT/tools" "$MNT/themes"
+mkdir -p "$MNT/tools" "$MNT/themes"
+for _t in copal-terminal-theme copal-theme; do
+    [ -f "$_here/tools/$_t" ] && cp "$_here/tools/$_t" "$MNT/tools/" || warn "tools/$_t is missing; the target will do without it"
+done
+if [ -d "$_here/themes" ]; then
+    cp -R "$_here/themes/." "$MNT/themes/"
+    info "themes staged: $(ls "$_here/themes" | tr '\n' ' ')"
+else
+    warn "themes/ is missing; the target will have the editor theme only"
+fi
+
 info "Staging Mini vMac source and ROM on ${BOOT_LABEL}..."
 mkdir -p "$MNT/minivmac"
 
@@ -2335,6 +2489,44 @@ if [ -n "$PB_TGZ" ]; then
     info "PianoBooster source staged: $(basename "$PB_TGZ") ($(( $(wc -c < "$PB_TGZ") / 1024 )) kB)"
 else
     warn "no pianobooster-*.tar.gz in $MVM_LOCAL/pianobooster -- stage 14 will download it"
+fi
+
+# Linux Antiquity, staged for the same reason as Mini vMac: stage 17 applies a
+# desktop theme whose configuration lives in a GitHub repository, and a card
+# that already carries the theme does not care whether GitHub is reachable at
+# hour three of an unattended install. The theme is diinki's Linux Antiquity
+# (MIT), vendored under vendor/linux-antiquity-main -- see docs/THEME.md for
+# what it is, why it was chosen, and every transformation stage 17 applies to
+# make an Arch-targeted Hyprland theme land on Alpine.
+#
+# Only configs/ and the licence travel. iconTheme/ stays behind deliberately:
+# it is a derivative of the Buuf icon set, whose own licence is CC BY-NC-SA,
+# not MIT -- the repository's MIT grant cannot launder it, so it is not
+# shipped. screenshots/ is 12 MB of documentation for a web page.
+#
+# COPYFILE_DISABLE stops bsdtar embedding AppleDouble ._* sidecars, which
+# would otherwise be unpacked onto the Pi as garbage dotfiles.
+#
+# Two names are tried: vendor/linux-antiquity is the git-subtree of our fork
+# (the place changes are made and pushed back from -- see docs/THEME.md,
+# "Forking and vendoring"), and vendor/linux-antiquity-main is the plain
+# unzipped upstream snapshot that predates the subtree. Whichever exists
+# first wins, so the migration from snapshot to subtree needs no edit here.
+ANTIQ_SRC=""
+for _a in "$MVM_LOCAL/vendor/linux-antiquity" "$MVM_LOCAL/vendor/linux-antiquity-main"; do
+    [ -d "$_a/configs" ] && { ANTIQ_SRC="$_a"; break; }
+done
+if [ -n "$ANTIQ_SRC" ]; then
+    mkdir -p "$MNT/antiquity"
+    COPYFILE_DISABLE=1 tar -czf "$MNT/antiquity/linux-antiquity.tar.gz" \
+        --exclude '._*' --exclude '.DS_Store' \
+        -C "$ANTIQ_SRC" configs LICENSE README.md
+    info "Linux Antiquity staged: $(( $(wc -c < "$MNT/antiquity/linux-antiquity.tar.gz") / 1024 / 1024 )) MB (configs + licence)"
+    info "  stage 17 uses this and does not need the network for the theme"
+else
+    warn "no linux-antiquity checkout under vendor/ -- stage 17 will download the theme"
+    warn "Unpack https://github.com/diinki/linux-antiquity/archive/refs/heads/main.zip into vendor/,"
+    warn "or add the subtree (docs/THEME.md, 'Forking and vendoring'), then --refresh."
 fi
 
 # The first-run script. Quoted heredoc: nothing here is expanded by the host.
@@ -2414,6 +2606,44 @@ CONF="$BOOT/copal.conf"
 # file carries the PROPOSAL from the Mac; this one carries the answer given
 # here, and an answer must not be destroyed by re-running --refresh.
 IDFILE="$BOOT/copal-git"
+
+# The repositories to check out into ~/code, asked in stage 1 beside the
+# identity and cloned by stage 7. Same file, same partition, same reasons: it
+# is readable at every point in the install, it survives stage 3 moving the
+# root, and with the card in a reader on the Mac it can be corrected by hand.
+#
+# One URL per line. Full-line '#' comments and blanks are ignored, so the file
+# can explain itself to whoever opens it next -- which is the point of it being
+# a list in a file rather than a string in copal.conf. The PROPOSAL from the
+# Mac does arrive as a string, in PI_GIT_REPOS; this is where the answer lives.
+REPOFILE="$BOOT/copal-repos"
+
+# COPAL ITSELF, as a checkout you can edit.
+#
+# The machine is built by a shell script that is also a git repository, and
+# until now the script arrived on the card as a file and the repository did
+# not arrive at all. That is the wrong shape for what this system is: every
+# guide in it says "edit copal-prep.sh", and the copy on the boot partition is
+# an artefact -- editing it changes this one card and nothing else, and the
+# next `make pi4` overwrites it.
+#
+# So ~/code/copal is a real clone, on every machine, cloned by stage 7 beside
+# whatever else was listed and pulled by every later `copal-code`. Change it
+# there, commit it there, push it from there.
+#
+# https and not the ssh URL git uses on the Mac: an ssh remote needs a key THIS
+# MACHINE holds, which is not the key copal-prep.sh puts on the card (that one
+# authorises you into the machine, not the machine out to GitHub). A clone that
+# works unattended is worth more than one that is ready to push; `git remote
+# set-url origin git@github.com:vonglurt/copal.git` once, on the machine, is
+# the whole of the difference.
+#
+# It is NOT written into copal-repos. The list in that file is the answer
+# somebody gave in stage 1, and Copal is not their answer -- it is the floor
+# under it. Keeping it out means "I said none" still records none, and means
+# `copal-code rm copal` cannot leave a machine unable to rebuild itself by
+# quietly removing the thing it is built from.
+COPAL_SELF_URL="https://github.com/vonglurt/copal.git"
 
 # Full-automatic install state. Deliberately on the FAT boot partition and
 # nowhere else: it is the one filesystem that exists at every point in this
@@ -2893,6 +3123,65 @@ have_space_mb() {  # <megabytes> <what it is for>
     return 1
 }
 
+# ---------------------------------------------------- the diskless guard ---
+#
+# NOTHING LARGE MAY BE INSTALLED WHILE / IS STILL A TMPFS, and this is the one
+# place that decides it.
+#
+# Diskless, the root filesystem is RAM. On a 6 GB VM that is a ~2.9 GB tmpfs,
+# which is big enough to swallow the toolchain or a few hundred packages
+# before it fills -- and then every command on the machine fails with ENOSPC
+# at once, including the ones that would tell you why. It is not a clean
+# failure: apk leaves half-unpacked packages behind, the shell cannot write a
+# log, and the install has to be thrown away rather than resumed, because none
+# of it was ever on the disk.
+#
+# THIS ACTUALLY HAPPENED, which is why it is now a function instead of a
+# comment. Stages 7 and 12 -- the toolchain and the 316-package catalogue,
+# the two biggest installers in the whole script -- had no check at all. A run
+# that reached them before stage 3 put 2.8 GB into /usr on a RAM disk and
+# wedged the machine. Stages 4 and 16 did check, but only by warning and then
+# asking "Try anyway?", which an unattended install answers yes to.
+#
+# So the rule is now the same everywhere, and it is a REFUSAL rather than a
+# warning:
+#
+#   - not diskless          -> return 0, say nothing, get on with it
+#   - diskless, unattended  -> refuse. An automatic install must never fill a
+#                              tmpfs; there is nobody there to notice.
+#   - diskless, interactive -> explain what will happen and default to NO.
+#                              Someone who genuinely wants to try can, but
+#                              they have to say so.
+require_disk_root() {  # <what this stage is about to install>
+    is_diskless || return 0
+
+    _size=$(df -h / 2>/dev/null | awk 'NR==2 {print $2}')
+    warn "the root filesystem is still a tmpfs (${_size:-RAM-resident})."
+    warn "$1 cannot be installed into it."
+    cat <<'MSG'
+
+    Diskless, / is RAM. Packages installed now are written into memory, they
+    do not survive a reboot, and when the tmpfs fills EVERY command on the
+    machine starts failing at once -- including the ones that would explain
+    why. There is no partial success to resume from.
+
+    Stage 3 moves the root filesystem onto the disk and reboots. Run it, let
+    the machine come back, and then this stage has real storage to use.
+
+MSG
+    if [ "${AUTO:-0}" = 1 ]; then
+        warn "unattended -- skipping rather than filling the RAM disk"
+        note "run stage 3, then this stage"
+        return 1
+    fi
+    # Default NO. The old wording defaulted to yes in the auto path and was
+    # phrased as though trying were reasonable; it is not.
+    confirm "Install into the RAM disk anyway (it will almost certainly wedge)?" \
+        || { note "Skipped. Run stage 3 first."; return 1; }
+    warn "carrying on into a RAM disk at your request"
+    return 0
+}
+
 # The one sentence every stage owes you on a diskless system, phrased the same
 # way each time. Four stages said this in four slightly different wordings.
 commit_reminder() {
@@ -2971,6 +3260,7 @@ sshkey_done() {
 PI_USER=user
 PI_GIT_NAME=''
 PI_GIT_EMAIL=''
+PI_GIT_REPOS=''
 [ -f "$CONF" ] && . "$CONF"
 
 # uname -r is 6.x.y-0-rpi on this image; setup-disk derives the kernel package
@@ -3673,6 +3963,7 @@ Files|PCManFM (file manager)|pcmanfm|pcmanfm|x|*
 Files|Thunar (file manager)|thunar|thunar|x|*
 Files|Xfe (two-pane file manager)|xfe|xfe|x|*
 Files|Krusader (two-pane - powerful)|krusader|krusader|x|!v6
+Files|KRename (batch renaming)|krename|krename|x|!v6
 Files|Xarchiver (zip/tar/7z)|xarchiver 7zip unzip|xarchiver|x|*
 Files|Midnight Commander|mc|mc|t|*
 Files|nnn (terminal file manager)|nnn|nnn|t|*
@@ -3691,6 +3982,9 @@ System|Disk usage (Baobab)|baobab|baobab|x|*
 System|Task manager (Xfce)|xfce4-taskmanager|xfce4-taskmanager|x|*
 System|htop (process viewer)|htop|htop|t|*
 System|Meld (compare files and folders)|meld|meld|x|*
+System|KDiff3 (three-way diff and merge)|kdiff3|kdiff3|x|!v6
+System|Kompare (visual diff, KDE)|kompare|kompare|x|!v6
+System|GNU coreutils (md5sum, sha224sum)|coreutils|sha224sum|h|*
 System|lazygit (git TUI)|lazygit|lazygit|t|*
 System|gitui (git TUI)|gitui|gitui|t|*
 System|tig (git history TUI)|tig|tig|t|*
@@ -3703,6 +3997,10 @@ Discs|cdrdao (audio CD burning)|cdrdao|cdrdao|h|*
 Discs|cdparanoia (CD ripper)|cdparanoia|cdparanoia|h|*
 Discs|abcde (rip and encode)|abcde|abcde|h|!v7
 Discs|zip and unzip|zip unzip|zip|h|*
+Discs|7-Zip (7z, and reads rar)|7zip|7z|h|*
+Discs|unarj (.arj archives)|unarj|unarj|h|*
+Discs|rpm (open Red Hat packages)|rpm|rpm|h|*
+Discs|dpkg (open Debian packages)|dpkg|dpkg|h|*
 Discs|bsdtar (reads almost anything)|libarchive-tools|bsdtar|h|*
 Discs|SquashFS tools|squashfs-tools|mksquashfs|h|*
 Smallweb|Bombadillo (gopher + gemini + finger)|bombadillo|bombadillo|t|*
@@ -3956,6 +4254,12 @@ write_catalogue() {
 # Install a config file into every real home on the box -- root's and
 # $PI_USER's. copal-init.sh runs as root, so writing only to $HOME would leave
 # 'user' with no desktop or editor configuration at all.
+# What this has written, by checksum, so the next run can tell "the file I
+# wrote last time" from "a file somebody edited since". Root-owned and off
+# the home directories on purpose: it is the installer's memory, not the
+# user's configuration.
+WRITTEN_RECORD=/var/lib/copal/written
+
 install_home_file() {  # <relative path> <source file>
     _rel="$1"; _src="$2"
     # Before the loop, because the loop's own guard is `is it a directory` --
@@ -3965,12 +4269,66 @@ install_home_file() {  # <relative path> <source file>
     for _h in /root "$(user_home)"; do
         [ -n "$_h" ] && [ -d "$_h" ] || continue
         mkdir -p "$_h/$(dirname "$_rel")"
-        [ -f "$_h/$_rel" ] && cp "$_h/$_rel" "$_h/$_rel.bak"
+        # Said out loud when the file being replaced is NOT THE ONE THIS WROTE
+        # LAST TIME: somebody edited it, and their edit is now in the .bak.
+        # The place for that edit is the file's local companion -- see
+        # install_home_once -- and this is where they find that out.
+        #
+        # Against the record, not against the new content: a file that
+        # differs from the new one is the normal case on every run that
+        # changed the stage, and a vendored copy that stage 17 lays down
+        # before writing its own over it differs too. Only a file that was
+        # written here and then changed by somebody else is worth a word. No
+        # record yet means nothing is said, which is the honest first run.
+        _was=""
+        if [ -f "$_h/$_rel" ]; then
+            cp "$_h/$_rel" "$_h/$_rel.bak"
+            _rec=$(awk -v f="$_h/$_rel" '$2 == f { print $1; exit }' "$WRITTEN_RECORD" 2>/dev/null)
+            if [ -n "$_rec" ]; then
+                _now=$(sha256sum "$_h/$_rel" 2>/dev/null | cut -d' ' -f1)
+                [ "$_now" = "$_rec" ] || _was=" -- replaced a copy you had changed; it is in $_rel.bak"
+            fi
+        fi
         cp "$_src" "$_h/$_rel"
+        # Remember what was written. One line per path, the newest winning.
+        mkdir -p "$(dirname "$WRITTEN_RECORD")" 2>/dev/null
+        _sum=$(sha256sum "$_h/$_rel" 2>/dev/null | cut -d' ' -f1)
+        if [ -n "$_sum" ]; then
+            { grep -v " $_h/$_rel\$" "$WRITTEN_RECORD" 2>/dev/null; printf '%s %s\n' "$_sum" "$_h/$_rel"; } \
+                > "$WRITTEN_RECORD.new" && mv "$WRITTEN_RECORD.new" "$WRITTEN_RECORD"
+        fi
         # Match whatever owns the home directory, so 'user' still owns its own
         # dotfiles after root wrote them.
         _own=$(stat -c '%u:%g' "$_h" 2>/dev/null) && chown -R "$_own" "$_h/$(dirname "$_rel")" 2>/dev/null || true
-        note "$_h/$_rel"
+        note "$_h/$_rel$_was"
+    done
+}
+
+# The other kind of home file: created ONCE, and never written again.
+#
+# Everything install_home_file writes is rewritten when its stage runs again,
+# which is what keeps the installer honest (the file is the stage's output,
+# not a thing that drifts) and is also a trap: a binding added by hand to
+# hyprland.conf is in hyprland.conf.bak after the next 'make redeploy'. The
+# checkout is the right place for a change to Copal and the wrong place for a
+# change to one machine, so each generated file ends by reading a companion
+# -- local.conf, local.lua, .bashrc.local -- that this creates empty and
+# then leaves alone. Read last, so it wins. The installer owns its file
+# outright and the person owns the other outright; there is no file both
+# edit, which is the whole of the arrangement.
+install_home_once() {  # <relative path> <source file, the header comment>
+    _rel="$1"; _src="$2"
+    ensure_user_home || true
+    for _h in /root "$(user_home)"; do
+        [ -n "$_h" ] && [ -d "$_h" ] || continue
+        if [ -e "$_h/$_rel" ]; then
+            note "$_h/$_rel -- yours; left alone"
+            continue
+        fi
+        mkdir -p "$_h/$(dirname "$_rel")"
+        cp "$_src" "$_h/$_rel"
+        _own=$(stat -c '%u:%g' "$_h" 2>/dev/null) && chown "$_own" "$_h/$_rel" 2>/dev/null || true
+        note "$_h/$_rel -- created once; yours from now on"
     done
 }
 
@@ -4227,11 +4585,19 @@ else
     PS1='\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]$ '
 fi
 
+# The theme's prompt, written by copal-theme: the same shape in the current
+# theme's two colours, plus $COPAL_THEME for scripts. After the PS1 above so
+# it wins; absent until a theme has been applied, and then the above stands.
+[ -f "$HOME/.config/copal/current/shell.sh" ] && . "$HOME/.config/copal/current/shell.sh"
+
 alias ls='ls --color=auto'
 alias ll='ls -lh'
 alias la='ls -lha'
 alias grep='grep --color=auto'
 alias df='df -h'
+
+# Yours. This file is rewritten when stage 4 runs; ~/.bashrc.local is not.
+[ -f "$HOME/.bashrc.local" ] && . "$HOME/.bashrc.local"
 BASHRC
     install_home_file .bashrc /tmp/bashrc.$$; rm -f /tmp/bashrc.$$
 
@@ -4295,6 +4661,9 @@ for _d in "$HOME/.local/bin" "$HOME/bin" "$HOME/.cargo/bin" "$HOME/go/bin"; do
 done
 unset _d
 export PATH
+
+# Yours: environment that should survive this block being rewritten.
+[ -f "$HOME/.profile.local" ] && . "$HOME/.profile.local"
 
 # A console login, an ssh session and a terminal opened from i3 are all LOGIN
 # shells, and a login shell reads this file and not ~/.bashrc. Without this
@@ -4669,6 +5038,156 @@ MSG
     return 0
 }
 
+# ------------------------------------------------ the checkouts for ~/code ---
+#
+# A machine you install in order to work on something should arrive with that
+# something already on it. ~/code is where it goes -- separate from ~/dev,
+# which stage 7 fills with the sample project that proves the toolchain works,
+# because a directory holding a worked example and a directory holding your
+# repositories are two different things and merging them makes both worse.
+#
+# ASKED IN STAGE 1, next to the identity and the password, for the reason the
+# identity is asked there: that is the last moment in the install where anybody
+# is expected to be at the keyboard. CLONED IN STAGE 7, which is the first
+# stage that has git, a network and a home directory at the same time. Nothing
+# in between stops to ask.
+#
+# Not verified here, and deliberately so. Whether a URL exists, whether it is
+# public, and whether this machine may read it are all questions the network
+# answers, and the network is not necessarily up in stage 1 -- a wrong URL
+# fails in stage 7 with git's own message, which says more than anything this
+# could check.
+
+repos_list() {  # -> one URL per line, comments and blank lines removed
+    [ -f "$REPOFILE" ] || return 0
+    # \r goes because this file is meant to be editable from the Mac, and a
+    # carriage return on the end of a URL is a clone failure whose cause is
+    # invisible in the error. $1 rather than $0: a trailing comment on a URL
+    # line is a comment, and no git URL contains a space.
+    sed 's/\r$//' "$REPOFILE" 2>/dev/null \
+        | sed 's/^[[:space:]]*#.*//' \
+        | awk 'NF { print $1 }'
+}
+
+repos_save() {  # reads the list on stdin, one per line
+    mount -o remount,rw "$BOOT" 2>/dev/null || true
+    { echo "# Copal: repositories to check out into ~/code on this machine."
+      echo "# Asked in stage 1, cloned by stage 7. One URL per line; lines"
+      echo "# starting with # are ignored. Editable by hand, from here or"
+      echo "# from the Mac with the card in a reader."
+      echo "#"
+      echo "# Re-running stage 7 clones anything new and leaves the rest alone."
+      cat
+    } > "$REPOFILE" 2>/dev/null || {
+        warn "could not write $REPOFILE -- stage 7 will have nothing to clone"
+        return 1
+    }
+    sync
+    return 0
+}
+
+# What the list currently is: the answer given on this machine, or failing that
+# the proposal copal-prep.sh put in copal.conf. Same priority order as the
+# identity, for the same reason -- an answer given here outranks a default that
+# rode over on the card.
+#
+# The test is whether the FILE EXISTS, not whether it has anything in it, and
+# that distinction is the whole point. "I was asked and I said none" is an
+# answer; falling back to the card's proposal there would clone repositories
+# somebody had just finished declining.
+repos_current() {
+    if [ -f "$REPOFILE" ]; then
+        repos_list
+        return 0
+    fi
+    for _r in $PI_GIT_REPOS; do printf '%s\n' "$_r"; done
+}
+
+repos_ask() {
+    say "Repositories to check out into ~/code"
+    _list=$(repos_current)
+
+    # --auto means the card already holds the answer, and there is nobody there
+    # to ask. Save what the card proposed and move on -- but only if it
+    # proposed something, because writing an empty list would be recording an
+    # answer nobody gave.
+    if answers_auto; then
+        if [ -n "$_list" ]; then
+            printf '%s\n' "$_list" | repos_save \
+                && note "from the card -- stage 7 clones these into ~/code:"
+            printf '%s\n' "$_list" | while read -r _r; do note "  $_r"; done
+        else
+            note "auto: none proposed on the card -- ~/code gets Copal itself"
+        fi
+        return 0
+    fi
+
+    cat <<'MSG'
+    Anything listed here is cloned into ~/code by stage 7, while the install
+    still has a network and you are still nearby. It is not a package list
+    and nothing is built from it -- it is 'git clone', once, per line.
+
+    Copal itself is cloned there whatever you say here -- ~/code/copal, the
+    repository this machine is built from, as a checkout you can edit and
+    push. It is not part of this list and does not need to be typed.
+
+    https URLs work with no further setup. An ssh URL needs a key that THIS
+    MACHINE holds, which is not the key on the card -- that one authorises
+    you into the machine, not the machine out to GitHub -- so an ssh URL
+    will fail in stage 7 until you put a key on here yourself.
+
+    Enter at an empty prompt finishes the list. Enter at the first one skips
+    the whole thing; ~/code is still created, and 'copal-code' adds to the
+    list later.
+MSG
+
+    if [ -n "$_list" ]; then
+        note "already listed:"
+        printf '%s\n' "$_list" | while read -r _r; do note "  $_r"; done
+        if ! confirm_yes "Keep these?"; then
+            _list=""
+            note "Starting from an empty list."
+        fi
+    fi
+
+    while :; do
+        ask_real "Repository URL (Enter when done):"
+        [ -n "$REPLY" ] || break
+        # A loose shape check, said while the person who typed it is still
+        # there to retype it. Not a rejection: git understands more URL forms
+        # than any pattern here should claim to know.
+        case "$REPLY" in
+            *://*|*@*:*|/*) ;;
+            *) warn "'$REPLY' does not look like a git URL; keeping it anyway" ;;
+        esac
+        # Typing the same one twice is a mistake, not an instruction.
+        if printf '%s\n' "$_list" | grep -qxF "$REPLY"; then
+            note "already on the list -- not adding it twice"
+            continue
+        fi
+        # ${x:+...} rather than a bare append: command substitution ate the
+        # trailing newline off repos_current, so appending to a non-empty list
+        # without putting one back glues two URLs into one nonsense one.
+        _list="${_list:+$_list
+}$REPLY"
+        note "$(printf '%s\n' "$_list" | awk 'NF' | wc -l | tr -d ' ') on the list"
+    done
+
+    _list=$(printf '%s\n' "$_list" | awk 'NF')
+    if [ -z "$_list" ]; then
+        note "Nothing listed -- ~/code gets Copal itself and nothing else."
+        note "Add to it later with: copal-code add URL"
+        # An empty answer is still an answer: recording it stops the card's
+        # proposal from being cloned behind the back of somebody who just
+        # declined it.
+        printf '' | repos_save >/dev/null 2>&1 || true
+        return 0
+    fi
+    printf '%s\n' "$_list" | repos_save \
+        && note "saved to $REPOFILE -- stage 7 clones them without asking again"
+    return 0
+}
+
 # ------------------------------------------- the password from answers.txt ---
 # setup-alpine has no answer-file variable for the root password, and that one
 # gap is what has kept a full-automatic install from being possible: everything
@@ -4754,9 +5273,10 @@ stage_base_config() {
         confirm "Run setup-alpine again anyway?" || { note "Skipped."; return 0; }
     fi
 
-    note "First, two questions of Copal's own: the name and email for git"
-    note "commits. They are saved on the card and applied by stage 7, which is"
-    note "why that stage does not stop to ask an hour and a half from now."
+    note "First, a few questions of Copal's own: the name and email for git"
+    note "commits, and the repositories to check out into ~/code. They are"
+    note "saved on the card and acted on by stage 7, which is why that stage"
+    note "does not stop to ask an hour and a half from now."
     note "Then keymap, hostname, network, timezone, mirror, sshd and user come"
     note "from answers.txt."
     if answers_pw_hash >/dev/null 2>&1; then
@@ -4777,6 +5297,11 @@ stage_base_config() {
     # for setup-alpine below.
     tui_suspend
     git_identity_ask
+    # Last of Copal's own questions, and the only one that is about what this
+    # machine is FOR rather than about how it is built. It goes after the
+    # identity because it is the same conversation continued: who you are, and
+    # then what you came here to work on.
+    repos_ask
     tui_resume
 
     # setup-alpine writes over the whole terminal and asks questions of its own,
@@ -4926,11 +5451,70 @@ stage_base_config() {
 # OWNERSHIP. 9p2000.L passes the host's numeric uid straight through, and the
 # Mac's first user is 501 while this machine's is 1000, so files arrive owned by
 # a uid that does not exist here. They are readable; writing back is what
-# surprises people. There is no fix on the guest side worth having -- the
-# options that paper over it (dfltuid, access=) either do not apply to
-# 9p2000.L or silently break other things -- so it is documented instead.
+# surprises people. The mount options that paper over it (dfltuid, access=)
+# either do not apply to 9p2000.L or silently break other things. What does
+# work is a chown FROM THIS SIDE, when the host maps ownership instead of
+# passing it through: QEMU's mapped-xattr model keeps the guest's idea of the
+# owner in an extended attribute on the host file, so the folder stays the
+# Mac user's on the Mac and becomes this machine's user's here. That is tried
+# below, and at every boot; where the host refuses it, it is said, once.
+#
+# SETUP-DISK EATS THIS MOUNT. On a PC or VM stage 3 runs setup-disk with /mnt
+# as the new root, and setup-disk reads every mount under /mnt as a mount OF
+# THE NEW SYSTEM: /mnt/share came out of it as '/share', with the live options
+# (no nofail) and no /mnt/share directory in the new root, so ~/Shared pointed
+# at nothing. Stage 3 puts the line back; share_fstab_write() is the one
+# place the line is spelled so both stages write the same one.
+SHARE_OPT='trans=virtio,version=9p2000.L,msize=131072,rw'
+write_share_retry() {
+    mkdir -p /etc/local.d
+    cat > /etc/local.d/copal-share.start <<'SHARESTART'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# The folder shared with the host, tried at every boot. Written by copal-init.sh.
+#
+# fstab mounts the share that was there when the card was written. This is
+# for the one that was not: a folder pointed at this VM in UTM afterwards, or
+# a card moved to a host that has one. It also does the one thing fstab
+# cannot, which is to make the folder this machine's user's where the host
+# allows it. Nothing here fails: a machine with no share exits quietly.
+modprobe 9pnet_virtio 2>/dev/null; modprobe 9p 2>/dev/null
+grep -qw 9p /proc/filesystems 2>/dev/null || exit 0
+if ! grep -q '^share /mnt/share ' /proc/mounts; then
+    mkdir -p /mnt/share
+    mount -t 9p -o SHARE_OPT_PLACEHOLDER share /mnt/share 2>/dev/null \
+        || { rmdir /mnt/share 2>/dev/null; exit 0; }
+fi
+_u=$(getent passwd COPAL_USER_PLACEHOLDER 2>/dev/null | cut -d: -f3)
+if [ -n "$_u" ] && [ "$(stat -c %u /mnt/share 2>/dev/null)" != "$_u" ]; then
+    chown "$_u" /mnt/share 2>/dev/null || true
+fi
+# setup-disk left an empty /share behind on cards written before stage 3
+# learned to put the line back. Only when it is empty and nothing is on it.
+if [ -d /share ] && ! grep -q ' /share ' /proc/mounts; then
+    rmdir /share 2>/dev/null || true
+fi
+exit 0
+SHARESTART
+    sed -i "s|SHARE_OPT_PLACEHOLDER|$SHARE_OPT|; s|COPAL_USER_PLACEHOLDER|$PI_USER|" \
+        /etc/local.d/copal-share.start
+    chmod +x /etc/local.d/copal-share.start
+}
+share_fstab_write() {  # <fstab> -- replace any share line with the canonical one
+    sed -i '/^share[[:space:]]/d' "$1"
+    printf 'share\t/mnt/share\t9p\t%s,nofail,_netdev\t0 0\n' "$SHARE_OPT" >> "$1"
+}
 configure_9p_share() {
     say "Shared folder with the host, if there is one"
+
+    # The boot-time attempt first, and unconditionally: it is for the other
+    # order of events, a folder pointed at this VM in UTM after the card was
+    # written, or a card moved to a host that has one. fstab covers the share
+    # that was there at install time; this covers the one that was not. It is
+    # quiet where there is nothing, every Raspberry Pi included, so it can be
+    # installed before the test below has a chance to return.
+    write_share_retry
 
     # 9p and 9pnet_virtio are separate modules and neither is loaded by default.
     modprobe 9pnet_virtio 2>/dev/null || true
@@ -4939,7 +5523,7 @@ configure_9p_share() {
         note "no 9p support in this kernel -- nothing to share (normal on a Pi)"
         return 0
     fi
-    _opt='trans=virtio,version=9p2000.L,msize=131072,rw'
+    _opt="$SHARE_OPT"
 
     # The modules, for the boot-time path and for autofs alike.
     if [ -f /etc/modules ]; then
@@ -4988,11 +5572,22 @@ configure_9p_share() {
         # the fallback, with nofail so a host with no share still boots.
         warn "autofs is not installable here -- falling back to an fstab line"
         mkdir -p /mnt/share
-        grep -q '^share[[:space:]]\+/mnt/share[[:space:]]' /etc/fstab 2>/dev/null \
-            || printf 'share\t/mnt/share\t9p\t%s,nofail,_netdev\t0 0\n' "$_opt" >> /etc/fstab
+        share_fstab_write /etc/fstab
         mount /mnt/share 2>/dev/null && note "mounted: /mnt/share" \
             || note "no folder is being shared with this machine yet"
     fi
+
+    # Ownership: try it, say what happened. See the note above the function.
+    _uid=$(id -u "$PI_USER" 2>/dev/null || echo 0)
+    if [ "$_uid" != 0 ] && [ "$(stat -c %u /mnt/share 2>/dev/null)" != "$_uid" ]; then
+        if chown "$_uid" /mnt/share 2>/dev/null; then
+            note "owned by '$PI_USER' here -- the host maps ownership, so writing works"
+        else
+            note "owned by the host's user (uid $(stat -c %u /mnt/share 2>/dev/null)) -- the host passes"
+            note "  ownership through, so '$PI_USER' can read this folder and not write it"
+        fi
+    fi
+
 
     # Somewhere obvious, twice over. pcmanfm and the file manager open on
     # $HOME, and a mount point three directories away might as well not exist.
@@ -5521,6 +6116,18 @@ FSTAB
     # flushes. Match the mountpoint field -- the device field is a UUID now.
     sed -i -E 's|^([^#[:space:]]+[[:space:]]+/[[:space:]]+ext4[[:space:]]+)[^[:space:]]+|\1defaults,noatime,commit=600|' /mnt/etc/fstab
 
+    # setup-disk also swallowed the share. Stage 1 mounted it at /mnt/share,
+    # and with /mnt as the new root setup-disk read that as a mount at /share
+    # OF THE NEW SYSTEM: its line says /share, carries the live options and
+    # so no nofail, and the new root has no /mnt/share for ~/Shared to point
+    # at. Put the line back the way stage 1 wrote it, and the directory with
+    # it. See the note above configure_9p_share().
+    if grep -q '^share[[:space:]]' /mnt/etc/fstab 2>/dev/null; then
+        share_fstab_write /mnt/etc/fstab
+        mkdir -p /mnt/mnt/share
+        note "share: setup-disk read it as /share; back to /mnt/share, with nofail"
+    fi
+
     # The carried-over config points /etc/apk/cache at /media/mmcblk0p2/cache,
     # which was p2 -- and p2 is now the root filesystem itself. Left alone
     # that is a dangling symlink and apk breaks on first use.
@@ -5716,6 +6323,36 @@ MSG
 #
 # Flathub publishes com.brave.Browser for x86_64 and aarch64 only. On armhf
 # there is nothing to install and saying so is more use than trying.
+# $BROWSER, the convention every CLI tool follows to open a URL -- Claude
+# Code's sign-in link among them, but also git's web commands, `xdg-open` on a
+# system with no desktop file database, and anything else that prints a link
+# rather than showing one.
+#
+# WRITTEN WHENEVER A BROWSER IS INSTALLED, not only when Claude Code is. It
+# used to live inside install_claude_code, which meant a machine that declined
+# the agent had a browser and no $BROWSER, and every tool on it printed an
+# xdg-open error at the one moment a link mattered.
+#
+# Brave leads the order. On a full install it is the browser the level chose,
+# and where somebody has installed it by hand beside another one it is still
+# the answer they went out of their way to get. Everything after it is the old
+# order: the real engines, then the small ones, then the text ones.
+set_default_browser() {
+    for _b in brave firefox-esr firefox chromium badwolf netsurf dillo links; do
+        command -v "$_b" >/dev/null 2>&1 || continue
+        mkdir -p /etc/profile.d
+        cat > /etc/profile.d/browser.sh <<BROWSERENV
+# Written by copal-init.sh. The browser CLI tools should open URLs with --
+# Claude Code's sign-in link among them.
+export BROWSER=$_b
+BROWSERENV
+        chmod +x /etc/profile.d/browser.sh
+        note "\$BROWSER=$_b -- the browser CLI tools will open links in"
+        return 0
+    done
+    return 1
+}
+
 install_brave() {
     say "Brave"
     _arch=$(apk --print-arch 2>/dev/null || echo unknown)
@@ -5745,7 +6382,33 @@ install_brave() {
 
 MSG
     have_space_mb 1200 "Brave and its Flatpak runtime" || return 0
-    confirm "Install Brave as a Flatpak?" || { note "Skipped."; return 0; }
+    confirm "Install Brave?" || { note "Skipped."; return 0; }
+
+    # THE PUBLISHED ONE-LINER, ACTUALLY RUN. Not because it is expected to
+    # work -- everything above says why it does not on Alpine -- but because
+    # it is the instruction Brave gives, it is the thing to try first, and it
+    # is cheap: the script detects the package manager and exits within a
+    # second or two. If Brave ever adds apk, or this machine is one where the
+    # script finds something it can use, that is the route to take and no
+    # Flatpak runtime is needed.
+    #
+    # Piped to sh, which is what the instruction says, and guarded by the
+    # `command -v brave` check afterwards rather than by the script's exit
+    # status: a shell script that prints "could not find a supported package
+    # manager" and exits 0 is not a Brave installation, and the only honest
+    # test of whether a browser was installed is whether it is there.
+    if command -v curl >/dev/null 2>&1 || try_add curl; then
+        say "Trying Brave's own installer"
+        note "curl -fsS https://dl.brave.com/install.sh | sh"
+        curl -fsS https://dl.brave.com/install.sh | sh || true
+        if command -v brave-browser >/dev/null 2>&1 || command -v brave >/dev/null 2>&1; then
+            note "installed by Brave's installer: $(command -v brave-browser 2>/dev/null || command -v brave)"
+            set_default_browser || true
+            return 0
+        fi
+        note "As expected on Alpine: apk is not one of the package managers"
+        note "that script supports. Falling back to the Flatpak, which works."
+    fi
 
     try_add flatpak || { warn "could not install flatpak"; return 1; }
     # --if-not-exists so a re-run is not an error. flathub is not configured by
@@ -5763,11 +6426,20 @@ MSG
         printf '#!/bin/sh\nexec flatpak run com.brave.Browser "$@"\n' > /usr/local/bin/brave
         chmod 0755 /usr/local/bin/brave
         note "or just:  brave"
+        set_default_browser || true
     else
         warn "the Flatpak install did not complete -- usually network or space"
         note "Try again with: flatpak install flathub com.brave.Browser"
         return 1
     fi
+}
+
+# The install level chosen in the guided install ('server', 'medium', 'full'),
+# recorded on the boot partition by pick_level so it survives the stage 3
+# reboot. Empty on a machine driven from the menu, which never chose one.
+copal_profile() {
+    [ -f "$BOOT/copal-profile" ] || return 0
+    tr -d '[:space:]' < "$BOOT/copal-profile" 2>/dev/null
 }
 
 install_modern_browser() {
@@ -5791,20 +6463,63 @@ install_modern_browser() {
       v   Brave         Chromium with the ad and tracker blocking built in.
                         Not an apk -- it arrives as a Flatpak, which brings a
                         glibc runtime with it (~600 MB all told). See below.
+                        The full-monty level installs this one unattended.
       n   None          keep Dillo/NetSurf/Links and move on
 
 MSG
-            # The automatic install picks BadWolf. It is the only one of the
-            # three that is a defensible unattended choice on a board this
-            # size, and it is the same answer on every architecture -- so an
-            # auto install behaves identically whichever Pi ran it.
-            if [ "${AUTO:-0}" = 1 ]; then AUTO_DEFAULT=b; fi
+            # What the automatic install picks depends on the level, because
+            # the levels are a statement about how much machine there is.
+            #
+            # MEDIUM and SERVER get BadWolf: the only one of these that is a
+            # defensible unattended choice on a board that might be a Zero 2 W,
+            # and the same answer on every architecture -- so an auto install
+            # at that level behaves identically whichever Pi ran it.
+            #
+            # FULL MONTY gets Brave. That level already means Hyprland, a
+            # compositor, a themed desktop and the aarch64/x86_64 hardware to
+            # run them; a machine being furnished that far is a machine being
+            # used as a desktop, and the desktop browser is the one with the
+            # ad and tracker blocking already in it. Brave becomes $BROWSER.
+            #
+            # ONE graphical browser from this stage, not two. BadWolf is
+            # installed here only if Brave could not be -- see the 'v' branch
+            # below -- because a full desktop with no browser at all is the
+            # outcome worth ruling out, and nothing else is. The second engine
+            # this level gets is Firefox ESR, from the stage 12 catalogue,
+            # which is where a browser that is merely wanted belongs.
+            #
+            # Brave only where Flathub actually publishes it. 'full' on armv7
+            # lands here too (stage 17 declines itself later), and there is no
+            # Brave build for that architecture from any source, so it takes
+            # BadWolf alone like the other levels.
+            if [ "${AUTO:-0}" = 1 ]; then
+                case "$(copal_profile):$_arch" in
+                    full:x86_64|full:aarch64) AUTO_DEFAULT=v ;;
+                    *)                        AUTO_DEFAULT=b ;;
+                esac
+            fi
             ask "Choose [f/c/b/v/n]:"
             case "$REPLY" in
                 f|F) _br="firefox-esr"; _bin=firefox-esr ;;
                 c|C) _br="chromium";    _bin=chromium ;;
                 b|B) _br="badwolf";     _bin=badwolf ;;
-                v|V) install_brave; return 0 ;;
+                v|V) install_brave
+                     # Brave is the browser this stage installs. Interactive,
+                     # 'v' means Brave and only Brave; unattended it is the
+                     # same, and Firefox ESR arrives later from stage 12.
+                     if command -v brave >/dev/null 2>&1 \
+                        || command -v brave-browser >/dev/null 2>&1; then
+                         return 0
+                     fi
+                     # Brave can decline itself: not enough card for the
+                     # Flatpak runtime, no network, a failed install. With
+                     # nobody at the keyboard that would leave a full desktop
+                     # with no browser at all until stage 12, so BadWolf goes
+                     # on instead. Interactive, the person is there and stage
+                     # 4 re-runs.
+                     [ "${AUTO:-0}" = 1 ] || return 0
+                     warn "Brave did not install -- BadWolf instead"
+                     _br="badwolf"; _bin=badwolf ;;
                 *)   note "Skipped."; return 0 ;;
             esac ;;
         armhf)
@@ -5838,6 +6553,7 @@ MSG
     if apk add "$_br"; then
         note "installed: $(command -v "$_bin" 2>/dev/null || echo "$_br")"
         note "It appears in the menu (Super+z) and in dmenu (Super+space)."
+        set_default_browser || true
     else
         warn "apk could not install $_br on $_arch."
         note "Check the name with: apk search -v $_br"
@@ -6056,9 +6772,299 @@ STARTX
 # /etc/copal/autostart-desktop is the switch. Deleting it is enough to get the
 # console back at the next boot, without editing inittab or .profile, and the
 # autologin is left in place because it is the half nobody regrets.
-configure_desktop_autostart() {
-    confirm_yes "Start the desktop automatically at boot (autologin as '$PI_USER', then startx)?" || {
-        note "Desktop autostart declined -- log in and run startx"
+#
+# WHICH desktop starts is a second, separate switch: /etc/copal/session, one
+# word, 'x11' or 'wayland'. It exists because stage 17 added a second desktop
+# and the two are exclusive AT THE SESSION, not at the package level -- an X
+# server and a Wayland compositor cannot own the same seat at the same time,
+# but their packages coexist on disk without complaint. So .profile execs
+# copal-session rather than startx, and copal-session reads the word. Stage 4
+# writes 'x11', stage 17 writes 'wayland', and whichever ran LAST owns the
+# console at the next boot -- which is the only rule anyone can predict.
+# Editing the one-word file flips it back without reinstalling anything.
+configure_desktop_autostart() {  # [session command shown in the question, e.g. startx]
+    _sess_word="${1:-startx}"
+
+    # The chooser is written unconditionally -- even when autostart is
+    # declined, `copal-session` from a console login must start the right
+    # desktop, and stage 17's Hyprland needs the runtime-directory ceremony
+    # below whether or not anyone said yes to autostart.
+    cat > /usr/local/bin/copal-session <<'SESSION'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-session -- the one front door for the graphical session.
+#
+# Reads one word from /etc/copal/session and starts that desktop:
+#
+#   wayland   Hyprland, directly. A Wayland compositor is its own display
+#             server, so there is no startx equivalent to go through.
+#   x11       startx, which is the whole X11 path stage 4 set up.
+#
+# Written by copal-init.sh (stages 4 and 16 both install it; the file is
+# byte-identical from either). The word decides, not the caller, so tty
+# autostart, a console login and the documentation all say the same thing:
+# run copal-session.
+
+# The desktop belongs to the admin user; refuse root for the same reason
+# copal-startx does. Refusing here covers the Wayland path, which never goes
+# through copal-startx.
+if [ "$(id -u)" = 0 ]; then
+    echo "copal-session: the desktop runs as the admin user, not root." >&2
+    echo "  exit, log in as the admin user, run copal-session again." >&2
+    exit 1
+fi
+
+if [ "$(cat /etc/copal/session 2>/dev/null)" = wayland ] \
+   && command -v Hyprland >/dev/null 2>&1; then
+    # Wayland puts its socket in XDG_RUNTIME_DIR and refuses to start without
+    # one. elogind would create /run/user/<uid>; Copal does not carry elogind,
+    # so a private directory under /tmp does the same job. 700, owned by the
+    # user, checked rather than trusted -- a directory someone else owns is
+    # exactly the thing this variable exists to prevent.
+    if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
+        XDG_RUNTIME_DIR="/tmp/xdg-runtime-$(id -u)"
+        export XDG_RUNTIME_DIR
+    fi
+    mkdir -p "$XDG_RUNTIME_DIR"
+    chmod 700 "$XDG_RUNTIME_DIR"
+    [ -O "$XDG_RUNTIME_DIR" ] || {
+        echo "copal-session: $XDG_RUNTIME_DIR is not owned by you -- refusing." >&2
+        exit 1
+    }
+    # WHICH LAUNCHER, and it is start-hyprland where there is one. Launching
+    # the compositor bare gets a toast in the corner of a freshly installed
+    # desktop, every time:
+    #
+    #     Hyprland was started without start-hyprland. This is highly not
+    #     recommended unless you are in a debugging environment.
+    #
+    # It was bare because start-hyprland used to be unusable here: it needs
+    # XDG_RUNTIME_DIR and nothing on this system set it, so it died with
+    # "XDG_RUNTIME_DIR is not set!" before reaching the compositor. The block
+    # above fixes that, and /etc/profile.d does it for every other login --
+    # so upstream's launcher works now and there is no reason left to skip
+    # it. It is the wrapper upstream tests against and the one its own
+    # warning asks for.
+    _hypr=Hyprland
+    command -v start-hyprland >/dev/null 2>&1 && _hypr=start-hyprland
+    # mako, the portal and hyprpolkitagent all find each other over the
+    # session bus; dbus-run-session gives the compositor and everything it
+    # spawns one bus and tears it down with the session.
+    if command -v dbus-run-session >/dev/null 2>&1; then
+        exec dbus-run-session "$_hypr"
+    fi
+    exec "$_hypr"
+fi
+
+# The X path. If the session says x11 but X's privileged helper has been left
+# disarmed -- someone edited /etc/copal/session by hand instead of using
+# copal-desktop -- startx fails with a permission error that says nothing
+# about why. Catch it here and name the one command that fixes it, because
+# "Only console users are allowed to run the X server" is not a message
+# anybody can act on.
+if [ -e /usr/libexec/Xorg.wrap ] && [ ! -u /usr/libexec/Xorg.wrap ]; then
+    echo "copal-session: X's setuid server is disarmed, so startx cannot work." >&2
+    echo "  That is what Wayland's turn on this machine left behind." >&2
+    echo "  Re-arm it and set the session in one step:" >&2
+    echo >&2
+    echo "      doas copal-desktop x11" >&2
+    echo >&2
+    exit 1
+fi
+
+exec startx
+SESSION
+    chmod 0755 /usr/local/bin/copal-session
+    note "copal-session -- starts whichever desktop /etc/copal/session names"
+
+    # ------------------------------------------------------------------
+    # XDG_RUNTIME_DIR, for the LOGIN SESSION rather than for one launcher.
+    #
+    # copal-session above creates this directory before it starts Hyprland,
+    # and for a long time that looked like enough. It is not, and the way you
+    # find out is this:
+    #
+    #     $ start-hyprland
+    #     ERR from start-hyprland ]: failed to obtain hyprland version string
+    #     CRIT ]: Critical error thrown: XDG_RUNTIME_DIR is not set!
+    #     terminate called after throwing an instance of 'std::runtime_error'
+    #
+    # start-hyprland is upstream's launcher, shipped in Alpine's hyprland
+    # package, sitting on PATH -- and it tab-completes from "start" alongside
+    # startx, so it is the FIRST thing a person finds. It knows nothing about
+    # copal-session. Neither does bare `Hyprland`, nor `wl-paste` over ssh,
+    # nor `hyprctl`. Both errors above are the same root cause, incidentally:
+    # hyprctl looks for the compositor's socket under $XDG_RUNTIME_DIR/hypr,
+    # so with the variable unset it cannot find an instance either, and
+    # reports that as bad JSON.
+    #
+    # The mistake was scoping the fix to the program we happened to write.
+    # This variable belongs to the session: on a systemd or elogind machine,
+    # logind creates /run/user/<uid> at login and exports it, and everything
+    # downstream simply assumes it. Copal carries seatd instead -- seatd
+    # brokers the DRM and input devices, which is the other half of what
+    # logind does, and it does not do this half. So nothing sets it, and
+    # every Wayland program on the box fails in its own dialect.
+    #
+    # Setting it here fixes all of them at once, including the ones that do
+    # not exist yet. copal-session keeps its own copy of the ceremony: this
+    # file is only read by LOGIN shells, and defence in depth costs six lines.
+    cat > /etc/profile.d/copal-xdg-runtime.sh <<'XDGENV'
+# Written by copal-init.sh. See the essay in configure_desktop_autostart().
+#
+# Wayland puts its socket here, and wl-clipboard, hyprctl, wofi, mako and the
+# portal all find each other through it. logind would create /run/user/<uid>;
+# Copal has seatd, which does not, so a private directory under /tmp does the
+# same job.
+if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
+    XDG_RUNTIME_DIR="/tmp/xdg-runtime-$(id -u)"
+    export XDG_RUNTIME_DIR
+fi
+
+# Created, not merely named -- every program above expects it to exist.
+[ -d "$XDG_RUNTIME_DIR" ] || mkdir -p "$XDG_RUNTIME_DIR" 2>/dev/null || true
+
+# And CHECKED, not trusted. /tmp is world-writable and this path is
+# predictable, so somebody else's account can create /tmp/xdg-runtime-1000
+# before you log in and then read every clipboard selection and keystroke
+# that goes through the socket you put in it. A directory you do not own is
+# exactly what this variable exists to prevent, so refuse it.
+#
+# A warning and an unset, not an exit: this file runs on EVERY login,
+# including the one you need in order to fix the problem. A shell you cannot
+# get into is worse than a Wayland session that will not start.
+if [ -d "$XDG_RUNTIME_DIR" ] && [ -O "$XDG_RUNTIME_DIR" ]; then
+    chmod 700 "$XDG_RUNTIME_DIR" 2>/dev/null || true
+else
+    echo "warning: XDG_RUNTIME_DIR ($XDG_RUNTIME_DIR) is missing, or is not yours." >&2
+    echo "  Wayland programs will refuse to start until that is true. Check with:" >&2
+    echo "      ls -ld $XDG_RUNTIME_DIR" >&2
+    unset XDG_RUNTIME_DIR
+fi
+XDGENV
+    chmod 0644 /etc/profile.d/copal-xdg-runtime.sh
+    note "XDG_RUNTIME_DIR is set at login -- start-hyprland and wl-paste work too"
+
+    # ------------------------------------------------------------------
+    # copal-desktop: the privileged half of the switch.
+    #
+    # WHY THIS IS A SEPARATE PROGRAM. copal-session runs as the admin user --
+    # it has to, it is starting that user's desktop -- and the setuid bit on
+    # a root-owned binary is not the user's to change. So the two halves are
+    # split by privilege rather than by tidiness: copal-session READS the
+    # word, copal-desktop WRITES it, and only the second one needs doas.
+    #
+    # WHAT THE SETUID BIT HAS TO DO WITH IT. Stage 4 pins
+    # needs_root_rights=yes in Xwrapper.config, because this board draws
+    # through fbdev with no seat manager for X to ask instead -- so the X
+    # server runs as uid 0, reached through the setuid helper
+    # /usr/libexec/Xorg.wrap. That is a large parser (video drivers, input
+    # drivers, config files, fonts) running with full privilege, and it is
+    # the classic local-escalation surface: CVE-2018-14665 is the well-known
+    # one, where -logfile and -modulepath against a setuid X got you root.
+    #
+    # Under Wayland none of that is being used. The compositor owns the DRM
+    # device itself and Xwayland -- which is what keeps every X program on
+    # this machine running -- needs no setuid and no root at all. Xwayland is
+    # not Xorg; that distinction is the whole reason this is cheap. So while
+    # the session is Wayland the bit comes off, and every X application keeps
+    # working through Xwayland exactly as before.
+    #
+    # HOW BIG A DEAL IS IT, HONESTLY. Modest, today. allowed_users=console
+    # already stops an SSH session from starting X, which is the vector that
+    # matters most on a networked machine; and the admin user is in wheel and
+    # can type `doas sh`, so an escalation to root gains that account nothing
+    # it does not already have. It matters for the accounts that come later:
+    # a second user not in wheel, or a network service running as its own
+    # uid. Removing a privileged path that nothing is currently using is the
+    # cheap half of defence in depth, and it is fully reversible -- which is
+    # the other half of why it is done this way rather than by uninstalling
+    # X, whose value as a fallback when the compositor will not start is
+    # real.
+    cat > /usr/local/bin/copal-desktop <<'DESKTOPSW'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-desktop -- choose which desktop owns the screen. Needs root.
+#
+#   doas copal-desktop wayland   Hyprland at the next login, and X's setuid
+#                                server disarmed while it is not in use.
+#   doas copal-desktop x11       startx at the next login, X re-armed.
+#   copal-desktop status         what is set now, and what is armed.
+#
+# Written by copal-init.sh. Both desktop stages call it rather than writing
+# /etc/copal/session by hand, so the word and the setuid bit can never
+# disagree -- which they would the first time somebody edited only one.
+set -eu
+
+WRAP=/usr/libexec/Xorg.wrap
+SESSFILE=/etc/copal/session
+
+# Is X's privileged helper armed? No file is a perfectly good answer: it
+# means xorg-server is not installed, and there is nothing to arm.
+wrap_armed() { [ -u "$WRAP" ]; }
+
+say_status() {
+    printf 'session : %s\n' "$(cat "$SESSFILE" 2>/dev/null || echo '(unset)')"
+    if [ ! -e "$WRAP" ]; then
+        printf 'X server: not installed (%s absent)\n' "$WRAP"
+    elif wrap_armed; then
+        printf 'X server: armed -- %s is setuid root\n' "$WRAP"
+    else
+        printf 'X server: disarmed -- %s is not setuid\n' "$WRAP"
+        printf '          startx will not work until: doas copal-desktop x11\n'
+    fi
+}
+
+need_root() {
+    [ "$(id -u)" = 0 ] || {
+        echo "copal-desktop: this changes system state -- run it with doas:" >&2
+        echo "  doas copal-desktop $1" >&2
+        exit 1
+    }
+}
+
+case "${1:-status}" in
+  wayland)
+    need_root wayland
+    command -v Hyprland >/dev/null 2>&1 || {
+        echo "copal-desktop: no Hyprland on PATH -- refusing to hand it the screen." >&2
+        echo "  Run stage 17 first. Nothing has been changed." >&2
+        exit 1
+    }
+    mkdir -p /etc/copal
+    printf 'wayland\n' > "$SESSFILE"
+    # Disarm X's privileged path. It is not being used under Wayland, and a
+    # setuid binary nothing runs is pure attack surface. Xwayland is
+    # unaffected -- it is a different binary and has never been setuid.
+    if [ -e "$WRAP" ] && wrap_armed; then
+        chmod u-s "$WRAP"
+        echo "X's setuid server disarmed ($WRAP) -- Xwayland is unaffected."
+    fi
+    echo "Next login: Hyprland."
+    ;;
+  x11)
+    need_root x11
+    mkdir -p /etc/copal
+    printf 'x11\n' > "$SESSFILE"
+    # Put it back. needs_root_rights=yes in Xwrapper.config means the server
+    # cannot start without this, so re-arming is not optional on the X path.
+    if [ -e "$WRAP" ] && ! wrap_armed; then
+        chmod u+s "$WRAP"
+        echo "X's setuid server re-armed ($WRAP)."
+    fi
+    echo "Next login: startx."
+    ;;
+  status) say_status ;;
+  *) echo "usage: copal-desktop [wayland|x11|status]" >&2; exit 2 ;;
+esac
+DESKTOPSW
+    chmod 0755 /usr/local/bin/copal-desktop
+    note "copal-desktop -- 'doas copal-desktop wayland|x11' switches the desktop"
+
+    confirm_yes "Start the desktop automatically at boot (autologin as '$PI_USER', then $_sess_word)?" || {
+        note "Desktop autostart declined -- log in and run copal-session"
         rm -f /etc/copal/autostart-desktop 2>/dev/null || true
         return 0
     }
@@ -6103,15 +7109,17 @@ AUTOLOGIN
             cat >> "$_uh/.profile" <<'AUTOSTART'
 # >>> copal autostart >>>
 # Start the desktop on the physical console. Remove /etc/copal/autostart-desktop
-# to stop this without editing anything.
+# to stop this without editing anything. Which desktop -- X11 or Hyprland --
+# is /etc/copal/session's one word; copal-session reads it.
 if [ -f /etc/copal/autostart-desktop ] \
    && [ -z "${DISPLAY:-}" ] \
+   && [ -z "${WAYLAND_DISPLAY:-}" ] \
    && [ "$(tty 2>/dev/null)" = /dev/tty1 ] \
    && [ ! -f /boot/copal-auto ] \
    && ! ls /media/*/copal-auto >/dev/null 2>&1; then
     printf '\n  Copal: starting the desktop in 5 seconds.\n'
     printf '  Press Ctrl-C now for a shell instead.\n\n'
-    if sleep 5; then exec startx; fi
+    if sleep 5; then exec copal-session; fi
 fi
 # <<< copal autostart <<<
 AUTOSTART
@@ -6124,23 +7132,376 @@ AUTOSTART
     fi
 }
 
+# ---------------------------------------------------------------------------
+# THE UNIFIED CLIPBOARD.
+#
+# This is the Omarchy idea worth stealing outright. On a normal Linux desktop
+# you copy with Ctrl+Shift+C in the terminal and Ctrl+C everywhere else,
+# because Ctrl+C in a terminal has meant SIGINT since before X existed and
+# nobody is taking it back. Everyone who has ever come from a Mac -- where
+# Cmd+C is Cmd+C in every window -- finds this out by losing something.
+#
+# Omarchy's answer: bind the clipboard to SUPER, which no program on the
+# machine is using for anything, and have the compositor send whichever chord
+# the focused window actually wants. Super+C, Super+X, Super+V and
+# Super+Ctrl+V then mean the same four things in every window.
+#
+# There is one extra reason it fits here, which Omarchy does not have: Copal
+# maps Caps Lock to a second Super (see the .xinitrc comment), and under UTM
+# on a Mac the host eats the real Super chords. So on this system the unified
+# clipboard is reachable as CapsLock+C / CapsLock+V -- which is, to a Mac
+# user's hands, almost exactly Cmd+C and Cmd+V.
+#
+# WHAT THIS SCRIPT ACTUALLY DOES. Not much, and that is deliberate:
+#
+#   copal-clip copy|cut|paste   look at the focused window, decide which chord
+#                               it wants, send it with xdotool. Under Wayland
+#                               the compositor does this itself (sendshortcut)
+#                               and the script is not in the path at all.
+#   copal-clip history          a picker over the recorded clipboard entries.
+#   copal-clip watch            the recorder. One poll a second of the
+#                               selection, into a directory of numbered files.
+#
+# The recorder is ours rather than cliphist's. cliphist is the Omarchy answer
+# and it is a Go program that Alpine packages for aarch64 and not for armhf --
+# so on the board this project exists for, it is not an option. Fifty lines of
+# sh that polls the selection is: it costs one xclip call a second, it works
+# identically on X and Wayland, and where cliphist IS installed this script
+# steps aside and uses it.
+write_copal_clip() {
+    say "Writing copal-clip (the unified clipboard)"
+    cat > /usr/local/bin/copal-clip <<'COPALCLIP'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+#
+# copal-clip -- one clipboard, one set of keys, every window.
+#
+#   copal-clip copy|cut|paste   the Super+C / Super+X / Super+V actions
+#   copal-clip history          pick from the clipboard history
+#   copal-clip watch            record the history (started by the session)
+#   copal-clip store            put stdin on the clipboard
+#   copal-clip show             print the clipboard to stdout
+#
+# The window manager binds the first four. Nothing else should need to know
+# this file exists.
+set -eu
+
+HIST="${XDG_CACHE_HOME:-$HOME/.cache}/copal/clipboard"
+HIST_MAX=100
+
+have() { command -v "$1" >/dev/null 2>&1; }
+wayland() { [ -n "${WAYLAND_DISPLAY:-}" ]; }
+
+die() { echo "copal-clip: $*" >&2; exit 1; }
+
+# --- owning the selection --------------------------------------------------
+# Two backends, one interface. wl-clipboard under a compositor, xclip under X.
+# xsel is accepted as well because some Alpine spins carry it and not xclip.
+clip_set() {   # stdin -> the clipboard
+    if wayland && have wl-copy; then wl-copy
+    elif have xclip; then xclip -selection clipboard -in
+    elif have xsel; then xsel --clipboard --input
+    else die "no clipboard tool. Install one: apk add xclip   (or wl-clipboard)"
+    fi
+}
+
+clip_get() {   # the clipboard -> stdout
+    if wayland && have wl-paste; then wl-paste --no-newline 2>/dev/null || true
+    elif have xclip; then xclip -selection clipboard -out 2>/dev/null || true
+    elif have xsel; then xsel --clipboard --output 2>/dev/null || true
+    else die "no clipboard tool. Install one: apk add xclip   (or wl-clipboard)"
+    fi
+}
+
+# --- sending the chord the focused window wants ----------------------------
+#
+# THE WHOLE POINT OF THE SCRIPT IS THIS FUNCTION. A terminal emulator wants
+# Ctrl+Shift+C; every other program wants Ctrl+C. Something has to look at
+# what has focus and decide, and this is that something.
+#
+# Omarchy does it in the compositor config, with two 'sendshortcut' binds per
+# key and a class filter on the first. That is four bindings' worth of
+# duplicated terminal list, and it only works on Hyprland. Doing it here
+# instead means ONE list of terminals for both of Copal's desktops, and the
+# window manager configs just call 'copal-clip copy'.
+#
+# The list is the terminals this system can actually be running: the two
+# stage 4 might have chosen, the one the Wayland desktop uses, and the few a
+# user is most likely to have added. Matched case-insensitively, because
+# window-class capitalisation is not something anyone should have to know.
+is_terminal_class() {  # <class name>
+    case "$(printf '%s' "${1:-}" | tr 'A-Z' 'a-z')" in
+        *urxvt*|*xterm*|*rxvt*|*kitty*|*alacritty*|*foot*|*terminal*|*tilda*|*guake*|*ghostty*)
+            return 0 ;;
+    esac
+    return 1
+}
+
+terminal_focused() {
+    if wayland && have hyprctl; then
+        # -j is JSON, and there is no jq on a minimal install, so this reads
+        # the one field it wants with sed rather than pulling in a parser for
+        # a string that Hyprland prints one per line.
+        _cls=$(hyprctl activewindow -j 2>/dev/null \
+               | sed -n 's/.*"class": *"\([^"]*\)".*/\1/p' | head -n1)
+    elif have xdotool; then
+        _cls=$(xdotool getactivewindow getwindowclassname 2>/dev/null || true)
+    else
+        return 1
+    fi
+    is_terminal_class "$_cls"
+}
+
+# Type a chord into the focused window. Two compositors, two mechanisms:
+# Hyprland has a sendshortcut dispatcher reachable from hyprctl, X has
+# xdotool. Neither is a dependency of the other and neither is required for
+# the rest of this script to work.
+type_chord() {  # <"CTRL SHIFT" or "CTRL"> <key letter>
+    if wayland && have hyprctl; then
+        hyprctl dispatch sendshortcut "$1, $2, activewindow" >/dev/null
+    elif have xdotool; then
+        # xdotool spells it lowercase and plus-separated.
+        xdotool key --clearmodifiers \
+            "$(printf '%s+%s' "$1" "$2" | tr 'A-Z ' 'a-z+')"
+    else
+        die "no way to send a keystroke to the focused window.
+On X:        apk add xdotool
+On Hyprland: hyprctl is part of the compositor and should already be here.
+Then log out and back in."
+    fi
+}
+
+send() {  # copy | cut | paste
+    if terminal_focused; then
+        case "$1" in
+            copy)  type_chord "CTRL SHIFT" C ;;
+            paste) type_chord "CTRL SHIFT" V ;;
+            # There is no cut in a terminal -- the text on the screen is not
+            # yours to remove. Omarchy documents the same exception. Copying
+            # is the useful half of the action, so do that and say nothing.
+            cut)   type_chord "CTRL SHIFT" C ;;
+        esac
+    else
+        case "$1" in
+            copy)  type_chord CTRL C ;;
+            paste) type_chord CTRL V ;;
+            cut)   type_chord CTRL X ;;
+        esac
+    fi
+}
+
+# --- the history -----------------------------------------------------------
+# One file per entry, named by a counter, newest highest. A directory rather
+# than one appended file because clipboard entries contain newlines and a
+# line-oriented store would split them.
+hist_record() {
+    mkdir -p "$HIST"
+    _new=$(clip_get)
+    [ -n "$_new" ] || return 0
+    _last=$(ls -1 "$HIST" 2>/dev/null | sort -n | tail -n1 || true)
+    if [ -n "$_last" ] && [ "$(cat "$HIST/$_last")" = "$_new" ]; then
+        return 0
+    fi
+    _n=$(( ${_last:-0} + 1 ))
+    printf '%s' "$_new" > "$HIST/$_n"
+    # Trim. `ls | sort -n | head` gives the oldest, which is what goes.
+    _count=$(ls -1 "$HIST" 2>/dev/null | wc -l)
+    if [ "$_count" -gt "$HIST_MAX" ]; then
+        ls -1 "$HIST" | sort -n | head -n "$(( _count - HIST_MAX ))" | \
+            while read -r _old; do rm -f "$HIST/$_old"; done
+    fi
+}
+
+hist_watch() {
+    # cliphist, where it exists, is the better recorder and it is what Omarchy
+    # uses. Hand over to it rather than run two.
+    if have cliphist && wayland && have wl-paste; then
+        exec wl-paste --watch cliphist store
+    fi
+    while :; do
+        hist_record || true
+        sleep 1
+    done
+}
+
+# A menu, in whatever the session actually has. The order is deliberate:
+# the graphical pickers first, then fzf in a terminal, then a numbered list
+# on stdout -- so this works over ssh with no display at all.
+hist_menu() {  # reads "N<TAB>preview" lines on stdin, prints the chosen N
+    if wayland && have wofi; then wofi --dmenu --prompt clipboard
+    elif have dmenu; then dmenu -i -l 15 -p clipboard
+    elif have fzf; then fzf --prompt='clipboard> '
+    else cat
+    fi
+}
+
+hist_show() {
+    if have cliphist; then
+        _sel=$(cliphist list | hist_menu) || exit 0
+        [ -n "$_sel" ] || exit 0
+        printf '%s' "$_sel" | cliphist decode | clip_set
+        exit 0
+    fi
+    [ -d "$HIST" ] || die "no clipboard history yet. It records from the next copy on."
+    # The preview is the first line, tabs and control characters flattened,
+    # truncated -- a menu entry has one line whatever the entry has.
+    _sel=$(ls -1 "$HIST" 2>/dev/null | sort -rn | while read -r _n; do
+        printf '%s\t%s\n' "$_n" \
+            "$(head -c 400 "$HIST/$_n" | tr '\n\t' '  ' | cut -c1-80)"
+    done | hist_menu) || exit 0
+    [ -n "$_sel" ] || exit 0
+    # The menu line is "N<tab>preview" and the number is the half that
+    # matters. A literal tab inside ${} works but is invisible to whoever
+    # edits this next, so it is named.
+    _tab=$(printf '\t')
+    _n=${_sel%%"$_tab"*}
+    [ -f "$HIST/$_n" ] || exit 0
+    clip_set < "$HIST/$_n"
+}
+
+case "${1:-}" in
+    copy)    send copy ;;
+    cut)     send cut ;;
+    paste)   send paste ;;
+    history) hist_show ;;
+    watch)   hist_watch ;;
+    store)   clip_set ;;
+    show)    clip_get ;;
+    clear)   rm -rf "$HIST"; echo "clipboard history cleared" ;;
+    ''|-h|--help)
+        # The usage message IS the comment header, so there is one copy of it
+        # and it cannot drift. Print from line 4 until the first line that is
+        # not a comment, rather than a fixed range -- a fixed range prints
+        # 'set -eu' as documentation the moment anyone adds a line above it,
+        # which is exactly what it did.
+        awk 'NR > 3 { if ($0 !~ /^#/) exit; sub(/^# ?/, ""); print }' "$0" ;;
+    *) die "unknown command '$1'. Try 'copal-clip --help'." ;;
+esac
+COPALCLIP
+    chmod 0755 /usr/local/bin/copal-clip
+    note "copal-clip -- Super+C/X/V copy, cut, paste; Super+Ctrl+V the history"
+}
+
 stage_gui() {
     say "Stage 4: X.Org and a window manager"
 
-    if is_diskless; then
-        warn "the root filesystem is still a tmpfs (~$(df -h / | awk 'NR==2{print $2}'))."
-        warn "X does not fit. apk will fail with ENOSPC while the card sits empty."
-        note "Run stage 3 first."
-        confirm "Try anyway?" || return 0
-    fi
+    require_disk_root "X.Org and a desktop" || return 0
     require_network || return 1
 
-    # The video and input drivers are the part that is specific to this board:
-    # there is no accelerated X driver for VideoCore worth using, so X renders
-    # on the CPU straight into the framebuffer via fbdev.
-    say "Installing the X server and the framebuffer driver"
+    # The video and input drivers, and this is the one place where a VM and a
+    # Pi want genuinely different answers.
+    #
+    # ON A PI there is no accelerated X driver for VideoCore worth using, so X
+    # renders on the CPU straight into the framebuffer via fbdev. That has
+    # been true since the first line of this script and it stays true.
+    #
+    # IN A VM fbdev is the wrong driver and it is the reason the display feels
+    # like treacle. The hypervisor hands the guest a virtio-gpu, which is a
+    # real KMS device; fbdev does not talk to it. It talks to /dev/fb0, which
+    # on a KMS device is an EMULATION layer -- the kernel keeps a shadow copy
+    # of the screen in ordinary memory, write-protects its pages, takes a page
+    # fault on every write X makes, and periodically copies the dirtied
+    # regions into the real scanout buffer. Every pixel is therefore drawn
+    # twice and travels through a page-fault handler on the way. That is what
+    # "the video buffer is slow" is: not the host, not Metal, not the window
+    # scaling -- deferred-IO framebuffer emulation, sitting under a driver
+    # from 1999.
+    #
+    # The modesetting driver, which is part of xorg-server and needs no
+    # package of its own, drives the KMS device directly: X allocates the
+    # scanout buffer itself and draws into it once. With mesa's DRI drivers
+    # present it goes further and uses glamor, which puts the drawing on the
+    # virtio-gpu instead of the CPU.
+    #
+    # So: modesetting wherever there is a KMS device AND this is a guest, and
+    # the historical fbdev path everywhere else. Both conditions, on purpose.
+    # is_vm() returns false for a Pi before it looks at anything else, which
+    # is what keeps a Pi with vc4 KMS enabled on the path that has been
+    # tested on it.
+    say "Installing the X server"
     setup-xorg-base
-    apk add xf86-video-fbdev xf86-input-libinput
+    apk add xf86-input-libinput
+
+    # SCROLLING DIRECTION, which X gets backwards on every machine this
+    # script targets. libinput's default is the 1990s one: the wheel moves
+    # the SCROLLBAR, so rolling it away from you sends the page up. Every
+    # touch device made since, and macOS since Lion, moves the CONTENT
+    # instead -- roll away, the page goes away from you -- and this desktop
+    # is most often run in a VM on a Mac, where the host has already done it
+    # that way and the guest then undoes it halfway down the same gesture.
+    #
+    # Set for pointers and touchpads alike, and the two need separate
+    # InputClass sections: MatchIsTouchpad and MatchIsPointer are both
+    # "matches" rather than a filter, so one section carrying both options
+    # would apply the touchpad's to a mouse that has no touchpad options.
+    mkdir -p /etc/X11/xorg.conf.d
+    cat > /etc/X11/xorg.conf.d/30-scrolling.conf <<'XORGSCROLL'
+# Written by copal-init.sh, stage 4.
+#
+# Natural scrolling: rolling the wheel (or pushing two fingers) away from you
+# moves the CONTENT away from you, which is what the page appears to follow.
+# This is macOS's default and every phone's, and it is the direction the host
+# has already applied when this is a VM on a Mac.
+#
+# To go back to the old direction, set both to "false" -- or delete this file,
+# because false is what libinput does with no configuration at all.
+Section "InputClass"
+    Identifier  "copal natural scrolling (pointers)"
+    MatchIsPointer  "on"
+    Driver      "libinput"
+    Option      "NaturalScrolling" "true"
+EndSection
+
+Section "InputClass"
+    Identifier  "copal natural scrolling (touchpads)"
+    MatchIsTouchpad "on"
+    Driver      "libinput"
+    Option      "NaturalScrolling" "true"
+    Option      "Tapping" "on"
+EndSection
+XORGSCROLL
+    note "/etc/X11/xorg.conf.d/30-scrolling.conf -- scrolling direction lives here"
+    if is_vm && [ -e /dev/dri/card0 ]; then
+        say "This is a guest with a KMS display -- using modesetting, not fbdev"
+        # The DRI drivers. Without them modesetting still works and is still
+        # far quicker than fbdev, but falls back to drawing on the CPU; with
+        # them glamor hands the drawing to the virtual GPU. mesa-dri-gallium
+        # carries virgl, which is the driver for virtio-gpu.
+        add_optional mesa-dri-gallium mesa-gl
+        # glxinfo, and it earns its couple of megabytes: it is the only way to
+        # see the layer that lies most convincingly. Everything else can be
+        # correct and mesa still fall back to llvmpipe, which is software
+        # rendering with a hardware-sounding name. copal-gpu reads it.
+        add_optional mesa-demos
+        # Written rather than left to autodetection. X does prefer modesetting
+        # over fbdev on a KMS device, but "does" is a property of one version
+        # of one autoconfig heuristic, and the cost of being wrong is the slow
+        # path silently coming back. Say it.
+        mkdir -p /etc/X11/xorg.conf.d
+        cat > /etc/X11/xorg.conf.d/20-modesetting.conf <<'XORGKMS'
+# Written by copal-init.sh, stage 4. See the essay in stage_desktop().
+#
+# This machine is a guest with a KMS display (virtio-gpu, or whatever the
+# hypervisor offered). modesetting draws into the scanout buffer directly;
+# fbdev would go through the kernel's framebuffer emulation and copy every
+# pixel twice. Delete this file to go back to autodetection.
+Section "Device"
+    Identifier  "kms"
+    Driver      "modesetting"
+    # glamor is the accelerated path -- it needs a working DRI driver, which
+    # is what mesa-dri-gallium provides. If the display is BLACK or X exits
+    # with an EGL error, this is the line to comment out first: without it
+    # modesetting draws on the CPU, which is still much faster than fbdev.
+    Option      "AccelMethod" "glamor"
+EndSection
+XORGKMS
+        note "/etc/X11/xorg.conf.d/20-modesetting.conf -- delete it to autodetect"
+        note "A black screen after this? Comment out the AccelMethod line in it."
+    else
+        say "Installing the framebuffer driver"
+        apk add xf86-video-fbdev
+    fi
 
     # i3 tiles, so windows never overlap and the CPU never redraws an occluded
     # region. On a board with no acceleration, where every pixel is pushed by
@@ -6193,6 +7554,15 @@ stage_gui() {
     # ImageMagick paint the key bindings onto the root window. All four are
     # small, and all four are guarded at runtime -- none is required.
     add_optional yad dialog feh imagemagick
+
+    # THE UNIFIED CLIPBOARD's X half. Omarchy's best small idea is that
+    # Super+C and Super+V copy and paste EVERYWHERE, including the terminal,
+    # instead of the terminal needing Ctrl+Shift and everything else needing
+    # Ctrl. Making that true on X needs two programs: xclip owns the
+    # selection, and xdotool sends the chord the focused window actually
+    # wants. copal-clip is guarded at runtime and says which one is missing,
+    # so a board without them keeps Ctrl+Shift+C and loses nothing else.
+    add_optional xclip xdotool
     # urxvt starts faster and uses less RAM than xterm; fall back if absent.
     if try_add rxvt-unicode && command -v urxvt >/dev/null 2>&1; then
         TERMEMU=urxvt
@@ -6313,6 +7683,13 @@ XINIT
     # i3 would otherwise run its config wizard on first launch and block on a
     # question. Writing the config skips that and pins Super as the modifier,
     # so Alt stays free for the terminal.
+    # Written before the i3 config, because the config binds four keys to it.
+    write_copal_clip
+
+    # The bar, the window list and the widgets. Without this the desktop is
+    # the wallpaper and nothing else -- see the essay above hypr_write_waybar().
+    hypr_write_waybar
+
     say "Writing ~/.config/i3/config"
     {
         cat <<'I3A'
@@ -6329,19 +7706,95 @@ I3A
 # where Omarchy puts its launcher.
 bindsym $mod+d      exec dmenu_run
 bindsym $mod+space  exec dmenu_run
+# Alt+space as well. On a Mac keyboard Alt is the Option key, which sits
+# next to the Space bar and is next to Command -- the muscle memory for
+# "launcher" ends up on whichever of the two the host has not eaten. macOS
+# reserves Option+Space for nothing, so under UTM it arrives intact.
+#
+# The cost is the same shape as the Ctrl+Space one further down: i3 grabs it
+# globally, so Alt+Space stops reaching applications. What it reaches there
+# is the window menu in a few GTK/Qt programs and just-one-space in emacs --
+# less than Ctrl+Space costs, which is why this one is not hedged about.
+bindsym Mod1+space  exec dmenu_run
 bindsym $mod+Return exec $term
 bindsym $mod+e      exec pcmanfm
 bindsym $mod+t      exec $term -e htop
+# The camera -- birdshot, built from ~/code by stage 7, or whatever $CAMERA
+# names. copal-camera is the one place that decision is made.
+bindsym $mod+Shift+b exec copal-camera
 bindsym $mod+Shift+q kill
 # A clickable menu, built from what is actually installed. Falls back to
 # dmenu over the same list when jgmenu is absent, so it always works.
 bindsym $mod+z      exec copal-menu
+# The desk, laid out the same way every time -- see copal-desk.
+bindsym $mod+Shift+d exec --no-startup-id copal-desk
+# And the same menu on a right-click on the desktop, which is where everyone
+# who has ever used a computer looks for it first. i3 has no desktop of its
+# own -- what you are clicking is the X root window, visible wherever no
+# window covers it -- but i3 does deliver root-window button presses to
+# bindings, so this is a one-liner rather than a second daemon.
+#
+# WITHOUT --whole-window on purpose. A bare button binding matches the root
+# window and window decorations only; add --whole-window and every
+# right-click inside every application would open this menu instead of the
+# application's own context menu, which would be unusable.
+#
+# --release, so the menu opens when the button comes back up. jgmenu grabs
+# the pointer as it maps, and a menu that appears under a button already
+# held down takes the release as a click on whatever entry is under the
+# cursor. --at-pointer puts it where the click was rather than at the
+# corner the config would otherwise pin it to.
+bindsym --release button3 exec --no-startup-id copal-menu --at-pointer
 # One window listing the whole catalogue -- what is installed and what is
 # not -- with a button that either runs it or fetches it.
-bindsym $mod+c      exec copal-center
+#
+# This used to be Super+C. It moved because Super+C is now COPY -- see the
+# unified clipboard block below, which is the one Omarchy convention worth
+# breaking an existing binding for.
+bindsym $mod+Shift+c exec copal-center
+# The wallpaper picker. feh's thumbnail grid on X, which is the nicer of the
+# two pickers -- a wall of pictures, click one. Also in the menu under Style.
+bindsym $mod+Shift+w exec --no-startup-id copal-wallpaper --pick
 # System settings: users and groups, hostname, services, SSH, boot options.
 # It asks doas for the root it needs rather than assuming it has it.
 bindsym $mod+comma  exec copal-config
+
+# THE UNIFIED CLIPBOARD -- Omarchy's convention, and the single change in this
+# file most likely to be noticed on day one.
+#
+# One set of keys for copy, cut and paste in every window, terminal included,
+# instead of Ctrl+Shift+C here and Ctrl+C there. copal-clip looks at what has
+# focus and sends the chord that window wants; see the essay above
+# write_copal_clip() in copal-prep.sh for why the terminal is the exception
+# that makes this necessary.
+#
+# AND: Caps Lock is a second Super on this machine. So this is CapsLock+C and
+# CapsLock+V -- which is, under the fingers, Cmd+C and Cmd+V. That is the
+# whole reason to prefer these over the ones you already know.
+bindsym $mod+c      exec --no-startup-id copal-clip copy
+bindsym $mod+x      exec --no-startup-id copal-clip cut
+bindsym $mod+v      exec --no-startup-id copal-clip paste
+bindsym $mod+Ctrl+v exec --no-startup-id copal-clip history
+
+# System controls, on Omarchy's chords, using the programs this machine has
+# rather than the ones it does not. Each is a terminal program in a floating
+# window, which is the whole of a "control panel" on a board this size.
+bindsym $mod+Ctrl+a exec $term -title copal-panel -e alsamixer
+bindsym $mod+Ctrl+t exec $term -title copal-panel -e sh -c 'command -v btop >/dev/null && exec btop; exec htop'
+# Omarchy has Super+Ctrl+W for wifi (impala) and Super+Ctrl+B for bluetooth.
+# Neither program is packaged for this hardware and neither is the way this
+# system does networking -- wifi here is wpa_supplicant, configured in stage
+# 10 and in copal-config on Super+comma. A binding that opened something that
+# could not change the setting would be worse than no binding, so there is
+# none, and this comment is where you would add yours.
+# Music. Omarchy puts Spotify here; there is no Spotify for this hardware and
+# there does not need to be -- cmus is a better music player on 512 MB than
+# anything with a web browser inside it. mpv is the fallback, on the same key,
+# because between them they play everything on the machine.
+bindsym $mod+Shift+m exec $term -title copal-panel -e sh -c 'command -v cmus >/dev/null && exec cmus; exec mpv --no-video ~/Music'
+# The editor, on Omarchy's key.
+bindsym $mod+Shift+n exec $term -title nvim -e sh -c 'command -v nvim >/dev/null && exec nvim; exec vi'
+for_window [title="copal-panel"] floating enable, resize set 760 520, move position center
 # The key list, in a floating window. Shown once at login and on Super+/,
 # because a tiling WM with no menus is unusable until you know the bindings.
 set $helpcmd TERMEMU_PLACEHOLDER -title i3-keys -e less ~/.config/i3/keys.txt
@@ -6368,6 +7821,10 @@ exec --no-startup-id $helpcmd
 # It watches for a device NODE and never opens the port itself, so it does not
 # fight the monitor for the device once one is running.
 exec --no-startup-id sh -c 'command -v radbeeper >/dev/null 2>&1 && exec radbeeper hotplug'
+
+# The clipboard history recorder. One xclip call a second; it is what makes
+# Super+Ctrl+V have anything to show. Delete this line to stop recording.
+exec --no-startup-id copal-clip watch
 bindsym $mod+Shift+r restart
 bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'Exit i3?' -B 'Yes' 'i3-msg exit'"
 # The whole of ending the day: it asks, closes the session so applications are
@@ -6400,7 +7857,10 @@ bindsym $mod+Shift+Up move up
 bindsym $mod+Shift+Right move right
 
 bindsym $mod+b splith
-bindsym $mod+v splitv
+# Super+V is PASTE now (the unified clipboard, below), so "split downwards"
+# moved one key over. Super+B is still "split rightwards" and is the one of
+# the pair anybody actually presses.
+bindsym $mod+Shift+v splitv
 bindsym $mod+f fullscreen toggle
 bindsym $mod+s layout stacking
 bindsym $mod+w layout tabbed
@@ -6476,8 +7936,16 @@ bindsym $mod+Ctrl+Left  workspace prev
 #   Super + Ctrl + arrows  Mission Control, moving between Mac desktops.
 #
 # So each of those gets a SECOND binding on a modifier macOS does not
-# reserve. One rule, not a table to memorise: WHERE SUPER IS EATEN, PRESS
-# CTRL+ALT INSTEAD. The rest of the binding stays exactly where it was.
+# reserve -- and not only those: EVERY Super binding in this file has one, so
+# the rule never runs out halfway through. Two lines, not a table to memorise:
+#
+#     WHERE SUPER IS EATEN, PRESS CTRL+ALT INSTEAD.
+#     WHERE THE BINDING ALSO HAS CTRL IN IT, PRESS CTRL+ALT+SHIFT.
+#
+# The rest of the binding stays exactly where it was. The second line exists
+# because a modifier set has no duplicates -- Super+Ctrl+V cannot become
+# Ctrl+Alt with a Ctrl in it -- and the generated block at the end of this
+# file is where the two rules are actually applied.
 #
 # Ctrl+Alt rather than plain Ctrl, because i3 grabs a binding globally and
 # system-wide: Ctrl+W and Ctrl+H bound here would stop being kill-word and
@@ -6503,22 +7971,14 @@ bindsym $mod+Ctrl+Left  workspace prev
 #       Application UTM, menu title "Close", new shortcut Cmd+Shift+W.
 #       Moving the menu item's key is what actually takes Cmd+W away from
 #       UTM; nothing inside the guest can.
-bindsym Ctrl+Mod1+space       exec dmenu_run
-bindsym Ctrl+Mod1+Tab         focus mode_toggle
-bindsym Ctrl+Mod1+h           focus left
-bindsym Ctrl+Mod1+w           layout tabbed
-bindsym Ctrl+Mod1+comma       exec copal-config
-bindsym Ctrl+Mod1+slash       exec $helpcmd
-bindsym Ctrl+Mod1+Shift+p     exec copal-halt
-bindsym Ctrl+Mod1+Shift+q     kill
-bindsym Ctrl+Mod1+Shift+space floating toggle
-bindsym Ctrl+Mod1+Shift+1 move container to workspace number 1
-bindsym Ctrl+Mod1+Shift+2 move container to workspace number 2
-bindsym Ctrl+Mod1+Shift+3 move container to workspace number 3
-bindsym Ctrl+Mod1+Shift+4 move container to workspace number 4
-bindsym Ctrl+Mod1+Shift+5 move container to workspace number 5
-bindsym Ctrl+Mod1+Right workspace next
-bindsym Ctrl+Mod1+Left  workspace prev
+# The list itself is not written here. Every one of these bindings is a copy
+# of a Super binding above with the modifier swapped, and a hand-kept copy of
+# a list is a list that drifts: add a binding, forget the twin, and the rule
+# stops being true exactly where somebody is relying on it. So the twins are
+# GENERATED from the Super bindings, by the awk pass that runs just after this
+# file is assembled -- see the block after the closing brace of this heredoc
+# in copal-prep.sh. Add a bindsym above and its Ctrl+Alt twin appears by
+# itself; delete one and the twin goes with it.
 
 # The launcher gets plain Ctrl+Space on top of the Ctrl+Alt one. It is the
 # binding reached most often and the one Spotlight takes most reliably, and
@@ -6545,6 +8005,9 @@ client.focused          #7aa2f7 #7aa2f7 #1a1b26 #7dcfff   #7aa2f7
 client.focused_inactive #292e42 #292e42 #c0caf5 #292e42   #292e42
 client.unfocused        #1a1b26 #1a1b26 #565f89 #1a1b26   #1a1b26
 client.urgent           #f7768e #f7768e #1a1b26 #f7768e   #f7768e
+# The current theme's colours, written by copal-theme; included so they win
+# over the four lines above when the theme is not this one.
+include ~/.config/copal/current/i3-colors.conf
 
 bar {
         status_command i3status
@@ -6565,6 +8028,108 @@ bar {
 }
 I3B
     } > /tmp/i3cfg.$$
+
+    # ----------------------------------------------------------------------
+    # THE CTRL+ALT TWINS, generated rather than written.
+    #
+    # Under UTM every Super chord is a macOS shortcut first, so the config
+    # above carries a second modifier for the whole binding set. Doing that by
+    # hand covered the dozen bindings somebody remembered on the day; this
+    # walks the file that was just written and gives EVERY Super binding a
+    # twin, so the promise "where Super is eaten, press Ctrl+Alt" is true of
+    # all of them rather than most of them. A binding added above gets its
+    # twin for free, which is the whole point of generating it.
+    #
+    # The mapping, and there are only two rules:
+    #
+    #     $mod+KEY            ->  Ctrl+Mod1+KEY
+    #     $mod+Shift+KEY      ->  Ctrl+Mod1+Shift+KEY
+    #     $mod+Ctrl+KEY       ->  Ctrl+Mod1+Shift+KEY
+    #
+    # The third line is the one that needs explaining. A modifier set has no
+    # order and no duplicates, so Super+Ctrl+V cannot become "Ctrl+Alt with a
+    # Ctrl in it" -- that is just Ctrl+Alt+V, which the plain rule has already
+    # given to Super+V. The Super+Ctrl family needs a modifier of its own, and
+    # Shift is the only one left. Hence: WHERE THE BINDING HAS CTRL IN IT,
+    # PRESS CTRL+ALT+SHIFT.
+    #
+    # That collides with the Super+Shift family in exactly three places, and
+    # all three are resolved here rather than left for i3 to arbitrate -- i3
+    # takes the FIRST of a duplicated binding and logs the second as an error
+    # nobody reads, so an unmanaged collision is a binding that silently does
+    # the wrong thing.
+    #
+    #   Ctrl+Alt+Shift+Left/Right go to workspace prev/next (Super+Ctrl+arrow,
+    #       the pair macOS eats for Mission Control -- the reason any of this
+    #       exists). Moving a window left and right loses its arrow twin and
+    #       keeps its letter one, Ctrl+Alt+Shift+H and +L, which is the same
+    #       action on the keys i3 was designed around.
+    #   Ctrl+Alt+Shift+V goes to the clipboard history (Super+Ctrl+V), which
+    #       is reached daily. splitv, which would otherwise have had it, is
+    #       given Ctrl+Alt+Shift+B instead -- splith is on B already, so the
+    #       vertical one lands next to the horizontal one rather than nowhere.
+    #
+    # Written to a second file and appended, not edited in place: awk reading
+    # a file it is also appending to is a loop, not a program.
+    awk '
+        /^bindsym \$mod\+/ {
+            key = $2
+            # The three collisions above: the Super+Ctrl claimant wins the
+            # chord, so these Super+Shift ones are skipped and re-placed by
+            # hand below.
+            if (key == "$mod+Shift+Left" || key == "$mod+Shift+Right" \
+                || key == "$mod+Shift+v") next
+            rest = substr($0, index($0, key) + length(key))
+            sub(/^[ \t]+/, "", rest)
+            twin = key
+            if (sub(/^\$mod\+Ctrl\+/,  "Ctrl+Mod1+Shift+", twin)) { }
+            else if (sub(/^\$mod\+Shift\+/, "Ctrl+Mod1+Shift+", twin)) { }
+            else sub(/^\$mod\+/, "Ctrl+Mod1+", twin)
+            # Belt and braces against a future collision nobody predicted:
+            # first claimant keeps the chord, and the loser is reported at
+            # install time rather than discovered as a dead key months later.
+            if (twin in seen) {
+                printf "# SKIPPED (%s already bound): %s\n", twin, key
+                next
+            }
+            seen[twin] = 1
+            printf "bindsym %-26s %s\n", twin, rest
+        }
+    ' /tmp/i3cfg.$$ > /tmp/i3alt.$$
+    {
+        printf '\n# ---- Ctrl+Alt twins, generated from the Super bindings above ----\n'
+        printf '# One rule: where Super is eaten by the Mac, press Ctrl+Alt. Where the\n'
+        printf '# binding already has Ctrl in it, press Ctrl+Alt+Shift. Delete this\n'
+        printf '# whole block on a machine that is not a guest; nothing depends on it.\n'
+        cat /tmp/i3alt.$$
+        printf 'bindsym Ctrl+Mod1+Shift+b  splitv\n'
+    } >> /tmp/i3cfg.$$
+    rm -f /tmp/i3alt.$$
+    # Loud, because a collision report inside a generated file is a comment
+    # nobody will ever open the file to read.
+    if grep -q '^# SKIPPED' /tmp/i3cfg.$$; then
+        warn "some Ctrl+Alt twins collided and were skipped:"
+        grep '^# SKIPPED' /tmp/i3cfg.$$ | sed 's/^/      /'
+    fi
+    # AFTER the twins, deliberately. Each of these would collide with a twin
+    # the block above already generated (Super+Ctrl+Space's twin is
+    # Super+Shift+Space's; Super+Shift+T's is Super+Ctrl+T's) or produce a
+    # meaningless one (Ctrl+Alt+Alt). They are doors, not verbs: the one
+    # implementation behind each is bound elsewhere in this file already.
+    {
+        printf '\n# ---- more doors ---------------------------------------------------\n'
+        printf '# The theme picker; and the two chords Omarchy uses for its system menu\n'
+        printf '# and wallpaper picker, so hands that learned them there land somewhere.\n'
+        printf 'bindsym $mod+Shift+t     exec --no-startup-id copal-theme --pick\n'
+        printf 'bindsym $mod+Shift+n     exec --no-startup-id copal-theme --toggle\n'
+        printf 'bindsym $mod+Mod1+space  exec copal-menu --system\n'
+        printf 'bindsym $mod+Ctrl+space  exec --no-startup-id copal-wallpaper --pick\n'
+        printf '\n# ---- yours ---------------------------------------------------------\n'
+        printf '# Everything above is rewritten whenever stage 4 runs; local.conf is not.\n'
+        printf '# Included last, so it wins.\n'
+        printf 'include ~/.config/i3/local.conf\n'
+    } >> /tmp/i3cfg.$$
+
     # $helpcmd holds a command line, and it is built here rather than left as
     # "$term -title ..." for i3 to expand.
     #
@@ -6581,6 +8146,18 @@ I3B
     # something we already know the value of, put the value in.
     sed -i "s|TERMEMU_PLACEHOLDER|$TERMEMU|" /tmp/i3cfg.$$
     install_home_file .config/i3/config /tmp/i3cfg.$$; rm -f /tmp/i3cfg.$$
+    cat > /tmp/i3local.$$ <<'I3LOCAL'
+# ~/.config/i3/local.conf -- yours.
+#
+# Copal created this file empty, once, and will not write to it again.
+# ~/.config/i3/config is rewritten every time stage 4 runs and includes this
+# file last, so anything here wins over anything there. Super+Shift+R
+# reloads. A binding of your own looks like:
+#
+#   bindsym $mod+Shift+F8 exec foo
+I3LOCAL
+    install_home_once .config/i3/local.conf /tmp/i3local.$$
+    rm -f /tmp/i3local.$$
 
     # The cheat sheet. i3 has no menus, no icons and no discoverable UI at
     # all, so without this the desktop is a grey rectangle that ignores you.
@@ -6625,6 +8202,13 @@ case " $* " in
 esac
 if apk add "$@"; then
     printf '\n\nDone. The menu will show it next time you open it.\n'
+    # The menu opens from a cached list; rebuild it now, as the person who
+    # asked (doas hands their name over in DOAS_USER), so the new program is
+    # there the next time the menu opens rather than the time after. Both
+    # sessions' lists, because root cannot tell which desktop asked.
+    if [ -n "${DOAS_USER:-}" ] && command -v copal-menu >/dev/null 2>&1; then
+        su "$DOAS_USER" -s /bin/sh -c 'copal-menu --rebuild-all' >/dev/null 2>&1 &
+    fi
     # Packages live on the ext4 root once stage 3 has run, but a diskless
     # system loses them at reboot unless the overlay is committed.
     if [ "$(awk '$2 == "/" { print $3 }' /proc/mounts)" = tmpfs ]; then
@@ -6717,8 +8301,17 @@ esac
 # REFUSES rather than assuming yes. "It could not ask, so it went ahead and
 # powered the machine off" is the wrong way round for the one command here
 # that cannot be undone.
+# ON WAYLAND THE QUESTION IS A WOFI LIST, No above Yes, and it is asked
+# BEFORE the i3 branch is considered: Hyprland sets DISPLAY for Xwayland, so
+# the i3 test alone would pick i3-nagbar, which comes up through Xwayland
+# unable to find an output and hangs -- which is what "Shut down does
+# nothing" was on the Antiquity desktop.
 if [ "$ASK" = 1 ]; then
-    if [ -n "${DISPLAY:-}" ] && have i3-nagbar; then
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && have wofi; then
+        reply=$(printf 'No\nYes\n' | wofi --dmenu --prompt "$QUESTION" \
+                    --height 130 --width 380 2>/dev/null || true)
+        [ "$reply" = Yes ] || { echo "Cancelled."; exit 0; }
+    elif [ -n "${DISPLAY:-}" ] && have i3-nagbar; then
         exec i3-nagbar -t warning -m "$QUESTION" \
              -B 'Yes' "copal-halt -y $ACTION" -B 'No' 'true'
     elif [ -t 0 ]; then
@@ -6745,13 +8338,24 @@ priv() {
 # Ending an i3 session before the machine goes down is not required -- OpenRC
 # will stop X either way -- but it is the difference between applications being
 # asked to quit and applications being killed.
+# Asked of the session, like everything else here: Hyprland's exit is
+# 'hyprctl dispatch exit', and it is checked first for the Xwayland reason
+# above.
 end_session() {
-    [ -n "${DISPLAY:-}" ] && have i3-msg || return 0
-    i3-msg exit >/dev/null 2>&1 || true
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && have hyprctl; then
+        hyprctl dispatch exit >/dev/null 2>&1 || true
+    elif [ -n "${DISPLAY:-}" ] && have i3-msg; then
+        i3-msg exit >/dev/null 2>&1 || true
+    else
+        return 0
+    fi
     sleep 1
 }
 
 if [ "$ACTION" = logout ]; then
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && have hyprctl; then
+        exec hyprctl dispatch exit
+    fi
     [ -n "${DISPLAY:-}" ] || { echo "copal-halt: not in a desktop session." >&2; exit 1; }
     have i3-msg || { echo "copal-halt: no i3-msg." >&2; exit 1; }
     exec i3-msg exit
@@ -6779,7 +8383,7 @@ do_halt() {
 # race with its own death: if X takes its children down, the power-off never
 # happens and you are left at a console wondering why. setsid re-runs this in a
 # session of its own; COPAL_HALT_INNER is what stops the copy doing it again.
-if [ -z "${COPAL_HALT_INNER:-}" ] && [ -n "${DISPLAY:-}" ] && have setsid; then
+if [ -z "${COPAL_HALT_INNER:-}" ] && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && have setsid; then
     COPAL_HALT_INNER=1 setsid "$0" -y "$ACTION" >/dev/null 2>&1 &
     exit 0
 fi
@@ -6787,6 +8391,56 @@ fi
 do_halt
 COPALHALT
     chmod 0755 /usr/local/bin/copal-halt
+
+    # ----------------------------------------------------------------------
+    # "SAFE TO UNPLUG." A Pi has no power button and no light that means
+    # "off": the red one is mains, the green one is disk activity, and the
+    # kernel's last words on the console -- "reboot: Power down" -- are true
+    # but addressed to nobody. So on a Pi one more OpenRC service sits in the
+    # shutdown runlevel, after mount-ro, and says it in words on the console,
+    # where the HDMI screen shows it once the desktop has gone. Not installed
+    # on a PC or a VM: those cut their own power and the screen is dark before
+    # anyone could read it.
+    #
+    # Alpine's inittab runs 'openrc shutdown' for a reboot as well as a halt
+    # and does not say which, so the notice covers both rather than claiming
+    # to know.
+    if grep -qi "raspberry pi" /proc/device-tree/model 2>/dev/null; then
+        say "Installing /etc/init.d/copal-unplug (the safe-to-unplug notice)"
+        cat > /etc/init.d/copal-unplug <<'UNPLUG'
+#!/sbin/openrc-run
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-unplug -- the last words on the console when a Raspberry Pi halts.
+#
+# OpenRC "starts" the shutdown runlevel's services on the way down; this one
+# runs after mount-ro, so it speaks once the filesystems are read-only and
+# there is nothing left to lose. The kernel then prints "reboot: Power down",
+# the green light goes dark, and the notice stays on the screen.
+description="Says on the console when it is safe to unplug the Pi"
+
+depend() {
+    after killprocs savecache mount-ro
+}
+
+start() {
+    if [ "${RC_REBOOT:-no}" = yes ]; then
+        printf '\n   Restarting -- leave the power alone.\n\n' > /dev/console
+    else
+        printf '\n   The Raspberry Pi has halted.\n' > /dev/console
+        printf '   If you asked for a restart it will come back by itself.\n' > /dev/console
+        printf '   Otherwise it is SAFE TO UNPLUG once the green light stays off.\n\n' > /dev/console
+    fi
+    return 0
+}
+UNPLUG
+        chmod 0755 /etc/init.d/copal-unplug
+        if rc-update add copal-unplug shutdown >/dev/null 2>&1; then
+            note "copal-unplug -- 'safe to unplug' on the console when the Pi halts"
+        else
+            warn "could not add copal-unplug to the shutdown runlevel -- rc-update add copal-unplug shutdown, by hand"
+        fi
+    fi
 
     # ----------------------------------------------------------------------
     # copal-logs.
@@ -6818,237 +8472,982 @@ COPALHALT
 #!/bin/sh
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
-# copal-menu -- a clickable menu, rebuilt from what is installed each time it runs.
+# copal-menu -- the desktop's menu: applications on the left, everything else
+# on the right, and Left/Right to cross between them.
 #
-# The keyboard launcher (Super+space, dmenu) already covers everything on
-# PATH. This exists for the things whose names you would have to know first --
-# the emulator profiles, the snapshot tool, the disk-image helpers -- and for
-# the one thing a flat launcher can never do: show you what you could install
-# but have not. Software you do not have is not discoverable by definition, so
-# the menu carries an Install branch listing the rest of the catalogue.
+# The keyboard launcher a desktop like this usually ships (dmenu, wofi's drun)
+# covers what is on PATH and nothing else. This exists for the things whose
+# names you would have to know first -- the emulator profiles, the snapshot
+# tool, the disk-image helpers -- and for the one thing a flat launcher can
+# never do: show you what you could install but have not. Software you do not
+# have is not discoverable by definition, so the menu carries an Install
+# branch listing the rest of the catalogue.
 #
-# Structure is borrowed from Omarchy: a short top level of categories, each a
-# submenu with a Back entry, and Install/System/Session as siblings of the
-# applications rather than entries mixed in among them. Nothing here is more
-# than two levels deep -- on a 720p framebuffer a third level is a scroll bar.
+# TWO PANES, ONE MENU. Super+Space, Super+D and the bar's menu button open on
+# the LEFT pane: every application on the machine, flat, sorted, type to
+# search -- what drun would show, plus the terminal programs drun cannot see.
+# Super+Z opens on the RIGHT pane: the same programs by category, the
+# settings, Style and Install, and the session -- lock, log out, reboot,
+# shut down -- under their own heading. Left and Right move between the two
+# panes; inside a category, Left is Back and Right goes to the applications.
+# Structure is borrowed from Omarchy, then tightened: nothing here is more
+# than two levels deep, because on a 720p framebuffer a third level is a
+# scroll bar.
+#
+# CACHED, AND WHY. Building the list means reading the catalogue (300 rows),
+# asking PATH about every one of them, and parsing every .desktop file on the
+# machine. Done from scratch on every keypress, that was four seconds on the
+# UTM guest -- long enough to press the key again, at which point two copies
+# raced to truncate one file and the second pane came up empty. So the list
+# is built once, into ~/.cache/copal/, and every open reads the file: the
+# menu appears in the time wofi takes to draw, a sixth of a second here.
+#
+# The file is rebuilt in the background when something it was built from is
+# newer than it -- a directory on PATH, the .desktop directories, the
+# catalogue, this script -- so what you see is at worst one open behind what
+# is installed, and never a blank. 'copal-menu --rebuild' forces it, and
+# copal-install runs that for you after every install.
 set -eu
-CSV="${XDG_RUNTIME_DIR:-/tmp}/copal-menu.csv"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/copal"
 CATFILE=/usr/local/share/copal/catalogue
+GUIDES=/usr/local/share/copal/guides
+CONFDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+# The programs copal-build made from ~/code, in the same label|command|mode
+# shape as a catalogue row. The file is copal-build's; it is read here and
+# edited nowhere.
+PROJFILE="${XDG_DATA_HOME:-$HOME/.local/share}/copal/projects"
+
+usage() {
+    echo "usage: copal-menu [--at-pointer|--system|--rebuild|--rebuild-all]" >&2
+    exit 2
+}
+
+# --at-pointer: open where the mouse is, which is what the right-click-on-the-
+# desktop binding wants. Only jgmenu can honour it; the list pickers are a
+# fixed panel with nowhere to put it, so there the flag is simply dropped.
+#
+# --system: open on the right-hand pane rather than the applications. Super+Z
+# used to open a menu that WAS the structure, so it still arrives there.
+#
+# --rebuild: build the cached list for this session and exit. --rebuild-all
+# builds both the Wayland and the X11 list, for a caller -- copal-install --
+# that runs as root and cannot tell which desktop asked.
+AT_POINTER=""
+START_PANE="apps"
+MODE="open"
+case "${1:-}" in
+    --at-pointer)  AT_POINTER="--at-pointer" ;;
+    --system)      START_PANE="" ;;
+    --rebuild)     MODE="rebuild" ;;
+    --rebuild-all) MODE="rebuild-all" ;;
+    "") ;;
+    *) usage ;;
+esac
+[ "$#" -le 1 ] || usage
 
 have() { command -v "$1" >/dev/null 2>&1; }
-out()  { printf '%s\n' "$*" >> "$CSV"; }
-TERM_EMU="${TERMINAL:-$(have urxvt && echo urxvt || echo xterm)}"
+# Which session this is. WAYLAND_DISPLAY is set by the compositor for its own
+# clients and by nothing else, so it answers the question without asking what
+# is installed. The list differs by session -- the terminal, the lock and
+# log-out entries -- so each session has its own cache file.
+if [ -n "${WAYLAND_DISPLAY:-}" ]; then SESSION=wayland; else SESSION=x11; fi
+wayland() { [ "$SESSION" = wayland ]; }
+csv_for() { echo "$CACHE_DIR/menu-$1.csv"; }
+CSV=$(csv_for "$SESSION")
 
-# One entry: run it directly, wrap a terminal around it, or -- for the tools
-# that would exit before you could read anything -- show the help and hand
-# over a shell in the same window.
-cmd_for() {  # <binary> <mode>
-    case "$2" in
-        t) printf '%s -e %s' "$TERM_EMU" "$1" ;;
-        h) printf "%s -e sh -c '%s --help 2>&1 | head -40; echo; echo \"-- shell in this directory; Ctrl-D to close --\"; exec sh'" \
-                  "$TERM_EMU" "$1" ;;
-        *) printf '%s' "$1" ;;
-    esac
-}
-
-# Walk the catalogue, emitting only the rows in <section> that are (or are
-# not) actually installed. Everything downstream is driven by these two.
-rows() {  # <section> <installed|missing>
-    [ -f "$CATFILE" ] || return 0
-    while IFS='|' read -r _sec _label _pkgs _bin _mode; do
-        [ "${_sec:-}" = "$1" ] || continue
-        case "${_sec}" in '#'*) continue ;; esac
-        if have "$_bin"; then [ "$2" = installed ] || continue
-        else                  [ "$2" = missing   ] || continue
-        fi
-        # jgmenu's CSV splits on commas, so a comma in a label silently eats
-        # the command and leaves a dead entry. Strip them here rather than
-        # trusting every future edit of the catalogue to remember.
-        printf '%s|%s|%s|%s\n' "$(echo "$_label" | tr ',' ';')" "$_pkgs" "$_bin" "$_mode"
-    done < "$CATFILE"
-}
-sections() { [ -f "$CATFILE" ] && cut -d'|' -f1 "$CATFILE" | awk '!s[$0]++' || true; }
 # Section names are one word so they can be pasted into jgmenu tag names;
 # this is where they get a readable form for the part people see.
 pretty() { case "$1" in Smallweb) echo "Small Web" ;; *) echo "$1" ;; esac; }
-count()    { rows "$1" "$2" | grep -c . || true; }
 
-: > "$CSV"
+# ===========================================================================
+# BUILDING THE LIST. Everything from here to the ruler writes one CSV in
+# jgmenu's dialect: 'label,command' rows, ^tag(x) opening a section,
+# ^checkout(x) entering one, ^back() leaving it, ^sep(title) a heading.
+# jgmenu reads it as-is on X11; walk() below turns the same markers into a
+# keyboard-driven picker everywhere else.
+#
+# Forks are the cost on a board this size, so the builder avoids them: the
+# catalogue is walked once, in shell built-ins, into a table that carries the
+# installed/missing answer, and every later question is one awk over that
+# table rather than a loop that forks twice per row. Half a second where the
+# first version took four.
+# ===========================================================================
+out() { printf '%s\n' "$*" >> "$OUT"; }
 
-# ----- top level -----
-out "Run a program...,dmenu_run"
-out "Terminal,$TERM_EMU"
-have copal-center && out "Copal Center,copal-center" || true
-have copal-config && out "System Settings,copal-config" || true
-out '^sep()'
-for s in $(sections); do
-    [ "$(count "$s" installed)" -gt 0 ] && out "$(pretty "$s"),^checkout(have_$s)" || true
-done
-out "Development,^checkout(devel)"
-# Only worth a top-level entry once an emulator is actually built.
-if [ -n "$(ls "$HOME"/minivmac/run-*.sh /root/minivmac/run-*.sh 2>/dev/null || true)" ] \
-   || have BasiliskII || have x64sc || have x64; then
-    out "Emulators,^checkout(emu)"
-fi
-out '^sep()'
-out "Install software,^checkout(install)"
-[ -n "$(ls /usr/local/share/copal/guides/*.txt 2>/dev/null || true)" ] \
-    && out "Guides,^checkout(guides)" || true
-out "System,^checkout(system)"
-out "Session,^checkout(session)"
+build_csv() {  # <wayland|x11>
+    _sess="$1"
+    _csv=$(csv_for "$_sess")
+    mkdir -p "$CACHE_DIR"
+    OUT="$_csv.$$.tmp"
+    TABLE="$CACHE_DIR/.table.$$"
+    trap 'rm -f "$OUT" "$TABLE"' EXIT
+    : > "$OUT"
 
-# ----- one submenu per catalogue section, installed entries only -----
-for s in $(sections); do
-    [ "$(count "$s" installed)" -gt 0 ] || continue
-    out "^tag(have_$s)"
-    out "Back,^back()"
-    out "^sep($(pretty "$s"))"
-    rows "$s" installed | while IFS='|' read -r label pkgs bin mode; do
-        out "$label,$(cmd_for "$bin" "$mode")"
-    done
-done
-
-# ----- Install: the same table, inverted -----
-out '^tag(install)'
-out "Back,^back()"
-out '^sep(Not installed yet)'
-for s in $(sections); do
-    [ "$(count "$s" missing)" -gt 0 ] && out "$(pretty "$s"),^checkout(get_$s)" || true
-done
-for s in $(sections); do
-    [ "$(count "$s" missing)" -gt 0 ] || continue
-    out "^tag(get_$s)"
-    out "Back,^checkout(install)"
-    out "^sep(Install: $(pretty "$s"))"
-    rows "$s" missing | while IFS='|' read -r label pkgs bin mode; do
-        out "$label,$TERM_EMU -e copal-install $pkgs"
-    done
-done
-
-# ----- Guides: one entry per .txt, titled by its own first line -----
-# Built from the directory rather than a list, so dropping a new guide in
-# /usr/local/share/copal/guides is the whole of "adding it to the menu".
-if grep -q '^Guides,' "$CSV"; then
-    out '^tag(guides)'
-    out "Back,^back()"
-    out '^sep(Guides)'
-    for g in /usr/local/share/copal/guides/*.txt; do
-        [ -f "$g" ] || continue
-        gn=$(basename "$g" .txt)
-        # The first line with letters in it -- guides that open with a
-        # '=====' ruler would otherwise be titled with the ruler.
-        gt=$(awk 'NF && /[A-Za-z]/ {sub(/^ +/, ""); gsub(/,/, ";"); print; exit}' "$g")
-        [ -n "$gt" ] || gt="$gn"
-        out "$gt,$TERM_EMU -e copal-guide $gn"
-    done
-fi
-
-# ----- Development: not in the catalogue, it arrives with stage 7 -----
-out '^tag(devel)'
-out "Back,^back()"
-out '^sep(Development)'
-have nvim   && out "Neovim,$TERM_EMU -e nvim" || true
-have vim    && out "Vim,$TERM_EMU -e vim" || true
-have geany  && out "Geany,geany" || true
-have python3 && out "Python,$TERM_EMU -e python3" || true
-have claude && out "Claude Code,$TERM_EMU -e claude" || true
-have lazygit && out "Lazygit,$TERM_EMU -e lazygit" || true
-have bvi    && out "Hex editor (bvi),$TERM_EMU -e bvi" || true
-have radare2 && out "radare2,$TERM_EMU -e r2" || true
-
-# ----- Emulators: profiles are files on disk, not packages -----
-# Only emitted when the top level offered a way in, so the tag is never left
-# orphaned. VICE ships both x64sc (accurate) and x64 (fast); on this board the
-# fast one is the only one worth offering, but take whichever exists.
-if grep -q '^Emulators,' "$CSV"; then
-    out '^tag(emu)'
-    out "Back,^back()"
-    out '^sep(Emulators)'
-    for p in "$HOME"/minivmac/run-*.sh /root/minivmac/run-*.sh; do
-        [ -x "$p" ] || continue
-        n=$(basename "$p" .sh | sed 's/^run-//')
-        out "Mini vMac: $n,$p"
-    done
-    have BasiliskII && out "Basilisk II,BasiliskII" || true
-    if have x64sc;   then out "VICE (C64),x64sc"
-    elif have x64;   then out "VICE (C64),x64"
+    # The terminal, and on Wayland it cannot be an X one. xterm and urxvt
+    # would come up through Xwayland if it happens to be installed and not at
+    # all if it is not, so the Wayland session asks for the terminals that
+    # session has. foot first, for the reason stage 17 installs it first: it
+    # is the one that comes up on a compositor drawing in software. kitty and
+    # alacritty both want GL.
+    if [ "$_sess" = wayland ]; then
+        TERM_EMU="${TERMINAL:-$(have foot && echo foot \
+                                || (have kitty && echo kitty) \
+                                || (have alacritty && echo alacritty) \
+                                || echo xterm)}"
+    else
+        TERM_EMU="${TERMINAL:-$(have urxvt && echo urxvt || echo xterm)}"
     fi
-    # Wine boxes, one entry each; the env file's EXE says whether it runs.
-    if have winebox; then
-        for b in "$HOME"/.local/share/winebox/*/; do
-            [ -f "$b/env" ] || continue
-            n=$(basename "$b")
-            out "$n (Wine box),winebox run $n"
+
+    # One entry: run it directly, wrap a terminal around it, or -- for the
+    # tools that would exit before you could read anything -- show the help
+    # and hand over a shell in the same window.
+    cmd_for() {  # <binary> <mode>
+        case "$2" in
+            t) printf '%s -e %s' "$TERM_EMU" "$1" ;;
+            h) printf "%s -e sh -c '%s --help 2>&1 | head -40; echo; echo \"-- shell in this directory; Ctrl-D to close --\"; exec sh'" \
+                      "$TERM_EMU" "$1" ;;
+            *) printf '%s' "$1" ;;
+        esac
+    }
+
+    # The catalogue, annotated: section|label|packages|binary|mode|installed.
+    # 'command -v' is a built-in, so the whole pass is fork-free; the one tr
+    # at the end strips commas from every label at once, because jgmenu's
+    # CSV splits on commas and a comma in a label silently eats the command.
+    : > "$TABLE"
+    if [ -f "$CATFILE" ]; then
+        while IFS='|' read -r _sec _label _pkgs _bin _mode; do
+            case "${_sec:-}" in ''|'#'*) continue ;; esac
+            if have "$_bin"; then _i=1; else _i=0; fi
+            printf '%s|%s|%s|%s|%s|%s\n' "$_sec" "$_label" "$_pkgs" "$_bin" "$_mode" "$_i"
+        done < "$CATFILE" | tr ',' ';' > "$TABLE"
+    fi
+    # The rows of one section that are (1) or are not (0) installed.
+    rows() {  # <section> <1|0>
+        awk -F'|' -v s="$1" -v w="$2" '$1 == s && $6 == w { print $2 "|" $3 "|" $4 "|" $5 }' "$TABLE"
+    }
+    # The sections, in catalogue order, that have at least one such row.
+    HAVE_SECS=$(awk -F'|' '$6 == 1 && !s[$1]++ { print $1 }' "$TABLE")
+    MISS_SECS=$(awk -F'|' '$6 == 0 && !s[$1]++ { print $1 }' "$TABLE")
+
+    # copal-build's projects, filtered the same way: only what is on PATH.
+    PROJECTS=""
+    if [ -f "$PROJFILE" ]; then
+        PROJECTS=$(while IFS='|' read -r _name _label _cmd _mode; do
+            case "${_name:-}" in ''|'#'*) continue ;; esac
+            have "${_cmd%% *}" || continue
+            printf '%s|%s|%s\n' "$_label" "$_cmd" "$_mode"
+        done < "$PROJFILE" | tr ',' ';')
+    fi
+
+    # Is an emulator actually built? Only then is there a top-level entry.
+    HAVE_EMU=0
+    if [ -n "$(ls "$HOME"/minivmac/run-*.sh /root/minivmac/run-*.sh 2>/dev/null || true)" ] \
+       || have BasiliskII || have x64sc || have x64; then
+        HAVE_EMU=1
+    fi
+    HAVE_GUIDES=0
+    [ -n "$(ls "$GUIDES"/*.txt 2>/dev/null || true)" ] && HAVE_GUIDES=1
+
+    # ----- the right pane: the structure -----
+    #
+    # THE KEY LIST FIRST. This is a desktop with no menus and no icons; the
+    # list of what the keys do is the single most useful thing in here and
+    # it used to be three levels down inside System. Omarchy puts its
+    # keybindings under Learn, near the top, for the same reason.
+    #
+    # WHICH LIST, asked of the session. Stage 4 writes the i3 one and stage
+    # 16 writes the Antiquity one, and offering the wrong one is worse than
+    # offering none.
+    if [ "$_sess" = wayland ] && [ -f "$GUIDES/antiquity-keys.txt" ]; then
+        out "Key bindings,$TERM_EMU -e copal-guide antiquity-keys"
+    elif [ -f "$HOME/.config/i3/keys.txt" ]; then
+        out "Key bindings,$TERM_EMU -e less $HOME/.config/i3/keys.txt"
+    elif [ -f "$GUIDES/i3-keys.txt" ]; then
+        out "Key bindings,$TERM_EMU -e copal-guide i3-keys"
+    fi
+    # The other pane, for somebody who reached the menu with the mouse and
+    # has no arrow keys to cross with.
+    out "All applications  <,^checkout(apps)"
+    out "Terminal,$TERM_EMU"
+    # THE CAMERA, at the top rather than as a row in a section, because a
+    # machine built around an HQ Camera has one application that is the point
+    # of it. With no camera program there is no entry, rather than a dead one.
+    have copal-camera && copal-camera --which >/dev/null 2>&1 && out "Camera,copal-camera" || true
+    have copal-center && out "Copal Center,copal-center" || true
+    have copal-config && out "System Settings,copal-config" || true
+
+    # THE SESSION, under its own heading and at the top level rather than in
+    # a submenu: shutting down and logging out are the two things people
+    # hunt for in a menu, and they were two levels in. Asked of the session,
+    # not written once for i3: "Reload i3" cannot work on Hyprland and
+    # i3lock is an X program with no Wayland session to lock.
+    out '^sep(Session)'
+    if [ "$_sess" = wayland ]; then
+        out "Reload Hyprland,hyprctl reload"
+        have hyprlock && out "Lock screen,hyprlock" || true
+        out "Log out,hyprctl dispatch exit"
+    else
+        out "Reload i3,i3-msg restart"
+        have i3lock && out "Lock screen,i3lock -c 1a1b26" || true
+        out "Log out,i3-msg exit"
+    fi
+    # copal-halt rather than a bare poweroff: as $PI_USER the bare one cannot
+    # signal init at all, and from a menu there is no terminal for doas to ask
+    # in. It asks before it acts.
+    out "Reboot,copal-halt reboot"
+    out "Shut down,copal-halt"
+
+    # The applications by category: one submenu per catalogue section that
+    # has something installed, then the sections the catalogue does not know.
+    out '^sep(Categories)'
+    for s in $HAVE_SECS; do
+        out "$(pretty "$s")  >,^checkout(have_$s)"
+    done
+    out "Development  >,^checkout(devel)"
+    [ -n "$PROJECTS" ] && out "Projects  >,^checkout(projects)" || true
+    [ "$HAVE_EMU" = 1 ] && out "Emulators  >,^checkout(emu)" || true
+
+    # STYLE is Omarchy's own top-level entry and the one Copal did not have.
+    # Everything under it changes how the machine LOOKS rather than what is on
+    # it, which is why it is a sibling of Install rather than an entry inside.
+    out '^sep(Setup)'
+    out "Style  >,^checkout(style)"
+    out "Install software  >,^checkout(install)"
+    [ "$HAVE_GUIDES" = 1 ] && out "Guides  >,^checkout(guides)" || true
+    out "System  >,^checkout(system)"
+
+    # ----- the left pane: everything runnable, flat and searchable -----
+    #
+    # Every .desktop file the system advertises, which is what drun would
+    # have shown, PLUS every installed row of the catalogue, which is what
+    # drun cannot show -- the terminal programs, which have no .desktop file
+    # and are most of what is on a machine this size. Deduplicated by label,
+    # sorted case-insensitively, so it reads as one list rather than two.
+    out '^tag(apps)'
+    out "System menu  >,^back()"
+    out '^sep(Applications)'
+    {
+        # The catalogue half, through the same cmd_for() the submenus use --
+        # so a terminal program still gets a terminal wrapped around it here.
+        awk -F'|' '$6 == 1 { print $2 "|" $4 "|" $5 }' "$TABLE" \
+        | while IFS='|' read -r label bin mode; do
+            printf '%s,%s\n' "$label" "$(cmd_for "$bin" "$mode")"
         done
-        out "New Wine box: winebox,$TERM_EMU -e sh -c 'winebox list; echo; echo winebox install NAME; exec sh'"
+        # The built checkouts, which have neither a .desktop file nor a row.
+        [ -n "$PROJECTS" ] && printf '%s\n' "$PROJECTS" | while IFS='|' read -r label cmd mode; do
+            printf '%s,%s\n' "$label" "$(cmd_for "$cmd" "$mode")"
+        done
+        # The .desktop half, in one awk over every file rather than one awk
+        # per file. Only the [Desktop Entry] group is read (an Action group
+        # has its own Name and Exec and would otherwise overwrite the real
+        # ones), NoDisplay and Hidden entries are dropped the way every
+        # launcher drops them, and the field codes -- %U, %f and the rest --
+        # are stripped, because they are meant to be replaced with a filename
+        # and a shell would take them literally. Flatpak's export directory
+        # is in the list because that is where Brave's entry lives.
+        for _d in /usr/share/applications /usr/local/share/applications \
+                  /var/lib/flatpak/exports/share/applications \
+                  "$HOME/.local/share/flatpak/exports/share/applications" \
+                  "$HOME/.local/share/applications"; do
+            [ -d "$_d" ] || continue
+            find "$_d" -maxdepth 1 -name '*.desktop' 2>/dev/null
+        done | tr '\n' '\0' | xargs -0 -r awk -v term="$TERM_EMU" '
+            function emit(   c) {
+                if (skip || name == "" || cmd == "" || (type != "" && type != "Application"))
+                    return
+                gsub(/%[a-zA-Z]/, "", cmd)
+                sub(/[ \t]+$/, "", cmd)
+                gsub(/,/, ";", name)
+                c = isterm ? (term " -e " cmd) : cmd
+                print name "," c
+            }
+            FNR == 1 { emit(); name = ""; cmd = ""; type = ""; skip = 0; isterm = 0; grp = 0 }
+            /^\[/   { grp = ($0 ~ /^\[Desktop Entry\]/); next }
+            !grp    { next }
+            /^Name=/      && name == "" { name = substr($0, 6) }
+            /^Exec=/      && cmd  == "" { cmd  = substr($0, 6) }
+            /^Type=/      && type == "" { type = substr($0, 6) }
+            /^Terminal=[Tt]rue/         { isterm = 1 }
+            /^NoDisplay=[Tt]rue/        { skip = 1 }
+            /^Hidden=[Tt]rue/           { skip = 1 }
+            END { emit() }
+        ' 2>/dev/null
+    } | awk -F, 'NF && !seen[tolower($1)]++' | sort -f -t, -k1,1 >> "$OUT"
+
+    # ----- one submenu per catalogue section, installed entries only -----
+    for s in $HAVE_SECS; do
+        out "^tag(have_$s)"
+        out "<  Back,^back()"
+        out "^sep($(pretty "$s"))"
+        rows "$s" 1 | while IFS='|' read -r label pkgs bin mode; do
+            out "$label,$(cmd_for "$bin" "$mode")"
+        done
+    done
+
+    # ----- Install: the same table, inverted -----
+    out '^tag(install)'
+    out "<  Back,^back()"
+    out '^sep(Not installed yet)'
+    for s in $MISS_SECS; do
+        out "$(pretty "$s")  >,^checkout(get_$s)"
+    done
+    for s in $MISS_SECS; do
+        out "^tag(get_$s)"
+        out "<  Back,^checkout(install)"
+        out "^sep(Install: $(pretty "$s"))"
+        rows "$s" 0 | while IFS='|' read -r label pkgs bin mode; do
+            out "$label,$TERM_EMU -e copal-install $pkgs"
+        done
+    done
+
+    # ----- Guides: one entry per .txt, titled by its own first line -----
+    # Built from the directory rather than a list, so dropping a new guide in
+    # /usr/local/share/copal/guides is the whole of "adding it to the menu".
+    if [ "$HAVE_GUIDES" = 1 ]; then
+        out '^tag(guides)'
+        out "<  Back,^back()"
+        out '^sep(Guides)'
+        for g in "$GUIDES"/*.txt; do
+            [ -f "$g" ] || continue
+            gn=$(basename "$g" .txt)
+            # The first line with letters in it -- guides that open with a
+            # '=====' ruler would otherwise be titled with the ruler.
+            gt=$(awk 'NF && /[A-Za-z]/ {sub(/^ +/, ""); gsub(/,/, ";"); print; exit}' "$g")
+            [ -n "$gt" ] || gt="$gn"
+            out "$gt,$TERM_EMU -e copal-guide $gn"
+        done
     fi
-fi
 
-# ----- Built from source, by stages 12 and 14 -----
-if have endless-sky || have wxmaxima || have streamripper || have ytq || [ -x "$HOME/code/yodacon/gonex/gonex-bin" ] || [ -x "$HOME/code/yodacon/vendor/konex/build-release/bin/konex" ]; then
-    out '^sep(Built here)'
-    # Gonex writes config.xml and save.json to the directory it starts in,
-    # so it starts in its own checkout, where .gitignore expects them.
-    [ -x "$HOME/code/yodacon/gonex/gonex-bin" ] && out "Gonex,sh -c 'cd $HOME/code/yodacon/gonex && exec ./gonex-bin'" || true
-    # Konex reads ./config.xml and ./data from where it starts, and its build
-    # stages them beside the binary.
-    [ -x "$HOME/code/yodacon/vendor/konex/build-release/bin/konex" ] \
-        && out "Konex (the 2005 engine),sh -c 'cd $HOME/code/yodacon/vendor/konex/build-release/bin && exec ./konex'" || true
-    have endless-sky  && out "Endless Sky,endless-sky" || true
-    have wxmaxima     && out "wxMaxima,wxmaxima" || true
-    have ytq          && out "ytq download queue,$TERM_EMU -e ytq" || true
-    have streamripper && out "streamripper (radio to files),$TERM_EMU -e sh -c 'streamripper; exec sh'" || true
-fi
+    # ----- Development: not in the catalogue, it arrives with stage 7 -----
+    out '^tag(devel)'
+    out "<  Back,^back()"
+    out '^sep(Development)'
+    have nvim    && out "Neovim,$TERM_EMU -e nvim" || true
+    have vim     && out "Vim,$TERM_EMU -e vim" || true
+    have geany   && out "Geany,geany" || true
+    have python3 && out "Python,$TERM_EMU -e python3" || true
+    have claude  && out "Claude Code,$TERM_EMU -e claude" || true
+    have lazygit && out "Lazygit,$TERM_EMU -e lazygit" || true
+    have bvi     && out "Hex editor (bvi),$TERM_EMU -e bvi" || true
+    have radare2 && out "radare2,$TERM_EMU -e r2" || true
 
-# ----- Instruments -----
-if have radbeeper; then
-    out '^sep(Instruments)'
-    out "Geiger counter (monitor),$TERM_EMU -e radbeeper watch"
-    out "Geiger counter (what is plugged in),$TERM_EMU -e sh -c 'radbeeper probe; echo; exec sh'"
-fi
+    # ----- Projects: what copal-build made from ~/code -----
+    if [ -n "$PROJECTS" ]; then
+        out '^tag(projects)'
+        out "<  Back,^back()"
+        out '^sep(Projects -- built from ~/code)'
+        printf '%s\n' "$PROJECTS" | while IFS='|' read -r label cmd mode; do
+            out "$label,$(cmd_for "$cmd" "$mode")"
+        done
+        out '^sep()'
+        out "Pull and rebuild them all,$TERM_EMU -e sh -c 'copal-code; echo; echo Press Enter to close; read x'"
+        out "What each one made,$TERM_EMU -e sh -c 'copal-build list; echo; echo Press Enter to close; read x'"
+    fi
 
-# ----- System -----
-out '^tag(system)'
-out "Back,^back()"
-out '^sep(System)'
-have htop && out "Task manager,$TERM_EMU -e htop" || true
-have btop && out "System monitor,$TERM_EMU -e btop" || true
-have snapshot && out "Snapshots,$TERM_EMU -e sh -c 'snapshot list; read x'" || true
-have mountdsk && out "Mount disk image,$TERM_EMU -e sh -c 'mountdsk --help; read x'" || true
-have tcpdump  && out "Network capture,$TERM_EMU -e sh -c 'tcpdump -i eth0 -nn'" || true
-have bluetoothctl && out "Bluetooth,$TERM_EMU -e bluetoothctl" || true
-have iw && out "Wifi scan,$TERM_EMU -e sh -c 'iw dev wlan0 scan | grep SSID; read x'" || true
-have alsamixer && out "Volume,$TERM_EMU -e alsamixer" || true
-out "Logs,$TERM_EMU -e sh -c 'copal-logs; echo; echo Press Enter to close; read x'"
-out "Setup and stages,$TERM_EMU -e sh -c 'copal; echo; echo Press Enter to close; read x'"
-out "Update Copal,$TERM_EMU -e sh -c 'copal -U; echo; echo Press Enter to close; read x'"
-out "Key bindings,$TERM_EMU -e less $HOME/.config/i3/keys.txt"
+    # ----- Emulators: profiles are files on disk, not packages -----
+    # VICE ships both x64sc (accurate) and x64 (fast); on this board the fast
+    # one is the only one worth offering, but take whichever exists.
+    if [ "$HAVE_EMU" = 1 ]; then
+        out '^tag(emu)'
+        out "<  Back,^back()"
+        out '^sep(Emulators)'
+        for p in "$HOME"/minivmac/run-*.sh /root/minivmac/run-*.sh; do
+            [ -x "$p" ] || continue
+            n=$(basename "$p" .sh | sed 's/^run-//')
+            out "Mini vMac: $n,$p"
+        done
+        have BasiliskII && out "Basilisk II,BasiliskII" || true
+        if have x64sc;   then out "VICE (C64),x64sc"
+        elif have x64;   then out "VICE (C64),x64"
+        fi
+    fi
 
-# ----- Session -----
-out '^tag(session)'
-out "Back,^back()"
-out '^sep(Session)'
-out "Reload i3,i3-msg restart"
-have i3lock && out "Lock screen,i3lock -c 1a1b26" || true
-out "Log out,i3-msg exit"
-# copal-halt rather than a bare poweroff: as $PI_USER the bare one cannot
-# signal init at all, and from a menu there is no terminal for doas to ask in.
-out "Reboot,copal-halt reboot"
-out "Shut down,copal-halt"
+    # ----- Style -----
+    out '^tag(style)'
+    out "<  Back,^back()"
+    out '^sep(Style)'
+    have copal-desk && out "Lay the desk out (workspaces 1-5),copal-desk" || true
+    have copal-desk && out "Which desk layouts exist,$TERM_EMU -e sh -c 'copal-desk --list; echo; echo Press Enter to close; read x'" || true
+    have copal-wallpaper && out "Wallpaper...,copal-wallpaper --pick" || true
+    have copal-wallpaper && out "Get more wallpapers,$TERM_EMU -e sh -c 'copal-wallpaper --fetch; echo; echo Press Enter to close; read x'" || true
+    have copal-theme && out "Theme...,copal-theme --pick" || true
+    # The desktop widgets, shown as whichever of the two things it would do
+    # next: an entry called "toggle" makes somebody guess which way it points.
+    if have copal-widgets && [ -f "$CONFDIR/waybar/desktop.json" ]; then
+        if [ -e "$CONFDIR/copal/no-desktop-widgets" ]; then
+            out "Show the desktop widgets,copal-widgets --on"
+        else
+            out "Hide the desktop widgets,copal-widgets --off"
+        fi
+    fi
+    [ -f "$GUIDES/widgets.txt" ] \
+        && out "Configure the bar and widgets,$TERM_EMU -e copal-guide widgets" || true
 
-if have jgmenu; then
-    exec jgmenu --simple --csv-file="$CSV"
+    # ----- System -----
+    out '^tag(system)'
+    out "<  Back,^back()"
+    out '^sep(System)'
+    have htop && out "Task manager,$TERM_EMU -e htop" || true
+    have btop && out "System monitor,$TERM_EMU -e btop" || true
+    have snapshot && out "Snapshots,$TERM_EMU -e sh -c 'snapshot list; read x'" || true
+    have mountdsk && out "Mount disk image,$TERM_EMU -e sh -c 'mountdsk --help; read x'" || true
+    have tcpdump  && out "Network capture,$TERM_EMU -e sh -c 'tcpdump -i eth0 -nn'" || true
+    have bluetoothctl && out "Bluetooth,$TERM_EMU -e bluetoothctl" || true
+    have iw && out "Wifi scan,$TERM_EMU -e sh -c 'iw dev wlan0 scan | grep SSID; read x'" || true
+    have alsamixer && out "Volume,$TERM_EMU -e alsamixer" || true
+    out "Logs,$TERM_EMU -e sh -c 'copal-logs; echo; echo Press Enter to close; read x'"
+    out "Setup and stages,$TERM_EMU -e sh -c 'copal; echo; echo Press Enter to close; read x'"
+    out "Update Copal,$TERM_EMU -e sh -c 'copal -U; echo; echo Press Enter to close; read x'"
+    have copal-gpu && out "Display and acceleration,$TERM_EMU -e sh -c 'copal-gpu; echo; echo Press Enter to close; read x'" || true
+    have copal-fonts && out "Fonts,$TERM_EMU -e sh -c 'copal-fonts; echo; echo Press Enter to close; read x'" || true
+    # The cache, for the one case the freshness check cannot see.
+    out "Rebuild this menu now,copal-menu --rebuild"
+
+    # Into place in one step, so a menu opening mid-rebuild reads the old
+    # list whole rather than the new one half-written.
+    mv -f "$OUT" "$_csv"
+    rm -f "$TABLE"
+    trap - EXIT
+}
+
+# The list is stale when anything it was built from is newer than it. Every
+# test here is a stat, so the whole check costs less than one fork. A
+# directory's mtime moves when a file is added to or removed from it, which
+# is exactly what installing a program does to /usr/bin.
+stale() {
+    [ -s "$CSV" ] || return 0
+    for _p in "$0" "$CATFILE" "$PROJFILE" "$GUIDES" \
+              /usr/share/applications /usr/local/share/applications \
+              /var/lib/flatpak/exports/share/applications \
+              "$HOME/.local/share/flatpak/exports/share/applications" \
+              "$HOME/.local/share/applications" \
+              /usr/bin /usr/local/bin /usr/sbin "$HOME/.local/bin" "$HOME/bin" \
+              "$CONFDIR/copal" "$CONFDIR/waybar" "$HOME/minivmac"; do
+        [ -e "$_p" ] && [ "$_p" -nt "$CSV" ] && return 0
+    done
+    # Once a day regardless: cheap insurance for whatever the list misses.
+    [ -n "$(find "$CSV" -mmin +1440 2>/dev/null)" ]
+}
+
+# One rebuild at a time. mkdir is the atomic test-and-set; a lock older than
+# five minutes belongs to a rebuild that died, and is taken over.
+rebuild() {  # <session>...
+    mkdir -p "$CACHE_DIR"
+    _lock="$CACHE_DIR/menu.lock"
+    [ -n "$(find "$_lock" -maxdepth 0 -mmin +5 2>/dev/null)" ] && rmdir "$_lock" 2>/dev/null || true
+    mkdir "$_lock" 2>/dev/null || return 0
+    for _s in "$@"; do build_csv "$_s"; done
+    rmdir "$_lock"
+}
+# Detached, quiet, and polite about the CPU: it runs while the menu is on
+# screen, on a machine that may be drawing that menu in software.
+rebuild_in_background() {
+    ( nice -n 10 "$0" --rebuild >/dev/null 2>&1 </dev/null & )
+}
+
+case "$MODE" in
+    rebuild)     rebuild "$SESSION"; exit 0 ;;
+    rebuild-all) rebuild wayland x11; exit 0 ;;
+esac
+
+if [ -s "$CSV" ]; then
+    # The common case: show what is cached now, and if anything has changed
+    # since, have the next open be current. walk() re-reads the file on every
+    # pane change, so a rebuild that finishes while the menu is open is
+    # already visible on the next Left or Right.
+    ! stale || rebuild_in_background
 else
-    # No jgmenu: flatten to dmenu over the same list, so the menu still works
-    # and still shows every entry. Submenu markers and separators drop out;
-    # Back entries would be meaningless in a flat list, so they go too.
-    sel=$(grep -v '^\^' "$CSV" | grep -v '\^checkout(\|\^back()' \
-          | cut -d, -f1 | dmenu -i -l 20 -p 'menu') || exit 0
-    cmd=$(grep "^$sel," "$CSV" | grep -v '\^checkout(' | head -1 | cut -d, -f2-)
-    [ -n "$cmd" ] && exec sh -c "$cmd"
+    # The first open, or a cleared cache: nothing to show yet, so build it
+    # here and take the one slow open.
+    rebuild "$SESSION"
+    [ -s "$CSV" ] || { echo "copal-menu: could not build $CSV" >&2; exit 1; }
 fi
+
+# ===========================================================================
+# PRESENTING IT. jgmenu is a pointer menu and an X11 program; on Wayland
+# there is no jgmenu and there never will be, so the same CSV has to be
+# walkable from a keyboard-driven list as well.
+#
+# THE LIST WALKER IS THE OMARCHY SHAPE: a flat picker shown ONE LEVEL AT A
+# TIME, where choosing a category redraws the same picker with that
+# category's entries and a Back at the top. Arrow keys and Enter, type to
+# filter. ^tag(x) opens a section, ^checkout(x) enters one, ^back() leaves
+# it, and the loop below turns those three markers into the walk. The CSV is
+# unchanged and jgmenu still reads it the way it always did.
+#
+# HEADINGS ARE ROWS. wofi and dmenu have no separators, so a ^sep(title)
+# becomes a '-- title --' row of its own; choosing one does nothing but
+# redraw. That is what makes the right pane read as categorised rather than
+# as forty entries in a heap, and typing still filters straight past them.
+#
+# LEFT AND RIGHT MOVE BETWEEN THE PANES. wofi draws one list, so the two
+# panes are one list shown twice and the arrow keys swap which. Inside a
+# category, Left is Back and Right is the applications.
+#
+# HOW THE ARROWS REACH US, because wofi cannot deliver them. wofi 1.5's
+# user-bound keys (key_custom_n) do not end the picker: they only arm an exit
+# status for whenever Enter or Escape is eventually pressed, and the arrows
+# themselves go to the search box as cursor movement. So while the picker is
+# up this script enters a Hyprland submap (stage 17 writes it into
+# hyprland.conf) in which Left and Right are Hyprland's: each ends the picker
+# with a signal -- USR1 for Left, USR2 for Right -- and the shell reports
+# that as status 138 or 140, which is the pane switch. Every other key passes
+# through the submap to wofi, so typing still filters. The submap is left on
+# every way out of this script, and its own Escape binding closes the picker
+# and leaves it, so a menu that died cannot keep the arrows. Where there is
+# no submap (an older hyprland.conf, or X11) the arrows do nothing and the
+# first row of each pane -- 'System menu  >', 'All applications  <' -- is the
+# way across.
+#
+# The cost is real and worth stating: Left and Right no longer move the
+# cursor inside the search box. Typing, backspace and Ctrl-W still edit the
+# query; the arrows navigate the menu.
+# ===========================================================================
+RULE="$(printf '\342\224\200\342\224\200')"   # two box-drawing dashes
+
+# The rows of one section, headings turned into rows.
+items_for() {  # <tag>
+    awk -v want="$1" -v rule="$RULE" '
+        /^\^tag\(/  { cur = $0; sub(/^\^tag\(/, "", cur); sub(/\)$/, "", cur); next }
+        cur != want { next }
+        /^\^sep\(\)$/ { next }
+        /^\^sep\(/  { t = $0; sub(/^\^sep\(/, "", t); sub(/\)$/, "", t)
+                      print rule " " t " " rule ",^sep"; next }
+        NF
+    ' "$CSV"
+}
+
+# What the search box says before you type: which pane this is, and where
+# the arrows go. The pair reads as two tabs with the current one in brackets.
+prompt_for() {  # <tag> <items>
+    case "$1" in
+        apps) echo "[ Applications ]   System  >" ;;
+        "")   echo "<  Applications   [ System ]" ;;
+        *)    _t=$(printf '%s\n' "$2" | sed -n "s/^$RULE \(.*\) $RULE,^sep\$/\1/p" | head -n1)
+              echo "<  Back   [ ${_t:-$1} ]" ;;
+    esac
+}
+
+# The submap, entered while the picker is up and left on every way out. Both
+# are no-ops where there is no Hyprland to ask.
+keys_on()  { wayland && have hyprctl && hyprctl dispatch submap menu  >/dev/null 2>&1 || true; }
+keys_off() { wayland && have hyprctl && hyprctl dispatch submap reset >/dev/null 2>&1 || true; }
+
+walk() {
+    _tag="$START_PANE"            # the applications pane unless --system
+    trap keys_off EXIT INT TERM HUP
+    while :; do
+        _items=$(items_for "$_tag")
+        [ -n "$_items" ] || return 0
+
+        # Labels only for the picker; the command half is looked up after.
+        # The exit status matters as much as the selection here: 138 and 140
+        # are the picker ended by the submap's Left and Right (128 + USR1,
+        # 128 + USR2), and 10..29 is a wofi that exits on a custom key itself
+        # -- either is the pane switch. Anything else with no selection is
+        # Escape, and Escape closes.
+        _rc=0
+        keys_on
+        _sel=$(printf '%s\n' "$_items" | cut -d, -f1 | menu_cmd "$(prompt_for "$_tag" "$_items")") || _rc=$?
+        _dir=""
+        case "$_rc" in
+            138|10) _dir=left ;;
+            140|11) _dir=right ;;
+        esac
+        if [ -n "$_dir" ]; then
+            case "$_tag" in
+                apps) _tag="" ;;
+                "")   _tag="apps" ;;
+                *)    if [ "$_dir" = left ]; then
+                          # Left: what this section's Back row would do.
+                          _back=$(printf '%s\n' "$_items" | awk -F, '$2 ~ /^\^(back|checkout)\(/ { print $2; exit }')
+                          case "$_back" in
+                              '^checkout('*) _tag=$(printf '%s' "$_back" | sed 's/^\^checkout(//; s/)$//') ;;
+                              *)             _tag="" ;;
+                          esac
+                      else
+                          _tag="apps"
+                      fi ;;
+            esac
+            continue
+        fi
+        [ -n "$_sel" ] || return 0
+
+        # First match wins, and it is matched against the label field alone --
+        # a command containing a comma would otherwise be split by cut.
+        _line=$(printf '%s\n' "$_items" | awk -F, -v s="$_sel" '$1 == s { print; exit }')
+        _act=$(printf '%s' "$_line" | cut -d, -f2-)
+        case "$_act" in
+            '^sep')        continue ;;
+            '^checkout('*) _tag=$(printf '%s' "$_act" | sed 's/^\^checkout(//; s/)$//') ;;
+            '^back()')     _tag="" ;;
+            '')            return 0 ;;
+            # exec replaces this process, so the trap will not run: leave the
+            # submap first, or the arrows would stay Hyprland's.
+            *)             keys_off; exec sh -c "$_act" ;;
+        esac
+    done
+}
+
+# The picker itself, chosen by what the session actually is rather than by
+# what is installed: wofi is a Wayland client and does not run on X, dmenu is
+# an X client and does not run on Wayland, and both are frequently present at
+# once on a machine that has had both desktops installed.
+menu_cmd() {  # <prompt>
+    if wayland && have wofi; then
+        # key_custom_0/1 are wofi's user-bound keys; it exits with status 10
+        # and 11 when they are pressed. Passed with --define rather than a
+        # config file so nothing has to be installed for it, and harmless on
+        # a wofi too old to know the keys -- an unknown define is ignored and
+        # the arrows simply keep editing the query.
+        #
+        # --height IN PIXELS, NEVER --lines. With --lines, wofi 1.5 sizes the
+        # window from its rows and then re-sizes as the rows arrive; past
+        # about a hundred rows it never settles -- the surface stays a
+        # stretched, empty frame and no key is answered, Escape included.
+        # The applications pane is five hundred rows. That stall, after the
+        # four-second build, was the whole of "the menu is broken". A fixed
+        # height is laid out once; 540px is twenty rows at this font.
+        wofi --dmenu --insensitive --prompt "${1:-menu}" --height 540 --width 520 \
+             --define key_custom_0=Left --define key_custom_1=Right
+    elif have dmenu; then
+        dmenu -i -l 18 -p "${1:-menu}"
+    else
+        echo "copal-menu: no menu program (jgmenu, wofi or dmenu)" >&2
+        return 1
+    fi
+}
+
+# jgmenu draws the whole tree with the mouse and is the nicer thing when it is
+# there AND this is X. On Wayland it is skipped even when installed: it would
+# open through Xwayland, on the wrong output, with the wrong scale.
+if have jgmenu && ! wayland; then
+    exec jgmenu --simple $AT_POINTER --csv-file="$CSV"
+fi
+walk
 COPALMENU
     chmod 0755 /usr/local/bin/copal-menu
+    # ----------------------------------------------------------------------
+    # copal-desk: the desk, laid out the same way every time.
+    #
+    # WHY THIS EXISTS, and it is not tidiness. Competitive StarCraft has a
+    # word for the thing a layout buys: the hands stop looking. Day[9]'s
+    # macro/micro drills are the canonical statement of it -- you do not get
+    # faster by thinking faster, you get faster by moving the decisions your
+    # hands make into muscle memory, and muscle memory needs the thing to be
+    # in the SAME PLACE every time. A tiling desktop with ten empty
+    # workspaces is exactly the wrong shape for that: whatever you opened
+    # first is on 1 today and on 3 tomorrow, so every switch begins with a
+    # look. Omarchy's answer is numbered workspaces with fixed contents;
+    # this is the same answer, plus one command that puts them there.
+    #
+    # The layout that ships is called 'code' and reads:
+    #
+    #   1  nothing -- the empty one you land on, and the one you throw a
+    #      window onto when you need room to think
+    #   2  the editor and a terminal, side by side, which is the work
+    #   3  a Claude Code session, already in ~/code, ready for input
+    #   5  the browser
+    #
+    # 4 and the rest are deliberately empty. A layout that fills every
+    # workspace leaves nowhere to put the thing you did not plan for.
+    #
+    # It is a text file and there is nothing special about it -- write your
+    # own into ~/.config/copal/layouts/NAME and copal-desk NAME runs it.
+    say "Installing /usr/local/bin/copal-desk"
+    mkdir -p /usr/local/share/copal/layouts
+    cat > /usr/local/share/copal/layouts/code.layout <<'DESKCODE'
+# The code desk. 'copal-desk' with no arguments runs this one.
+#
+#   <workspace>  <role>            put that program on that workspace
+#   focus <workspace>              where to leave you at the end
+#
+# Roles are resolved to whatever this machine actually has: 'editor' is the
+# graphical editor if one is installed and nvim in a terminal if not, and so
+# on. Two escape hatches for anything not covered:
+#
+#   4  run: mpv --no-video ~/Music     run this command as it stands
+#   4  term: ssh pi@fileserver         run it inside a terminal
+#
+# Lines are executed in order, so on a workspace with two windows the first
+# line is the left-hand one.
+focus 1
+2 editor
+2 terminal
+3 claude
+5 browser
+DESKCODE
+
+    cat > /usr/local/bin/copal-desk <<'COPALDESK'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-desk -- put the workspaces into a known shape, in one command.
+#
+# Reads a layout file and opens what it names on the workspace it names.
+# Works on both desktops: Hyprland is told where a window goes before it
+# opens ([workspace N silent] on the exec dispatcher, which places it without
+# dragging your eyes to it), i3 is told by switching workspace first, which
+# is the only mechanism it has.
+#
+# NOT AN AUTOSTART. It is a key (Super+Shift+D) and a menu entry, because a
+# layout that runs itself at login is a layout you cannot decline on the
+# morning you wanted an empty machine -- and on a board this size, five
+# programs starting at once during login is the slowest possible moment for
+# them to do it.
+set -eu
+
+LAYOUT_SYS=/usr/local/share/copal/layouts
+LAYOUT_USR="${XDG_CONFIG_HOME:-$HOME/.config}/copal/layouts"
+have() { command -v "$1" >/dev/null 2>&1; }
+wayland() { [ -n "${WAYLAND_DISPLAY:-}" ]; }
+
+usage() {
+    cat <<USAGE
+usage: copal-desk [NAME]      lay the desk out; NAME defaults to 'code'
+       copal-desk --list      the layouts on this machine
+       copal-desk --show NAME print one, without running it
+
+Layouts live in $LAYOUT_SYS and in
+$LAYOUT_USR, which wins where both have the name.
+USAGE
+}
+
+layout_file() {  # <name> -> path, or nothing
+    [ -f "$LAYOUT_USR/$1.layout" ] && { printf '%s\n' "$LAYOUT_USR/$1.layout"; return 0; }
+    [ -f "$LAYOUT_SYS/$1.layout" ] && { printf '%s\n' "$LAYOUT_SYS/$1.layout"; return 0; }
+    return 1
+}
+
+list_layouts() {
+    for _d in "$LAYOUT_SYS" "$LAYOUT_USR"; do
+        [ -d "$_d" ] || continue
+        for _f in "$_d"/*.layout; do
+            [ -f "$_f" ] || continue
+            printf '  %-12s %s\n' "$(basename "$_f" .layout)" \
+                   "$(awk 'NF && /^#/ { sub(/^# ?/, ""); print; exit }' "$_f")"
+        done
+    done
+}
+
+# ---- the roles, resolved against what is installed -------------------------
+# Same preference orders the rest of Copal uses: foot first on Wayland because
+# it is the terminal that comes up on a compositor drawing in software, and
+# the browser list is the one /etc/profile.d/browser.sh picks $BROWSER from.
+if wayland; then
+    TERM_EMU="${TERMINAL:-$(have foot && echo foot || (have kitty && echo kitty) \
+                            || (have alacritty && echo alacritty) || echo xterm)}"
+else
+    TERM_EMU="${TERMINAL:-$(have urxvt && echo urxvt || echo xterm)}"
+fi
+
+first_of() { for _c in "$@"; do have "$_c" && { printf '%s\n' "$_c"; return 0; }; done; return 1; }
+
+role_cmd() {  # <role> -> a command line, or nothing if this machine cannot
+    case "$1" in
+        terminal) printf '%s\n' "$TERM_EMU" ;;
+        # A graphical editor if there is one, and nvim in a terminal if not.
+        # The terminal editor is not a lesser answer here -- on the small
+        # boards it is the only one that opens in under a second.
+        editor)
+            _e=$(first_of lapce codium code kate geany mousepad 2>/dev/null || true)
+            if [ -n "${_e:-}" ]; then printf '%s\n' "$_e"
+            else _e=$(first_of nvim vim vi) && printf '%s -e %s\n' "$TERM_EMU" "$_e"
+            fi ;;
+        browser)
+            _b=$(first_of "${BROWSER:-}" brave firefox-esr firefox chromium \
+                          badwolf netsurf dillo 2>/dev/null || true)
+            [ -n "${_b:-}" ] && printf '%s\n' "$_b" || return 1 ;;
+        files|filemanager)
+            _f=$(first_of thunar pcmanfm xfe 2>/dev/null || true)
+            if [ -n "${_f:-}" ]; then printf '%s\n' "$_f"
+            else _f=$(first_of mc nnn ranger) && printf '%s -e %s\n' "$TERM_EMU" "$_f"
+            fi ;;
+        # The one role with a working directory in it. ~/code is where Copal
+        # puts a checkout and where the agent is most useful; it is created
+        # if it is not there, because a shell that starts with 'cd: no such
+        # file' has wasted the whole point of the workspace.
+        claude)
+            have claude || return 1
+            printf "%s -e sh -c 'mkdir -p \"\$HOME/code\"; cd \"\$HOME/code\"; exec claude'\n" "$TERM_EMU" ;;
+        music)
+            _m=$(first_of cmus mocp 2>/dev/null || true)
+            [ -n "${_m:-}" ] && printf '%s -e %s\n' "$TERM_EMU" "$_m" || return 1 ;;
+        # The camera, whichever program copal-camera says that is on this
+        # machine -- birdshot once stage 7 has built it. A layout for a
+        # capture session is '2 camera' and '3 terminal' in a file of its own.
+        camera)
+            have copal-camera && copal-camera --which 2>/dev/null || return 1 ;;
+        *) return 1 ;;
+    esac
+}
+
+# ---- placing one window ----------------------------------------------------
+# The pause is not decoration. Two windows opening on one workspace inside the
+# same tenth of a second race to be the first child of the split, so the
+# left-hand one in the layout file is whichever won -- which is the one thing
+# a layout is supposed to decide. COPAL_DESK_DELAY tunes it; a Pi Zero
+# starting a browser wants more than a laptop does.
+DELAY="${COPAL_DESK_DELAY:-1}"
+
+spawn() {  # <workspace> <command line>
+    if wayland && have hyprctl; then
+        # 'silent' places it without following it: the layout builds behind
+        # you and the screen does not flick through five workspaces.
+        hyprctl dispatch exec "[workspace $1 silent] $2" >/dev/null 2>&1 || return 1
+    elif have i3-msg; then
+        # i3 has no per-window placement on exec, so the workspace has to be
+        # the current one when the window maps. The focus is put back at the
+        # end, by the 'focus' line.
+        i3-msg "workspace number $1" >/dev/null 2>&1 || true
+        i3-msg "exec --no-startup-id $2" >/dev/null 2>&1 || return 1
+    else
+        echo "copal-desk: neither hyprctl nor i3-msg -- no window manager to ask" >&2
+        exit 1
+    fi
+    sleep "$DELAY"
+}
+
+go_to() {  # <workspace>
+    if wayland && have hyprctl; then hyprctl dispatch workspace "$1" >/dev/null 2>&1 || true
+    elif have i3-msg;         then i3-msg "workspace number $1" >/dev/null 2>&1 || true
+    fi
+}
+
+# ---- arguments -------------------------------------------------------------
+NAME=code
+SHOW=""
+case "${1:-}" in
+    -h|--help) usage; exit 0 ;;
+    --list) list_layouts; exit 0 ;;
+    --show) SHOW=1; NAME="${2:?--show needs a layout name}" ;;
+    -*) usage >&2; exit 2 ;;
+    "") ;;
+    *) NAME="$1" ;;
+esac
+
+FILE=$(layout_file "$NAME") || {
+    echo "copal-desk: no layout called '$NAME'. There is:" >&2
+    list_layouts >&2
+    exit 1
+}
+[ -n "$SHOW" ] && { cat "$FILE"; exit 0; }
+
+# ---- running it ------------------------------------------------------------
+FOCUS=""
+MISSING=""
+while read -r ws rest; do
+    case "${ws:-}" in ''|'#'*) continue ;; esac
+    case "$ws" in
+        focus) FOCUS="$rest"; continue ;;
+    esac
+    [ -n "${rest:-}" ] || continue
+    case "$rest" in
+        run:*)  cmd=$(printf '%s' "${rest#run:}"  | sed 's/^ *//') ;;
+        term:*) cmd="$TERM_EMU -e sh -c '$(printf '%s' "${rest#term:}" | sed "s/^ *//; s/'/'\\\\''/g")'" ;;
+        *)      cmd=$(role_cmd "$rest" || true)
+                # A role this machine cannot fill is a note at the end, not a
+                # failure: a layout naming a browser is still worth running on
+                # the machine that has no browser yet.
+                [ -n "${cmd:-}" ] || { MISSING="$MISSING $rest"; continue; } ;;
+    esac
+    spawn "$ws" "$cmd" || echo "copal-desk: could not start: $cmd" >&2
+done < "$FILE"
+
+[ -n "$FOCUS" ] && go_to "$FOCUS"
+[ -n "$MISSING" ] && echo "copal-desk: not installed, so not opened:$MISSING" >&2
+exit 0
+COPALDESK
+    chmod 0755 /usr/local/bin/copal-desk
+
+    # copal-camera: which program "the camera" means on this machine.
+    #
+    # THE DEFAULT CAMERA APPLICATION IS BIRDSHOT -- the IMX477 capture
+    # pipeline that is one of the checkouts stage 1 proposes, cloned and
+    # compiled by stage 7 (copal-build). Three things want to open "the
+    # camera" -- the Camera entry at the top of copal-menu, Super+Shift+B on
+    # both desktops, the 'camera' role in a copal-desk layout -- and the
+    # decision of which program that is lives here, once, the way $BROWSER
+    # settles the browser. $CAMERA overrides it.
+    say "Installing /usr/local/bin/copal-camera"
+    cat > /usr/local/bin/copal-camera <<'COPALCAMERA'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-camera -- the camera application, whichever one this machine has.
+#
+#   copal-camera            open it
+#   copal-camera --which    print the command it would run, and nothing else;
+#                           exit 1 if there is no camera program here
+#
+# ONE ANSWER TO "THE CAMERA", asked from three places -- the Camera entry at
+# the top of copal-menu, Super+Shift+B on both desktops, and the 'camera'
+# role in a copal-desk layout -- so that changing which program that is means
+# changing it here and nowhere else. $CAMERA overrides the search, the way
+# $BROWSER does for the browser: set it in ~/.profile and every consumer
+# follows.
+#
+# THE DEFAULT IS BIRDSHOT. It is one of the checkouts stage 1 proposes and
+# stage 7 clones and builds, which is why ~/.local/bin is put on PATH here
+# before looking: that is where copal-build installs, and a compositor that
+# started without reading ~/.profile would not have it.
+#
+#   birdshot-gui     the Qt front end, built when Qt 6 was present. A window.
+#   birdshot gui     the loopback viewfinder, served to the browser, for a
+#                    build without Qt. It is a server, so it gets a terminal,
+#                    and the browser is opened from here rather than by
+#                    birdshot's own xdg-open, which this system does not
+#                    install. The port is passed rather than trusted to a
+#                    default so that the two sides cannot disagree.
+#
+# After those, the packaged webcam programs, for a machine that has one.
+set -u
+have()    { command -v "$1" >/dev/null 2>&1; }
+wayland() { [ -n "${WAYLAND_DISPLAY:-}" ]; }
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) PATH="$HOME/.local/bin:$PATH" ;; esac
+export PATH
+# The terminal, chosen the way copal-menu chooses it: on Wayland the ones
+# that session has, and foot first because it comes up without GL.
+if wayland; then
+    TERM_EMU="${TERMINAL:-$(have foot && echo foot \
+                            || (have kitty && echo kitty) \
+                            || (have alacritty && echo alacritty) \
+                            || echo xterm)}"
+else
+    TERM_EMU="${TERMINAL:-$(have urxvt && echo urxvt || echo xterm)}"
+fi
+
+which_camera() {
+    if [ -n "${CAMERA:-}" ]; then
+        have "${CAMERA%% *}" && { printf '%s\n' "$CAMERA"; return 0; }
+    fi
+    if have birdshot-gui; then printf 'birdshot-gui\n'; return 0; fi
+    if have birdshot; then
+        printf "%s -e sh -c 'birdshot gui --port 8477 --no-open & sleep 2; \${BROWSER:-xdg-open} http://127.0.0.1:8477 >/dev/null 2>&1; wait'\n" "$TERM_EMU"
+        return 0
+    fi
+    for _c in guvcview cheese qv4l2; do
+        have "$_c" && { printf '%s\n' "$_c"; return 0; }
+    done
+    return 1
+}
+
+case "${1:-}" in
+    --which) which_camera ;;
+    '')
+        _cmd=$(which_camera) || {
+            echo "copal-camera: no camera program on this machine." >&2
+            echo "  birdshot is built from ~/code by 'copal-build' (stage 7 runs it);" >&2
+            echo "  or set CAMERA=<command> in ~/.profile." >&2
+            exit 1
+        }
+        exec sh -c "$_cmd" ;;
+    *) echo "usage: copal-camera [--which]" >&2; exit 2 ;;
+esac
+COPALCAMERA
+    chmod 0755 /usr/local/bin/copal-camera
+    note "copal-camera -- birdshot, or \$CAMERA; the menu, Super+Shift+B and copal-desk use it"
 
     # ----------------------------------------------------------------------
     # The Copal Center.
@@ -7804,11 +10203,17 @@ NEED=no
 if [ -n "$IM" ] && [ "$NEED" = yes ] && [ -f "$KEYS" ]; then
     # Bindings and group headings only. The explanatory prose belongs in the
     # scrollable window; a wallpaper you read at a glance wants the table.
-    # Measured: this comes to 33 lines, which fits 720p at pointsize 14 with
+    # Measured: this comes to 35 lines, which fits 720p at pointsize 14 with
     # room to spare. Adding a group to keys.txt is free; adding more than
-    # about eight bindings will start to run off the bottom.
+    # about six bindings will start to run off the bottom.
+    #
+    # The filter takes group headings (a capital in column 2) and any line
+    # naming a chord. 'Super' is not enough on its own any more: the launcher
+    # answers to Alt+Space, and the app menu to a right-click on the desktop,
+    # and a wallpaper that lists neither is a wallpaper that hides the two
+    # easiest ways in.
     BODY=$(sed -n '/^ START SOMETHING/,/^ IF SOMETHING/p' "$KEYS" \
-           | sed '$d' | awk '/^ [A-Z]/ || /Super \+/')
+           | sed '$d' | awk '/^ [A-Z]/ || /Super \+/ || /Alt \+/ || /Right-click/')
     [ -n "$BODY" ] || BODY=$(cat "$KEYS")
     # A named font may not resolve without fontconfig knowing it, and a
     # failed -font aborts the whole command -- so try the nice one, then let
@@ -7818,7 +10223,7 @@ if [ -n "$IM" ] && [ "$NEED" = yes ] && [ -f "$KEYS" ]; then
         if "$IM" -size "$GEOM" "xc:$BG" "$@" \
               -pointsize 14 -fill "$FG" -annotate +40+50 "$BODY" \
               -pointsize 12 -fill '#565f89' \
-              -annotate +40-28 'Super + /  keys    Super + Z  menu    Super + C  Copal Center    Super + Shift + G  guides' \
+              -annotate +40-28 'Super + /  keys    Super + Z  menu    Super + C  copy    Super + V  paste    Super + Shift + G  guides' \
               "$OUT" 2>/dev/null; then
             break
         fi
@@ -7832,6 +10237,231 @@ fi
 have xsetroot && exec xsetroot -solid "$BG"
 COPALSPLASH
     chmod 0755 /usr/local/bin/copal-splash
+
+    # ----------------------------------------------------------------------
+    # copal-gpu -- is the display accelerated, and if not, where did it stop?
+    #
+    # This exists because "the desktop feels slow" is a symptom with four
+    # completely different causes and no way to tell them apart by looking:
+    # the host may not have offered acceleration at all, the kernel may not
+    # have bound the device, X may have picked the wrong driver, or mesa may
+    # be falling back to software while everything else looks correct. Each
+    # of those is visible somewhere in /sys, dmesg or a log; none of them is
+    # visible on screen. So the report is four lines, one per layer, and the
+    # first "no" going down the list is the answer.
+    #
+    # Deliberately readable with no desktop running and no packages beyond
+    # busybox. The X half is read out of the log rather than by asking the
+    # running server, so it works over ssh and after the session has exited.
+    say "Installing /usr/local/bin/copal-gpu"
+    cat > /usr/local/bin/copal-gpu <<'COPALGPU'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-gpu -- report the display stack, layer by layer, and say what is wrong.
+#
+# Exit status is the verdict, so this is usable in a script:
+#   0  accelerated -- VirGL offered, taken, and X is using it
+#   1  not accelerated -- working, but drawing on the CPU
+#   2  cannot tell yet -- usually means X has not run since boot
+set -u
+have() { command -v "$1" >/dev/null 2>&1; }
+row()  { printf '  %-14s %s\n' "$1" "$2"; }
+
+VERDICT=0
+WHY=""
+# Only the first cause found is reported. A stack that failed at the kernel
+# will also look wrong at every layer above it, and four complaints about one
+# fault is how a report stops being read.
+blame() { [ -n "$WHY" ] && return 0; WHY="$1"; VERDICT="$2"; return 0; }
+
+echo "Display stack"
+
+# ---- 1. the device the kernel found ----------------------------------------
+# Every card, not just the first: virtio-ramfb-gl can present as two, and
+# which one X lands on is exactly the sort of thing worth seeing.
+CARDS=""
+for _c in /sys/class/drm/card[0-9]*; do
+    [ -d "$_c" ] || continue
+    _n=$(basename "$_c")
+    # card0-Virtual-1 is a connector on card0, not a second card. Matched on
+    # the basename, not the path: a hyphen anywhere in the mount point above
+    # /sys would otherwise make every card look like a connector.
+    case "$_n" in *-*) continue ;; esac
+    _drv=$(sed -n 's/^DRIVER=//p' "$_c/device/uevent" 2>/dev/null)
+    [ -n "$_drv" ] || _drv=$(basename "$(readlink -f "$_c/device/driver" 2>/dev/null)" 2>/dev/null)
+    [ -n "$_drv" ] || _drv="unknown"
+    CARDS="$CARDS $_n:$_drv"
+    row "${_n}" "$_drv"
+done
+if [ -z "$CARDS" ]; then
+    row "kernel" "no DRM device at all"
+    blame "The kernel found no KMS device. X can only use fbdev here, which is
+the slow path. On a Pi that is normal and expected." 1
+fi
+# simpledrm is the ramfb half of virtio-ramfb-gl, and seeing it ALONE is
+# informative rather than fatal: it means the firmware framebuffer is on
+# screen and the virtio-gpu driver never took over.
+case "$CARDS" in
+    *virtio_gpu*) : ;;
+    *simpledrm*|*simplefb*)
+        blame "Only the firmware framebuffer is present -- the virtio-gpu driver
+did not take over. The display works but nothing is accelerated." 1 ;;
+esac
+
+# ---- 2. did the host offer VirGL ----------------------------------------
+# The virtio_gpu driver prints its negotiated feature bits at bind time.
+# '+virgl' means the host agreed to render 3D; '-virgl' means it did not, and
+# no amount of guest configuration will change that -- it is a host decision.
+VIRGL=unknown
+if have dmesg; then
+    _f=$(dmesg 2>/dev/null | sed -n 's/.*\[drm\] features: //p' | tail -1)
+    case "$_f" in
+        *"+virgl"*) VIRGL=yes; row "3D (VirGL)" "yes -- host offered it ($_f)" ;;
+        *"-virgl"*) VIRGL=no;  row "3D (VirGL)" "NO -- host did not offer it ($_f)"
+                    blame "The host is not offering 3D. On UTM this is decided by the
+display device, so it cannot be fixed from in here: re-create the machine and
+let it take the default (virtio-ramfb-gl). See 'When the display is slow' in
+the handbook." 1 ;;
+        *) row "3D (VirGL)" "cannot tell -- no feature line in dmesg"
+           # Not a verdict on its own: the ring buffer may simply have wrapped.
+           ;;
+    esac
+else
+    row "3D (VirGL)" "cannot tell -- no dmesg"
+fi
+
+# ---- 3. which compositor or server, and what it is drawing with ------------
+#
+# THE WAYLAND HALF COMES FIRST, because on this system it is the more likely
+# answer and because the X half cannot see it at all. Hyprland never opens an
+# X server, so a machine running the Wayland desktop has no Xorg.0.log and an
+# X-only report says "cannot tell yet" on a desktop that is running perfectly
+# well in front of you. That was this script's first real bug, found by
+# running it against a live guest.
+#
+# aquamarine -- Hyprland's backend -- names the renderer it got in its log,
+# and that one line is the whole answer:
+#
+#     Renderer: llvmpipe (LLVM 22.1.3, 128 bits)   -> software, drawing on CPU
+#     Renderer: virgl (Apple M2)                   -> the host's GPU
+#
+# There is no glamor and no X driver in this path: the compositor talks to
+# KMS and EGL itself, so the renderer line replaces both rows.
+HLOG=$(ls -t "${XDG_RUNTIME_DIR:-/tmp}"/hypr/*/hyprland.log \
+              /tmp/xdg-runtime-*/hypr/*/hyprland.log \
+              /run/user/*/hypr/*/hyprland.log 2>/dev/null | head -1)
+if [ -n "$HLOG" ]; then
+    row "compositor" "Hyprland (Wayland)  ($HLOG)"
+    _r=$(sed -n 's/.*Renderer: //p' "$HLOG" | tail -1)
+    case "$_r" in
+        "") row "renderer" "cannot tell -- no Renderer line in the log" ;;
+        *llvmpipe*|*softpipe*|*swrast*)
+            row "renderer" "$_r -- SOFTWARE, drawing on the CPU"
+            blame "Hyprland is compositing in software. Every frame is drawn by the
+CPU, which is what a slow desktop feels like. This is decided by the display
+device the host offers, not by anything in here: re-create the machine and let
+it take the default (virtio-ramfb-gl). See 'When the display is slow' in the
+handbook." 1 ;;
+        *) row "renderer" "$_r -- on the GPU" ;;
+    esac
+    echo
+    case "$VERDICT" in
+        0) echo "Accelerated. The drawing is happening on the host's GPU." ;;
+        1) echo "NOT accelerated -- working, but drawing on the CPU."; echo; echo "$WHY" ;;
+        2) echo "Cannot tell yet."; echo; echo "$WHY" ;;
+    esac
+    exit "$VERDICT"
+fi
+
+# ---- 3b. the X half: which driver X chose ---------------------------------
+# Read from the log rather than from the running server, so this answers over
+# ssh and after the session has exited.
+XLOG=""
+for _l in /var/log/Xorg.0.log "$HOME/.local/share/xorg/Xorg.0.log"; do
+    [ -f "$_l" ] && XLOG="$_l"
+done
+if [ -z "$XLOG" ]; then
+    row "X driver" "cannot tell -- X has not run yet"
+    row "acceleration" "cannot tell -- X has not run yet"
+    blame "Start the desktop and run this again: the X half of the answer does
+not exist until X has written a log." 2
+else
+    if grep -q 'modesetting' "$XLOG" 2>/dev/null; then
+        row "X driver" "modesetting  ($XLOG)"
+    elif grep -q 'FBDEV\|fbdev' "$XLOG" 2>/dev/null; then
+        row "X driver" "fbdev -- THE SLOW ONE  ($XLOG)"
+        blame "X is on fbdev, which draws every pixel twice through the kernel's
+framebuffer emulation. Re-run stage 4; in a guest it now installs the
+modesetting driver instead." 1
+    else
+        row "X driver" "unrecognised  ($XLOG)"
+    fi
+
+    # glamor is the accelerated path. Its absence is not always a failure --
+    # the config asks for it, and X says plainly when it could not have it.
+    if grep -qi 'glamor initialized\|Using glamor' "$XLOG" 2>/dev/null; then
+        row "acceleration" "glamor -- drawing on the GPU"
+    elif grep -qi 'glamor' "$XLOG" 2>/dev/null; then
+        row "acceleration" "glamor asked for, not confirmed -- see the log"
+        blame "glamor is configured but X did not confirm it started. Search the
+log for 'glamor' and 'EGL'; the usual cause is a missing DRI driver
+(apk add mesa-dri-gallium)." 1
+    else
+        row "acceleration" "none -- X is drawing on the CPU"
+        blame "X has no acceleration. If mesa-dri-gallium is missing, that is
+why: apk add mesa-dri-gallium and restart the desktop." 1
+    fi
+fi
+
+# ---- 4. what mesa actually resolved to ------------------------------------
+# The layer that lies most convincingly: everything above can be correct and
+# mesa still quietly fall back to llvmpipe, which is software rendering with
+# a hardware-sounding name. glxinfo is optional, so its absence is not a
+# verdict either way.
+if have glxinfo && [ -n "${DISPLAY:-}" ]; then
+    _r=$(glxinfo -B 2>/dev/null | sed -n 's/^OpenGL renderer string: //p')
+    case "$_r" in
+        "")          row "OpenGL" "cannot tell -- glxinfo said nothing" ;;
+        *llvmpipe*|*softpipe*|*swrast*)
+            row "OpenGL" "$_r -- SOFTWARE rendering"
+            blame "mesa resolved to a software renderer. Everything above it may
+look right and the drawing still happens on the CPU." 1 ;;
+        *) row "OpenGL" "$_r" ;;
+    esac
+elif have glxinfo; then
+    row "OpenGL" "cannot tell -- no DISPLAY (run this inside the desktop)"
+else
+    row "OpenGL" "cannot tell -- glxinfo not installed (apk add mesa-demos)"
+fi
+
+echo
+case "$VERDICT" in
+    0) echo "Accelerated. The drawing is happening on the host's GPU." ;;
+    1) echo "NOT accelerated -- working, but drawing on the CPU."; echo; echo "$WHY" ;;
+    2) echo "Cannot tell yet."; echo; echo "$WHY" ;;
+esac
+exit "$VERDICT"
+COPALGPU
+    chmod 0755 /usr/local/bin/copal-gpu
+    note "copal-gpu -- says whether the display is accelerated, and where it stopped"
+
+    # The kernel half of that answer is knowable right now, and this is the
+    # moment somebody is watching. Not the X half: X has not run yet, so
+    # copal-gpu would exit 2, which is not worth printing an install-time
+    # verdict about. Report only what is settled.
+    if is_vm; then
+        _feat=$(dmesg 2>/dev/null | sed -n 's/.*\[drm\] features: //p' | tail -1)
+        case "$_feat" in
+            *"+virgl"*) note "the host is offering 3D acceleration ($_feat)" ;;
+            *"-virgl"*)
+                warn "the host is NOT offering 3D acceleration ($_feat)"
+                note "The desktop will work and draw on the CPU. To fix it on the"
+                note "Mac, re-create the VM: utm/utm-vm.sh create picks a display"
+                note "device with VirGL by default. 'copal-gpu' reports either way." ;;
+            *)  note "cannot tell whether the host offers 3D -- run 'copal-gpu' once the desktop is up" ;;
+        esac
+    fi
 
     say "Writing ~/.config/i3/keys.txt"
     # This file is the single source of truth for the bindings: the login
@@ -7850,15 +10480,22 @@ COPALSPLASH
  Show this list again at any time with   Super + /   or   Super + F1
 
  START SOMETHING
-   Super + Space        run a program (Ctrl + Space too -- see the UTM
-                        note below) -- type a few letters, Enter.
+   Super + Space        run a program (Alt + Space and Ctrl + Space do the
+                        same -- see the UTM note below) -- type a few
+                        letters, Enter.
                         Lists EVERY executable on your PATH, so anything
                         you install shows up here automatically.
+   Alt + Space          the same launcher. Alt is Option on a Mac keyboard,
+                        and macOS reserves nothing on it, so this one
+                        always reaches the machine.
    Super + D            the same thing (dmenu)
    Super + Z            the app menu: everything installed, sorted into
                         categories. Its Install branch lists the programs
                         you have NOT installed yet and installs them.
-   Super + C            the Copal Center: one window listing every program
+   Right-click          the same app menu, opened where you clicked. The
+     on the desktop     desktop is the empty background -- any part of the
+                        screen with no window over it.
+   Super + Shift + C    the Copal Center: one window listing every program
                         in the catalogue, installed or not, with a button
                         to run it or fetch it.
    Super + ,            system settings: add users and choose their
@@ -7869,6 +10506,50 @@ COPALSPLASH
    Super + T            task manager (htop)
    Super + Shift + G    the guides -- how to actually use what is here,
                         starting with Gopher and Gemini
+   Super + Shift + N    the editor (nvim). Press SPACE in it and wait a
+                        moment for its own key menu.
+   Super + Shift + M    music -- cmus, or mpv on ~/Music if cmus is not
+                        installed
+   Super + Shift + B    the camera -- birdshot, which stage 7 built from
+                        ~/code, or whatever CAMERA= names in ~/.profile.
+                        Also the Camera entry at the top of the menu.
+   Super + Shift + W    the wallpaper picker, with thumbnails. Also in the
+                        menu under Style, along with a way to download
+                        twenty more.
+   Super + Shift + T    the theme picker (tokyo-night, antiquity)
+   Super + Alt + Space  the app menu, opened on its System side; and
+   Super + Ctrl + Space the wallpaper picker. These are Omarchy's chords for
+                        the same two things, kept so hands that learned
+                        them there land somewhere.
+   Super + Ctrl + A     volume (alsamixer)
+   Super + Ctrl + T     what the machine is doing (btop, or htop)
+   Super + Shift + D    lay the desk out: the editor and a terminal on
+                        workspace 2, a Claude session in ~/code on 3, the
+                        browser on 5, and you are left on an empty 1.
+                        'copal-desk --list' shows the layouts.
+
+ COPY AND PASTE -- THE SAME KEYS EVERYWHERE
+   Super + C            copy
+   Super + X            cut
+   Super + V            paste
+   Super + Ctrl + V     the clipboard history -- the last hundred things
+                        you copied. Pick one and it goes on the clipboard,
+                        ready for Super + V.
+
+   Everywhere means everywhere: the terminal too. Normally a terminal needs
+   Ctrl + Shift + C because Ctrl + C has meant "interrupt" since before X
+   existed, and every other program needs Ctrl + C -- so you have to know
+   which kind of window you are in before you can copy out of it. These keys
+   remove that. copal-clip looks at what has focus and sends whichever chord
+   that window actually wants.
+
+   AND CAPS LOCK IS A SECOND SUPER ON THIS MACHINE. So this is CapsLock + C
+   and CapsLock + V, under your left little finger, which is as close to a
+   Mac's Cmd + C and Cmd + V as a PC keyboard gets. If you came from a Mac,
+   these four are the reason to use this desktop rather than tolerate it.
+
+   The one exception is cut in a terminal: the text on the screen is not
+   yours to remove, so Super + X copies there and does not delete.
 
  WINDOWS
    Super + Shift + Q    close the focused window
@@ -7886,7 +10567,7 @@ COPALSPLASH
    pixel is drawn by the CPU, so never redrawing a hidden window is a
    speed decision as much as a tidiness one.
    Super + B            next window opens to the RIGHT
-   Super + V            next window opens BELOW
+   Super + Shift + V    next window opens BELOW  (Super + V is paste now)
    Super + W            tabbed layout -- one at a time, tabs on top
    Super + S            stacked layout -- one at a time, titles listed
    Super + G            back to a plain split
@@ -7943,19 +10624,36 @@ COPALSPLASH
      Super + Q          quits UTM, and every VM running in it.
      Super + Shift + Q  logs out of macOS.
 
-   Every affected binding has a second one, and the rule IS the table:
-   WHERE SUPER IS EATEN, PRESS CTRL+ALT INSTEAD.
+   EVERY binding in this file has a second one -- not just the ones macOS
+   eats -- so you never have to remember which is which. Two rules:
 
-     Super + Space        ->  Ctrl + Space  (or Ctrl + Alt + Space)
+     WHERE SUPER IS EATEN, PRESS CTRL+ALT INSTEAD.
+     WHERE THE BINDING ALSO HAS CTRL IN IT, PRESS CTRL+ALT+SHIFT.
+
+   The rest of the binding does not move. Some examples:
+
+     Super + Space        ->  Alt + Space, Ctrl + Space, or
+                              Ctrl + Alt + Space
+     Super + Return       ->  Ctrl + Alt + Return
+     Super + Z            ->  Ctrl + Alt + Z
      Super + Tab          ->  Ctrl + Alt + Tab
      Super + H            ->  Ctrl + Alt + H
      Super + W            ->  Ctrl + Alt + W
      Super + ,            ->  Ctrl + Alt + ,
      Super + /            ->  Ctrl + Alt + /
+     Super + 1..5         ->  Ctrl + Alt + 1..5
      Super + Shift + Q    ->  Ctrl + Alt + Shift + Q
      Super + Shift + P    ->  Ctrl + Alt + Shift + P
      Super + Shift + 1..5 ->  Ctrl + Alt + Shift + 1..5
-     Super + Ctrl + arrow ->  Ctrl + Alt + Left / Right
+     Super + Ctrl + V     ->  Ctrl + Alt + Shift + V   (the Ctrl rule)
+     Super + Ctrl + A     ->  Ctrl + Alt + Shift + A
+     Super + Ctrl + T     ->  Ctrl + Alt + Shift + T
+     Super + Ctrl + arrow ->  Ctrl + Alt + Shift + Left / Right
+
+   Two bindings could not keep both rules at once, and gave way to the
+   Ctrl ones above:
+     move window left/right   Ctrl+Alt+Shift+H and +L, not the arrows
+     split vertical           Ctrl+Alt+Shift+B, next to splith on B
 
    What macOS is doing with them, so the behaviour is not a mystery:
      Cmd + Space          Spotlight
@@ -8091,6 +10789,322 @@ KEYS
 
  SEE ALSO
    copal-guide i3-keys        the window manager key bindings
+GUIDE
+
+    # ----------------------------------------------------------------------
+    # The widgets guide, written because "how do I configure the widgets" has
+    # no answer anywhere else: the theme's widgets are QML for a shell that is
+    # not installed, and waybar's own documentation is a man page organised by
+    # module rather than by what somebody wants to change.
+    cat > /usr/local/share/copal/guides/widgets.txt <<'GUIDE'
+ ======================================================================
+   THE BAR AND ITS WIDGETS -- reading it, changing it, adding to it
+ ======================================================================
+
+ WHAT THE BAR IS, AND WHY IT IS NOT THE ONE IN THE SCREENSHOTS
+
+   Linux Antiquity's bar is 99 QML files for quickshell, and no Alpine
+   repository packages quickshell. So Copal draws the bar with waybar
+   instead, in the same palette, carrying the same information. The
+   theme's own documentation names waybar as the alternative, so this is
+   the supported substitution rather than an improvisation.
+
+   copal-bar is the switch. It runs quickshell if a quickshell ever
+   appears on PATH and waybar otherwise, so the day Alpine packages one
+   you get the real bar and nothing here has to be edited.
+
+   The QML is installed even though nothing reads it yet:
+       ~/.config/quickshell/
+
+ THE TWO FILES
+
+   ~/.config/waybar/config      what is on the bar, and what each part does
+   ~/.config/waybar/style.css   what it looks like
+
+   Nothing regenerates either one after the install. They are yours.
+   Both have comments in them; the config is JSON-with-comments, which is
+   what waybar reads and the one place in this system that gets them.
+
+ SEEING A CHANGE
+
+   pkill waybar; copal-bar &
+
+   waybar re-reads nothing on its own -- there is no reload signal for the
+   config. If the bar does not come back:
+
+       waybar -l debug
+
+   which names the module that stopped it. Run it from a terminal INSIDE
+   the desktop, not over ssh: waybar is a Wayland client and needs the
+   session's WAYLAND_DISPLAY and its D-Bus address.
+
+ WHAT IS ON IT NOW
+
+   Left     the menu button, workspaces 1-5, the current submap, the
+            window list
+   Centre   nothing, so the window titles can take the width
+   Right    temperature, cpu, memory, disk (small, one letter each),
+            hostname, network, volume, battery, the system tray, and
+            the time in the corner (and weather, which is off -- see below)
+
+ MOVING THINGS
+
+   The three lists at the top of the config are the layout, and moving a
+   name between them moves the thing on screen:
+
+       "modules-left":   ["custom/menu", "hyprland/workspaces", ...]
+       "modules-right":  ["temperature", "cpu", "memory", ..., "clock"]
+
+   There is no modules-center; add one to pin something to the middle.
+
+   Delete a name from all three and that widget is gone. The block that
+   configures it lower down can stay; an unlisted module is not drawn.
+
+ THE ONES MOST WORTH CHANGING
+
+   THE CLOCK. "format" is strftime:
+       "format": "{:%a %d %b  %H:%M}"      Wed 26 Aug  14:40
+       "format": "{:%H:%M}"                14:40
+       "format": "{:%I:%M %p}"             02:40 PM
+
+   THE WEATHER IS OFF. Its block is in the config, but its name is in no
+   list, so it is not drawn and it asks nobody anything. It was on, and
+   it was turned off because of what it does: it asks wttr.in, which
+   geolocates the caller's IP -- so every half hour the machine told a
+   third party where it was, to learn the weather. On a VM that is chatter
+   for nothing. Nothing else in the bar contacts anything.
+
+   To turn it on, add "custom/weather" to modules-right. To pin it to a
+   place instead of your IP, put the city in the URL:
+
+       "exec": "curl -sS --max-time 8 'https://wttr.in/Lisbon?format=%c%t'"
+
+   %c is the condition glyph, %t the temperature. %f gives Fahrenheit,
+   %C spells the condition out. The full list: curl wttr.in/:help
+
+   THE INTERVAL IS 1800 SECONDS ON PURPOSE. Every tick is a request from
+   this machine to somebody else's server. A weather widget on a
+   one-minute interval phones out 1440 times a day for a number that
+   changes hourly.
+
+   THE TEMPERATURE. This is the one that shows nothing on some machines,
+   and it is not broken when it does. waybar reads a sensor file, and
+   which one differs per board -- a Pi has thermal_zone0, a PC has
+   whatever its chipset registered, and a VM usually has no sensor at all.
+   With none found the module removes itself and the rest of the bar is
+   untouched. To see whether this machine has one:
+
+       ls /sys/class/thermal/thermal_zone*/temp
+
+   If that lists something and the widget is still absent, name it:
+
+       "temperature": { "hwmon-path": "/sys/class/thermal/thermal_zone0/temp" }
+
+   THE WORKSPACE NUMBERS. All five are shown whether or not anything is on
+   them, which is what persistent-workspaces does:
+
+       "persistent-workspaces": { "*": 5 }
+
+   Without it waybar draws only the workspaces that already have a window,
+   so a fresh session shows a single "1" and Super+2 looks like it does
+   nothing. Change the 5 if you want more.
+
+   THE MENU BUTTON. Left-click opens copal-menu, right-click shuts down.
+   The glyph is the "exec" line -- it is echoed, not typed, so that the
+   file stays plain ASCII:
+
+       "exec": "echo '\u2261'"
+
+ ADDING ONE OF YOUR OWN
+
+   Any command that prints one line is a widget. This is the whole of it:
+
+       "custom/uptime": {
+         "format": "up {}",
+         "interval": 60,
+         "exec": "uptime | sed 's/.*up //; s/,.*//'"
+       }
+
+   Then put "custom/uptime" in one of the three lists, and give it a rule
+   in style.css if you want it coloured -- the id is the module name with
+   the slash turned into a dash:
+
+       #custom-uptime { color: #fccf8a; }
+
+   A widget that needs to react rather than poll can use "signal": N and
+   be refreshed with  pkill -RTMIN+N waybar  instead of an interval.
+
+ COLOURS
+
+   style.css carries the theme's palette at the top of this file's
+   comments. The ones you are most likely to want:
+
+       #181818   the bar itself          #fccf8a   accent (gold)
+       #d0daed   ordinary text           #87704f   accent, dimmed
+       #333333   hover highlight         #ff723e   urgent
+
+   One rule covers every readout, so adding a module does not mean adding
+   CSS unless you want it to look different from the rest.
+
+ THE WIDGETS ON THE WALLPAPER
+
+   The big clock and the date sitting ON the desktop -- under your
+   windows, not on the bar -- are the theme's "desktop widgets", and
+   this is the part people go looking for after seeing the screenshots.
+
+       copal-widgets --off        hide them
+       copal-widgets --on         bring them back
+       copal-widgets --status     what is running, and from where
+
+   ~/.config/waybar/desktop.json      what is drawn, and where
+   ~/.config/waybar/desktop.css       the type and the colour
+
+   It is a SECOND waybar, on the bottom layer -- below every window, above
+   the wallpaper, and click-through, so the desktop underneath still
+   behaves like the desktop. One file holds both rows because waybar reads
+   a JSON array as several bars: the clock is the first, the date the
+   second. "margin-top" is what moves them down the screen. A weather
+   line sat beside the date and is off for the reason given above; add
+   "custom/weather" to that row's modules-center to have it back.
+   copal-bar starts it beside the ordinary bar at login.
+
+   Same rules as the bar for the rest: a widget is any command that prints
+   one line, "interval" is how often it runs, and the id in the CSS is the
+   module name with the slash turned into a dash.
+
+ WHY THE THEME'S OWN WIDGETS LOOK BROKEN (THEY ARE NOT)
+
+   Linux Antiquity's desktop widgets are quickshell, which Alpine does not
+   package -- but that is only half the reason you have never seen them.
+   The other half is true on Arch too, and it catches everybody:
+
+   UPSTREAM SHIPS NO widgets.json. WidgetScreen.qml opens a transparent
+   window per monitor and fills it from Config.widgets[<monitor name>],
+   which is read from ~/.config/quickshell/widgets.json. That file does not
+   exist in the repository. It is written by the shell's own settings
+   window -- the sidebar, then Settings, then the Widgets tab, then "+"  --
+   and until somebody clicks that, the model is empty and the desktop draws
+   nothing at all. Nothing is broken; nothing was ever placed.
+
+   So Copal places them for you:
+
+       copal-widgets --seed
+
+   which writes a clock -- centred, upper third -- for every monitor
+   hyprctl reports, and leaves alone any monitor that already has widgets.
+   copal-bar runs it at login. On a machine with no quickshell it is a
+   small JSON file and nothing else; the day a quickshell appears, the real
+   widgets are already on the desktop.
+
+   THE WEATHER ONE IS NOT SEEDED UNTIL YOU HAVE A KEY. It draws from
+   OpenWeatherMap, which needs an account, and an unkeyed weather widget is
+   an empty square. Put the key and your city in the theme's settings and
+   run --seed again. The wallpaper weather above asks wttr.in instead,
+   which needs no key but does geolocate by IP -- which is why it is off.
+
+   ONLY TWO OF THE THEME'S WIDGETS ARE REAL, whatever the file names
+   suggest: Clock and Weather. CPUTemperatureWidget.qml exists but is an
+   unfinished sketch -- a red rectangle -- and RAM, GPU and Date are
+   commented out in Config.qml. Nothing here can switch them on.
+
+ THE WALLPAPER IS NOT A WIDGET
+
+   It has its own command, because it is not on the bar:
+
+       copal-wallpaper --pick     choose one, with thumbnails
+       copal-wallpaper --list     what is here and where it came from
+       copal-wallpaper --fetch    download diinki's published set
+
+   See 'copal-guide wallpapers'.
+GUIDE
+
+    cat > /usr/local/share/copal/guides/wallpapers.txt <<'GUIDE'
+ ======================================================================
+   WALLPAPERS -- choosing one, and getting more
+ ======================================================================
+
+ THE COMMAND
+
+   copal-wallpaper --pick     choose one, with thumbnails
+   copal-wallpaper --list     what is here, and where each came from
+   copal-wallpaper set FILE   use a particular file
+   copal-wallpaper --fetch    download diinki's published collection
+   copal-wallpaper            paint the chosen one (what the session runs)
+
+   The choice is remembered in ~/.config/copal/wallpaper -- one line, the
+   path. Delete it and the theme's default comes back.
+
+ THE PICKER
+
+   On the Wayland desktop it is wofi with the pictures turned on: a list
+   with a thumbnail beside each name, type to filter, Enter to set. On X
+   it is feh's thumbnail grid, which is nicer -- a wall of pictures, click
+   one. Neither is required; with no image-capable picker you still get a
+   plain list of names that still works.
+
+   Thumbnails are made once, at 240x135, and kept in
+   ~/.cache/copal/wallpaper-thumbs. That directory can be deleted at any
+   time; it rebuilds. The reason it exists is that the source images are
+   4K PNGs of twenty megabytes, and handing twenty of those to a launcher
+   on a machine with 512 MB of RAM ends the session rather than the menu.
+
+ WHAT IS ALREADY HERE
+
+   Three, in ~/.config/hypr/wallpapers_bundled/ -- carnation_collage,
+   georges_riom_collage and oc_the_blackboard. They arrive with the Linux
+   Antiquity theme, which is MIT-licensed, and they are what the desktop
+   looks like out of the box.
+
+ GETTING THE REST
+
+   The author publishes about twenty at github.com/diinki/wallpapers,
+   including the three above. copal-wallpaper --fetch downloads them:
+
+       copal-wallpaper --fetch                 all of them, ~240 MB
+       copal-wallpaper --fetch HIRAETH         just that one
+       copal-wallpaper --fetch kitty aquarium  anything matching either
+
+   Matching is case-insensitive and on any part of the name, so you do not
+   have to type STRAY_KITTY_CLUB-teal.png to get it.
+
+   THEY ARE DOWNSCALED ON ARRIVAL, to this screen, and the original is
+   discarded. A 4K PNG is between five and twenty-two megabytes; the same
+   picture at 1280x800 is about one. On a Pi that is the difference
+   between a wallpaper and a machine that swaps. If you want the originals
+   at full size, save them from the repository yourself -- this command is
+   not trying to be a download manager.
+
+ THE LICENCE, WHICH IS WHY THIS IS A COMMAND AND NOT A STAGE
+
+   That repository has NO LICENCE FILE. Its README says the wallpapers are
+   published "in case any of you want to use them", which is the author
+   inviting you to use them -- and is not a grant to redistribute them.
+
+   So Copal does not ship them. They are not in the image, not in the
+   repository, and not vendored the way the theme is (the theme IS MIT,
+   which is why that one can be). What --fetch does is bring them to YOUR
+   machine at YOUR request, which is the same act as saving them from that
+   page in a browser.
+
+   If you want to redistribute them -- put them in your own image, hand a
+   card to somebody -- that is a question for the author, and his Discord
+   and Ko-fi links are in that README. He also takes tips, which for
+   twenty wallpapers and a desktop theme is not an unreasonable thing to
+   consider.
+
+ USING YOUR OWN
+
+   Anything in ~/Pictures/wallpapers is offered by the picker: png, jpg,
+   jpeg or webp. No subdirectories are searched -- one directory, so that
+   a picture library dropped in there does not become the wallpaper menu.
+
+ HOW IT IS PAINTED
+
+   hyprpaper is what the theme uses and Alpine does not package it, so
+   swaybg paints instead and hyprpaper is preferred automatically if it
+   ever appears. swaybg has no IPC, so changing the wallpaper means
+   replacing the process -- which is why setting one kills only the swaybg
+   belonging to you and starts a new one.
 GUIDE
 
     cat > /usr/local/share/copal/guides/cli-games.txt <<'GUIDE'
@@ -8272,16 +11286,36 @@ I3S
     # forever, printing a status line every interval. So the test is inverted
     # -- run it under a timeout and treat being killed as success. A bad
     # config makes it exit on its own, quickly, with the parse error.
+    #
+    # -s KILL, AND THAT IS THE WHOLE POINT OF THIS COMMENT. The first version
+    # of this check sent the default SIGTERM and accepted 0 or 124. It cried
+    # wolf on every single install:
+    #
+    #     warning: the generated i3status config does not parse (exit 1):
+    #           i3status: exiting due to signal.
+    #
+    # i3status INSTALLS A SIGTERM HANDLER. Asked to stop, it says so and exits
+    # 1 of its own accord -- so timeout has no timeout of its own to report
+    # and passes the child's 1 straight through, which is indistinguishable
+    # from a parse error. The config was correct the entire time; the test was
+    # wrong. SIGKILL cannot be caught, so a survivor is always reported as
+    # killed and never as a failure.
+    #
+    # And the accepted list is 0, 124 AND 137, because the two timeouts do not
+    # agree: coreutils reports its own 124, busybox -- which is the timeout on
+    # a default Alpine -- reports 128+9. Only accepting 124 would have swapped
+    # this false alarm for a quieter one.
     if command -v i3status >/dev/null 2>&1 && command -v timeout >/dev/null 2>&1; then
         # The 'if' wrapper is required, not stylistic: under 'set -e' a bare
         # command that exits non-zero would abort the stage before $? is read.
-        if timeout 3 i3status -c /tmp/i3status.$$ >/dev/null 2>/tmp/i3status.err.$$; then
+        if timeout -s KILL 3 i3status -c /tmp/i3status.$$ \
+                >/dev/null 2>/tmp/i3status.err.$$; then
             _rc=0
         else
             _rc=$?
         fi
         case "$_rc" in
-            0|124) note "i3status config parses (ran until stopped at 3s)" ;;
+            0|124|137) note "i3status config parses (ran until stopped at 3s)" ;;
             *)     warn "the generated i3status config does not parse (exit $_rc):"
                    sed 's/^/      /' /tmp/i3status.err.$$ >&2 ;;
         esac
@@ -8344,19 +11378,33 @@ XRES
     # and --alpha 1 to go opaque.
     install -m 0755 "$(cd "$(dirname "$0")" && pwd)/tools/copal-terminal-theme" /usr/local/bin/copal-terminal-theme 2>/dev/null \
         || warn "tools/copal-terminal-theme not found beside copal-prep.sh; the terminal palette is not applied"
-    if [ -x /usr/local/bin/copal-terminal-theme ]; then
-        say "the desktop theme on every terminal: copal-terminal-theme"
-        for _h in /root "$(user_home)"; do
-            [ -n "$_h" ] && [ -d "$_h" ] || continue
-            HOME="$_h" /usr/local/bin/copal-terminal-theme >/dev/null 2>&1 || warn "copal-terminal-theme failed for $_h"
-            _own=$(stat -c '%u:%g' "$_h" 2>/dev/null) && chown -R "$_own" "$_h/.config" "$_h/.Xresources" "$_h/.local/share/qtermwidget6" 2>/dev/null || true
-        done
-        note "re-apply at any time:  copal-terminal-theme [helios|eris|priapus|eros|hades|sand]"
-    fi
+    # The terminal is one layer of the look. copal-theme switches all of
+    # them -- terminals, bar, launcher, notifications, borders, wallpaper,
+    # GTK, the prompt, mc, the editor -- from a theme directory, and it is
+    # written here rather than in stage 7 so that a machine that stops at
+    # the medium level still has the switch. tokyo-night is this desktop's
+    # (i3, i3status and .Xresources already wear it); stage 17 applies
+    # antiquity. Run last, after every file it edits has been written.
+    [ -d "$copal_theme_dir/antiquity" ] || copal_write_themes
+    copal_apply_theme tokyo-night
+    note "switch the whole look at any time:  copal-theme --toggle  (Super+Shift+N)"
+    note "                                    copal-theme --pick    (Super+Shift+T)"
 
     install_modern_browser
     configure_x_for_user
-    configure_desktop_autostart
+
+    # Claim the session for X11. Stage 17 writes 'wayland' over this if it
+    # runs later -- last writer wins, see the note above copal-session.
+    #
+    # Through copal-desktop rather than by writing the file, because the word
+    # is only half the state: this is also what re-arms X's setuid server if
+    # a previous turn under Wayland disarmed it. Writing 'x11' by hand and
+    # leaving the bit off produces a desktop that will not start and an error
+    # message about console users that explains nothing.
+    mkdir -p /etc/copal
+    copal-desktop x11 >/dev/null 2>&1 || printf 'x11\n' > /etc/copal/session
+    note "/etc/copal/session = x11$([ -u /usr/libexec/Xorg.wrap ] 2>/dev/null && printf ', X armed')"
+    configure_desktop_autostart startx
 
     say "Stage 4 complete."
     cat <<MSG
@@ -8381,6 +11429,2400 @@ XRES
     If X fails, read /var/log/Xorg.0.log -- the useful lines are marked (EE).
     "no screens found" on this board is usually fbdev: check that
     /dev/fb0 exists and that '$PI_USER' is in the video group.
+MSG
+    commit_reminder
+}
+
+# -------------------------------------- stage 17: the Antiquity desktop ----
+#
+# Hyprland, and diinki's Linux Antiquity theme -- "scientific and celestial
+# antiquity", the author calls it: radial menus drawn as orbits, workspaces as
+# planets with faces, tarot cards for the power menu, weather told in the four
+# humours. A desktop that looks like an old star chart you can click on. The
+# theme is MIT-licensed and vendored in this repository; copal-prep.sh stages
+# its configs onto the card next to Mini vMac, for the same reason.
+#
+# THIS IS THE FULL MONTY. Stage 4 is the medium path: X on the framebuffer,
+# i3, CPU-drawn pixels -- the desktop that fits a Pi Zero. This stage is the
+# other end of the scale: a GPU-composited Wayland desktop with blur, shadows
+# and rounded corners, for the boards that can pay for it -- a Pi 4/5, a PC,
+# or the UTM/QEMU VM. It does not replace stage 4's packages; it replaces
+# stage 4's SESSION. An X server and a Wayland compositor cannot own the same
+# seat at once, so /etc/copal/session carries one word -- 'x11' or 'wayland'
+# -- and copal-session starts whichever it names. This stage writes 'wayland';
+# re-running stage 4 writes 'x11' back. Nothing is uninstalled either way.
+#
+# WHAT ALPINE 3.24 ACTUALLY PACKAGES, measured against the theme's dependency
+# list (README, upstream commit c0e3eac), because an installer that assumes
+# Arch's repositories helps nobody here:
+#
+#   hyprland 0.54.3      community  -- present, but READS ONLY hyprland.conf:
+#                                      the theme ships hyprland.lua, and Lua
+#                                      configs arrived in Hyprland 0.55. So
+#                                      this stage TRANSLATES the .lua into a
+#                                      .conf -- every value carried over, the
+#                                      systemd and Arch assumptions swapped
+#                                      out. The vendored .lua stays beside it
+#                                      for the day Alpine's Hyprland reads it.
+#   kitty, mako, nemo    community  -- present, configs used as vendored.
+#   hyprpolkitagent      community  -- present; upstream starts it with
+#                                      `systemctl --user`, which does not
+#                                      exist on Alpine. exec'd directly.
+#   quickshell           NOT PACKAGED, not even in edge/testing. It is the
+#                        theme's taskbar, launcher and widgets -- the most
+#                        visible layer. try_add is still asked, so the day it
+#                        is packaged this stage picks it up unchanged; until
+#                        then wofi stands in as the launcher and the desktop
+#                        is Antiquity's windows, terminal, notifications and
+#                        wallpaper without the radial shell. copal-launcher
+#                        prefers quickshell's IPC the moment it exists.
+#   hyprpaper, hyprshot  NOT PACKAGED. swaybg paints the wallpaper instead;
+#                        grim + slurp take the region screenshot. Both behind
+#                        wrappers (copal-wallpaper, copal-shot) that prefer
+#                        the upstream tool when it appears.
+#   nm-applet            upstream autostarts it; Copal configures wifi with
+#                        wpa_supplicant (stage 10), not NetworkManager, so it
+#                        is dropped rather than shipped broken.
+#
+# The full survey, the .lua -> .conf mapping and how each program finds its
+# config files are written down in docs/THEME.md.
+# ---------------------------------------------------------------------------
+# THE BAR, THE WIDGETS AND THE WINDOW LIST -- what stands in for quickshell.
+#
+# Stage 17 installs Linux Antiquity's configs, and 99 of those files are QML
+# for quickshell: RadialTaskbar.qml, Bar.qml, ClockWidget.qml, SysTray.qml,
+# Workspaces.qml, AppLauncher.qml, PowerMenu.qml. quickshell is not packaged
+# in any Alpine repository -- not community, not testing, not edge -- so on
+# this machine every one of those files is inert, and what you get is the
+# wallpaper, your windows, and nothing else. No bar, no clock, no workspace
+# indicator, no way to see what is open. That is a desktop you cannot read.
+#
+# WAYBAR IS THE STAND-IN, and it is not a grudging one: waybar is what
+# Omarchy itself uses for its bar, it is packaged for aarch64 and x86_64, and
+# Alpine's build has the modules that matter -- checked rather than assumed,
+# by reading the strings out of the shipped binary:
+#
+#   hyprland/workspaces   the workspace indicator
+#   hyprland/window       the focused window's title
+#   wlr/taskbar           THE WINDOW LIST -- every open window, clickable.
+#                         This is the piece quickshell's RadialTaskbar was
+#                         for, and the thing whose absence is most obvious.
+#   clock cpu memory disk network wireplumber tray
+#
+# WHAT IS DELIBERATELY NOT COPIED. The theme's bar is 18 pixels tall and half
+# the screen wide, with the clock centred. That is a beautiful object and it
+# is built on QML shaders and custom-drawn borders that waybar has no way to
+# express. Trying to fake it in CSS produces a bad tribute. So this takes the
+# theme's PALETTE and its typographic, iconless character -- helios: base
+# #181818, accent #fccf8a, warning #fcd37b, urgent #ff723e -- and lets the
+# layout be an honest waybar. Text labels rather than glyphs, which also
+# means it does not depend on a Nerd Font that Alpine does not package.
+#
+# AND IT STEPS ASIDE. copal-bar prefers quickshell whenever a quickshell
+# binary appears, exactly as the existing configs already do -- so the day
+# Alpine packages it, the real shell comes back and this is unused.
+hypr_write_waybar() {
+    say "Installing waybar (the bar quickshell would otherwise draw)"
+    if ! try_add waybar; then
+        warn "waybar is not available either -- the desktop will have no bar."
+        note "Windows and the wallpaper still work; Super+D still launches things."
+        return 0
+    fi
+
+    say "Writing ~/.config/waybar/config and style.css"
+    # JSON with comments is what waybar reads, and it is the only place in
+    # this project that gets to have them, so they are used.
+    cat > /tmp/waybarcfg.$$ <<'WAYBARCFG'
+{
+  // Generated by copal-init.sh. The stand-in for the theme's quickshell bar.
+  //
+  // Edit freely: nothing regenerates this after the install. 'waybar -l debug'
+  // names the module if the bar ever fails to appear -- a module whose backend
+  // is missing (no battery in a VM, no wireplumber before stage 10) renders
+  // empty rather than taking the bar down with it.
+  "layer": "top",
+  "position": "top",
+  "height": 26,
+  "spacing": 6,
+
+  // THE MENU BUTTON FIRST, then the workspaces immediately to its right.
+  // That order is the point rather than a preference: the button is the one
+  // thing on this bar that a person who knows no key bindings can find, so it
+  // goes in the corner every desktop has taught them to look at, and the
+  // workspace numbers sit beside it because Super+1..5 is the next thing to
+  // learn and seeing them switch is how that is learned.
+  "modules-left":   ["custom/menu", "hyprland/workspaces", "hyprland/submap", "wlr/taskbar"],
+  // No centre group: with nothing pinned to the middle, the window titles
+  // on the left can run as wide as the bar allows. The time is the last
+  // thing on the right, in the corner.
+  "modules-right":  ["temperature", "cpu", "memory", "disk", "custom/hostname", "network", "wireplumber", "battery", "tray", "clock"],
+
+  // The Omarchy menu, in a corner. Left-click opens it; right-click goes
+  // straight to the power entries, because "shut down" is the one thing
+  // people hunt for in a menu and it is two levels in.
+  "custom/menu": {
+    "format": "{}",
+    "exec": "echo '\u2261'",
+    "interval": "once",
+    "tooltip": true,
+    "tooltip-format": "Menu -- programs (Super+Space); settings, install, session (Super+Z). Right-click: shut down",
+    "on-click": "copal-menu",
+    "on-click-right": "copal-halt"
+  },
+
+  // WORKSPACES 1 TO 5, ALWAYS SHOWN. persistent-workspaces is what makes the
+  // numbers visible before anything is on them -- without it waybar draws
+  // only the workspaces that already have a window, so a fresh session shows
+  // a single "1" and Super+2 appears to do nothing at all. The bindings go
+  // 1..5 in both desktops, so the bar shows exactly those five.
+  "hyprland/workspaces": {
+    "format": "{name}",
+    "on-click": "activate",
+    "sort-by-number": true,
+    "persistent-workspaces": { "*": 5 }
+  },
+
+  "hyprland/submap": { "format": "{}" },
+
+  // THE WINDOW LIST. Left-click focuses, middle-click closes. This is the
+  // application switcher in bar form; Alt+Tab is the keyboard one.
+  "wlr/taskbar": {
+    "format": "{title}",
+    "tooltip-format": "{title} ({app_id})",
+    "on-click": "activate",
+    "on-click-middle": "close",
+    "icon-size": 0
+  },
+
+  // Time only, 24-hour. The date is on the calendar behind the tooltip, and
+  // on the wallpaper under the big clock, so the bar need not say it twice.
+  "clock": {
+    "format": "{:%H:%M}",
+    "tooltip-format": "<tt>{calendar}</tt>",
+    "calendar": { "mode": "month" }
+  },
+
+  // One letter each: three numbers that are glanced at, not read, and the
+  // tooltip spells the word out for anyone who hovers.
+  "cpu":    { "format": "c{usage}%", "tooltip-format": "cpu {usage}%", "interval": 5 },
+  "memory": { "format": "m{percentage}%", "tooltip-format": "memory {used:0.1f} of {total:0.1f} GiB", "interval": 5 },
+  "disk":   { "format": "d{percentage_used}%", "tooltip-format": "disk / {used} of {total}", "path": "/", "interval": 60 },
+
+  // The machine's name, beside its address: the two things you need to reach
+  // it from somewhere else. Once, because it does not change while logged in.
+  "custom/hostname": {
+    "format": "{}",
+    "exec": "hostname",
+    "interval": "once",
+    "tooltip": false
+  },
+
+  // THE THEME'S OTHER TWO WIDGETS. quickshell's bar carries a clock, a CPU
+  // temperature and a weather readout; the clock was here from the start and
+  // these two were the gap somebody noticed. The temperature is on; the
+  // weather is configured below and OFF -- see its note. 'copal-guide
+  // widgets' covers changing or removing them.
+  //
+  // TEMPERATURE HAS NO PORTABLE SOURCE, and this is the one module that shows
+  // nothing on some machines. waybar reads a hwmon file, and which file that
+  // is differs per board: a Pi has thermal_zone0, a PC has whatever its
+  // chipset driver registered, and a VM usually has no thermal sensor at all.
+  //
+  // Verified on a real guest rather than assumed. With no sensor, waybar logs
+  //
+  //     module temperature: Disabling module "temperature",
+  //     Can't open /sys/class/thermal/thermal_zone0/temp
+  //
+  // and carries on -- the module removes itself and the bar is otherwise
+  // untouched, which is the right failure and the reason this ships
+  // unconditionally. If yours is missing and the machine does have a sensor,
+  //     ls /sys/class/thermal/thermal_zone*/temp
+  // and set hwmon-path here. See 'copal-guide widgets'.
+  "temperature": {
+    "critical-threshold": 80,
+    "format": "temp {temperatureC}°C",
+    "format-critical": "temp {temperatureC}°C !",
+    "interval": 10,
+    "tooltip": true
+  },
+
+  // WEATHER, and it is a custom module because waybar has none. wttr.in
+  // answers a one-line format over plain HTTP and needs no key and no
+  // account. No location in the URL: wttr.in geolocates the caller's IP,
+  // which is the only way to be right by default on a machine that has not
+  // been told where it is.
+  //
+  // OFF: THE NAME IS IN NO MODULE LIST, so the block is kept and nothing
+  // runs. That geolocation is the reason. Every fetch tells a third party
+  // where this machine is, in exchange for the weather, and on a VM that is
+  // chatter for nothing. Add "custom/weather" to modules-right to have it
+  // back, with a city in the URL if the IP should stay out of it.
+  //
+  // THIRTY MINUTES, and that is not a stylistic choice. Every interval is a
+  // request from this machine to a third party, so a one-minute weather
+  // widget is a machine that phones out 1440 times a day for information
+  // that changes hourly. The timeout keeps a dead network from leaving the
+  // module hanging, and the || true keeps a failed fetch from painting an
+  // error into the bar: no network, no weather, no noise.
+  "custom/weather": {
+    "format": "{}",
+    "interval": 1800,
+    "exec": "curl -sS --max-time 8 'https://wttr.in/?format=%c%t' 2>/dev/null || true",
+    "tooltip": true,
+    "tooltip-format": "wttr.in -- edit the URL in ~/.config/waybar/config for another place"
+  },
+
+  "network": {
+    "format-ethernet": "eth {ipaddr}",
+    "format-wifi": "{essid} {signalStrength}%",
+    "format-disconnected": "no network",
+    "tooltip-format": "{ifname}: {ipaddr}/{cidr}"
+  },
+
+  "wireplumber": {
+    "format": "vol {volume}%",
+    "format-muted": "muted",
+    "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+  },
+
+  // No battery in a VM or on a desktop board: the module simply does not
+  // render, which is why it is safe to ship unconditionally.
+  "battery": {
+    "format": "bat {capacity}%",
+    "format-charging": "chg {capacity}%",
+    "states": { "warning": 25, "critical": 10 }
+  },
+
+  "tray": { "spacing": 8 }
+}
+WAYBARCFG
+    install_home_file .config/waybar/config /tmp/waybarcfg.$$
+    rm -f /tmp/waybarcfg.$$
+
+    # The colours are @define-color tokens -- base, shadow, highlight, accent,
+    # accent-dark, text-light, urgent, danger, warning, white -- imported from
+    # ~/.config/copal/current/colors.css, which copal-theme writes from the
+    # current theme's theme.conf. Antiquity's helios values (base #181818,
+    # accent #fccf8a, ...) come from the theme's own Config.qml; see
+    # docs/THEME.md. Switching theme rewrites colors.css and restarts the bar.
+    cat > /tmp/waybarcss.$$ <<'WAYBARCSS'
+@import url("../copal/current/colors.css");  /* the theme's tokens; copal-theme rewrites it */
+/* Generated by copal-init.sh. Linux Antiquity's helios palette, on waybar.
+   The colours come from the theme's quickshell Config.qml so the bar and the
+   rest of the desktop agree; see docs/THEME.md. */
+
+* {
+    /* JetBrains Mono and DejaVu are what stage 17 installs. No Nerd Font:
+       Alpine does not package one, and this bar uses words, not glyphs. */
+    font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+    font-size: 12px;
+    min-height: 0;
+    border: none;
+    border-radius: 0;
+}
+
+window#waybar {
+    background: @base;
+    color: @text-light;
+    border-bottom: 1px solid @shadow;
+}
+
+/* One rule for every block, so adding a module does not mean adding CSS. */
+#workspaces, #submap, #taskbar, #clock, #cpu, #memory, #disk, #temperature,
+#custom-hostname, #custom-weather, #network, #wireplumber, #battery, #tray {
+    padding: 0 10px;
+    color: @text-light;
+    background: transparent;
+}
+/* The three readouts are small on purpose -- glanced at, not read. */
+#cpu, #memory, #disk {
+    padding: 0 5px;
+    font-size: 11px;
+    color: @accent-dark;
+}
+
+/* THE MENU BUTTON, in the top-left corner. It is given the accent colour and
+   a little more room than a readout, because it is the only thing on this bar
+   that is meant to be CLICKED by somebody who does not yet know that Super+Z
+   does the same job. Everything else here is a number you read. */
+#custom-menu {
+    padding: 0 14px 0 12px;
+    margin-right: 2px;
+    font-size: 15px;
+    color: @accent;              /* accent */
+    background: transparent;
+}
+#custom-menu:hover {
+    background: @highlight;         /* highlight, the same as a workspace hover */
+    color: @white;
+}
+
+/* The temperature crosses its threshold and says so in the urgent colour --
+   the same one an urgent workspace uses, so the bar has one alarm colour
+   rather than one per module. */
+#temperature.critical {
+    color: @urgent;
+}
+
+#workspaces button {
+    padding: 0 8px;
+    color: @accent-dark;              /* accentDark: a workspace that exists */
+    background: transparent;
+    border-bottom: 2px solid transparent;
+}
+#workspaces button.active {
+    color: @accent;              /* accent: the one you are on */
+    border-bottom: 2px solid @accent;
+}
+#workspaces button.urgent {
+    color: @urgent;
+    border-bottom: 2px solid @urgent;
+}
+#workspaces button:hover {
+    background: @highlight;         /* highlight */
+    color: @text-light;
+}
+
+/* The window list. The focused window is the one in accent. */
+#taskbar button {
+    padding: 0 8px;
+    color: @accent-dark;
+    background: transparent;
+}
+#taskbar button.active {
+    color: @accent;
+    background: @highlight;
+}
+#taskbar button:hover { background: @highlight; }
+
+#clock {
+    color: @accent;
+    font-weight: bold;
+}
+
+#submap { color: @urgent; }
+
+#battery.warning  { color: @warning; }
+#battery.critical { color: @danger; }
+#network.disconnected { color: @danger; }
+#wireplumber.muted    { color: @accent-dark; }
+
+tooltip {
+    background: @shadow;
+    border: 1px solid @accent-dark;
+    color: @text-light;
+}
+WAYBARCSS
+    install_home_file .config/waybar/style.css /tmp/waybarcss.$$
+    rm -f /tmp/waybarcss.$$
+
+    # ----------------------------------------------------------------------
+    # wofi's stylesheet, and it is here rather than anywhere else because the
+    # bar's palette is here.
+    #
+    # WHY IT MATTERS MORE THAN A LAUNCHER'S LOOK USUALLY DOES. wofi is not
+    # just Super+D on this desktop: it is what copal-menu draws itself with
+    # when the session is Wayland, so it IS the menu -- the whole Omarchy-
+    # shaped thing, one level at a time. Unstyled it arrives as GTK default
+    # grey with a blue selection bar, which on a screen of muted greens and
+    # golds looks like a dialog from a different computer that has wandered in
+    # by mistake. Seen on a live guest, which is the only reason this exists.
+    #
+    # Same colours as the bar, from the theme's Config.qml.
+    say "Writing ~/.config/wofi/style.css (the launcher and the menu)"
+    cat > /tmp/woficss.$$ <<'WOFICSS'
+@import url("../copal/current/colors.css");  /* the theme's tokens; copal-theme rewrites it */
+/* Generated by copal-init.sh. Linux Antiquity's helios palette, on wofi.
+   wofi is both the launcher (Super+D) and the menu copal-menu draws, so this
+   one file styles both. Edit freely; nothing regenerates it. */
+
+window {
+    background-color: @base;
+    border: 1px solid @accent-dark;      /* accentDark */
+    border-radius: 2px;
+    font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+    font-size: 13px;
+}
+
+/* The search box. It is the first thing focused, so it gets the accent. */
+#input {
+    background-color: @shadow;
+    color: @text-light;
+    border: none;
+    border-bottom: 1px solid @highlight;
+    padding: 8px 10px;
+    margin: 0;
+}
+#input image { color: @accent-dark; }
+
+#inner-box, #outer-box, #scroll { background-color: @base; border: none; }
+
+#entry {
+    padding: 5px 10px;
+    color: @text-light;
+    background-color: transparent;
+}
+
+/* The selected row. Left bar rather than a filled block: at 26px a solid
+   highlight across the whole width is louder than the wallpaper behind it. */
+#entry:selected, #entry:focus {
+    background-color: @highlight;       /* highlight */
+    color: @accent;                  /* accent */
+    border-left: 2px solid @accent;
+    padding-left: 8px;
+    outline: none;
+}
+#text:selected { color: @accent; }
+
+/* The picker with pictures in it -- copal-wallpaper --pick runs wofi with
+   --allow-images, and a thumbnail wants room around it. Without a height the
+   rows collapse to text height and take the picture with them -- a preview
+   too small to preview anything, which is what the first version shipped.
+   54px pairs with the image_size=96 copal-wallpaper defines. */
+#entry img {
+    margin-right: 12px;
+    min-height: 54px;
+}
+WOFICSS
+    install_home_file .config/wofi/style.css /tmp/woficss.$$
+    rm -f /tmp/woficss.$$
+
+    # ----------------------------------------------------------------------
+    # DESKTOP WIDGETS -- the clock and the weather that sit ON the wallpaper.
+    #
+    # This is the piece of the theme that people ask after by name and then
+    # cannot find, and the reason is worth writing down because it is not a
+    # bug in anything. Linux Antiquity's desktop widgets are quickshell:
+    # widgets/WidgetScreen.qml opens one transparent layer-shell window per
+    # monitor on the BOTTOM layer -- wallpaper height, below every window --
+    # and fills it from a Repeater over Config.widgets[<monitor name>]. That
+    # model is a JSON file, ~/.config/quickshell/widgets.json, written by a
+    # JsonAdapter and edited from the shell's own settings window (sidebar ->
+    # Settings -> Widgets). Upstream ships NO widgets.json, so on a fresh
+    # install the model is empty, the Repeater draws nothing, and the desktop
+    # looks like the widgets are broken. They were never placed. copal-widgets
+    # below places them, so this machine starts with the clock already on the
+    # wallpaper the way the screenshots have it.
+    #
+    # ONLY TWO OF THEM ARE REAL, whatever the file listing suggests.
+    # Config.qml's widgetPaths has Weather and Clock live and CPUTemp, GPUTemp,
+    # RAM and TheDate commented out; CPUTemperatureWidget.qml exists but is a
+    # 500x500 red rectangle with the layer-shell lines commented out -- a
+    # sketch, not a widget. So there is nothing to switch on there, and this
+    # does not pretend otherwise.
+    #
+    # AND QUICKSHELL IS NOT PACKAGED, which is the whole reason this stage
+    # exists. So the widgets are done twice, on purpose:
+    #
+    #   copal-widgets --seed    writes widgets.json for the monitors this
+    #                           machine actually has, for the day a quickshell
+    #                           appears. Costs nothing until then.
+    #   desktop.json/.css       a SECOND waybar, on the bottom layer, drawing
+    #                           the same two readouts on the wallpaper today.
+    #
+    # WHY A SECOND WAYBAR AND NOT eww, conky OR A LITTLE GTK PROGRAM. Because
+    # waybar is already here and already packaged for both architectures, and
+    # because it can do the one thing this needs: "layer": "bottom" puts a
+    # layer-shell surface underneath the windows, "exclusive": false stops it
+    # reserving screen space, and "passthrough": true lets the pointer fall
+    # through to whatever is behind it. eww and conky-wayland are packaged for
+    # neither arch, and a GTK program of our own would be a new dependency and
+    # a new thing to maintain for two lines of text.
+    #
+    # waybar reads an ARRAY of bar objects from one file, which is what makes
+    # the stacked layout possible: the big clock is one bar, the date and the
+    # weather are a second one below it, and margin-top places each.
+    say "Writing ~/.config/waybar/desktop.json (the widgets on the wallpaper)"
+    cat > /tmp/waybardesk.$$ <<'WAYBARDESK'
+[
+  // Generated by copal-init.sh -- the desktop widgets, on the wallpaper.
+  //
+  // Two bars rather than two files: waybar reads a JSON array as several
+  // bars from one config. Both sit on the BOTTOM layer, so windows cover
+  // them, and both are passthrough, so a click goes to the desktop and not
+  // to a clock. Nothing regenerates this after the install; it is yours.
+  //
+  // Turn them off:   copal-widgets --off      (and --on to bring them back)
+  // Move them:       margin-top, below
+  {
+    "name": "desktopclock",
+    "layer": "bottom",
+    "position": "top",
+    "exclusive": false,
+    "passthrough": true,
+    "height": 130,
+    "margin-top": 96,
+    "spacing": 0,
+    "modules-center": ["clock"],
+
+    // 30 seconds, not 1: the face shows hours and minutes, so a per-second
+    // tick would be 86,400 redraws a day to change a digit 1,440 times.
+    "clock": { "format": "{:%H:%M}", "interval": 30, "tooltip": false }
+  },
+  {
+    "name": "desktopinfo",
+    "layer": "bottom",
+    "position": "top",
+    "exclusive": false,
+    "passthrough": true,
+    "height": 44,
+    "margin-top": 218,
+    "spacing": 22,
+    "modules-center": ["custom/date"],
+
+    // Hourly: the date changes once a day, and this way it is right by 00:01
+    // without a timer that fires while you sleep.
+    "custom/date": {
+      "format": "{}",
+      "interval": 3600,
+      "exec": "date '+%A, %-d %B %Y'",
+      "tooltip": false
+    },
+
+    // The same wttr.in call the bar makes, and OFF for the same reason: it
+    // is in no module list. See the note above "custom/weather" in
+    // ~/.config/waybar/config. Add it beside "custom/date" to have it back.
+    // %C spells the condition out, which there is room for here and not on
+    // the bar.
+    "custom/weather": {
+      "format": "{}",
+      "interval": 1800,
+      "exec": "curl -sS --max-time 8 'https://wttr.in/?format=%c+%t,+%C' 2>/dev/null || true",
+      "tooltip": false
+    }
+  }
+]
+WAYBARDESK
+    install_home_file .config/waybar/desktop.json /tmp/waybardesk.$$
+    rm -f /tmp/waybardesk.$$
+
+    # The type is the theme's, not the bar's. quickshell's ClockWidget.qml
+    # draws the time at 104px in Boska, weight 500, in the accent gold with a
+    # soft drop shadow; stage 17 installs Boska system-wide, so the same face
+    # is available to waybar and this is as close as CSS gets. Where the fonts
+    # did not install, the fallbacks are the bar's own and it still reads.
+    cat > /tmp/waybardeskcss.$$ <<'WAYBARDESKCSS'
+@import url("../copal/current/colors.css");  /* the theme's tokens; copal-theme rewrites it */
+/* Generated by copal-init.sh -- the desktop widgets' type and colour.
+   Boska is the theme's own display face, installed by stage 17 and the one
+   quickshell's ClockWidget.qml asks for; the rest are fallbacks so this still
+   reads on a machine where the fonts did not land. */
+
+* {
+    border: none;
+    border-radius: 0;
+    min-height: 0;
+}
+
+/* TRANSPARENT, BOTH OF THEM. A bottom-layer bar with a background is a grey
+   band across the wallpaper -- the widget is the text, not a panel. */
+window#waybar.desktopclock,
+window#waybar.desktopinfo {
+    background: transparent;
+    color: @text-light;
+}
+
+window#waybar.desktopclock #clock {
+    font-family: "Boska", "Recia", "DejaVu Serif", serif;
+    font-size: 96px;
+    font-weight: 500;
+    color: @accent;                  /* accent, as in ClockWidget.qml */
+    /* The theme's DropShadow, in the one form CSS has. Without it the gold
+       disappears into a pale wallpaper. */
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+    padding: 0;
+}
+
+window#waybar.desktopinfo #custom-date,
+window#waybar.desktopinfo #custom-weather {
+    font-family: "Quilon", "JetBrains Mono", "DejaVu Sans", sans-serif;
+    font-size: 15px;
+    color: @text-light;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+    padding: 0 6px;
+}
+
+/* The weather is the quieter of the two: the date is where the eye lands. */
+window#waybar.desktopinfo #custom-weather { color: @accent-dark; }
+WAYBARDESKCSS
+    install_home_file .config/waybar/desktop.css /tmp/waybardeskcss.$$
+    rm -f /tmp/waybardeskcss.$$
+
+    # ----------------------------------------------------------------------
+    # copal-widgets -- the one command for both halves of the story.
+    cat > /usr/local/bin/copal-widgets <<'COPALWIDGETS'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-widgets -- the widgets on the wallpaper: place them, hide them, seed
+# them for the shell that is not installed yet.
+#
+# TWO THINGS WEAR THE NAME "desktop widget" on this machine, because the shell
+# the theme was written for is not packaged for Alpine:
+#
+#   the waybar pair  ~/.config/waybar/desktop.json -- the clock, the date and
+#                    the weather that are actually on your wallpaper now.
+#   widgets.json     ~/.config/quickshell/widgets.json -- the model Linux
+#                    Antiquity's own WidgetScreen.qml reads. Upstream ships
+#                    none, which is why a fresh install of the theme shows no
+#                    widgets at all and everyone assumes they are broken: they
+#                    were simply never placed. --seed places them, so the day
+#                    a quickshell binary appears here the real widgets are
+#                    already on the desktop.
+#
+# Both are plain files. Nothing here regenerates them once they exist.
+set -eu
+
+CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
+OFF="$CFG/copal/no-desktop-widgets"
+
+usage() {
+    cat <<'USAGE'
+copal-widgets -- the clock and the weather on the wallpaper
+
+  copal-widgets --off        hide them (takes effect now)
+  copal-widgets --on         show them again
+  copal-widgets --status     which of them are running, and from where
+  copal-widgets --seed       place the theme's own widgets in
+                             ~/.config/quickshell/widgets.json, one set per
+                             monitor. Runs at login; safe to repeat -- a
+                             monitor that already has widgets is left alone.
+
+Files:
+  ~/.config/waybar/desktop.json    what is drawn, and where
+  ~/.config/waybar/desktop.css     the type and the colour
+  ~/.config/quickshell/widgets.json  the theme's model, for the day quickshell
+                                     is packaged
+
+  copal-guide widgets              the longer version
+USAGE
+}
+
+# The desktop layer, started and stopped without touching the bar: both are
+# waybar, so a bare pkill would take the bar down with them. -f matches the
+# full command line, which is the only thing that tells the two apart.
+start_desktop() {
+    [ -f "$CFG/waybar/desktop.json" ] || return 0
+    pkill -f 'waybar .*desktop\.json' 2>/dev/null || true
+    waybar -c "$CFG/waybar/desktop.json" -s "$CFG/waybar/desktop.css" \
+        >/dev/null 2>&1 &
+}
+stop_desktop() { pkill -f 'waybar .*desktop\.json' 2>/dev/null || true; }
+
+seed() {
+    # Nothing to seed without the compositor: the model is keyed by MONITOR
+    # NAME -- Config.widgets[screen.name] in WidgetScreen.qml -- and only
+    # hyprctl knows what this machine's outputs are called. jq does the
+    # editing because the file belongs to quickshell's JsonAdapter, which
+    # rewrites it whenever the settings window touches a widget; hand-rolled
+    # string surgery on a file another program owns is how you lose someone's
+    # layout.
+    command -v hyprctl >/dev/null 2>&1 || return 0
+    command -v jq >/dev/null 2>&1 || return 0
+    qs_dir="$CFG/quickshell"
+    [ -d "$qs_dir" ] || return 0
+    f="$qs_dir/widgets.json"
+
+    cur='{"monitors":{}}'
+    if [ -f "$f" ] && jq -e . "$f" >/dev/null 2>&1; then cur=$(cat "$f"); fi
+
+    # The weather widget draws from OpenWeatherMap and needs a key, which this
+    # machine cannot have by default -- placing it unkeyed would put an empty
+    # square on the wallpaper and call it a widget. So: clock always, weather
+    # only once a key is in the theme's settings (sidebar -> Settings).
+    key=""
+    [ -f "$qs_dir/settings.json" ] && key=$(jq -r \
+        '.settings.openWeatherMap.apiKey // ""' "$qs_dir/settings.json" \
+        2>/dev/null || echo "")
+
+    new=$(hyprctl monitors -j 2>/dev/null | jq --argjson cur "$cur" --arg key "$key" '
+      reduce .[] as $m ($cur;
+        # A monitor that already has widgets is somebody having placed them.
+        if ((.monitors[$m.name] // {}) | length) > 0 then .
+        else
+          # Logical pixels: the widget is placed in the same coordinates the
+          # layer-shell window uses, which are already divided by the scale.
+          (($m.width  / ($m.scale // 1)) | floor) as $w |
+          (($m.height / ($m.scale // 1)) | floor) as $h |
+          # ClockWidget.qml is 460x220, WeatherWidget.qml 500x500. Centred,
+          # upper third -- where the screenshots have them, and clear of the
+          # bar at the top and the radial taskbar at the bottom.
+          .monitors[$m.name] = (
+            { "0": { widgetName: "Clock", widgetType: 1,
+                     x: ((($w - 460) / 2) | floor), y: (($h * 0.14) | floor),
+                     enableBackground: false,
+                     monitorName: $m.name, widgetId: "0" } }
+            + (if $key == "" then {} else
+               { "1": { widgetName: "Weather", widgetType: 0,
+                        x: ((($w - 500) / 2) | floor),
+                        y: (($h * 0.14 + 240) | floor),
+                        enableBackground: false,
+                        monitorName: $m.name, widgetId: "1" } }
+              end)
+          )
+        end)' 2>/dev/null) || return 0
+
+    [ -n "$new" ] || return 0
+    printf '%s\n' "$new" > "$f.copal.$$" && mv "$f.copal.$$" "$f"
+}
+
+case "${1:---status}" in
+    --seed)   seed ;;
+    --off)    mkdir -p "$(dirname "$OFF")"; : > "$OFF"; stop_desktop
+              echo "desktop widgets off -- copal-widgets --on brings them back" ;;
+    --on)     rm -f "$OFF"; start_desktop
+              echo "desktop widgets on" ;;
+    --status)
+        if [ -e "$OFF" ]; then echo "desktop widgets: off ($OFF)"
+        elif pgrep -f 'waybar .*desktop\.json' >/dev/null 2>&1; then
+            echo "desktop widgets: running (waybar, ~/.config/waybar/desktop.json)"
+        else echo "desktop widgets: on, but not running -- start them with: copal-bar &"
+        fi
+        if [ -f "$CFG/quickshell/widgets.json" ]; then
+            echo "quickshell model: $CFG/quickshell/widgets.json"
+            command -v jq >/dev/null 2>&1 && jq -r \
+                '.monitors | to_entries[] | "  " + .key + ": " +
+                 ([.value[].widgetName] | join(", "))' \
+                "$CFG/quickshell/widgets.json" 2>/dev/null || true
+        fi
+        command -v quickshell >/dev/null 2>&1 || command -v qs >/dev/null 2>&1 \
+            || echo "quickshell is not installed -- the model waits for it" ;;
+    -h|--help|help) usage ;;
+    *) usage; exit 1 ;;
+esac
+COPALWIDGETS
+    chmod 0755 /usr/local/bin/copal-widgets
+    note "copal-widgets -- the clock and weather on the wallpaper (--off to hide)"
+
+    # The wrapper the session starts, rather than naming waybar in
+    # hyprland.conf. One place decides which shell runs, and it prefers the
+    # real one -- so the day quickshell is packaged, nothing here is edited.
+    cat > /usr/local/bin/copal-bar <<'COPALBAR'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-bar -- start whichever shell this machine actually has.
+#
+# Linux Antiquity's bar, taskbar, widgets and launcher are quickshell QML.
+# quickshell is not packaged for Alpine, so waybar stands in. This script is
+# the one place that knows which, and it prefers quickshell -- put a
+# quickshell binary on this machine and the next login uses the real thing
+# with nothing here changed.
+set -eu
+
+# The desktop widgets, before either shell starts. This only writes
+# ~/.config/quickshell/widgets.json -- the model the theme's WidgetScreen.qml
+# reads and which upstream ships empty -- so it costs nothing on a machine
+# with no quickshell and means the widgets are already placed on the machine
+# that gets one. See copal-widgets.
+command -v copal-widgets >/dev/null 2>&1 && copal-widgets --seed >/dev/null 2>&1 || true
+
+# quickshell draws its own desktop widgets, so these two exec before the
+# waybar pair below is ever started.
+if command -v qs >/dev/null 2>&1; then exec qs; fi
+if command -v quickshell >/dev/null 2>&1; then exec quickshell; fi
+
+if command -v waybar >/dev/null 2>&1; then
+    # The widgets on the wallpaper: a second waybar on the bottom layer,
+    # backgrounded, unless somebody said no with copal-widgets --off. It is
+    # not exec'd -- the bar is the thing this script must not return from.
+    _cfg="${XDG_CONFIG_HOME:-$HOME/.config}"
+    if [ ! -e "$_cfg/copal/no-desktop-widgets" ] && [ -f "$_cfg/waybar/desktop.json" ]; then
+        waybar -c "$_cfg/waybar/desktop.json" -s "$_cfg/waybar/desktop.css" \
+            >/dev/null 2>&1 &
+    fi
+    exec waybar
+fi
+
+# Neither. Say so somewhere it will be seen -- a desktop with no bar and no
+# explanation is the thing this whole script exists to avoid.
+if command -v notify-send >/dev/null 2>&1; then
+    notify-send "Copal" "No bar: neither quickshell nor waybar is installed.
+Install one with:  doas apk add waybar" 2>/dev/null || true
+fi
+echo "copal-bar: neither quickshell nor waybar is installed." >&2
+exit 1
+COPALBAR
+    chmod 0755 /usr/local/bin/copal-bar
+    note "copal-bar -- prefers quickshell, falls back to waybar"
+}
+
+stage_hyprland() {
+    say "Stage 17: Hyprland and the Linux Antiquity theme (the full monty)"
+
+    require_disk_root "A Wayland compositor and the theme" || return 0
+
+    # The boards this can never work on are refused with the reason, not a
+    # failed package install an hour later. armhf and armv7 have no Hyprland
+    # package -- and no GLES-capable Mesa worth the name on a Zero's
+    # VideoCore -- so the answer is stage 4, which was designed for exactly
+    # that hardware. Unattended, the answer is no: AUTO_DEFAULT=n makes the
+    # full-automatic install skip this stage on a Zero instead of wedging.
+    case "$(apk --print-arch 2>/dev/null || uname -m)" in
+        aarch64|x86_64) : ;;
+        *)  warn "this is a $(apk --print-arch 2>/dev/null || uname -m) board -- Alpine packages no Hyprland for it."
+            note "Stage 4 (X.Org and i3) is the desktop for this hardware."
+            if [ "${AUTO:-0}" = 1 ]; then AUTO_DEFAULT=n; fi
+            confirm "Try anyway (it will almost certainly fail)?" || return 0 ;;
+    esac
+
+    require_network || return 1
+    have_space_mb 900 "Hyprland, Qt-free Wayland stack and the theme" || return 1
+
+    # ------------------------------------------------------------------
+    # The compositor and the theme's programs. hyprland, kitty and mako are
+    # the spine -- without any one of them this is not the Antiquity desktop,
+    # so plain `apk add` and a hard stop, unlike everything after them.
+    # foot AND NOT KITTY is the terminal on the spine, which is a change from
+    # what the theme ships, and the reason is a machine this was tested on.
+    #
+    # kitty draws through OpenGL and nothing else. Where the compositor is
+    # already on llvmpipe -- a VM with no VirGL, a Pi through fbdev, any host
+    # that does not hand a GPU through -- kitty opens a window and exits
+    # within a second, taking the only terminal on a fresh desktop with it.
+    # 'copal-gpu' names that case; the desktop it leaves has no way to type.
+    #
+    # There is a second reason, visible in the theme's own kitty.conf: it sets
+    # background and foreground to the SAME #eaeaea and relies on
+    # background_opacity 0.2 plus compositor blur to make text legible. With
+    # software rendering and no blur that is white on white -- so even the
+    # kitty that does start is not the terminal in the screenshots.
+    #
+    # foot is Wayland-native, renders on the CPU by design, is about a tenth
+    # of the size, and starts in a fraction of the time. It is the terminal
+    # this desktop should have had. kitty goes on afterwards as an optional --
+    # it is what upstream themes, it is right on a machine with a real GPU,
+    # and nothing here uninstalls it -- but it is no longer what Super+Return
+    # opens and no longer what a failed install takes the desktop down with.
+    say "Installing Hyprland, foot and mako"
+    apk add hyprland foot mako || {
+        warn "the core packages did not install -- see apk's message above."
+        note "hyprland lives in the community repository; check /etc/apk/repositories."
+        return 1
+    }
+    # Optional, and after the spine: a machine with no kitty is a working
+    # desktop, which was the entire problem with it being on the spine.
+    add_optional kitty
+
+    # The seat and the bus. A Wayland compositor needs permission to open the
+    # DRM device and the input devices; on a systemd distro logind brokers
+    # that, on Alpine it is seatd -- a 100 kB daemon -- plus membership of
+    # three groups. dbus is the session bus mako and the polkit agent talk
+    # over; copal-session wraps the compositor in dbus-run-session.
+    say "Installing the seat manager and the session bus"
+    add_optional seatd dbus
+    if apk info -e seatd >/dev/null 2>&1; then
+        rc-update add seatd default >/dev/null 2>&1 || true
+        rc-service seatd start >/dev/null 2>&1 || true
+        note "seatd running and enabled at boot"
+    fi
+    if apk info -e dbus >/dev/null 2>&1; then
+        rc-update add dbus default >/dev/null 2>&1 || true
+        rc-service dbus start >/dev/null 2>&1 || true
+    fi
+    for _g in seat input video; do
+        addgroup "$PI_USER" "$_g" 2>/dev/null || true
+    done
+    note "'$PI_USER' is in seat, input and video -- what a compositor needs"
+
+    # The GPU's userspace half. apk resolves shared-library dependencies by
+    # itself but Mesa DRIVERS are runtime-loaded, not linked, so nothing pulls
+    # them in. Alpine has renamed these packages across releases; each name is
+    # asked for separately and a missing one is not an error.
+    say "Installing the Mesa drivers"
+    add_optional mesa-dri-gallium
+    add_optional mesa-egl
+    add_optional mesa-gles
+    add_optional mesa-gbm
+
+    # Everything else the theme names, each surviving its own absence.
+    # xwayland keeps stage 4's and stage 12's X programs runnable inside the
+    # compositor -- without it every X application on the machine goes dark
+    # the moment the session switches.
+    say "Installing the theme's supporting cast"
+    # xset for the font path exec-once above, and the X11 core fonts it names.
+    add_optional xwayland xset font-misc-misc font-adobe-75dpi font-adobe-100dpi
+    add_optional hyprpolkitagent polkit
+    add_optional nemo
+    add_optional wofi
+    add_optional grim slurp
+    add_optional swaybg
+    add_optional wl-clipboard
+    add_optional jq socat
+    add_optional font-dejavu
+    add_optional font-jetbrains-mono
+    # The upstream tools, asked for by name so the day Alpine packages them
+    # this stage starts using them without being edited -- the wrappers below
+    # already prefer them. Today all three are expected to be missing.
+    try_add hyprpaper  || note "hyprpaper is not packaged -- swaybg paints the wallpaper instead"
+    try_add hyprshot   || note "hyprshot is not packaged -- grim + slurp take the screenshots"
+    # hyprland-guiutils is hyprland-qtutils renamed; both are asked for so
+    # whichever name a repository carries is the one that answers. It brings
+    # hyprland-dialog, which is all the login-time warning is looking for --
+    # and the .conf silences that warning either way, so this is a nicety.
+    try_add hyprland-guiutils || try_add hyprland-qtutils \
+        || note "hyprland-guiutils is not packaged -- its dialogs are unused here"
+    if ! try_add quickshell; then
+        warn "quickshell is not packaged in this Alpine release -- not even edge has it."
+        note "The theme's radial taskbar, widgets and launcher are quickshell; without"
+        note "it you get Antiquity's windows, terminal, notifications and wallpaper,"
+        note "with wofi as the launcher. The quickshell configs are installed anyway:"
+        note "the moment a quickshell binary appears on this machine (apk or a source"
+        note "build -- see docs/THEME.md), the next login uses it, nothing to redo."
+    fi
+
+    # ------------------------------------------------------------------
+    # The theme itself. From the card first -- copal-prep.sh staged it next to
+    # Mini vMac -- and GitHub only as the fallback, so an unattended install
+    # does not hang on a web server for a theme it is already carrying.
+    say "Installing the Linux Antiquity configs"
+    _theme_tgz=""
+    for _c in "$BOOT/antiquity/linux-antiquity.tar.gz" /media/*/antiquity/linux-antiquity.tar.gz; do
+        [ -f "$_c" ] && { _theme_tgz="$_c"; break; }
+    done
+    _tdir="/tmp/antiquity.$$"
+    rm -rf "$_tdir"; mkdir -p "$_tdir"
+    if [ -n "$_theme_tgz" ]; then
+        tar -xzf "$_theme_tgz" -C "$_tdir" || { warn "could not unpack $_theme_tgz"; return 1; }
+        note "theme from the card: $_theme_tgz"
+    else
+        note "no staged theme on the boot partition -- fetching from GitHub"
+        if wget -q -O "$_tdir/main.tar.gz" \
+                "https://github.com/diinki/linux-antiquity/archive/refs/heads/main.tar.gz"; then
+            tar -xzf "$_tdir/main.tar.gz" -C "$_tdir" && rm -f "$_tdir/main.tar.gz"
+        else
+            warn "could not fetch the theme -- no card copy, no network copy. Stopping here."
+            rm -rf "$_tdir"
+            return 1
+        fi
+    fi
+    # The staged tarball unpacks to configs/; the GitHub one to
+    # linux-antiquity-main/configs. Point at whichever appeared.
+    [ -d "$_tdir/configs" ] || _tdir="$_tdir/linux-antiquity-main"
+    [ -d "$_tdir/configs" ] || { warn "no configs/ in the theme archive -- corrupt download?"; rm -rf "/tmp/antiquity.$$"; return 1; }
+
+    # The copy is upstream install.sh's behaviour, kept because its simplicity
+    # is the point: each config directory goes to ~/.config/<name> whole, and
+    # anything already there is MOVED ASIDE first, timestamped, never merged
+    # and never deleted. Reimplemented in POSIX sh (upstream is bash), and
+    # into both homes, the same two install_home_file writes to.
+    for _h in /root "$(user_home)"; do
+        [ -n "$_h" ] && [ -d "$_h" ] || continue
+        _bak="$_h/copal-theme-backups"
+        for _d in "$_tdir/configs"/*/; do
+            [ -d "$_d" ] || continue
+            _name=$(basename "$_d")
+            _tgt="$_h/.config/$_name"
+            if [ -d "$_tgt" ]; then
+                mkdir -p "$_bak"
+                _b="$_bak/$_name"
+                [ -e "$_b" ] && _b="${_b}_$(date +%Y%m%d_%H%M%S)"
+                mv "$_tgt" "$_b"
+                note "moved aside: $_tgt -> $_b"
+            fi
+            mkdir -p "$_h/.config"
+            cp -r "$_d" "$_tgt"
+            # WHAT COMES BACK ACROSS THE MOVE. Two kinds of file in the
+            # directory just moved aside are not the theme's to replace:
+            #
+            #   local.conf     the person's -- created once by this stage
+            #                  and never rewritten, see install_home_once.
+            #                  The second VM run reported it "created once"
+            #                  a second time, which is how this was found.
+            #   what THIS wrote the last time, by the record install_home_file
+            #                  keeps. hyprland.conf and hyprpaper.conf are
+            #                  about to be written again by this stage; if the
+            #                  theme's copy is left in their place first, the
+            #                  record no longer matches and the "you had
+            #                  changed this" note speaks about a change nobody
+            #                  made. Bringing the installer's own last copy
+            #                  back keeps that note honest.
+            #
+            # Both copied with -p, so the person's own edits and their dates
+            # travel intact.
+            if [ -d "${_b:-}" ]; then
+                if [ -f "$_b/local.conf" ]; then
+                    cp -p "$_b/local.conf" "$_tgt/local.conf"
+                    note "kept: $_tgt/local.conf (yours)"
+                fi
+                awk -v d="$_tgt/" 'index($2, d) == 1 { print substr($2, length(d) + 1) }' \
+                    "$WRITTEN_RECORD" 2>/dev/null | while read -r _rf; do
+                    [ -n "$_rf" ] && [ -f "$_b/$_rf" ] || continue
+                    mkdir -p "$(dirname "$_tgt/$_rf")"
+                    cp -p "$_b/$_rf" "$_tgt/$_rf"
+                done
+            fi
+        done
+        # The licence travels with what it licenses.
+        cp "$_tdir/LICENSE" "$_h/.config/hypr/LICENSE.linux-antiquity" 2>/dev/null || true
+        _own=$(stat -c '%u:%g' "$_h" 2>/dev/null) \
+            && chown -R "$_own" "$_h/.config" "$_bak" 2>/dev/null || true
+        note "$_h/.config -- hypr, kitty, mako, quickshell"
+    done
+    rm -rf "/tmp/antiquity.$$"
+
+    # The editor follows the desktop. Stage 7 wrote both theme directories and
+    # pointed the symlink at tokyo-night, which is stage 4's palette; this
+    # desktop is the other one. Written here rather than assumed, because
+    # stage 17 can be run on a machine that never ran stage 7 -- and if it was
+    # run, an editor that is open right now repaints within three seconds
+    # without being restarted. See dev_write_nvim_ui() and ~/.config/nvim/theme.lua.
+    [ -d "$copal_theme_dir/antiquity" ] || copal_write_themes
+    # The theme itself is applied at the very end of this stage (see "Stage
+    # 16 complete"), after the bar's stylesheet, mako's config, hyprland.conf
+    # and foot.ini exist for it to edit.
+
+    # Same reasoning: this desktop binds four keys to copal-clip, and stage 4
+    # -- which is where the script is normally written -- may never have run
+    # on this machine. Writing it twice costs nothing; not having it costs
+    # four dead keys.
+    write_copal_clip
+
+    # ------------------------------------------------------------------
+    # The transformations. Everything Arch-shaped or newer-than-Alpine in the
+    # vendored configs is corrected here, in generated files, so the vendored
+    # tree stays byte-identical to upstream and every deviation is readable
+    # in this stage rather than hidden in edited copies.
+
+    # Three small wrappers before the compositor config that binds them.
+    # Each one prefers the tool the theme wants and falls back to the tool
+    # Alpine has, so the binds never point at a binary that is not there.
+    say "Writing copal-launcher, copal-shot and copal-wallpaper"
+    cat > /usr/local/bin/copal-launcher <<'ANTIQLAUNCH'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-launcher -- Super+Space, Super+D and Super+Z on the Antiquity desktop.
+#
+# ONE MENU, WHICH IS THE POINT OF THIS FILE NOW. It used to be a second menu:
+# 'wofi --show drun' if quickshell was absent, which is a flat searchable list
+# of .desktop files and nothing else -- no categories, no settings, no way to
+# log out -- while Super+Z opened copal-menu, which had all of that and no
+# search across the applications. Two menus, each missing the other's half,
+# on adjacent keys. Omarchy ships that same split; there is no reason to
+# inherit it.
+#
+# So every launcher key now opens copal-menu, whose left pane IS the drun list
+# (plus the terminal programs drun cannot see) and whose right pane is the
+# structure. Left and Right move between them.
+#
+# The quickshell radial launcher is deliberately not preferred any more, even
+# where quickshell exists: it is the third menu, and it knows about neither
+# pane.
+command -v copal-menu >/dev/null 2>&1 && exec copal-menu
+command -v wofi >/dev/null 2>&1 && exec wofi --show drun
+command -v dmenu_run >/dev/null 2>&1 && exec dmenu_run
+echo "copal-launcher: no launcher installed (copal-menu, wofi, dmenu)" >&2
+exit 1
+ANTIQLAUNCH
+    chmod 0755 /usr/local/bin/copal-launcher
+
+    cat > /usr/local/bin/copal-shot <<'ANTIQSHOT'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-shot -- Super+Shift+S: screenshot a region you draw.
+#
+# hyprshot is what the theme binds; Alpine does not package it, and grim +
+# slurp are the same two verbs (grab, select) it is built from. Saved under
+# ~/Pictures when it exists, /tmp when it does not -- upstream used /tmp.
+if command -v hyprshot >/dev/null 2>&1; then
+    exec hyprshot --mode region --output-folder "${XDG_PICTURES_DIR:-/tmp}"
+fi
+if command -v grim >/dev/null 2>&1 && command -v slurp >/dev/null 2>&1; then
+    _dir="$HOME/Pictures"; [ -d "$_dir" ] || _dir=/tmp
+    _geom=$(slurp) || exit 1
+    exec grim -g "$_geom" "$_dir/screenshot-$(date +%Y%m%d-%H%M%S).png"
+fi
+echo "copal-shot: neither hyprshot nor grim+slurp installed" >&2
+exit 1
+ANTIQSHOT
+    chmod 0755 /usr/local/bin/copal-shot
+
+    cat > /usr/local/bin/copal-wallpaper <<'ANTIQWALL'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-wallpaper -- paint the wallpaper, choose one, or fetch more.
+#
+#   copal-wallpaper              paint the chosen one and stay running.
+#                                This is what hyprland.conf exec-once's.
+#   copal-wallpaper --pick       choose one, with thumbnails.
+#   copal-wallpaper set FILE     use FILE from now on.
+#   copal-wallpaper --list       what is available, and where it came from.
+#   copal-wallpaper --fetch      download diinki's published collection.
+#
+# hyprpaper is what the theme uses and Alpine does not package it; swaybg
+# shows one image just as well.
+set -u
+have() { command -v "$1" >/dev/null 2>&1; }
+wayland() { [ -n "${WAYLAND_DISPLAY:-}" ]; }
+
+# WHERE THE CHOICE LIVES. One line naming a file, in the config directory
+# rather than in a dotfile of its own, so 'what is my wallpaper' has one
+# answer that both the picker and the session-start path read.
+STATE="${XDG_CONFIG_HOME:-$HOME/.config}/copal/wallpaper"
+BUNDLED="$HOME/.config/hypr/wallpapers_bundled"
+EXTRA="$HOME/Pictures/wallpapers"
+THUMBS="${XDG_CACHE_HOME:-$HOME/.cache}/copal/wallpaper-thumbs"
+DEFAULT="$BUNDLED/georges_riom_collage.png"
+
+# Every image in both places, deduplicated by name, newest directory last.
+# Nothing recursive: a wallpaper directory with a tree in it is somebody's
+# photo library and this is not a file manager.
+list_papers() {
+    for _d in "$BUNDLED" "$EXTRA"; do
+        [ -d "$_d" ] || continue
+        for _f in "$_d"/*.png "$_d"/*.jpg "$_d"/*.jpeg "$_d"/*.webp; do
+            [ -f "$_f" ] && printf '%s\n' "$_f"
+        done
+    done
+}
+
+current() {
+    if [ -s "$STATE" ]; then
+        _c=$(head -1 "$STATE")
+        [ -f "$_c" ] && { printf '%s\n' "$_c"; return 0; }
+    fi
+    [ -f "$DEFAULT" ] && { printf '%s\n' "$DEFAULT"; return 0; }
+    list_papers | head -1
+}
+
+# ---------------------------------------------------------------------------
+# Thumbnails. The pictures are 4K PNGs of twenty megabytes; handing twenty of
+# those to a launcher on a machine with 512 MB of RAM is how you find out what
+# the OOM killer does to a compositor. 240px versions, made once, kept in the
+# cache directory where they can be deleted without losing anything.
+thumb_for() {  # <image> -> path to its thumbnail (which may be the image)
+    have magick || have convert || { printf '%s\n' "$1"; return 0; }
+    _im=$(have magick && echo magick || echo convert)
+    mkdir -p "$THUMBS" 2>/dev/null || { printf '%s\n' "$1"; return 0; }
+    # Named after the source so the cache is self-cleaning by inspection, and
+    # regenerated only when the source is newer.
+    _t="$THUMBS/$(printf '%s' "$1" | md5sum 2>/dev/null | cut -c1-16).png"
+    [ -z "${_t##*/.png}" ] && { printf '%s\n' "$1"; return 0; }
+    if [ ! -f "$_t" ] || [ "$1" -nt "$_t" ]; then
+        "$_im" "$1" -thumbnail 240x135^ -gravity center -extent 240x135 \
+               "$_t" 2>/dev/null || { printf '%s\n' "$1"; return 0; }
+    fi
+    printf '%s\n' "$_t"
+}
+
+# ---------------------------------------------------------------------------
+# THE PICKER, and there are two because there is no one program that draws a
+# thumbnail on both desktops.
+#
+#   Wayland: wofi --allow-images, which reads "img:PATH:text:LABEL" and draws
+#            the picture beside the name. Same launcher as the menu, so it is
+#            already styled and already familiar.
+#
+#            HOW BIG THE PICTURE IS, is a config key and not a flag. wofi
+#            1.5.3 has --allow-images (-I) and no --image-size at all: the
+#            size is image_size, default 32, reachable only through the
+#            config file or -D/--define. Written as --image-size it is
+#            ignored in silence, which produces a picker whose thumbnails
+#            are the height of the text. Seen on a screenshot of the real
+#            thing; fixed here.
+#   X11:     feh -t, which IS a thumbnail browser -- a grid of pictures, and
+#            --action turns a click into a command. Nicer than the Wayland
+#            one, and it is the older desktop that gets it, which is a
+#            pleasant change.
+#
+# Neither is required: with no image-capable picker this falls back to the
+# plain list, which still works and still sets the wallpaper.
+pick() {
+    _n=$(list_papers | grep -c . || true)
+    [ "${_n:-0}" -gt 0 ] || {
+        echo "copal-wallpaper: no images in $BUNDLED or $EXTRA" >&2
+        echo "  'copal-wallpaper --fetch' downloads diinki's published set." >&2
+        return 1
+    }
+
+    if ! wayland && have feh; then
+        # feh runs the action itself, so this returns as soon as the grid is
+        # up and the setting happens on the click.
+        exec feh -t -y 200 -E 200 --index-info "%n" \
+                 --action "copal-wallpaper set %f" $(list_papers)
+    fi
+
+    if wayland && have wofi && { have magick || have convert; }; then
+        _sel=$(list_papers | while IFS= read -r _f; do
+                   printf 'img:%s:text:%s\n' "$(thumb_for "$_f")" "$(basename "$_f")"
+               done | wofi --dmenu --allow-images --define image_size=96 \
+                           --insensitive --prompt wallpaper \
+                           --lines 6 --width 660) || return 0
+        # wofi gives back the text half, which is the basename.
+        [ -n "$_sel" ] || return 0
+        _f=$(list_papers | awk -v b="$_sel" '{ n=$0; sub(/.*\//,"",n); if (n==b) { print; exit } }')
+        [ -n "$_f" ] && set_paper "$_f"
+        return 0
+    fi
+
+    # No pictures, then. Still a picker.
+    _sel=$(list_papers | while IFS= read -r _f; do basename "$_f"; done \
+           | { if wayland && have wofi; then wofi --dmenu --prompt wallpaper --lines 12
+               elif have dmenu; then dmenu -i -l 12 -p wallpaper
+               else cat; fi; }) || return 0
+    [ -n "$_sel" ] || return 0
+    _f=$(list_papers | awk -v b="$_sel" '{ n=$0; sub(/.*\//,"",n); if (n==b) { print; exit } }')
+    [ -n "$_f" ] && set_paper "$_f"
+}
+
+# Remember it, then repaint without restarting the session. swaybg has no IPC,
+# so repainting means replacing the process -- which is why this kills only
+# the swaybg it started rather than every swaybg on the machine.
+set_paper() {  # <image>
+    [ -f "$1" ] || { echo "copal-wallpaper: no such file: $1" >&2; return 1; }
+    mkdir -p "$(dirname "$STATE")"
+    printf '%s\n' "$1" > "$STATE"
+    echo "wallpaper: $1"
+    if have hyprctl && hyprctl version >/dev/null 2>&1 && have hyprpaper; then
+        hyprctl hyprpaper reload ,"$1" >/dev/null 2>&1 && return 0
+    fi
+    if have swaybg; then
+        pkill -x -U "$(id -u)" swaybg 2>/dev/null
+        (setsid swaybg -i "$1" -m fill >/dev/null 2>&1 &)
+        return 0
+    fi
+    have feh && exec feh --bg-fill "$1"
+    return 0
+}
+
+# ---------------------------------------------------------------------------
+# FETCHING THE PUBLISHED SET, and the two warnings below are the reason this
+# is a command you run rather than something an install stage does.
+#
+# LICENCE. github.com/diinki/wallpapers carries NO LICENCE FILE. Its README
+# says "These are the wallpapers that I've made & published, in case any of
+# you want to use them!" -- which is the author inviting you to use them, and
+# is not a grant to redistribute. So Copal does not ship them, does not put
+# them in the image, and does not vendor them into its repository the way it
+# vendors the theme, which IS MIT-licensed and can be. What it does is fetch
+# them onto YOUR machine at YOUR request, which is the same act as clicking
+# the pictures in that README. If you want to redistribute them, that is a
+# question for the author -- the Discord and Ko-fi links are in the README.
+#
+# SIZE. Twenty images, 240 MB, and they are 4K PNGs. On a Pi Zero with a
+# 720p framebuffer and 512 MB of RAM that is neither useful nor survivable,
+# so each one is downscaled to the screen and the original is discarded. The
+# download is still 240 MB over the wire if you take all of them, which is
+# why the default is to ask which.
+UPSTREAM="https://raw.githubusercontent.com/diinki/wallpapers/main"
+PAPERS="june2026/carnation_collage.png
+june2026/georges_riom_collage.png
+june2026/oc_the_blackboard.png
+may2025/2CB.png
+may2025/ALCHEMY-dark.png
+may2025/ALCHEMY-pink.png
+may2025/AQUARIUM.png
+may2025/ARCHPOOL.png
+may2025/HEART_NEBULA.png
+may2025/HIRAETH.png
+may2025/STRAY_KITTY_CLUB-beige.png
+may2025/STRAY_KITTY_CLUB-mint.png
+may2025/STRAY_KITTY_CLUB-pink.png
+may2025/STRAY_KITTY_CLUB-teal.png
+may2025/SYSTEMA.png
+may2025/colorshift.png
+april2026/terminal_glossary_4k_pastel-green.png
+april2026/terminal_glossary_4k_pastel-pink.png
+april2026/terminal_glossary_4k_pastel-purple.png
+april2026/terminal_glossary_4k_paw.png"
+
+screen_geom() {
+    if have hyprctl && hyprctl monitors -j >/dev/null 2>&1 && have jq; then
+        hyprctl monitors -j 2>/dev/null \
+            | jq -r '.[0] | "\(.width)x\(.height)"' 2>/dev/null && return 0
+    fi
+    have xrandr && xrandr 2>/dev/null | awk '/\*/ {print $1; exit}' && return 0
+    echo 1920x1080
+}
+
+fetch() {  # [name-fragment ...]
+    have curl || { echo "copal-wallpaper: curl is not installed." >&2; return 1; }
+    cat <<'NOTE'
+diinki's wallpapers -- https://github.com/diinki/wallpapers
+
+  That repository has NO LICENCE FILE. Its README says they are published
+  "in case any of you want to use them", which is an invitation to use them
+  and not a grant to redistribute them. Copal therefore does not ship them;
+  this fetches them onto this machine at your request, which is the same act
+  as saving them from the page yourself. Redistribution is a question for the
+  author -- his Discord and Ko-fi are linked in that README.
+
+  They are 4K PNGs, about 240 MB for the set. Each is downscaled to this
+  screen after download and the original is discarded, because a 22 MB image
+  on a machine with 512 MB of RAM is not a wallpaper, it is an incident.
+
+NOTE
+    _geom=$(screen_geom)
+    _want="$*"
+    mkdir -p "$EXTRA" || return 1
+    _got=0 _fail=0
+    for _p in $PAPERS; do
+        _name=$(basename "$_p")
+        # No arguments means all of them; otherwise match any fragment given.
+        if [ -n "$_want" ]; then
+            _hit=0
+            for _w in $_want; do
+                case "$_name" in *"$_w"*) _hit=1 ;; esac
+                # Case-insensitively too: nobody types STRAY_KITTY_CLUB.
+                case "$(echo "$_name" | tr 'A-Z' 'a-z')" in
+                    *"$(echo "$_w" | tr 'A-Z' 'a-z')"*) _hit=1 ;;
+                esac
+            done
+            [ "$_hit" = 1 ] || continue
+        fi
+        _out="$EXTRA/$_name"
+        [ -f "$_out" ] && { echo "  have    $_name"; continue; }
+        printf '  fetch   %s ... ' "$_name"
+        if curl -fsSL --max-time 300 -o "$_out.part" "$UPSTREAM/$_p"; then
+            if have magick || have convert; then
+                _im=$(have magick && echo magick || echo convert)
+                # >  means "only shrink": a picture already smaller than the
+                # screen is left alone rather than blown up into mush.
+                "$_im" "$_out.part" -resize "${_geom}^>" -strip "$_out" 2>/dev/null \
+                    || mv "$_out.part" "$_out"
+                rm -f "$_out.part"
+            else
+                mv "$_out.part" "$_out"
+            fi
+            echo "ok ($(du -h "$_out" 2>/dev/null | cut -f1))"
+            _got=$((_got + 1))
+        else
+            rm -f "$_out.part"
+            echo "FAILED"
+            _fail=$((_fail + 1))
+        fi
+    done
+    echo
+    echo "$_got fetched into $EXTRA (${_fail} failed), scaled to $_geom."
+    echo "Choose one with:  copal-wallpaper --pick"
+}
+
+case "${1:---paint}" in
+    --paint|'')
+        WP=$(current)
+        # hyprpaper reads its own config and is what the theme expects.
+        have hyprpaper && exec hyprpaper
+        [ -n "${WP:-}" ] && [ -f "$WP" ] || exit 0
+        have swaybg && exec swaybg -i "$WP" -m fill
+        have feh && exec feh --bg-fill "$WP"
+        exit 0 ;;
+    --pick|-p)   pick ;;
+    set)         shift; [ $# -ge 1 ] || { echo "usage: copal-wallpaper set FILE" >&2; exit 2; }
+                 set_paper "$1" ;;
+    --list|-l)
+        printf 'current: %s\n\n' "$(current)"
+        list_papers | while IFS= read -r _f; do
+            case "$_f" in
+                "$BUNDLED"/*) printf '  %-46s (bundled with the theme)\n' "$(basename "$_f")" ;;
+                *)            printf '  %-46s (%s)\n' "$(basename "$_f")" "$(dirname "$_f")" ;;
+            esac
+        done ;;
+    --fetch|-f)  shift; fetch "$@" ;;
+    -h|--help)   sed -n '5,14p' "$0" | sed 's/^# \{0,1\}//' ;;
+    *)           echo "copal-wallpaper: unknown option '$1' -- try --help" >&2; exit 2 ;;
+esac
+ANTIQWALL
+    chmod 0755 /usr/local/bin/copal-wallpaper
+
+    # The compositor config: upstream's hyprland.lua translated value-for-
+    # value into the .conf dialect that Hyprland 0.54 -- the one Alpine
+    # ships -- actually reads. Hyprland looks for ~/.config/hypr/
+    # hyprland.conf first and reads .lua only from 0.55; both files being
+    # present is therefore not a conflict today and self-resolves the day it
+    # could be: a Hyprland new enough to read the .lua is new enough that
+    # whoever upgrades it can delete this .conf and get upstream's config,
+    # monitors and all. The mapping table lives in docs/THEME.md.
+    #
+    # What changed in translation, and why -- everything else is upstream's
+    # value verbatim:
+    #   monitors      DP-2/DP-4 at the author's desk -> one auto rule. The
+    #                 only portable answer, and hyprctl monitors tells you
+    #                 what to pin if you want the upstream shape back.
+    #   kb_layout     us,se with alt-shift toggle -> us. A surprise layout
+    #                 switch on a machine with one keyboard is a trap.
+    #   autostart     nm-applet dropped (no NetworkManager here);
+    #                 systemctl --user hyprpolkitagent -> exec'd directly;
+    #                 hyprpaper -> copal-wallpaper; qs kept but guarded;
+    #                 hyprctl setcursor dropped (theme not vendored).
+    #   launcher      the quickshell IPC one-liner -> copal-launcher.
+    #   screenshot    hyprshot -> copal-shot.
+    #   power         Copal's own additions: Super+Shift+P and the keyboard
+    #                 power key end the day through copal-halt, exactly as
+    #                 they do in i3 -- one habit, both desktops.
+    say "Writing ~/.config/hypr/hyprland.conf (the Alpine translation)"
+    cat > /tmp/hyprconf.$$ <<'ANTIQHYPR'
+# hyprland.conf -- generated by copal-init.sh (stage 17).
+# A translation of Linux Antiquity's hyprland.lua (upstream: diinki, MIT) for
+# the Hyprland Alpine packages -- 0.54 reads only this dialect. The original
+# .lua sits beside this file; on Hyprland >= 0.55 you may delete this .conf
+# to use it, after pinning your monitors in it. See docs/THEME.md.
+
+# One rule, every monitor: native mode, automatic placement, no scaling.
+# `hyprctl monitors all` shows what you have; pin specific outputs here the
+# way upstream's hyprland.lua does if you want more than one arranged.
+monitor = , preferred, auto, 1
+
+# foot, not the kitty upstream names here: kitty needs OpenGL and this desktop
+# may well be compositing in software ('copal-gpu' says which), where it opens
+# and exits within the second. foot renders on the CPU and always comes up.
+# kitty is still installed where it could be -- 'kitty' at this prompt.
+$terminal = foot
+$fileManager = FILEMGR_PLACEHOLDER
+$menu = copal-launcher
+
+# Autostart. Each guarded or wrapped -- see copal-wallpaper and copal-launcher
+# for the reasoning; the polkit agent is exec'd directly because there is no
+# systemd --user on Alpine to start it.
+exec-once = copal-wallpaper
+exec-once = mako
+# The clipboard history recorder, so Super+Ctrl+V has something to show.
+# Under Wayland it hands over to wl-paste --watch where cliphist exists.
+exec-once = copal-clip watch
+# The shell: quickshell if this machine has it, waybar if not. copal-bar
+# decides, so this line never has to change. Without it there is no bar,
+# no clock, no workspace indicator and no window list.
+exec-once = copal-bar
+exec-once = sh -c '[ -x /usr/libexec/hyprpolkitagent ] && exec /usr/libexec/hyprpolkitagent'
+# X11 core fonts for Xwayland clients. Xwayland starts with a font path of
+# "built-ins" alone -- X.org's default already lists these directories -- so
+# xboard died with "Unable to create font set" and xfig warned about
+# -misc-fixed-*. Found by the application sweep (docs/app-integration-plan.md
+# on gfx-lab); adding the directories fixed both.
+exec-once = sh -c 'xset +fp /usr/share/fonts/misc,/usr/share/fonts/75dpi,/usr/share/fonts/100dpi; xset fp rehash'
+
+env = XCURSOR_SIZE,24
+env = HYPRCURSOR_SIZE,24
+
+input {
+    kb_layout = us
+    follow_mouse = 1
+    sensitivity = 0
+    # SCROLLING DIRECTION. Upstream's config says false here and so did this
+    # one, which is libinput's own default: the wheel moves the SCROLLBAR, so
+    # rolling away sends the page up. Every touch device and every Mac moves
+    # the CONTENT instead, and this desktop is most often a VM on a Mac --
+    # where the host has already applied that direction and the guest was
+    # undoing it again. Both lines, because a mouse does not read the
+    # touchpad block: the outer one is the wheel, the inner one is fingers.
+    #
+    # Set both to false to go back. Stage 4's X session has the same setting
+    # in /etc/X11/xorg.conf.d/30-scrolling.conf, and the two should agree.
+    natural_scroll = true
+    touchpad {
+        natural_scroll = true
+    }
+}
+
+# Upstream sets this against cursor glitches; in a VM it is not optional --
+# virtio-gpu has no hardware cursor plane worth trusting.
+cursor {
+    no_hardware_cursors = true
+}
+
+general {
+    gaps_in = 4
+    gaps_out = 8
+    border_size = 1
+    col.active_border = rgb(1c1c1c)
+    col.inactive_border = rgb(1c1c1c)
+    resize_on_border = false
+    layout = dwindle
+    allow_tearing = false
+}
+
+decoration {
+    rounding = 9
+    rounding_power = 4
+    active_opacity = 1.0
+    inactive_opacity = 1.0
+    shadow {
+        enabled = true
+        range = 12
+        render_power = 6
+        sharp = false
+        color = rgba(00000030)
+        offset = 0 0
+        scale = 1
+    }
+    blur {
+        enabled = true
+        size = 3
+        passes = 2
+        noise = 0.023
+        contrast = 0.9
+        new_optimizations = true
+    }
+}
+
+animations {
+    enabled = true
+    bezier = smooth, 0.22, 1, 0.36, 1
+    animation = workspaces, 1, 8, smooth, slide
+    animation = windows, 1, 3, smooth
+    animation = fade, 1, 3, smooth
+}
+
+dwindle {
+    preserve_split = true
+}
+
+master {
+    new_status = master
+}
+
+misc {
+    force_default_wallpaper = 0
+    disable_hyprland_logo = true
+    # The toast that says "Your system does not have hyprland-guiutils
+    # installed. This is a runtime dependency for some dialogs." Alpine
+    # packages no such thing -- hyprland-qt-support is the QML style, not
+    # the binaries, and nothing in any repository provides hyprland-dialog,
+    # which is the program the check looks for. What it gates is the update
+    # and donate screens plus the app-not-responding dialog; Copal updates
+    # through 'copal -U' and shows its own key list. So the warning is about
+    # a component this system does not use and cannot obtain, and it is
+    # switched off rather than displayed at every login.
+    #
+    # THE OPTION IS SPELLED guiutils, NOT qtutils. Upstream renamed the
+    # package (and this variable with it); 0.54.3 registers only
+    # misc:disable_hyprland_guiutils_check and answers "no such option" to
+    # the old qtutils name, which is what made this look unsilenceable.
+    disable_hyprland_guiutils_check = true
+}
+
+$mainMod = SUPER
+
+bind = $mainMod, Return, exec, $terminal
+bind = $mainMod, Q, killactive,
+# Three ways to be rid of a window, and they are not the same operation.
+#
+#   killactive       asks the window to close, the way its own X button does.
+#                    The program gets to run its "save changes?" and may
+#                    refuse. This is what you want almost every time.
+#   forcekillactive  SIGKILLs the client. Nothing is asked and nothing is
+#                    saved -- it is 'kill -9' aimed with the mouse, for the
+#                    program that has stopped answering.
+#
+# Super+Escape is the second close binding, and Super+Shift+Escape is the
+# hard one -- the same pair on the same key, with Shift as the difference,
+# because the unrecoverable action should cost an extra finger rather than
+# sit on a key of its own that can be hit by accident.
+bind = $mainMod, Escape, killactive,
+bind = $mainMod SHIFT, Escape, forcekillactive,
+bind = $mainMod SHIFT, S, exec, copal-shot
+bind = $mainMod, E, exec, $fileManager
+bind = $mainMod SHIFT, SPACE, togglefloating,
+bind = $mainMod, F, fullscreen,
+bind = $mainMod, D, exec, $menu
+# Omarchy's launcher key as well as upstream's, because Super+Space is the one
+# people arrive already knowing and stage 4's i3 config binds it too.
+bind = $mainMod, SPACE, exec, $menu
+# Super+Z, which stage 4 binds and this desktop's own key list advertised for
+# some time while nothing here bound it at all. All three keys are now the
+# same menu, so which one somebody remembers no longer decides what they get.
+bind = $mainMod, Z, exec, copal-menu --system
+# THE MENU'S ARROW KEYS. copal-menu shows its two panes in wofi, one at a
+# time, and Left/Right swap them. wofi 1.5 cannot do that by itself: a
+# user-bound key only arms an exit status for whenever Enter or Escape is
+# eventually pressed, and the picker stays up. So while its picker is on
+# screen copal-menu enters this submap, and Hyprland answers the arrows:
+# each ends the picker with a signal the menu reads as "the other pane"
+# (inside a category, Left is Back). Every other key passes through, so
+# typing still filters. copal-menu leaves the submap on every way out, and
+# Escape here closes the picker and leaves it too, so a menu that died
+# cannot keep the arrows.
+submap = menu
+bind = , Left,   exec, pkill -USR1 -x wofi
+bind = , Right,  exec, pkill -USR2 -x wofi
+bind = , Escape, exec, pkill -x wofi
+bind = , Escape, submap, reset
+submap = reset
+# THE DESK, laid out the same way every time: copal-desk opens the editor and
+# a terminal on 2, an agent on 3, the browser on 5, and leaves you on an empty
+# 1. Muscle memory needs things to be in the same place; see the essay above
+# copal-desk in stage 4.
+bind = $mainMod SHIFT, D, exec, copal-desk
+
+# MOVING BETWEEN WINDOWS, which this config did not bind AT ALL until now.
+# Upstream's hyprland.conf assumes you will add your own; the result on a
+# fresh install is a tiling compositor in which the keyboard cannot change
+# which window has focus, so the only way to reach a window is the mouse.
+# That is the single biggest gap between this desktop and stage 4's i3, which
+# has had these since the beginning.
+#
+# Both spellings, exactly as the i3 config does it: arrows for people who
+# want arrows, hjkl for people with vi in their fingers.
+bind = $mainMod, left,  movefocus, l
+bind = $mainMod, right, movefocus, r
+bind = $mainMod, up,    movefocus, u
+bind = $mainMod, down,  movefocus, d
+bind = $mainMod, H, movefocus, l
+bind = $mainMod, L, movefocus, r
+bind = $mainMod, K, movefocus, u
+bind = $mainMod, J, movefocus, d
+
+# And moving the window itself, rather than the focus.
+bind = $mainMod SHIFT, left,  movewindow, l
+bind = $mainMod SHIFT, right, movewindow, r
+bind = $mainMod SHIFT, up,    movewindow, u
+bind = $mainMod SHIFT, down,  movewindow, d
+bind = $mainMod SHIFT, H, movewindow, l
+bind = $mainMod SHIFT, L, movewindow, r
+bind = $mainMod SHIFT, K, movewindow, u
+bind = $mainMod SHIFT, J, movewindow, d
+
+# Resizing, on the same keys as the i3 config's resize mode but without the
+# mode -- Hyprland has no modal resize, so Ctrl is the modifier.
+binde = $mainMod CTRL, left,  resizeactive, -40 0
+binde = $mainMod CTRL, right, resizeactive,  40 0
+binde = $mainMod CTRL, up,    resizeactive,  0 -40
+binde = $mainMod CTRL, down,  resizeactive,  0  40
+
+# THE APPLICATION SWITCHER. Alt+Tab is the one every person who has ever used
+# a computer tries first, and it did not exist here either. cyclenext walks
+# the windows on the active workspace; bringactivetotop keeps the one you
+# land on visible while you are cycling through floating windows.
+bind = ALT, Tab, cyclenext,
+bind = ALT, Tab, bringactivetotop,
+bind = ALT SHIFT, Tab, cyclenext, prev
+bind = ALT SHIFT, Tab, bringactivetotop,
+# The same thing on Super, because under UTM the Mac eats Alt+Tab before this
+# machine sees it -- the same reason stage 4's i3 config carries a second set
+# of bindings on Ctrl+Alt.
+bind = $mainMod, Tab, cyclenext,
+bind = $mainMod, Tab, bringactivetotop,
+
+# Workspaces on the scroll wheel, and the bar out of the way when you want
+# the whole screen. Super+B for the bar: Super+Shift+Space is togglefloating
+# here, unlike Omarchy, and moving an existing binding to match a different
+# system is how people lose muscle memory.
+bind = $mainMod, mouse_down, workspace, e+1
+bind = $mainMod, mouse_up,   workspace, e-1
+bind = $mainMod, B, exec, pkill -SIGUSR1 waybar
+
+# THE UNIFIED CLIPBOARD -- the same four keys stage 4's i3 config binds, so
+# the two desktops do not disagree about copy and paste.
+#
+# Omarchy writes these as pairs of 'sendshortcut' binds with a class filter,
+# which is Hyprland-only and repeats the list of terminal emulators four
+# times. copal-clip asks hyprctl what has focus and dispatches sendshortcut
+# itself, so there is one list, it is shared with the X desktop, and this
+# file stays four lines long. See write_copal_clip() in copal-prep.sh.
+bind = $mainMod, C, exec, copal-clip copy
+bind = $mainMod, X, exec, copal-clip cut
+bind = $mainMod, V, exec, copal-clip paste
+bind = $mainMod CTRL, V, exec, copal-clip history
+
+# System controls, on Omarchy's chords, with the programs this system has.
+bind = $mainMod CTRL, A, exec, $terminal -e alsamixer
+bind = $mainMod CTRL, T, exec, $terminal -e sh -c 'command -v btop >/dev/null && exec btop; exec htop'
+bind = $mainMod SHIFT, M, exec, $terminal -e sh -c 'command -v cmus >/dev/null && exec cmus; exec mpv --no-video ~/Music'
+# The camera: birdshot, or $CAMERA. Same key as stage 4's i3 binding, and the
+# same resolver, so the two desktops cannot disagree about what it opens.
+bind = $mainMod SHIFT, B, exec, copal-camera
+bind = $mainMod SHIFT, N, exec, $terminal -e sh -c 'command -v nvim >/dev/null && exec nvim; exec vi'
+# The wallpaper picker, with thumbnails. Also in the menu under Style, and on
+# the same chord as stage 4's i3 config so the two desktops agree.
+bind = $mainMod SHIFT, W, exec, copal-wallpaper --pick
+# THE KEY LIST, on the same two keys stage 4's i3 config uses. It opens the
+# ANTIQUITY list, not i3's: same modifier, almost nothing else the same.
+bind = $mainMod, slash, exec, $terminal -e copal-guide antiquity-keys
+bind = $mainMod, F1,    exec, $terminal -e copal-guide antiquity-keys
+
+# Copal's additions, so both desktops end the day the same way: copal-halt
+# asks, closes the session, syncs, powers down. The keyboard power key
+# arrives as a key event, and the compositor is the only thing placed to
+# catch it -- same story as the i3 binding.
+bind = $mainMod SHIFT, P, exec, copal-halt
+bind = , XF86PowerOff, exec, copal-halt
+bind = $mainMod SHIFT, Delete, exec, copal-halt reboot
+bind = $mainMod SHIFT, E, exit,
+
+# Workspaces 1-10 -- upstream generates these with a Lua loop; unrolled here
+# because the .conf dialect has no loops.
+bind = $mainMod, 1, workspace, 1
+bind = $mainMod, 2, workspace, 2
+bind = $mainMod, 3, workspace, 3
+bind = $mainMod, 4, workspace, 4
+bind = $mainMod, 5, workspace, 5
+bind = $mainMod, 6, workspace, 6
+bind = $mainMod, 7, workspace, 7
+bind = $mainMod, 8, workspace, 8
+bind = $mainMod, 9, workspace, 9
+bind = $mainMod, 0, workspace, 10
+bind = $mainMod SHIFT, 1, movetoworkspace, 1
+bind = $mainMod SHIFT, 2, movetoworkspace, 2
+bind = $mainMod SHIFT, 3, movetoworkspace, 3
+bind = $mainMod SHIFT, 4, movetoworkspace, 4
+bind = $mainMod SHIFT, 5, movetoworkspace, 5
+bind = $mainMod SHIFT, 6, movetoworkspace, 6
+bind = $mainMod SHIFT, 7, movetoworkspace, 7
+bind = $mainMod SHIFT, 8, movetoworkspace, 8
+bind = $mainMod SHIFT, 9, movetoworkspace, 9
+bind = $mainMod SHIFT, 0, movetoworkspace, 10
+
+# Move / resize with the mouse, upstream's binds.
+bindm = $mainMod, mouse:272, movewindow
+bindm = $mainMod, mouse:273, resizewindow
+
+# Media keys, upstream's binds kept verbatim. wpctl is wireplumber's tool and
+# arrives with stage 10's audio work; until then these keys do nothing, which
+# is what they did before this file existed.
+bindel = , XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
+bindel = , XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+bindl = , XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+bindl = , XF86AudioMicMute, exec, wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+bindel = , XF86MonBrightnessUp, exec, brightnessctl s 10%+
+bindel = , XF86MonBrightnessDown, exec, brightnessctl s 10%-
+
+# WHEN THE HOST STEALS A KEY -- the short version of the essay in stage 4's
+# i3 config: under UTM the Mac eats several Super chords before this guest
+# sees them, so the most-reached actions get a second binding on Ctrl+Alt,
+# which macOS reserves nothing on. Harmless on real hardware; delete freely.
+# The Super twins are not listed here. They are GENERATED from the $mainMod
+# binds above, by the awk pass that runs just after this file is written --
+# stage 4's i3 config does the same thing for the same reason, and a
+# hand-kept copy of a list is a list that drifts. Two rules, and they are the
+# rules the i3 side uses so the two desktops can be described in one sentence:
+#
+#     $mainMod        ->  CTRL ALT
+#     $mainMod SHIFT  ->  CTRL ALT SHIFT
+#     $mainMod CTRL   ->  CTRL ALT SHIFT
+#
+# Plain Ctrl+Space and Alt+Space for the launcher stay hand-written, because
+# neither follows from the rules: they are there because the launcher is
+# reached more often than anything else and Cmd+Space is the chord Spotlight
+# takes most reliably. Alt is Option on a Mac keyboard, right beside Command,
+# and macOS reserves nothing on it.
+bind = CTRL, SPACE, exec, $menu
+bind = ALT, SPACE, exec, $menu
+
+# The theme's own layer rules: quickshell's bars ask for blur behind their
+# translucent regions, by the namespaces the QML declares.
+#
+# THE STRUCTURED SYNTAX, and it is not optional on this version. An earlier
+# draft used the older positional form -- `layerrule = blur, <namespace>` --
+# and Hyprland 0.54.3 rejected all four lines on a real install:
+#
+#     invalid field blur: missing a value
+#     invalid field type ignorealpha
+#
+# which is the parser saying both halves of what is wrong: `blur` is a field
+# that takes a value (`blur on`), and the field is spelled `ignore_alpha`,
+# not `ignorealpha`. Upstream's hyprland.lua had it right all along --
+# `blur = true, ignore_alpha = 0.19, match = { namespace = ... }` -- so this
+# is the faithful translation of it and the older form was the mistake.
+# Both properties belong to one rule per namespace, as they do in the Lua.
+layerrule = blur on, ignore_alpha 0.19, match:namespace diinki_celestialantiquity:bars
+layerrule = blur on, ignore_alpha 0.19, match:namespace diinki_celestialantiquity:no_blur
+# And the same for the bar that is actually running. waybar's layer surface is
+# called "waybar"; where quickshell is absent this is the rule that does the
+# work, and where it is present this one simply matches nothing. Both are
+# listed so the file does not have to know which shell started.
+layerrule = blur on, ignore_alpha 0.19, match:namespace waybar
+ANTIQHYPR
+    # ----------------------------------------------------------------------
+    # THE KEY LIST FOR THIS DESKTOP, which did not exist.
+    #
+    # Stage 4 writes ~/.config/i3/keys.txt and binds Super+/ to it, and that
+    # file is the i3 key list. On the Antiquity desktop it is the WRONG list:
+    # the modifier is the same and almost nothing else is -- Super+Q closes a
+    # window here and quits nothing there, Super+E is the file manager rather
+    # than exit, the resize mode does not exist, and Alt+Tab does. Somebody
+    # pressing Super+/ on this desktop and getting the i3 list is worse off
+    # than somebody who found no list at all, because now they have one they
+    # believe.
+    #
+    # So: a second list, for this desktop, bound to the same key. Written from
+    # the binds in the file above -- if you add one there, add it here.
+    say "Writing the Antiquity key list"
+    mkdir -p /usr/local/share/copal/guides
+    cat > /usr/local/share/copal/guides/antiquity-keys.txt <<'GUIDE'
+ ======================================================================
+   THE ANTIQUITY DESKTOP -- key bindings
+ ======================================================================
+                                                     press q to close
+
+ "Super" is the Windows key, and Caps Lock is a second one -- see the
+ note at the end if this machine is a VM on a Mac.
+
+ Show this list again:   Super + /      or   copal-guide antiquity-keys
+ The menu:               Super + Space, Super + D or Super + Z, and the
+                         button in the top-left. One menu, two sides:
+                         applications on the left, everything else on the
+                         right, LEFT and RIGHT between them.
+
+ START SOMETHING
+   Super + Space        THE MENU. Super + D and Super + Z are the same key.
+                        It opens on the applications: type to search, and
+                        every program is there, the terminal ones included.
+                        LEFT and RIGHT move to the other side -- the
+                        categories, the settings, install, and log out.
+   Super + Return       a terminal
+   Super + E            the file manager
+   Super + Z            the same menu, opened on the right-hand side
+   Super + Shift + N    the editor (nvim)
+   Super + Shift + M    music (cmus, or mpv on ~/Music)
+   Super + Shift + B    the camera (birdshot, built from ~/code; or $CAMERA)
+   Super + Shift + W    the wallpaper picker, with thumbnails
+   Super + Shift + T    the theme picker
+   Super + Alt + Space  the menu's System side; Super + Ctrl + Space the
+                        wallpaper picker -- Omarchy's chords, kept as doors
+   Super + Ctrl + A     volume (alsamixer)
+   Super + Ctrl + T     what the machine is doing (btop, or htop)
+   Super + Shift + D    LAY THE DESK OUT. Editor and terminal on 2, a
+                        Claude session in ~/code on 3, the browser on 5,
+                        and you are left on an empty 1. 'copal-desk --list'
+                        for the layouts; write your own into
+                        ~/.config/copal/layouts/NAME.layout
+
+ COPY AND PASTE -- THE SAME KEYS EVERYWHERE, TERMINAL INCLUDED
+   Super + C            copy
+   Super + X            cut
+   Super + V            paste
+   Super + Ctrl + V     the clipboard history -- the last hundred things
+
+ WINDOWS
+   Super + Q            close this window. Super + Escape does the same.
+   Super + Shift + Esc  KILL this window -- no "save changes?", nothing
+                        asked. For the program that has stopped answering.
+   Alt + Tab            switch window   (Super + Tab does the same)
+   Alt + Shift + Tab    switch backwards
+   Super + arrows       move focus
+   Super + H J K L      move focus, on the home row
+   Super + Shift +      move the WINDOW rather than the focus
+     arrows or HJKL
+   Super + Ctrl +       resize. Hold it down; there is no resize mode
+     arrows             here the way there is in i3.
+   Super + F            fullscreen
+   Super + Shift + Space  float this window / put it back
+
+ WORKSPACES
+   Super + 1 .. 0       go to workspace 1 to 10
+   Super + Shift + 1..0 send this window there
+   Super + scroll       next / previous workspace
+
+   The numbers along the top-left of the bar are these. All five of the
+   first five are shown whether or not anything is on them.
+
+ THE BAR AND THE SCREEN
+   Super + B            hide / show the bar
+   Super + Shift + S    screenshot
+   Super + Shift + W    change the wallpaper
+
+ ENDING THINGS
+   Super + Shift + P    power down (asks first)
+   Super + Shift + Del  reboot
+   Super + Shift + E    log out of the desktop
+
+ IF THIS IS A VM ON A MAC
+   The Mac's Command key arrives here as Super, so every binding above is
+   also a macOS shortcut -- and three of them end the session before this
+   machine ever sees the key: Cmd+W closes the VM window, Cmd+Q quits UTM,
+   Cmd+Shift+Q logs out of macOS.
+
+   Press CAPS LOCK instead of Super. It is a second Super here and macOS
+   reserves nothing on it.
+
+   Failing that, EVERY binding above has a second one, by two rules:
+
+       WHERE SUPER IS EATEN, PRESS CTRL+ALT INSTEAD.
+       WHERE THE BINDING ALSO HAS CTRL IN IT, PRESS CTRL+ALT+SHIFT.
+
+   So Super+Space is Ctrl+Alt+Space, Super+Shift+Q is Ctrl+Alt+Shift+Q,
+   and Super+Ctrl+V is Ctrl+Alt+Shift+V. The launcher also answers to
+   plain Alt+Space and plain Ctrl+Space, because it is reached more often
+   than anything else.
+
+ WHERE THINGS ARE
+   ~/.config/hypr/hyprland.conf    these bindings
+   ~/.config/waybar/config         what is on the bar
+   ~/.config/waybar/desktop.json   the clock and weather ON the wallpaper
+   ~/.config/wofi/style.css        the launcher and the menu
+   copal-guide widgets             how to change the bar and the
+                                   widgets on the wallpaper
+   copal-guide wallpapers          how to change the wallpaper
+GUIDE
+
+    # The file manager the theme wants, if this machine has it; the one stage
+    # 4 installed otherwise. Substituted here, not left for Hyprland to
+    # expand, for the same reason as stage 4's TERMEMU_PLACEHOLDER.
+    _fm=pcmanfm
+    command -v nemo >/dev/null 2>&1 && _fm=nemo
+    sed -i "s|FILEMGR_PLACEHOLDER|$_fm|" /tmp/hyprconf.$$
+
+    # ----------------------------------------------------------------------
+    # THE CTRL+ALT TWINS -- the Wayland half of what stage 4 does to the i3
+    # config, generated the same way and by the same two rules, so "where
+    # Super is eaten, press Ctrl+Alt; where the binding has Ctrl in it, press
+    # Ctrl+Alt+Shift" describes both desktops rather than one of them.
+    #
+    # Hyprland's grammar makes this easier than i3's: the modifier set is the
+    # first comma-separated field, so it is swapped without touching the key
+    # or the dispatcher. bind, binde, bindm and bindl are all rewritten --
+    # bindm is the mouse drag, and a drag that only works with a key macOS has
+    # taken is no better than a binding that does.
+    #
+    # THE ARROWS ARE THE ONE COLLISION. Super+Shift+arrow (move the window)
+    # and Super+Ctrl+arrow (resize it) both want Ctrl+Alt+Shift+arrow. Resize
+    # takes it, because moving a window has Ctrl+Alt+Shift+H/J/K/L already and
+    # resizing would have nothing -- the same call stage 4 makes. Hyprland
+    # runs BOTH binds on a duplicated chord rather than picking one, so this
+    # has to be settled here; left alone it would move and resize at once.
+    awk '
+        /^bind[elm]* = \$mainMod/ {
+            eq   = index($0, "=")
+            head = substr($0, 1, eq)
+            rest = substr($0, eq + 1)
+            c    = index(rest, ",")
+            if (c == 0) next
+            mods = substr(rest, 1, c - 1)
+            tail = substr(rest, c)
+            sub(/^[ \t]+/, "", mods); sub(/[ \t]+$/, "", mods)
+            # The key is the field after the modifiers; needed only to spot
+            # collisions, so case is normalised rather than preserved.
+            key = substr(tail, 2)
+            if (index(key, ",") > 0) key = substr(key, 1, index(key, ",") - 1)
+            sub(/^[ \t]+/, "", key); sub(/[ \t]+$/, "", key)
+            key = toupper(key)
+
+            if      (mods == "$mainMod")       twin = "CTRL ALT"
+            else if (mods == "$mainMod SHIFT") twin = "CTRL ALT SHIFT"
+            else if (mods == "$mainMod CTRL")  twin = "CTRL ALT SHIFT"
+            else next
+
+            # Move-window gives up the arrows to resize; it keeps H/J/K/L.
+            if (mods == "$mainMod SHIFT" \
+                && (key == "LEFT" || key == "RIGHT" || key == "UP" || key == "DOWN")) next
+
+            # Two binds on one chord is legal and sometimes deliberate --
+            # Super+Tab is cyclenext AND bringactivetotop, and both must
+            # survive. So a repeat is only a collision when it comes from a
+            # DIFFERENT modifier set; from the same one it was always a pair.
+            chord = twin "," key
+            if (chord in from && from[chord] != mods) {
+                printf "# SKIPPED (%s+%s already bound): %s\n", twin, key, mods
+                next
+            }
+            from[chord] = mods
+            printf "%s %s%s\n", head, twin, tail
+        }
+    ' /tmp/hyprconf.$$ > /tmp/hypralt.$$
+    {
+        printf '\n# ---- Ctrl+Alt twins, generated from the Super binds above ----\n'
+        printf '# Where Super is eaten by the Mac, press Ctrl+Alt. Where the bind also\n'
+        printf '# has Ctrl in it, press Ctrl+Alt+Shift. Delete this block on hardware.\n'
+        cat /tmp/hypralt.$$
+    } >> /tmp/hyprconf.$$
+    rm -f /tmp/hypralt.$$
+    if grep -q '^# SKIPPED' /tmp/hyprconf.$$; then
+        warn "some Ctrl+Alt twins collided and were skipped:"
+        grep '^# SKIPPED' /tmp/hyprconf.$$ | sed 's/^/      /'
+    fi
+    # AFTER the twins, deliberately, and for the same reason stage 4 does it:
+    # Super+Shift+T's twin is Super+Ctrl+T's, and Super+Ctrl+Space's is
+    # Super+Shift+Space's. The generator would skip them with a warning on
+    # every install. They are doors, not verbs -- each runs something the
+    # file already binds elsewhere -- so they do not need twins of their own.
+    # And local.conf LAST of all, after the twins, so that "sourced last, so
+    # it wins" stays true of the whole file rather than of the part above the
+    # generated block.
+    cat >> /tmp/hyprconf.$$ <<'ANTIQDOORS'
+
+# ---- more doors ---------------------------------------------------------
+# The theme picker. Two themes today, and a picker over two is still the
+# door that does not need a terminal.
+bind = $mainMod SHIFT, T, exec, copal-theme --pick
+# Light <-> dark, the whole desktop: the current theme's partner.
+bind = $mainMod SHIFT, N, exec, copal-theme --toggle
+# Doors from Omarchy, for hands that learned them there: its system menu is
+# Super+Alt+Space and its wallpaper picker Super+Ctrl+Space. The same one
+# implementation behind each; one more way in, which is what a door is.
+bind = $mainMod ALT, SPACE, exec, copal-menu --system
+bind = $mainMod CTRL, SPACE, exec, copal-wallpaper --pick
+
+# ---- yours --------------------------------------------------------------
+# Everything above this line is rewritten whenever stage 17 runs, and the
+# copy it replaces goes to hyprland.conf.bak. local.conf is not: the
+# installer creates it empty once and never opens it again. A binding, a
+# monitor line, a display scale -- anything you would otherwise edit above
+# -- goes there and survives every re-run. Sourced last, so it wins.
+# The theme's borders, written by copal-theme (re-run it rather than edit).
+source = ~/.config/hypr/copal-theme.conf
+source = ~/.config/hypr/local.conf
+ANTIQDOORS
+
+    install_home_file .config/hypr/hyprland.conf /tmp/hyprconf.$$
+    cat > /tmp/hyprlocal.$$ <<'HYPRLOCAL'
+# ~/.config/hypr/local.conf -- yours.
+#
+# Copal created this file empty, once, and will not write to it again.
+# ~/.config/hypr/hyprland.conf is rewritten every time stage 17 runs and
+# sources this file last, so anything here wins over anything there.
+# Hyprland reloads on save. Some starting points:
+#
+#   monitor = , preferred, auto, 1.5          a display scale
+#   bind = $mainMod SHIFT, F8, exec, foo      a binding of your own
+#   exec-once = copal-desk                    the desk, laid out at login
+HYPRLOCAL
+    install_home_once .config/hypr/local.conf /tmp/hyprlocal.$$
+    rm -f /tmp/hyprlocal.$$
+    rm -f /tmp/hyprconf.$$
+
+    # hyprpaper.conf named the author's two monitors. An empty monitor field
+    # means every monitor, which is the only shape that survives contact with
+    # other people's hardware. Only read if hyprpaper ever appears -- swaybg
+    # takes its orders from copal-wallpaper -- but corrected now, once.
+    say "Writing ~/.config/hypr/hyprpaper.conf (all monitors)"
+    cat > /tmp/hyprpaper.$$ <<'ANTIQPAPER'
+# hyprpaper.conf -- rewritten by copal-init.sh (stage 17); upstream's file
+# named the author's DP-2 and DP-4. Empty monitor = every monitor.
+wallpaper {
+  monitor =
+  path = ~/.config/hypr/wallpapers_bundled/georges_riom_collage.png
+  fit_mode = cover
+}
+splash = false
+ANTIQPAPER
+    install_home_file .config/hypr/hyprpaper.conf /tmp/hyprpaper.$$
+    rm -f /tmp/hyprpaper.$$
+
+    # foot.ini -- the theme's palette, on the terminal this desktop opens.
+    #
+    # Upstream ships no foot config, so this is a translation of its
+    # kitty/hades.conf rather than a design of its own: the sixteen colours
+    # are copied across unchanged, and so is the 0.2 alpha.
+    #
+    # ONE DELIBERATE DEPARTURE, and it is the reason this file is written by
+    # hand instead of converted mechanically. hades.conf sets background AND
+    # foreground to the same #eaeaea and lets background_opacity 0.2 plus the
+    # compositor's blur pull the text out of it. That is a real look on a
+    # machine with a GPU; on one compositing in llvmpipe -- no blur, and the
+    # alpha flattened against whatever is behind -- it is white on white, a
+    # terminal you cannot read. So foreground takes #000000, which is not an
+    # invention: it is hades.conf's own selection_foreground, the colour the
+    # theme already puts on top of #eaeaea. Everything else is upstream's.
+    say "Writing ~/.config/foot/foot.ini (font, padding, keys; the palette follows the theme)"
+    cat > /tmp/footini.$$ <<'ANTIQFOOT'
+# foot.ini -- written by copal-init.sh (stage 17).
+#
+# foot is the terminal this desktop opens because it renders on the CPU:
+# where the compositor is on llvmpipe, kitty's OpenGL window does not survive.
+# 'copal-gpu' says which case this machine is.
+#
+# THE COLOURS ARE NOT HERE. copal-terminal-theme appends [colors-light] and
+# [colors-dark] (and [cursor]) for the current theme -- Antiquity's helios
+# opaque-ish at alpha 0.9, or Tokyo Night, or whichever 'copal-theme' set --
+# and rewrites them on every switch. The theme's own kitty palette is one
+# neon set for a pane of glass at 20 % opacity; opaque it is unreadable
+# (docs/THEME.md). Everything below is the theme's terminal style, kept.
+#
+# font: the theme asks for Maple Mono, which Alpine does not package.
+# JetBrains Mono is the packaged cousin, and the same substitution kitty gets.
+font=JetBrains Mono:size=11
+pad=12x12
+
+[scrollback]
+lines=3000
+
+[key-bindings]
+# The two kitty binds the theme documents (ctrl+shift+plus, ctrl+shift+minus),
+# kept on the same keys. foot's spelling differs: modifier names are
+# case-sensitive, and 'plus' already means the shifted key, so naming Shift
+# as well is refused as a double shift. Control+plus is Ctrl with whatever
+# key produces '+' -- on a US layout, Ctrl+Shift+=. minus is unshifted, so
+# there Shift is spelled out.
+font-increase=Control+plus
+font-decrease=Control+Shift+minus
+ANTIQFOOT
+    install_home_file .config/foot/foot.ini /tmp/footini.$$
+    rm -f /tmp/footini.$$
+
+    # The theme's kitty.conf asks for Maple Mono, which Alpine does not
+    # package. kitty falls back to its default monospace without complaint,
+    # but JetBrains Mono is a close cousin and IS packaged -- when it landed
+    # above, point the config at it. sed on the installed copies, not the
+    # vendored tree: the vendored tree stays upstream's.
+    if apk info -e font-jetbrains-mono >/dev/null 2>&1; then
+        for _h in /root "$(user_home)"; do
+            [ -n "$_h" ] && [ -f "$_h/.config/kitty/kitty.conf" ] || continue
+            sed -i 's/^font_family maple mono/font_family JetBrains Mono/' \
+                "$_h/.config/kitty/kitty.conf" 2>/dev/null || true
+        done
+        note "kitty: Maple Mono is not packaged -- JetBrains Mono substituted"
+    fi
+
+    # ------------------------------------------------------------------
+    # THE LAYERS THE THEME DOES NOT REACH BY ITSELF.
+    #
+    # A theme is not the window manager; it is every layer that draws. The
+    # vendored configs cover four of them -- compositor, shell, terminal,
+    # notifications -- and stop, because upstream deliberately leaves GTK,
+    # icons and cursors to the user (its README says so). That leaves a
+    # desktop where kitty and the shell are Antiquity and the file manager is
+    # stock Adwaita, which is the exact failure diinki demonstrates in the
+    # ricing guide: "if we open up our file explorer, you may notice it
+    # doesn't adhere to our theme at all."
+    #
+    # It matters more here than in a one-person rice. Copal's catalogue is
+    # 316 programs and most of the graphical ones are GTK, so this is the
+    # difference between a themed desktop and a themed compositor with 300
+    # unthemed windows in it.
+    say "Theming the layers the configs do not reach: fonts, GTK, cursor"
+
+    # 1. FONTS, SYSTEM-WIDE. The theme bundles its display faces -- Boska,
+    #    Recia, Charcoal, Monaco, Quilon, Dominica and Material Symbols --
+    #    and quickshell loads them from its own config tree with FontLoader,
+    #    which is why the shell's type is right even on a machine with no
+    #    fonts installed. Nothing else can see them that way. Installing them
+    #    where fontconfig looks is what lets kitty, GTK applications and the
+    #    X desktop use the same faces, which is the difference between a
+    #    themed shell and a themed system.
+    #
+    #    Copied from the installed copy rather than the archive, so this is
+    #    the same set the shell is using.
+    _fontsrc="$(user_home)/.config/quickshell/fonts"
+    [ -d "$_fontsrc" ] || _fontsrc=/root/.config/quickshell/fonts
+    if [ -d "$_fontsrc" ]; then
+        add_optional fontconfig
+        mkdir -p /usr/share/fonts/copal-antiquity
+        # -f: a re-run should replace, not fail. The .TTF spelling is
+        # upstream's on one of the files, and a case-sensitive filesystem
+        # will not match it against *.ttf.
+        cp -f "$_fontsrc"/*.ttf "$_fontsrc"/*.TTF \
+              /usr/share/fonts/copal-antiquity/ 2>/dev/null || true
+        chmod 0644 /usr/share/fonts/copal-antiquity/* 2>/dev/null || true
+        if command -v fc-cache >/dev/null 2>&1; then
+            fc-cache -f >/dev/null 2>&1 || true
+            note "fonts installed system-wide: $(ls /usr/share/fonts/copal-antiquity 2>/dev/null | wc -l | tr -d ' ') faces, cache rebuilt"
+        else
+            note "fonts copied to /usr/share/fonts/copal-antiquity (no fc-cache to refresh)"
+        fi
+    fi
+
+    # 2. GTK. There is no Antiquity GTK theme to install -- upstream does not
+    #    ship one, and writing a GTK4 theme is, as the guide puts it, "a very
+    #    extensive task". So this does the honest, portable half: dark
+    #    preference, a matching icon and cursor theme, and the theme's own
+    #    font. adw-gtk3 IS packaged here and is the closest neutral dark that
+    #    does not fight the palette; where it is missing, the dark preference
+    #    alone still stops a white file manager on a dark desktop.
+    #
+    #    BOTH VERSIONS, and that is the point of writing two files. GTK3 and
+    #    GTK4 read separate settings.ini and a GTK3-only answer leaves every
+    #    newer application unthemed -- the second half of the guide's GTK
+    #    chapter, and the thing its author had to solve with a hand-written
+    #    GTK4 theme.
+    _gtktheme=Adwaita-dark
+    try_add adw-gtk3 && _gtktheme=adw-gtk3-dark
+    add_optional adwaita-icon-theme
+    # Alpine packages no Hackneyed (upstream's choice), so the cursor is
+    # whatever Adwaita provides -- named explicitly rather than left unset,
+    # because an unset cursor theme under Wayland is the one that renders as
+    # a black X on some drivers.
+    for _h in /root "$(user_home)"; do
+        [ -n "$_h" ] && [ -d "$_h" ] || continue
+        for _v in 3.0 4.0; do
+            mkdir -p "$_h/.config/gtk-$_v"
+            cat > "$_h/.config/gtk-$_v/settings.ini" <<GTKINI
+# Written by copal-init.sh (stage 17). GTK3 and GTK4 read separate copies of
+# this file; both are written so newer applications are themed too.
+[Settings]
+gtk-theme-name=$_gtktheme
+gtk-icon-theme-name=Adwaita
+gtk-cursor-theme-name=Adwaita
+gtk-cursor-theme-size=24
+gtk-application-prefer-dark-theme=1
+gtk-font-name=Recia 11
+GTKINI
+        done
+        _own=$(stat -c '%u:%g' "$_h" 2>/dev/null) \
+            && chown -R "$_own" "$_h/.config/gtk-3.0" "$_h/.config/gtk-4.0" 2>/dev/null || true
+    done
+    note "GTK 3 and 4: $_gtktheme, dark, Adwaita icons and cursor"
+
+    # gsettings is what GTK4 and libadwaita actually consult at runtime on a
+    # machine with dconf; settings.ini is the fallback for everything else.
+    # Writing both is belt and braces, and neither is fatal if absent.
+    if command -v gsettings >/dev/null 2>&1; then
+        for _k in "gtk-theme $_gtktheme" "icon-theme Adwaita" "cursor-theme Adwaita" "font-name 'Recia 11'"; do
+            gsettings set org.gnome.desktop.interface ${_k%% *} "${_k#* }" 2>/dev/null || true
+        done
+        gsettings set org.gnome.desktop.interface color-scheme prefer-dark 2>/dev/null || true
+    fi
+
+    # 3. THE CURSOR, for the compositor itself rather than for GTK. Hyprland
+    #    reads these from the environment, and the generated hyprland.conf
+    #    already exports the sizes; the theme name goes here so an X session
+    #    on the same machine agrees with the Wayland one.
+    cat > /etc/profile.d/copal-cursor.sh <<'CURSORENV'
+# Written by copal-init.sh. One cursor theme for both sessions.
+export XCURSOR_THEME=Adwaita
+export XCURSOR_SIZE=24
+CURSORENV
+    chmod 0644 /etc/profile.d/copal-cursor.sh
+
+    # 4. AND THE X DESKTOP, which is still installed and still one word away.
+    #    Stage 4 dresses i3 and the terminal in Tokyo Night; leaving it that
+    #    way means flipping the session also flips the entire palette, which
+    #    makes the fallback feel like a different machine rather than the
+    #    same one without a compositor. Recolouring by hex substitution is
+    #    exact and idempotent -- every one of these is a literal that stage 4
+    #    wrote, so running this twice changes nothing the second time.
+    #
+    #    Tokyo Night          ->  Antiquity helios
+    #      #7aa2f7 blue           #fccf8a  accent      (focused border)
+    #      #7dcfff cyan           #fccf8a  accent      (indicator)
+    #      #1a1b26 bg             #181818  base
+    #      #16161e bar bg         #121212  shadow
+    #      #292e42 inactive       #2a2a2a  highlight
+    #      #c0caf5 fg             #d0daed  textLight
+    #      #565f89 dim            #87704f  accentDark
+    #      #f7768e red            #ff723e  urgent
+    if [ -f "$(user_home)/.config/i3/config" ] || [ -f /root/.config/i3/config ]; then
+        for _h in /root "$(user_home)"; do
+            [ -n "$_h" ] && [ -d "$_h" ] || continue
+            for _f in "$_h/.config/i3/config" "$_h/.Xresources"; do
+                [ -f "$_f" ] || continue
+                sed -i -e 's/#7aa2f7/#fccf8a/g' -e 's/#7dcfff/#fccf8a/g' \
+                       -e 's/#1a1b26/#181818/g' -e 's/#16161e/#121212/g' \
+                       -e 's/#292e42/#2a2a2a/g' -e 's/#c0caf5/#d0daed/g' \
+                       -e 's/#565f89/#87704f/g' -e 's/#f7768e/#ff723e/g' \
+                       -e 's/#9ece6a/#a0675d/g' -e 's/#bb9af7/#666c93/g' \
+                       "$_f" 2>/dev/null || true
+            done
+            # The X session's own background, so the first frame before i3
+            # starts is the theme's ground rather than Tokyo Night's.
+            [ -f "$_h/.xinitrc" ] && sed -i 's/xsetroot -solid .#1a1b26./xsetroot -solid "#181818"/' \
+                "$_h/.xinitrc" 2>/dev/null || true
+        done
+        note "the X desktop recoloured to match -- i3, Xresources and the root window"
+        note "  so switching session changes the compositor, not the palette"
+    fi
+
+    # ------------------------------------------------------------------
+    # Claim the session -- but only if there is something to claim it FOR.
+    # This is the one exclusive act in the whole stage: from the next boot
+    # (or the next copal-session) the console belongs to Hyprland, and
+    # re-running stage 4 hands it back to X.
+    #
+    # ASKED OF THE MACHINE, NOT ASSUMED. The full level chooses Wayland by
+    # itself when Wayland is actually available, which is exactly what the
+    # binary being on PATH means -- so this tests for it rather than trusting
+    # that the apk add above did what it was told. A stage that wrote
+    # 'wayland' after a failed install would hand the console to a compositor
+    # that is not there; copal-session would fall back to startx and the word
+    # in the file would be a lie about the machine. Better to say so here,
+    # once, while someone is reading the output.
+    mkdir -p /etc/copal
+    if command -v Hyprland >/dev/null 2>&1; then
+        # Through copal-desktop, which also disarms X's setuid server -- see
+        # the long note above that script. Nothing about the X desktop is
+        # uninstalled; the privileged path is simply taken away while nothing
+        # is using it, and `doas copal-desktop x11` puts both back together.
+        copal-desktop wayland >/dev/null 2>&1 || printf 'wayland\n' > /etc/copal/session
+        note "/etc/copal/session = wayland -- 'doas copal-desktop x11' switches back"
+        if [ -e /usr/libexec/Xorg.wrap ] && [ ! -u /usr/libexec/Xorg.wrap ]; then
+            note "X's setuid server disarmed while Wayland has the screen"
+            note "  (Xwayland is a different binary and keeps every X program working)"
+        fi
+        configure_desktop_autostart Hyprland
+        # THE TOAST THAT USED TO APPEAR AT EVERY LOGIN, and why it no longer
+        # does:
+        #
+        #     Your system does not have hyprland-guiutils installed. This is a
+        #     runtime dependency for some dialogs. Consider installing it.
+        #
+        # There is still nothing to install. Neither hyprland-guiutils nor its
+        # old name hyprland-qtutils is packaged in any Alpine repository --
+        # not community, not edge/testing. apk has hyprland-qt-support, which
+        # is the QML style and NOT the binaries, and hyprpolkitagent, which is
+        # something else again. Neither provides hyprland-dialog, which is the
+        # program the check looks for.
+        #
+        # But it CAN be switched off, which an earlier reading of this got
+        # wrong. The knob is misc:disable_hyprland_guiutils_check, and it is
+        # spelled guiutils: upstream renamed the package and the variable
+        # together, so 0.54.3 registers only the guiutils name and answers
+        # "no such option" to qtutils -- which is exactly what made the
+        # warning look permanent. The .conf written above sets it.
+        #
+        # What it costs is nothing that is used here. The dialogs are the
+        # update screen, the donate screen and the app-not-responding prompt;
+        # Copal updates through 'copal -U' and shows its own key list.
+        if ! command -v hyprland-dialog >/dev/null 2>&1; then
+            note "hyprland-guiutils is not packaged by Alpine and is not installed."
+            note "  The login-time warning about it is switched off in hyprland.conf"
+            note "  (misc:disable_hyprland_guiutils_check); nothing here uses the"
+            note "  dialogs it provides."
+        fi
+    else
+        warn "Hyprland is not on PATH -- the session is being left as it was."
+        note "The theme's configs are installed and will be used the moment a"
+        note "compositor exists; nothing here needs re-running but stage 17."
+        [ -s /etc/copal/session ] || printf 'x11\n' > /etc/copal/session
+        note "/etc/copal/session = $(cat /etc/copal/session 2>/dev/null)"
+    fi
+
+    # Last: the whole look, antiquity, on every layer this stage just wrote
+    # -- and it is what adds the Themes-menu hook to Config.qml, so that
+    # switching in quickshell's own menu carries the rest of the desktop.
+    copal_apply_theme antiquity
+    note "light <-> dark at any time:  copal-theme --toggle  (Super+Shift+N)"
+
+    say "Stage 17 complete."
+    cat <<MSG
+    The Antiquity desktop runs as '$PI_USER', not as root. So:
+
+        exit                     leave this root shell
+        login as $PI_USER        at the console
+        copal-session
+
+    /etc/copal/session now says 'wayland', so copal-session starts Hyprland;
+    stage 4's X desktop is still installed, and one word in that file (or
+    re-running stage 4) brings it back. The two cannot run at once -- one
+    seat, one compositor -- which is why it is a switch and not a menu.
+
+    THE BAR IS WAYBAR, NOT QUICKSHELL. The Antiquity theme's bar, radial
+    taskbar, widgets and launcher are 99 QML files for quickshell, and no
+    Alpine repository packages quickshell -- so without a stand-in this
+    desktop is the wallpaper and your windows, with no clock, no workspace
+    indicator and no list of what is open. waybar fills that in, in the
+    theme's own helios palette, with a real window list on the left. The day
+    quickshell is packaged, copal-bar prefers it and nothing here changes.
+
+        Super+b            hide and show the bar
+        waybar -l debug    why the bar did not appear, if it did not
+
+    COPAL-SESSION, NOT START-HYPRLAND. Alpine's hyprland package puts its own
+    launcher on PATH, and it tab-completes from 'start' next to startx, so it
+    is easy to find first. It starts the compositor with no session bus, so
+    notifications, the portal and the polkit agent have nothing to talk over.
+    copal-session wraps it in dbus-run-session, which is the difference.
+    (It will no longer FAIL, at least: XDG_RUNTIME_DIR is now set for every
+    login shell, which is what start-hyprland used to die without.)
+
+    Super+Return terminal (foot)    Super+d/Space launcher
+    Super+e      file manager       Super+Shift+s screenshot region
+    Super+q · Super+\`  close window Super+f      fullscreen
+    Super+Esc    force-quit program (SIGKILL -- nothing is saved)
+    Super+1..9,0 workspaces         Super+Shift+p power down (copal-halt)
+    Super+arrows move focus         Super+Shift+arrows move the window
+    Alt+Tab      switch window      Super+Ctrl+arrows resize
+    Super+c/v    copy / paste       Super+Ctrl+v clipboard history
+    Super+b      hide/show the bar
+
+    What is missing, honestly: quickshell -- the theme's radial taskbar and
+    widgets -- has no Alpine package yet. Its configs are in place and
+    copal-launcher already prefers it, so a future 'apk add quickshell' (or a
+    source build: docs/THEME.md) completes the theme with no re-run of this
+    stage. Until then wofi launches, mako notifies, the wallpaper hangs.
+
+    If the screen stays black: 'dmesg | grep -i drm' first -- a compositor
+    with no DRM device is the usual cause in a VM without a virtio GPU.
 MSG
     commit_reminder
 }
@@ -8864,8 +14306,1268 @@ configure_git_identity() {
     note "written to $_gc (owned by $PI_USER)"
 }
 
-# Claude Code. Asked for explicitly, so it is offered -- with what this board
-# actually is stated rather than buried.
+# --------------------------------------------- stage 7: ~/code --------------
+#
+# The repositories listed in stage 1, cloned. ~/code is created either way, so
+# that the directory the guides and this script keep referring to is there on a
+# machine where nobody listed anything.
+#
+# WHY THE WORK IS DONE BY copal-code AND NOT HERE. The same job is wanted twice
+# -- once now, unattended, and once later when somebody adds a repository to a
+# machine that has been running for a month -- and two implementations of
+# "clone the list" are two implementations that drift. So the script is written
+# first and then run, and the install is just its first caller.
+#
+# It is run through `su - $PI_USER` rather than by root with a chown afterwards.
+# A checkout is not a file dropped into a home directory: it has a .git with
+# config, hooks and objects, and every later `git pull` runs as the user. A
+# tree that was made by root and given away is a tree with root's umask on it,
+# and the failures that produces surface weeks later. Cloning as the user who
+# owns it means there is nothing to correct.
+clone_user_repos() {
+    say "Checkouts in ~/code"
+    # Written first, and unconditionally: a machine that gets git next week
+    # should already have the command that uses it -- and the one that
+    # compiles what it fetched.
+    install_copal_code
+    install_copal_build
+    if ! command -v git >/dev/null 2>&1; then
+        warn "git is not installed -- skipping ~/code"
+        return 0
+    fi
+    ensure_user_home || true
+    _h=$(user_home)
+    if [ -z "$_h" ] || [ ! -d "$_h" ]; then
+        warn "no home directory for $PI_USER -- skipping ~/code"
+        return 0
+    fi
+
+    mkdir -p "$_h/code"
+    own_by_user "$_h/code"
+    note "$_h/code"
+
+    _repos=$(repos_current)
+    if [ -z "$_repos" ]; then
+        note "nothing listed -- Copal itself is the only checkout."
+        note "Add to it with: doas copal-code add https://github.com/you/thing"
+    else
+        note "$(printf '%s\n' "$_repos" | wc -l | tr -d ' ') listed, plus Copal itself"
+    fi
+    note "git's own output follows"
+
+    # su, then a plain run as the user. If su is not available or refuses, say
+    # so and leave the list in place: the user can run copal-code themselves at
+    # the first login, which is a worse outcome than cloning now but a much
+    # better one than a ~/code full of root-owned trees.
+    if su - "$PI_USER" -c '/usr/local/bin/copal-code' 2>&1; then
+        note "done -- 'copal-code' again at any time to pull and rebuild them;"
+        note "'copal-build list' says what each one made, in ~/.local/bin"
+    else
+        warn "some checkouts did not complete -- see git's output above"
+        note "Run 'copal-code' as $PI_USER to retry; nothing already cloned is touched."
+    fi
+    return 0
+}
+
+# The script itself. Written on every stage-7 run, like the front door, so
+# editing the installed copy is pointless -- edit copal-prep.sh.
+# ------------------------------------------------------ fonts ---------------
+#
+# WHAT THIS IS FOR. A machine for writing code on is a machine you look at all
+# day, and the thing you are looking at is a typeface. Alpine's default is
+# DejaVu Sans Mono and nothing else, which is serviceable and is not what
+# anybody who cares about this would choose.
+#
+# WHY apk AND NOT A BUILD, AND NOT A GIT CLONE. Both of the obvious ideas are
+# wrong here and it is worth saying why, because both look reasonable:
+#
+#   Building from source. Iosevka's build wants Node and a couple of hours of
+#   CPU; on a Pi that is not a font install, it is an afternoon. Fonts are
+#   binaries that upstreams already build and sign off on.
+#
+#   git clone. A font repository holds SOURCES -- .glyphs, .sfd, build
+#   scripts -- and keeps the built .ttf in its RELEASES, not in the tree. A
+#   clone gets you the half you would then have to build. It is also large:
+#   Recursive's repository is far bigger than the 49 MB release zip.
+#
+# So: apk for everything Alpine packages, which as of v3.24 is most of it and
+# is current, and a pinned release download for the four worth having that it
+# does not. Nothing is compiled and nothing is cloned.
+#
+# LICENSING, since it is the thing people get nervous about and should not.
+# Every font here is redistributable, checked against the projects themselves
+# rather than assumed:
+#
+#   SIL OFL 1.1   Fira Code, JetBrains Mono, Cascadia Code, Iosevka, Monaspace,
+#                 IBM Plex, Victor Mono, Intel One Mono, Recursive, Noto,
+#                 Liberation, Terminus. Install, bundle and redistribute
+#                 freely; you may not sell the font on its own, and a MODIFIED
+#                 font must be renamed. Shipping them unmodified, which is what
+#                 this does, is the intended use.
+#   MIT           Hack (plus Bitstream Vera for its ancestry), Commit Mono,
+#                 Cozette.
+#   BSD-2         Spleen.
+#   CC BY-SA 4.0  The Ultimate Oldschool PC Font Pack. Share-alike, and it
+#                 wants attribution -- so its LICENSE.TXT and README are
+#                 installed beside the fonts rather than dropped, and
+#                 'copal-fonts licences' prints where they went.
+#
+# ON VERSIONS AND "IS IT CURRENT". Most good coding faces are finished rather
+# than abandoned: Fira Code's last release is 6.2 (2021), Hack's is 3.003
+# (2018), JetBrains Mono's is 2.304 (2023). That is a solved design, not
+# neglect, and a 2026 release would not make them better. The two that do move
+# are Iosevka (Alpine carries 34.6.x against upstream's 34.8.x) and Monaspace,
+# pinned below at the current v1.400.
+install_copal_fonts() {
+    [ -d /usr/local/bin ] || mkdir -p /usr/local/bin 2>/dev/null || return 0
+    cat > /usr/local/bin/copal-fonts <<'COPALFONTS'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-fonts -- the font sets, and the console font.
+#
+#   copal-fonts                  what is installed, group by group
+#   copal-fonts install GROUP..  install a group: coding, console, ibmpc, web
+#                                (or 'all'). Needs doas.
+#   copal-fonts list [GROUP]     what a group contains, and what is on disk
+#   copal-fonts console [NAME]   show, or set, the font the text console uses.
+#                                No name lists what is available. Needs doas.
+#   copal-fonts licences         where the licence files went
+#
+# Re-runnable: installing a group again is an apk no-op plus a re-download of
+# only what is missing.
+#
+# Rewritten by copal-init.sh every time stage 12 runs.
+set -eu
+
+FONTDIR=/usr/share/fonts
+CONSOLEDIR=/usr/share/consolefonts
+LICDIR=/usr/share/licenses/copal-fonts
+
+say()  { printf '\033[36m==>\033[0m %s\n' "$*"; }
+note() { printf '    %s\n' "$*"; }
+warn() { printf '\033[33mwarning:\033[0m %s\n' "$*" >&2; }
+have() { command -v "$1" >/dev/null 2>&1; }
+
+need_root() {
+    [ "$(id -u)" = 0 ] || { echo "That writes under /usr/share. Re-run as: doas copal-fonts $*" >&2; exit 1; }
+}
+
+# ---------------------------------------------------------------- the apk half
+#
+# One package per line, so a comment can say what it is for. Everything here
+# goes through 'apk add' one at a time and a missing one is a note rather than
+# a failure: which of these exists varies by architecture, and an armhf board
+# genuinely has fewer. That is the same reasoning as add_optional in the
+# installer, reimplemented here because this script runs long after it.
+#
+# THE LIGATURE PAIRS are the point of the coding group. A ligature font is a
+# preference, not an improvement, and the sane thing is to have both halves
+# installed so the choice is a line in a config rather than an apk run:
+#
+#   ligatures            plain
+#   font-fira-code-nerd  font-fira-mono-nerd
+#   font-jetbrains-mono  font-jetbrains-mono-nl     ('nl' IS 'no ligatures')
+#   font-cascadia-code-nerd (Cascadia Mono is the plain cut of the same design)
+#   font-iosevka         ships with ligatures off by default
+#
+# SIZES ARE WHY THERE ARE TWO CODING GROUPS. Font packages are not small and
+# they are not evenly sized -- checked against the v3.24 aarch64 APKINDEX
+# rather than guessed, because the guess was wrong by a factor of eight:
+#
+#   font-iosevka-curly       565 MB      font-cascadia-code-nerd    97 MB
+#   font-iosevka-curly-slab  561 MB      font-fira-code-nerd        46 MB
+#   font-iosevka-slab        456 MB      font-terminus-nerd         31 MB
+#   font-iosevka-base        446 MB      font-fira-mono-nerd        19 MB
+#   font-iosevka-etoile      233 MB      font-jetbrains-mono       4.2 MB
+#   font-iosevka-aile        220 MB      font-hack                 1.2 MB
+#   font-victor-mono-nerd    147 MB
+#   font-ibm-plex-mono-nerd  108 MB
+#
+# Iosevka is enormous because it ships every width and weight as its own file,
+# and the Nerd cuts are large because they carry a few thousand icon glyphs in
+# every weight. Installing the obvious list unattended comes to 1.6 GB, which
+# is not a font install, it is most of a Pi's card.
+#
+# So 'coding' is the curated ~185 MB that covers the ground -- a ligature face
+# and its plain twin, three or four good non-ligature ones -- and
+# 'coding-extra' is where the big ones -- 1.9 GB of them -- wait to be asked for.
+apk_coding='
+font-jetbrains-mono
+font-jetbrains-mono-nl
+font-jetbrains-mono-vf
+font-fira-code-nerd
+font-fira-mono-nerd
+font-cascadia-code-nerd
+font-hack
+font-inconsolata
+font-adobe-source-code-pro
+font-departure-mono-nerd
+'
+# Asked for by name, never installed by default. Every one of these is a good
+# typeface; every one of them costs more than the whole 'coding' group.
+apk_coding_extra='
+font-iosevka
+font-iosevka-curly
+font-iosevka-slab
+font-iosevka-aile
+font-iosevka-etoile
+font-victor-mono-nerd
+font-ibm-plex-mono-nerd
+font-anonymous-pro-nerd
+font-go-mono-nerd
+font-terminus-nerd
+font-unifont
+'
+# The text console, which is a different problem from the desktop: these are
+# bitmaps at fixed pixel sizes, and 'setfont' wants a .psf rather than
+# anything fontconfig has heard of. kbd-misc is where Linux's own collection
+# lives; font-terminus is the one most people mean by "a console font".
+# ~11 MB, deliberately. font-terminus-nerd (31 MB) and font-unifont (49 MB)
+# are both console-adjacent and both live in coding-extra: Unifont in
+# particular is the every-glyph fallback rather than something to read code in.
+apk_console='
+font-terminus
+font-misc-misc
+kbd
+kbd-misc
+'
+# The metric-compatible set. This -- not LibreOffice -- is what "the full font
+# pack" actually means: Liberation matches Arial/Times/Courier metrics,
+# Carlito matches Calibri, Croscore is Arimo/Tinos/Cousine. A document laid
+# out against those renders at the right length here. Noto covers the rest of
+# Unicode. LibreOffice is not required for any of it and is not installed by
+# this.
+apk_web='
+font-liberation
+font-carlito
+font-croscore
+font-dejavu
+font-noto
+font-noto-emoji
+'
+
+apk_group() {
+    case "$1" in
+        coding)       printf '%s' "$apk_coding" ;;
+        coding-extra) printf '%s' "$apk_coding_extra" ;;
+        console)      printf '%s' "$apk_console" ;;
+        web)          printf '%s' "$apk_web" ;;
+        *)       : ;;
+    esac
+}
+
+install_apk_group() {
+    _g="$1"; _list=$(apk_group "$_g")
+    [ -n "$_list" ] || return 0
+    _ok=0; _miss=""
+    for _p in $_list; do
+        if apk info -e "$_p" >/dev/null 2>&1; then
+            _ok=$((_ok+1))
+        elif apk add "$_p" >/dev/null 2>&1; then
+            _ok=$((_ok+1))
+        else
+            _miss="$_miss $_p"
+        fi
+    done
+    note "$_g: $_ok packages present"
+    [ -z "$_miss" ] || note "not packaged for this architecture:$_miss"
+}
+
+# ------------------------------------------------------------ the fetched half
+#
+# PINNED, AND VERIFIED BY HASH. A font that changes under you is a diff in
+# every screenshot and a re-flowed document, so the version is written down
+# and the download is checked against the sha256 of the archive that was
+# actually looked at. A mismatch stops rather than installs: a font is not
+# worth trusting a changed download for.
+#
+# Re-pinning is a two-line edit -- the version and the hash -- and the URL
+# patterns below are upstream's own release naming, not a mirror.
+MONASPACE_VER=1.400
+MONASPACE_SHA=ab66d71be751495f679727332a3345597943bd4d7beebca03f5cde04bf994de7
+COMMITMONO_VER=1.143
+COMMITMONO_SHA=f7d1f26a7c7554800a996f76f5d706bf0648b936ca2a66b5bc4d46e3a2c49ed0
+INTELONE_VER=1.4.0
+INTELONE_SHA=54863552d25dcb9c3f5360b296fc980d6e1fbfd02e0d214224e8b78f0a2bccf0
+RECURSIVE_VER=1.085
+RECURSIVE_SHA=cbcbdf7a0e181d284a9235e09ed5f3873e527bc5dd1d977df71cdc1ff937da02
+SPLEEN_VER=2.2.0
+SPLEEN_SHA=ec42925c6b56d2138c862b2f97147c872e472f674bf03423417d827a08d69a89
+IBMPC_VER=2.2
+IBMPC_SHA=b30dc3ecc9931ad2dd8be7517dd01813c8834a1911b582ab7643191b41a3d759
+
+fetch_verified() {  # <url> <sha256> <outfile>
+    have wget || have curl || { warn "neither wget nor curl -- cannot fetch"; return 1; }
+    if have wget; then wget -q -O "$3" "$1" || { warn "download failed: $1"; return 1; }
+    else curl -fsSL "$1" -o "$3" || { warn "download failed: $1"; return 1; }
+    fi
+    _got=$(sha256sum "$3" 2>/dev/null | cut -d' ' -f1)
+    if [ "$_got" != "$2" ]; then
+        warn "sha256 mismatch for $(basename "$3")"
+        note "expected $2"
+        note "got      $_got"
+        note "Refusing to install it. Upstream may have re-rolled the release;"
+        note "check the project and update the pin in $0."
+        rm -f "$3"
+        return 1
+    fi
+    return 0
+}
+
+# ONLY THE CORE FOUR STYLES of each family, not every weight. Monaspace ships
+# 210 static faces across five families -- 53 MB of card for thirty-five
+# weights of each, when what gets used is Regular, Bold, Italic and Bold
+# Italic. The variable fonts are where the other weights live if they are ever
+# wanted. Same reasoning for Recursive, and its Mono cut only: the Sans is a
+# fine typeface and is not what this group is for.
+install_fetched_coding() {
+    have unzip || apk add unzip >/dev/null 2>&1 || { warn "unzip is needed and could not be installed"; return 1; }
+    _t=$(mktemp -d) || return 1
+    # shellcheck disable=SC2064
+    trap "rm -rf '$_t'" EXIT INT TERM
+
+    say "Monaspace $MONASPACE_VER (GitHub Next -- OFL 1.1)"
+    if fetch_verified \
+        "https://github.com/githubnext/monaspace/releases/download/v$MONASPACE_VER/monaspace-static-v$MONASPACE_VER.zip" \
+        "$MONASPACE_SHA" "$_t/mona.zip"; then
+        mkdir -p "$FONTDIR/copal-monaspace"
+        # -j junks the paths, which is what makes the 'Static Fonts/Monaspace
+        # Neon/' directories -- spaces and all -- a non-problem.
+        unzip -j -o -q "$_t/mona.zip" '*-Regular.otf' '*-Bold.otf' '*-Italic.otf' '*-BoldItalic.otf' \
+              -d "$FONTDIR/copal-monaspace" 2>/dev/null || true
+        note "$(ls "$FONTDIR/copal-monaspace" 2>/dev/null | wc -l | tr -d ' ') faces"
+    fi
+
+    say "Commit Mono $COMMITMONO_VER (MIT)"
+    if fetch_verified \
+        "https://github.com/eigilnikolajsen/commit-mono/releases/download/v$COMMITMONO_VER/CommitMono-$COMMITMONO_VER.zip" \
+        "$COMMITMONO_SHA" "$_t/commit.zip"; then
+        mkdir -p "$FONTDIR/copal-commit-mono"
+        unzip -j -o -q "$_t/commit.zip" '*.otf' -d "$FONTDIR/copal-commit-mono" 2>/dev/null || true
+        note "$(ls "$FONTDIR/copal-commit-mono" 2>/dev/null | wc -l | tr -d ' ') faces"
+    fi
+
+    say "Intel One Mono $INTELONE_VER (OFL 1.1)"
+    if fetch_verified \
+        "https://github.com/intel/intel-one-mono/releases/download/V$INTELONE_VER/ttf.zip" \
+        "$INTELONE_SHA" "$_t/intel.zip"; then
+        mkdir -p "$FONTDIR/copal-intel-one-mono"
+        unzip -j -o -q "$_t/intel.zip" '*.ttf' -d "$FONTDIR/copal-intel-one-mono" 2>/dev/null || true
+        note "$(ls "$FONTDIR/copal-intel-one-mono" 2>/dev/null | wc -l | tr -d ' ') faces"
+    fi
+
+    say "Recursive Mono $RECURSIVE_VER (OFL 1.1)"
+    if fetch_verified \
+        "https://github.com/arrowtype/recursive/releases/download/v$RECURSIVE_VER/ArrowType-Recursive-$RECURSIVE_VER.zip" \
+        "$RECURSIVE_SHA" "$_t/rec.zip"; then
+        mkdir -p "$FONTDIR/copal-recursive"
+        unzip -j -o -q "$_t/rec.zip" \
+              '*RecursiveMono*-Regular.ttf' '*RecursiveMono*-Bold.ttf' \
+              '*RecursiveMono*-Italic.ttf' '*RecursiveMono*-BoldItalic.ttf' \
+              -d "$FONTDIR/copal-recursive" 2>/dev/null || true
+        note "$(ls "$FONTDIR/copal-recursive" 2>/dev/null | wc -l | tr -d ' ') faces"
+    fi
+
+    rm -rf "$_t"; trap - EXIT INT TERM
+    return 0
+}
+
+# Spleen and Cozette are console fonts first and desktop fonts second: what
+# matters about them is the .psfu, which is what setfont loads, at sizes that
+# suit a framebuffer rather than a 4K panel.
+install_fetched_console() {
+    _t=$(mktemp -d) || return 1
+    # shellcheck disable=SC2064
+    trap "rm -rf '$_t'" EXIT INT TERM
+    mkdir -p "$CONSOLEDIR"
+
+    say "Spleen $SPLEEN_VER (BSD-2-Clause)"
+    if fetch_verified \
+        "https://github.com/fcambus/spleen/releases/download/$SPLEEN_VER/spleen-$SPLEEN_VER.tar.gz" \
+        "$SPLEEN_SHA" "$_t/spleen.tgz"; then
+        tar -xzf "$_t/spleen.tgz" -C "$_t" 2>/dev/null || true
+        find "$_t" -name '*.psfu' -exec cp {} "$CONSOLEDIR/" \; 2>/dev/null || true
+        note "$(ls "$CONSOLEDIR"/spleen*.psfu 2>/dev/null | wc -l | tr -d ' ') console sizes"
+    fi
+
+    say "Cozette (MIT)"
+    for _f in cozette.psf cozettecrossedseven.psf; do
+        if have wget; then wget -q -O "$CONSOLEDIR/$_f" \
+            "https://github.com/slavfox/Cozette/releases/latest/download/$_f" 2>/dev/null \
+            || rm -f "$CONSOLEDIR/$_f"
+        fi
+    done
+    # Not hash-pinned, and said out loud rather than hidden: these are fetched
+    # from 'latest' because Cozette publishes bare files rather than a versioned
+    # archive. A console font is cosmetic and unprivileged, so the trade is a
+    # fair one -- but it is a different trade from everything above, and if that
+    # is not wanted, 'copal-fonts install console' without network simply skips.
+    note "cozette: from 'latest' (no versioned archive upstream), not hash-pinned"
+
+    rm -rf "$_t"; trap - EXIT INT TERM
+    return 0
+}
+
+# The Ultimate Oldschool PC Font Pack -- VileR / int10h.org, CC BY-SA 4.0.
+#
+# 1,377 files and about 50 MB unpacked, which is why only two of its four cuts
+# are installed: 'Px' (pixel outline -- the honest one, square pixels, right
+# at integer sizes) and the .otb bitmaps, which are what an X terminal wants.
+# The 'Ac' aspect-corrected and 'Mx' mixed cuts are the same faces again for
+# different rendering paths, and installing all four is three copies of every
+# IBM ROM font on a machine that has one screen.
+#
+# SHARE-ALIKE, so the licence travels: LICENSE.TXT and README go beside them,
+# and 'copal-fonts licences' says where.
+install_ibmpc() {
+    have unzip || apk add unzip >/dev/null 2>&1 || { warn "unzip is needed and could not be installed"; return 1; }
+    _t=$(mktemp -d) || return 1
+    # shellcheck disable=SC2064
+    trap "rm -rf '$_t'" EXIT INT TERM
+
+    say "Ultimate Oldschool PC Font Pack $IBMPC_VER (int10h.org -- CC BY-SA 4.0)"
+    if fetch_verified \
+        "https://int10h.org/oldschool-pc-fonts/download/oldschool_pc_font_pack_v${IBMPC_VER}_linux.zip" \
+        "$IBMPC_SHA" "$_t/ibm.zip"; then
+        mkdir -p "$FONTDIR/copal-oldschool-pc" "$LICDIR"
+        unzip -j -o -q "$_t/ibm.zip" 'ttf - Px (pixel outline)/*.ttf' \
+              -d "$FONTDIR/copal-oldschool-pc" 2>/dev/null || true
+        unzip -j -o -q "$_t/ibm.zip" 'otb - Bm (linux bitmap)/*.otb' \
+              -d "$FONTDIR/copal-oldschool-pc" 2>/dev/null || true
+        unzip -j -o -q "$_t/ibm.zip" 'LICENSE.TXT' 'README.TXT' \
+              -d "$LICDIR" 2>/dev/null || true
+        [ -f "$LICDIR/LICENSE.TXT" ] && mv "$LICDIR/LICENSE.TXT" "$LICDIR/oldschool-pc-LICENSE.txt" 2>/dev/null || true
+        [ -f "$LICDIR/README.TXT" ] && mv "$LICDIR/README.TXT" "$LICDIR/oldschool-pc-README.txt" 2>/dev/null || true
+        note "$(ls "$FONTDIR/copal-oldschool-pc" 2>/dev/null | wc -l | tr -d ' ') faces -- IBM VGA/EGA/CGA and friends"
+        note "attribution: $LICDIR/oldschool-pc-README.txt"
+    fi
+
+    rm -rf "$_t"; trap - EXIT INT TERM
+    return 0
+}
+
+refresh_cache() {
+    if have fc-cache; then
+        fc-cache -f >/dev/null 2>&1 || true
+        note "fontconfig cache rebuilt"
+    else
+        note "no fc-cache here -- fontconfig will pick them up when it is installed"
+    fi
+}
+
+# ------------------------------------------------------------- the console font
+#
+# Two halves, and both are needed or it lasts until the next reboot:
+# 'setfont' changes the console now, and /etc/conf.d/consolefont is what
+# OpenRC's consolefont service reads to do it again at boot.
+console_list() {
+    say "Console fonts on this machine"
+    [ -d "$CONSOLEDIR" ] || { note "(none -- 'doas copal-fonts install console')"; return 0; }
+    ls "$CONSOLEDIR" 2>/dev/null | sed 's/\.psfu\?\(\.gz\)\?$//' | sort -u | while read -r _f; do
+        [ -n "$_f" ] && note "$_f"
+    done
+}
+
+console_set() {
+    need_root console "$1"
+    _n="$1"
+    have setfont || { warn "setfont is missing -- 'doas apk add kbd'"; return 1; }
+    setfont "$_n" 2>/dev/null || setfont "$CONSOLEDIR/$_n.psfu" 2>/dev/null \
+        || { warn "setfont could not load '$_n'"; note "'copal-fonts console' lists what is here"; return 1; }
+    mkdir -p /etc/conf.d
+    if [ -f /etc/conf.d/consolefont ] && grep -q '^consolefont=' /etc/conf.d/consolefont; then
+        sed -i "s|^consolefont=.*|consolefont=\"$_n\"|" /etc/conf.d/consolefont
+    else
+        printf 'consolefont="%s"\n' "$_n" >> /etc/conf.d/consolefont
+    fi
+    rc-update add consolefont boot >/dev/null 2>&1 || true
+    note "console font is now '$_n', and will be at the next boot"
+}
+
+# ---------------------------------------------------------------------- status
+status_line() {  # <label> <dir-or-pkg test>
+    printf '    %-26s %s\n' "$1" "$2"
+}
+
+show_status() {
+    say "Fonts"
+    for _g in coding coding-extra console web; do
+        _have=0; _tot=0
+        for _p in $(apk_group "$_g"); do
+            _tot=$((_tot+1))
+            apk info -e "$_p" >/dev/null 2>&1 && _have=$((_have+1))
+        done
+        status_line "$_g (apk)" "$_have of $_tot packages"
+    done
+    for _d in copal-monaspace copal-commit-mono copal-intel-one-mono copal-recursive copal-oldschool-pc; do
+        if [ -d "$FONTDIR/$_d" ]; then
+            status_line "${_d#copal-}" "$(ls "$FONTDIR/$_d" 2>/dev/null | wc -l | tr -d ' ') faces"
+        else
+            status_line "${_d#copal-}" "not installed"
+        fi
+    done
+    _cf=$(ls "$CONSOLEDIR" 2>/dev/null | wc -l | tr -d ' ')
+    status_line "console fonts" "$_cf files in $CONSOLEDIR"
+    if [ -f /etc/conf.d/consolefont ]; then
+        status_line "console font at boot" "$(sed -n 's/^consolefont="\{0,1\}\([^"]*\)"\{0,1\}.*/\1/p' /etc/conf.d/consolefont | head -1)"
+    fi
+    echo
+    note "install a group:  doas copal-fonts install coding console ibmpc web"
+    note "'copal-fonts list' names the groups and what each one costs"
+    note "pick a console font:  doas copal-fonts console ter-v16n"
+}
+
+install_groups() {
+    need_root install "$@"
+    _did=0
+    for _g in "$@"; do
+        case "$_g" in
+            all)     # 'all' does NOT mean coding-extra. 1.6 GB is not something
+                     # a word like 'all' should be able to do by accident.
+                     install_apk_group coding; install_apk_group console; install_apk_group web
+                     install_fetched_coding; install_fetched_console; install_ibmpc; _did=1
+                     note "coding-extra (Iosevka and the large Nerd cuts, ~1.9 GB) not included"
+                     note "ask for it by name: doas copal-fonts install coding-extra" ;;
+            coding)  say "Coding faces -- ligature and plain, about 185 MB"
+                     install_apk_group coding; install_fetched_coding; _did=1 ;;
+            coding-extra)
+                     say "The large coding faces -- Iosevka and the big Nerd cuts"
+                     note "This is roughly 1.9 GB. Iosevka alone is 446 MB per style set."
+                     confirm "Go ahead?" || { note "Skipped."; return 0; }
+                     install_apk_group coding-extra; _did=1 ;;
+            console) say "Console and TTY faces"
+                     install_apk_group console; install_fetched_console; _did=1 ;;
+            ibmpc)   install_ibmpc; _did=1 ;;
+            web)     say "Document faces -- the metric-compatible set"
+                     install_apk_group web; _did=1 ;;
+            *)       warn "no such group: $_g"
+                     note "groups: coding coding-extra console ibmpc web all" ;;
+        esac
+    done
+    [ "$_did" = 1 ] || return 0
+    refresh_cache
+}
+
+case "${1:-status}" in
+status)  show_status ;;
+install) shift; [ "$#" -gt 0 ] || { echo "usage: copal-fonts install GROUP [GROUP...]" >&2; exit 2; }
+         install_groups "$@" ;;
+list)    shift
+         if [ "$#" -gt 0 ]; then
+             for _p in $(apk_group "$1"); do
+                 apk info -e "$_p" >/dev/null 2>&1 && _m="installed" || _m="-"
+                 printf '    %-32s %s\n' "$_p" "$_m"
+             done
+         else
+             note "groups, and roughly what they cost:"
+             note "  coding        ~185 MB  ligature faces and their plain twins"
+             note "  coding-extra  ~1.9 GB  Iosevka, and the large Nerd cuts"
+             note "  console        ~11 MB  the text console, plus Spleen and Cozette"
+             note "  ibmpc          ~17 MB  IBM VGA/EGA/CGA, from int10h.org"
+             note "  web            ~42 MB  the metric-compatible document set"
+         fi ;;
+console) shift
+         if [ "$#" -gt 0 ]; then console_set "$1"; else console_list; fi ;;
+licences|licenses)
+         say "$LICDIR"
+         ls "$LICDIR" 2>/dev/null | while read -r _f; do note "$_f"; done
+         note "Everything else is OFL 1.1, MIT or BSD-2; apk keeps their"
+         note "licences with the packages." ;;
+*)       sed -n '4,18p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac
+COPALFONTS
+    chmod 0755 /usr/local/bin/copal-fonts
+    note "/usr/local/bin/copal-fonts -- the font sets, and the console font"
+}
+
+install_copal_code() {
+    [ -d /usr/local/bin ] || mkdir -p /usr/local/bin 2>/dev/null || return 0
+    cat > /usr/local/bin/copal-code <<'COPALCODE'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-code -- the checkouts in ~/code.
+#
+#   copal-code              clone anything on the list that is not here yet,
+#                           'git pull' anything that is, then build them all
+#                           (copal-build; COPAL_NO_BUILD=1 to skip that)
+#   copal-code list         the list, and what is on disk
+#   copal-code add URL...   add to the list (needs doas: the list lives on the
+#                           boot partition, which only root can write)
+#   copal-code rm NAME...   remove from the list (needs doas). The CHECKOUT is
+#                           left alone -- deleting somebody's work is not a
+#                           thing a list editor should do.
+#   copal-code path         where the list is
+#
+# ~/code/copal is always one of them, listed or not: the repository this
+# machine was built from, as a checkout you can edit, commit and push. It is
+# not in the list file and 'rm' will not remove it. Point it somewhere else --
+# a fork, your own remote -- with 'git remote set-url' in the checkout itself.
+#
+# Rewritten by copal-init.sh every time stage 7 runs.
+set -eu
+
+# /usr/local/bin on PATH, because this is not always run from a shell that has
+# it: stage 7 runs it through `su - user -c`, and busybox su hands a non-root
+# user "/sbin:/usr/sbin:/bin:/usr/bin" and nothing more. The first install on
+# the VM cloned everything and built nothing, because `command -v copal-build`
+# found nothing -- and said nothing, which is the part that was wrong.
+case ":$PATH:" in *:/usr/local/bin:*) ;; *) PATH="/usr/local/bin:$PATH" ;; esac
+export PATH
+
+CODE="$HOME/code"
+
+# Copal itself. Substituted from $COPAL_SELF_URL when this file is written, so
+# there is one URL in copal-init.sh and not two that can disagree.
+SELF="@COPAL_SELF_URL@"
+
+say()  { printf '\033[36m==>\033[0m %s\n' "$*"; }
+note() { printf '    %s\n' "$*"; }
+warn() { printf '\033[33mwarning:\033[0m %s\n' "$*" >&2; }
+
+# The list is on the FAT boot partition -- see REPOFILE in copal-init.sh. It is
+# looked for rather than hardcoded because /boot is where it lives after stage
+# 3 and /media/* is where it lives before.
+find_list() {
+    for _d in /boot /media/*; do
+        [ -f "$_d/copal-repos" ] && { printf '%s\n' "$_d/copal-repos"; return 0; }
+    done
+    # Nothing yet: /boot is the right place to make one, if this is that card.
+    [ -f /boot/answers.txt ] && { printf '%s\n' /boot/copal-repos; return 0; }
+    return 1
+}
+LIST=$(find_list || true)
+
+repos() {
+    [ -n "$LIST" ] && [ -f "$LIST" ] || return 0
+    sed 's/\r$//' "$LIST" | sed 's/^[[:space:]]*#.*//' | awk 'NF { print $1 }'
+}
+
+# The directory a URL becomes: the last path component, minus a trailing .git.
+# Same rule git itself uses, reimplemented because `git clone` will not tell
+# you what it would pick without doing it.
+name_of() {
+    _n=${1%/}
+    _n=${_n##*/}
+    _n=${_n%.git}
+    printf '%s\n' "$_n"
+}
+
+# The list, with Copal itself in front of it.
+#
+# In FRONT, so that on a fresh machine the thing every guide refers to is the
+# first clone rather than the last. Skipped if the list already names something
+# that would land in the same directory: somebody who listed their own fork of
+# Copal meant their fork, and upstream should not quietly win the name.
+all_repos() {
+    _sn=$(name_of "$SELF")
+    _r=$(repos)
+    _have=0
+    for _u in $_r; do
+        if [ "$(name_of "$_u")" = "$_sn" ]; then _have=1; fi
+    done
+    [ "$_have" = 1 ] || printf '%s\n' "$SELF"
+    [ -n "$_r" ] && printf '%s\n' "$_r"
+    return 0
+}
+
+# Is this URL in the file, as opposed to being the built-in one?
+listed() { repos | grep -qxF "$1"; }
+
+# THE TWO FORMS OF THE SAME REPOSITORY, and why both are tried.
+#
+# A checkout you can push from needs an ssh remote and a key this machine
+# holds. A checkout that works on a machine with no key needs https. Which of
+# those is true is not knowable when the list is written -- it depends on
+# whether anybody has run ssh-keygen here yet and pasted the result into
+# GitHub -- so the list records one form and this tries both.
+#
+# ssh FIRST, because it is the one with the better ending: a clone that can be
+# pushed from without 'git remote set-url' later. https second, because it is
+# the one that always works. Whichever succeeds sets origin, and 'git remote
+# -v' in the checkout says which happened.
+#
+# Only for URLs where the other form can actually be derived -- a host and a
+# owner/name path. Anything else (a local path, a self-hosted git://, an
+# unfamiliar shape) is cloned exactly as written and not second-guessed.
+ssh_form() {   # https://host/owner/repo(.git) -> git@host:owner/repo.git
+    case "$1" in
+        https://*/*/*) : ;;
+        *) return 1 ;;
+    esac
+    _rest=${1#https://}
+    _host=${_rest%%/*}
+    _path=${_rest#*/}
+    case "$_path" in */*) : ;; *) return 1 ;; esac
+    printf 'git@%s:%s\n' "$_host" "${_path%.git}.git"
+}
+https_form() { # git@host:owner/repo(.git) -> https://host/owner/repo.git
+    case "$1" in
+        *@*:*/*) : ;;
+        *) return 1 ;;
+    esac
+    _hp=${1#*@}
+    _host=${_hp%%:*}
+    _path=${_hp#*:}
+    printf 'https://%s/%s\n' "$_host" "${_path%.git}.git"
+}
+
+# git over ssh, without the two ways it can hang an unattended install:
+# a host key it has never seen (asks yes/no) and a key with a passphrase or no
+# key at all (asks for a password). BatchMode turns both into a fast failure,
+# which is the whole point -- a failure here is not an error, it is the signal
+# to try https.
+GIT_SSH_BATCH="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+
+clone_one() {  # <url> <dir>
+    _u="$1"; _d="$2"
+    _ssh=$(ssh_form "$_u" 2>/dev/null || true)
+    _https=$(https_form "$_u" 2>/dev/null || true)
+    # The written form is always tried, and first if it is already ssh.
+    case "$_u" in
+        *@*:*/*) _first="$_u";  _second="$_https" ;;
+        *)       _first="${_ssh:-$_u}"; _second="${_ssh:+$_u}" ;;
+    esac
+    if [ "$_first" != "$_u" ]; then
+        note "trying ssh first: $_first"
+    fi
+    # --recurse-submodules: a repository that carries others inside it (the
+    # yodacon checkout carries gonex and the konex fork that way) is not
+    # complete without them, and 'make' in it fails on an empty directory.
+    if GIT_SSH_COMMAND="$GIT_SSH_BATCH" git clone --recurse-submodules "$_first" "$_d"; then
+        return 0
+    fi
+    [ -n "$_second" ] || return 1
+    warn "$_first did not clone -- falling back to $_second"
+    note "(no key on this machine yet? 'copal-guide code' says how to add one)"
+    git clone --recurse-submodules "$_second" "$_d"
+}
+
+need_root() {
+    [ "$(id -u)" = 0 ] || {
+        echo "That edits $LIST on the boot partition. Re-run as: doas copal-code $*" >&2
+        exit 1
+    }
+    [ -n "$LIST" ] || { echo "no copal-repos list found on the boot partition" >&2; exit 1; }
+    mount -o remount,rw "$(dirname "$LIST")" 2>/dev/null || true
+}
+
+case "${1:-sync}" in
+sync)
+    # Root has no business owning a checkout in somebody else's home, and
+    # $HOME here would be /root anyway. Stage 7 calls this through `su -`.
+    if [ "$(id -u)" = 0 ]; then
+        echo "Run this as the user who owns the checkouts, not as root." >&2
+        exit 1
+    fi
+    _r=$(all_repos)
+    mkdir -p "$CODE"
+    _fail=0
+    # A for loop and not `| while read`, because the pipeline would run the
+    # body in a subshell and _fail would come back zero however many clones
+    # failed -- which is precisely the thing stage 7 checks. No git URL
+    # contains a space, so word splitting is the right tool here.
+    for _url in $_r; do
+        _dir="$CODE/$(name_of "$_url")"
+        if [ -d "$_dir/.git" ]; then
+            say "$(basename "$_dir") -- already here, pulling"
+            if git -C "$_dir" pull --ff-only; then
+                # A pull that moved a submodule pointer leaves the submodule
+                # where it was until this is run; a clone made before the
+                # submodule existed has an empty directory until it is.
+                git -C "$_dir" submodule update --init --recursive \
+                    || warn "submodules did not update in $_dir"
+            else
+                warn "pull failed in $_dir"
+            fi
+        elif [ -e "$_dir" ]; then
+            warn "$_dir exists and is not a checkout -- left alone"
+        else
+            say "$(basename "$_dir") -- cloning"
+            # --depth is NOT used. This is a machine to work on, and a shallow
+            # clone cannot be pushed from without a fetch --unshallow first,
+            # which is a trap to leave for somebody a month from now.
+            clone_one "$_url" "$_dir" || { warn "clone failed: $_url"; _fail=1; }
+        fi
+    done
+    # AND THEN BUILD. A checkout that is cloned and not compiled is a
+    # directory; copal-build is what turns it into a program on PATH. Its
+    # failures are its own -- reported, retried with 'copal-build NAME' --
+    # and do not make this a failed sync, because the clones are done.
+    if [ "${COPAL_NO_BUILD:-0}" = 1 ]; then
+        note "COPAL_NO_BUILD=1 -- not building; 'copal-build' does it later"
+    elif command -v copal-build >/dev/null 2>&1; then
+        say "building"
+        copal-build || warn "some checkouts did not build -- 'copal-build' again to retry"
+    else
+        warn "no copal-build on PATH -- cloned, not built. Stage 7 installs it."
+    fi
+    exit "$_fail" ;;
+list)
+    say "${LIST:-(no list found)}"
+    for _url in $(all_repos); do
+        _dir="$CODE/$(name_of "$_url")"
+        if [ -d "$_dir/.git" ]; then _st="cloned"
+        elif [ -e "$_dir" ]; then   _st="IN THE WAY -- not a checkout"
+        else                        _st="not cloned yet"
+        fi
+        listed "$_url" || _st="$_st, built in"
+        printf '    %-46s %s\n' "$_url" "$_st"
+    done ;;
+add)
+    shift
+    [ "$#" -gt 0 ] || { echo "usage: copal-code add URL [URL...]" >&2; exit 2; }
+    need_root add "$@"
+    [ -f "$LIST" ] || printf '# Copal: repositories to check out into ~/code.\n' > "$LIST"
+    for _u in "$@"; do
+        if repos | grep -qxF "$_u"; then
+            note "already listed: $_u"
+        else
+            printf '%s\n' "$_u" >> "$LIST"
+            note "added: $_u"
+        fi
+    done
+    sync
+    note "Now run 'copal-code' as the user to clone it." ;;
+rm)
+    shift
+    [ "$#" -gt 0 ] || { echo "usage: copal-code rm NAME [NAME...]" >&2; exit 2; }
+    need_root rm "$@"
+    for _u in "$@"; do
+        # Copal itself is not in the file, so there is nothing to remove and
+        # the next sync would clone it again. Say that, rather than reporting
+        # a removal that did not happen.
+        if [ "$_u" = "$SELF" ] || [ "$_u" = "$(name_of "$SELF")" ]; then
+            if ! listed "$_u"; then
+                note "copal is built in, not listed -- nothing to remove."
+                note "The checkout is yours; 'git remote set-url' repoints it."
+                continue
+            fi
+        fi
+        # By URL or by the directory name it produces, because the name is
+        # what you can see in ~/code and the URL is what you would have to
+        # go and look up.
+        _tmp="$LIST.new.$$"
+        awk -v u="$_u" '
+            { line = $0 }
+            { s = $1; sub(/\/$/, "", s); sub(/.*\//, "", s); sub(/\.git$/, "", s) }
+            $0 ~ /^[[:space:]]*#/ || NF == 0 { print line; next }
+            $1 == u || s == u { next }
+            { print line }
+        ' "$LIST" > "$_tmp" && mv "$_tmp" "$LIST" && note "removed: $_u"
+    done
+    sync
+    note "The checkout in ~/code is still there; delete it by hand if you meant to." ;;
+path)
+    printf '%s\n' "${LIST:-}" ;;
+*)
+    sed -n '4,20p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac
+COPALCODE
+    # One URL, defined once, in copal-init.sh. The heredoc above is quoted --
+    # deliberately, it is full of $ that must survive verbatim -- so the one
+    # value that does need substituting is put in afterwards.
+    sed -i "s|@COPAL_SELF_URL@|$COPAL_SELF_URL|" /usr/local/bin/copal-code
+    chmod 0755 /usr/local/bin/copal-code
+    note "/usr/local/bin/copal-code -- the list, and cloning from it"
+}
+
+# The step after the clone: compile what came down and put it on PATH.
+#
+# WHY A SECOND SCRIPT AND NOT MORE OF copal-code. Cloning is one question --
+# is it here, and is it current -- and it is the same question for every
+# repository. Building is a different question with a different answer per
+# repository, and it is the part that fails: a missing compiler, a board too
+# small for a release build, a target that needs an emulator to run. Keeping
+# it separate means a failed build is 'copal-build NAME' to retry, not a
+# clone to redo, and a machine with no toolchain still gets its checkouts.
+# copal-code runs this at the end of every sync, so the two are one command
+# in practice and two in the failure case, which is the case that matters.
+#
+# The four repositories CFG_GIT_REPOS proposes are the worked examples, and
+# one of them is why this exists at all: birdshot is the camera application,
+# and a camera application that is cloned and not compiled is a directory.
+install_copal_build() {
+    [ -d /usr/local/bin ] || mkdir -p /usr/local/bin 2>/dev/null || return 0
+    cat > /usr/local/bin/copal-build <<'COPALBUILD'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-build -- compile the checkouts in ~/code and put what they make on PATH.
+#
+#   copal-build              build every checkout whose shape it recognises,
+#                            and install what comes out into ~/.local/bin
+#   copal-build NAME...      only these -- directory names under ~/code
+#   copal-build list         each checkout: its shape, and what it has made
+#   copal-build clean NAME.. delete the build directories, keep the checkout
+#
+# ~/.local/bin is on PATH -- stage 4 writes that into ~/.profile -- and that
+# is what makes "built" mean "installed": the launcher lists it, the menu's
+# have() finds it, a terminal can type it. copal-code clones and pulls; this
+# is the step after it, and copal-code runs it itself at the end of a sync.
+#
+# BY SHAPE, NOT BY NAME. A checkout with a CMakeLists.txt gets cmake, one
+# with a Cargo.toml gets cargo, one with a go.mod gets go, one with a
+# package.json gets npm, and a Makefile that calls cl65 is a Commodore
+# program, whose committed .prg and .d64 are what runs. So a fork, a rename,
+# or a repository this file has never heard of builds the same way, provided
+# it is one of those shapes. The repositories stage 1 proposes by default:
+#
+#   birdshot          cmake, under native/ -- the C++17 camera pipeline, and
+#                     birdshot-gui when Qt 6 is installed. THE CAMERA
+#                     APPLICATION: copal-camera looks for it first.
+#   ascitty           cargo -- the terminal renderer
+#   urfinkel          cc65 -- a Plus/4 game, run under VICE
+#   codexofconquest   npm -- a web game over a local node server
+#   gonex             go -- Team Yodacon's game, Ebitengine over cgo
+#   yodacon           none -- the centre that ties the 1997 plugin, the
+#                     konex fork and gonex together; Python tools run in
+#                     place, and its own Makefile builds the gonex
+#                     submodule. Nothing to put on PATH, so left alone.
+#
+# NOTHING HERE MAY DIRTY A CHECKOUT. copal-code keeps these current with
+# 'git pull --ff-only', and a pull refuses to run over a modified tracked
+# file -- so a build step that rewrites one breaks every pull after it,
+# silently, for a repository that then never updates again. That rule
+# decides two things below: npm runs 'ci' rather than 'install' where there
+# is a lockfile, and the Plus/4 targets are NOT cross-compiled in place even
+# when cc65 is installed, because their build/ output is committed and
+# date-stamped, and a rebuild is a modified tracked file by design. Anyone
+# who wants that anyway sets COPAL_BUILD_PLUS4=1 and owns the result.
+#
+# Two of those make nothing that can be put on PATH as it stands -- a .d64
+# needs an emulator and a web page needs its server -- so each gets a
+# one-file wrapper under the checkout's own name. That part IS keyed by name,
+# because there is no shape to read a launcher off; see write_launcher.
+#
+# Copal itself is never built. It is a shell script, and 'make redeploy' in
+# ~/code/copal is how that one runs.
+#
+# Rewritten by copal-init.sh every time stage 7 runs.
+set -u
+
+CODE="${COPAL_CODE:-$HOME/code}"
+PREFIX="${COPAL_PREFIX:-$HOME/.local}"
+BIN="$PREFIX/bin"
+# What was built, for the menu: one line per program, name|label|command|mode,
+# in the catalogue's own vocabulary so copal-menu can treat it as one more
+# section. Written by this script and read by nothing else that edits it.
+PROJECTS="${XDG_DATA_HOME:-$HOME/.local/share}/copal/projects"
+
+# SCRATCH SPACE ON THE DISK, NOT IN /tmp. Stage 3 mounts /tmp as a 64 MB
+# tmpfs, sized for the boards, and a compiler's working files do not fit in
+# it: gonex's cgo build of Ebitengine died with "No space left on device"
+# writing /tmp/cc*.s. Everything that honours TMPDIR -- gcc's assembler
+# output, Go's work directory, cargo and npm -- goes under the home instead,
+# where the ext4 root has room. Cleared at the end; this is scratch.
+TMPDIR="${XDG_CACHE_HOME:-$HOME/.cache}/copal-build/tmp"
+mkdir -p "$TMPDIR"
+export TMPDIR
+export GOTMPDIR="$TMPDIR"
+
+say()  { printf '\033[36m==>\033[0m %s\n' "$*"; }
+note() { printf '    %s\n' "$*"; }
+warn() { printf '\033[33mwarning:\033[0m %s\n' "$*" >&2; }
+have() { command -v "$1" >/dev/null 2>&1; }
+run_in() { ( cd "$1" || exit 1; shift; "$@" ); }  # <dir> <command...>
+
+# How many compilers at once. nproc is the ceiling and memory is the real
+# limit: a Pi 4 with 1 GB and four cores running four g++ at once is a machine
+# swapping to zram for an hour, which is slower than one core would be. Half
+# a gigabyte a job is g++'s appetite on the larger files in these trees.
+jobs() {
+    _n=$(nproc 2>/dev/null || echo 1)
+    _kb=$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo 2>/dev/null || true)
+    if [ -n "${_kb:-}" ] && [ "$_kb" -gt 0 ] 2>/dev/null; then
+        _m=$(( _kb / 524288 )); [ "$_m" -lt 1 ] && _m=1
+        [ "$_m" -lt "$_n" ] && _n=$_m
+    fi
+    printf '%s\n' "$_n"
+}
+JOBS=$(jobs)
+
+# ---- the shapes ------------------------------------------------------------
+shape_of() {  # <dir> -> cmake | cargo | npm | cc65 | none
+    if   [ -f "$1/CMakeLists.txt" ] || [ -f "$1/native/CMakeLists.txt" ]; then echo cmake
+    elif [ -f "$1/Cargo.toml" ]; then echo cargo
+    elif [ -f "$1/go.mod" ]; then echo go
+    elif [ -f "$1/package.json" ] || [ -f "$1/src/package.json" ]; then echo npm
+    elif [ -f "$1/Makefile" ] && grep -q 'cl65' "$1/Makefile" 2>/dev/null; then echo cc65
+    else echo none
+    fi
+}
+
+# Each recipe appends the programs it put in $BIN to $MADE, one name a line.
+# Compiler output goes to the terminal, not into a captured string: on a slow
+# board the build IS the progress bar, and it must be watchable.
+# -U_FORTIFY_SOURCE, on both languages, because of what Alpine's compiler does
+# by default and what a Release build of these trees does on top of it. Alpine
+# gcc defines _FORTIFY_SOURCE=2 itself, which routes stdio through
+# /usr/include/fortify/*.h -- always_inline wrappers. A project that turns on
+# link-time optimisation (birdshot does: CheckIPOSupported, then ON) then dies
+# at link with "inlining failed in call to 'always_inline' 'vsnprintf':
+# function body can be overwritten at link time", which is the two features
+# refusing each other and not a bug in the tree. Alpine's own packages that
+# use LTO do the same thing. Undefined on the command line, where it comes
+# after the compiler's built-in define and so wins.
+build_cmake() {  # <dir>
+    _s="$1"; [ -f "$_s/CMakeLists.txt" ] || _s="$1/native"
+    have cmake || { warn "cmake is not installed (doas apk add cmake) -- skipped"; return 1; }
+    run_in "$_s" cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+                       -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+                       -DCMAKE_C_FLAGS=-U_FORTIFY_SOURCE -DCMAKE_CXX_FLAGS=-U_FORTIFY_SOURCE || return 1
+    run_in "$_s" cmake --build build -j "$JOBS" || return 1
+    run_in "$_s" cmake --install build || return 1
+    # What landed in bin/, from cmake's own record of the install.
+    grep "^$BIN/" "$_s/build/install_manifest.txt" 2>/dev/null \
+        | while read -r _f; do basename "$_f"; done >> "$MADE"
+}
+
+build_cargo() {  # <dir>
+    have cargo || { warn "cargo is not installed (doas apk add cargo rust) -- skipped"; return 1; }
+    run_in "$1" cargo build --release || return 1
+    # Every executable cargo leaves at the top of target/release is a [[bin]]:
+    # dependencies go under deps/ and build scripts under build/, so depth 1
+    # is exactly the list. Linked, not copied -- a rebuild replaces the file
+    # in place and the link stays true.
+    find "$1/target/release" -maxdepth 1 -type f -perm -100 \
+         ! -name '*.d' ! -name '*.so' ! -name '*.rlib' 2>/dev/null \
+    | while read -r _f; do
+        ln -sf "$_f" "$BIN/$(basename "$_f")" && basename "$_f"
+    done >> "$MADE"
+}
+
+# Go installs straight into $BIN: GOBIN is exactly the knob for that. A cmd/
+# directory holds one main package per subdirectory, which is the layout
+# every one of these uses; a module whose root is the program is the other
+# case. Two things happen over the network here and both are normal: the
+# module cache fills, and if go.mod asks for a newer Go than Alpine ships
+# (gonex says 1.27, v3.24 ships 1.26) the toolchain fetches that release
+# itself and builds with it. That is GOTOOLCHAIN=auto, which is upstream's
+# default and NOT Alpine's: Alpine's go is built with GOTOOLCHAIN=local, and
+# the first VM build stopped at "go.mod requires go >= 1.27.0 (running go
+# 1.26.3; GOTOOLCHAIN=local)". Set here, for this build only. The fetched
+# toolchain is static, so it does not care that this is musl.
+build_go() {  # <dir>
+    have go || { warn "go is not installed (doas apk add go) -- skipped"; return 1; }
+    if [ -d "$1/cmd" ]; then _pk=./cmd/...; else _pk=.; fi
+    run_in "$1" env GOBIN="$BIN" GOTOOLCHAIN=auto go install "$_pk" || return 1
+    if [ -d "$1/cmd" ]; then
+        for _c in "$1"/cmd/*/; do
+            [ -d "$_c" ] || continue
+            grep -q '^package main' "$_c"*.go 2>/dev/null && basename "$_c" >> "$MADE"
+        done
+    else
+        basename "$(awk '/^module /{ print $2; exit }' "$1/go.mod")" >> "$MADE"
+    fi
+    return 0
+}
+
+build_npm() {  # <dir>
+    _p="$1"; [ -f "$_p/package.json" ] || _p="$1/src"
+    have npm || { warn "npm is not installed (doas apk add nodejs npm) -- skipped"; return 1; }
+    # 'ci' installs exactly what the lockfile says and does not rewrite it;
+    # 'install' would, and a rewritten package-lock.json is a tracked file
+    # the next 'git pull' refuses to cross.
+    if [ -f "$_p/package-lock.json" ]; then
+        run_in "$_p" npm ci --no-audit --no-fund || return 1
+    else
+        run_in "$_p" npm install --no-audit --no-fund || return 1
+    fi
+}
+
+# The Commodore Plus/4 target: a Makefile that calls cl65. The committed
+# build/ is what runs -- these repositories commit their .prg and .d64 and
+# stamp the build date into them, so compiling here would modify a tracked
+# file and break the next pull (see the top of this file). Opt in with
+# COPAL_BUILD_PLUS4=1 and cc65 on PATH (Alpine has it in edge/testing:
+# doas copal-install cc65@testing), and it compiles in place regardless.
+build_cc65() {  # <dir>
+    [ -f "$1/Makefile" ] && grep -q 'cl65' "$1/Makefile" 2>/dev/null || return 0
+    if [ "${COPAL_BUILD_PLUS4:-0}" != 1 ]; then
+        # _c, not _n: the caller's _n is the checkout's name, and a shell
+        # function has no locals to hide a reuse of it behind.
+        _c=$(ls "$1"/build/*.prg "$1"/build/*.d64 2>/dev/null | wc -l | tr -d ' ')
+        if [ "$_c" -gt 0 ]; then
+            note "Plus/4 program: using the committed build/ ($_c file(s)) -- not recompiled,"
+            note "  a rebuild would modify tracked files. COPAL_BUILD_PLUS4=1 to do it anyway."
+        else
+            warn "Plus/4 program with nothing committed under build/ -- COPAL_BUILD_PLUS4=1 with cc65 installed compiles it"
+        fi
+        return 0
+    fi
+    have cl65 || { warn "COPAL_BUILD_PLUS4=1 but no cl65 on PATH (doas copal-install cc65@testing)"; return 1; }
+    # A repository with both a host build and a Plus/4 build names the second
+    # one 'prg'; one that is only a Plus/4 program builds it as 'all'.
+    if grep -q '^prg:' "$1/Makefile"; then _t=prg; else _t=all; fi
+    run_in "$1" make "$_t" || return 1
+    if have c1541 && grep -q '^disk:' "$1/Makefile"; then
+        run_in "$1" make disk || return 1
+    fi
+    return 0
+}
+
+# ---- launchers, for what cannot simply be put on PATH ----------------------
+write_launcher() {  # <name> <dir>
+    case "$1" in
+    urfinkel)
+        cat > "$BIN/urfinkel" <<LAUNCHER
+#!/bin/sh
+# Written by copal-build: UR FINKEL, from $2 -- a Commodore Plus/4 program.
+D="$2/build"
+[ -f "\$D/urfinkel.d64" ] || { echo "urfinkel: no \$D/urfinkel.d64 -- run copal-build" >&2; exit 1; }
+if command -v xplus4 >/dev/null 2>&1; then exec xplus4 -autostart "\$D/urfinkel.d64" "\$@"; fi
+echo "urfinkel: needs the VICE emulator (xplus4): doas copal-install vice@testing" >&2
+echo "  The disk image is \$D/urfinkel.d64, for any other Plus/4 emulator." >&2
+exit 1
+LAUNCHER
+        chmod 0755 "$BIN/urfinkel"; echo urfinkel >> "$MADE" ;;
+    codexofconquest)
+        cat > "$BIN/codexofconquest" <<LAUNCHER
+#!/bin/sh
+# Written by copal-build: Codex of Conquest, from $2 -- a web game over a
+# local node server. run.sh starts the server if it is not already up; the
+# page is opened from here, in \$BROWSER, because run.sh's own 'open' is a
+# Mac command.
+cd "$2" || exit 1
+command -v node >/dev/null 2>&1 || { echo "codexofconquest: needs node (doas apk add nodejs npm)" >&2; exit 1; }
+[ -d src/node_modules ] || { echo "codexofconquest: no src/node_modules -- run copal-build" >&2; exit 1; }
+./run.sh server
+exec "\${BROWSER:-xdg-open}" "\$PWD/play.html"
+LAUNCHER
+        chmod 0755 "$BIN/codexofconquest"; echo codexofconquest >> "$MADE" ;;
+    esac
+}
+
+# ---- what the menu is told --------------------------------------------------
+# Label and mode per program, in the catalogue's terms: x makes its own
+# window, t wants a terminal, h is a command-line tool whose --help is shown.
+# Unknown programs get a terminal, which is the answer that is never wrong --
+# a windowed program still opens from one, and a text one needs it.
+entry_for() {  # <checkout name> <program> -> label|command|mode, or nothing
+    case "$2" in
+        birdshot-gui)    echo "Birdshot (camera)|birdshot-gui|x" ;;
+        birdshot)        echo "Birdshot (camera - command line)|birdshot|h" ;;
+        ascitty)         echo "ASCITTY (a city; in the terminal)|ascitty|t" ;;
+        ascitty-bake)    return 0 ;;  # a build tool, not a program to open
+        urfinkel)        echo "UR FINKEL (Plus/4; in VICE)|urfinkel|x" ;;
+        codexofconquest) echo "Codex of Conquest (web game)|codexofconquest|x" ;;
+        gonex)           echo "Gonex (Team Yodacon; reentry trader)|gonex|x" ;;
+        *)               echo "$1: $2|$2|t" ;;
+    esac
+}
+
+# ---- one checkout -----------------------------------------------------------
+build_one() {  # <dir>
+    _d="$1"; _n=$(basename "$_d")
+    case "$_n" in
+        copal) note "copal -- a script, nothing to compile ('make redeploy' runs it)"; return 0 ;;
+    esac
+    _shape=$(shape_of "$_d")
+    say "$_n -- $_shape"
+    : > "$MADE"
+    _ok=0
+    case "$_shape" in
+        cmake) build_cmake "$_d" || _ok=1 ;;
+        cargo) build_cargo "$_d" || _ok=1
+               # A Plus/4 target beside the host build, if the tree has one.
+               [ "$_ok" = 0 ] && { build_cc65 "$_d" || _ok=1; } ;;
+        go)    build_go "$_d" || _ok=1 ;;
+        npm)   build_npm "$_d" || _ok=1 ;;
+        cc65)  build_cc65 "$_d" || _ok=1 ;;
+        none)  note "no CMakeLists.txt, Cargo.toml, go.mod, package.json or cc65 Makefile -- left alone"
+               return 0 ;;
+    esac
+    [ "$_ok" = 0 ] || { warn "$_n did not build -- see above; 'copal-build $_n' retries"; return 1; }
+    write_launcher "$_n" "$_d"
+    # Record what it made, replacing the previous record for this checkout.
+    grep -v "^$_n|" "$PROJECTS" > "$PROJECTS.new" 2>/dev/null || true
+    while read -r _b; do
+        [ -n "$_b" ] || continue
+        _e=$(entry_for "$_n" "$_b") || true
+        [ -n "$_e" ] && printf '%s|%s\n' "$_n" "$_e" >> "$PROJECTS.new"
+    done < "$MADE"
+    mv "$PROJECTS.new" "$PROJECTS"
+    if [ -s "$MADE" ]; then
+        note "in $BIN: $(tr '\n' ' ' < "$MADE")"
+    else
+        note "built; nothing new for $BIN"
+    fi
+    return 0
+}
+
+checkouts() {  # every directory in ~/code, or the names given
+    if [ "$#" -gt 0 ]; then
+        for _n in "$@"; do
+            [ -d "$CODE/$_n" ] && printf '%s\n' "$CODE/$_n" \
+                || warn "no $CODE/$_n -- 'copal-code list' says what is here"
+        done
+    else
+        for _d in "$CODE"/*/; do [ -d "$_d" ] && printf '%s\n' "${_d%/}"; done
+    fi
+}
+
+mkdir -p "$BIN" "$(dirname "$PROJECTS")"
+MADE=$(mktemp "$TMPDIR/copal-build.XXXXXX")
+trap 'rm -f "$MADE" "$PROJECTS.new"; rm -rf "$TMPDIR"/* 2>/dev/null' EXIT INT TERM
+
+case "${1:-}" in
+list)
+    say "$CODE  (programs go to $BIN)"
+    for _d in $(checkouts); do
+        _n=$(basename "$_d")
+        _made=$(grep "^$_n|" "$PROJECTS" 2>/dev/null | cut -d'|' -f3 | while read -r _c; do
+                    have "${_c%% *}" && printf '%s ' "${_c%% *}" || printf '%s(missing) ' "${_c%% *}"
+                done)
+        printf '    %-20s %-6s %s\n' "$_n" "$(shape_of "$_d")" "${_made:-}"
+    done
+    case ":$PATH:" in
+        *":$BIN:"*) ;;
+        *) note "$BIN is not on PATH in this shell -- stage 4 writes that into ~/.profile" ;;
+    esac ;;
+clean)
+    shift
+    [ "$#" -gt 0 ] || { echo "usage: copal-build clean NAME..." >&2; exit 2; }
+    for _d in $(checkouts "$@"); do
+        for _b in "$_d/build" "$_d/native/build" "$_d/target"; do
+            [ -d "$_b" ] && rm -rf "$_b" && note "removed $_b"
+        done
+    done ;;
+-h|--help|help)
+    sed -n '4,10p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+*)
+    [ -d "$CODE" ] || { echo "no $CODE -- 'copal-code' clones into it first" >&2; exit 1; }
+    case ":$PATH:" in
+        *":$BIN:"*) ;;
+        *) note "$BIN is not on PATH in this shell -- stage 4 writes that into ~/.profile" ;;
+    esac
+    note "$JOBS job(s) at a time"
+    _fail=0
+    for _d in $(checkouts "$@"); do
+        build_one "$_d" || _fail=1
+    done
+    [ "$_fail" = 0 ] && say "done -- 'copal-build list' says what is where" \
+                     || warn "some checkouts did not build -- 'copal-build NAME' retries one"
+    exit "$_fail" ;;
+esac
+COPALBUILD
+    chmod 0755 /usr/local/bin/copal-build
+    note "/usr/local/bin/copal-build -- compiling the checkouts, into ~/.local/bin"
+}
+
+# Claude Code. INSTALLED BY DEFAULT, on the boards that can actually run it --
+# Enter accepts, and declining is a deliberate "n" rather than the other way
+# round. It was an opt-in for a long time and that was the wrong default for
+# what this machine is for: a small system you work on from the keyboard, where
+# the agent is part of the toolchain rather than an extra.
+#
+# What "can actually run it" means is decided by the machine, not by this
+# comment: npm has to exist, node has to execute on this CPU (Node dropped
+# ARMv6 years ago, so a Pi Zero fails that test in two seconds), and either
+# failure declines for you with the reason printed. The cost is stated before
+# the question, because ~120 MB of nodejs on a 512 MB board is a real decision
+# even when it is the default one.
 install_claude_code() {
     say "Claude Code"
     # npm, or an offer to get it. This used to warn and return, which made the
@@ -8876,7 +15578,7 @@ install_claude_code() {
     # dead branch.
     if ! command -v npm >/dev/null 2>&1; then
         note "Claude Code is a Node application, and this machine has no npm."
-        if confirm "Install nodejs and npm for it (~120 MB)?"; then
+        if confirm_yes "Install nodejs and npm for it (~120 MB)?"; then
             try_add nodejs npm || { warn "could not install nodejs/npm"; return 0; }
         else
             note "Skipped. 'apk add nodejs npm' first, then re-run stage 7."
@@ -8910,7 +15612,7 @@ install_claude_code() {
         installs one and this sets $BROWSER to it.
 
 MSG
-    confirm "Install Claude Code?" || { note "Skipping Claude Code."; return 0; }
+    confirm_yes "Install Claude Code?" || { note "Skipping Claude Code."; return 0; }
 
     say "Installing @anthropic-ai/claude-code for $PI_USER"
     # Into a prefix the USER owns, not root's /usr/local. `claude doctor` on a
@@ -8937,23 +15639,13 @@ NPMG
     chmod 0644 /etc/profile.d/npm-global.sh
     note "installed: $(user_home)/.npm-global/bin/claude (on PATH at the next login)"
 
-    # $BROWSER is the convention CLI tools follow to open a URL. Point it at
-    # whatever stage 4 actually installed, in preference order, so the sign-in
-    # link opens rather than printing an error about xdg-open.
-    for _b in firefox-esr firefox chromium badwolf netsurf dillo; do
-        if command -v "$_b" >/dev/null 2>&1; then
-            cat > /etc/profile.d/browser.sh <<BROWSERENV
-# Written by copal-init.sh. The browser CLI tools should open URLs with --
-# Claude Code's sign-in link among them.
-export BROWSER=$_b
-BROWSERENV
-            chmod +x /etc/profile.d/browser.sh
-            note "\$BROWSER=$_b (for the sign-in link)"
-            break
-        fi
-    done
-    command -v "$_b" >/dev/null 2>&1 || \
-        note "no browser installed yet -- run stage 4, or paste the sign-in URL"
+    # Point $BROWSER at whatever stage 4 actually installed, so the sign-in
+    # link opens rather than printing an error about xdg-open. Stage 4 does
+    # this itself now; repeated here because stage 7 may be the first run on a
+    # machine whose browser arrived some other way.
+    set_default_browser \
+        || note "no browser installed yet -- run stage 4, or paste the sign-in URL"
+
     # The checkup Claude Code ships with. Non-interactive, prints its
     # findings and exits; run as the user so it looks at the user's install.
     say "claude doctor"
@@ -9254,11 +15946,15 @@ COMPILING AND DEBUGGING -- the whole loop, in one editor
 
       ]q            jump to the next error
       [q            jump to the previous error
-      <leader>q     open the whole list in a window
+      <leader>xq    open the whole list in a window
       :cc 3         jump to error 3
       :cfirst       back to the first
 
-   <leader> is the backslash key unless you have changed it.
+   <leader> IS THE SPACE BAR on this system. That is LazyVim's leader, which
+   is what Omarchy's editor uses, so every key list you find on the internet
+   for LazyVim is also a key list for this editor. Press it and wait half a
+   second in nvim and a menu of what it can do appears; :Keys shows the same
+   thing on demand.
 
    The point of the quickfix list is that the compiler's line numbers become
    navigation. You never copy a line number by hand.
@@ -9278,7 +15974,7 @@ COMPILING AND DEBUGGING -- the whole loop, in one editor
       F10           step OVER: run this line, do not enter its calls
       F11           step INTO: go into the function this line calls
       F12           finish: run until the current function returns
-      <leader>e     evaluate the expression under the cursor
+      <leader>de    evaluate the expression under the cursor
 
    The difference between F10 and F11 is the one worth internalising. F10 is
    "I trust that function, run it". F11 is "the bug is in there, take me in".
@@ -9291,7 +15987,7 @@ COMPILING AND DEBUGGING -- the whole loop, in one editor
       F4              start the debugger
       F8              run to the breakpoint
       F10 F10 F10     watch total change
-      <leader>e       on 'total' -- see its value
+      <leader>de      on 'total' -- see its value
       F12             finish accumulate() and come back to main()
 
  ---------------------------------------------------------------------------
@@ -9455,12 +16151,221 @@ COMPILING AND DEBUGGING -- the whole loop, in one editor
               copal-guide tmux        keeping a build running
 GUIDE
 
+    cat > "$_g/code.txt" <<'GUIDE'
+~/CODE -- the checkouts this machine came with
+
+   Two directories, and they are not the same thing:
+
+      ~/dev/hello    the worked example stage 7 writes. A C file, a Makefile
+                     and a breakpoint to put the cursor on. It exists to prove
+                     the toolchain works; delete it once it has.
+      ~/code         your repositories, plus Copal itself.
+
+   COPAL ITSELF
+
+   ~/code/copal is a real git checkout of the repository this machine was
+   built from, cloned by stage 7 on every machine whether or not anything
+   was listed in stage 1. The copy on the boot partition -- /boot/copal-
+   init.sh -- is an artefact: editing it changes this one card, and the next
+   'make' from the Mac overwrites it. The checkout is the thing to edit.
+
+      cd ~/code/copal
+      $EDITOR copal-prep.sh          # the whole distribution is this file
+      git commit -am 'what I changed'
+
+   AND RUNNING WHAT YOU JUST EDITED, ON THIS MACHINE, WITHOUT LEAVING IT:
+
+      make redeploy               install this checkout's installer here
+      make redeploy STAGES=17     ...and re-run that stage, unattended
+      make redeploy STAGES=4,16   several, in that order
+      make redeploy-check         what would change; changes nothing
+      make redeploy PULL=1        pull first without being asked
+
+   That is the loop. It says which branch this checkout is on and whether it
+   has uncommitted changes, syntax-checks copal-prep.sh AND the copal-init.sh
+   extracted out of it, replaces /boot/copal-init.sh (keeping the old one as
+   .bak) and re-runs the stages you name -- no image to rebuild on the Mac, no
+   commit to push, no card to write. Every stage has always been re-runnable;
+   this only removes the menu from in front of them.
+
+   IF THE BRANCH IS BEHIND ITS REMOTE IT ASKS whether to pull, and does not
+   pull unless you say so: the usual reason to run this is an edit that is not
+   committed yet, and a target that quietly pulled on top of your work would
+   be reaching into it. A tree with local changes is not asked about at all --
+   it is reported and left alone. PULL=1 answers yes without asking, PULL=0
+   skips the question, and a run with no terminal behaves as PULL=0. After a
+   pull it stops and asks you to run the command again, because make read the
+   old Makefile before the pull and should not install a tree it is out of
+   step with.
+
+   The same two commands by hand, if you would rather see them:
+
+      copal -U --from ~/code/copal      install the checkout's installer
+      copal --stage 17 --auto           run stage 17, answering its questions
+
+   'make redeploy' refuses to run anywhere without a Copal boot partition, so
+   running it on the Mac by mistake says so rather than half-doing something.
+
+   It is cloned over https so that it works with no key on the machine. To
+   push, point it at your own remote or at ssh:
+
+      git remote set-url origin git@github.com:you/copal.git
+
+   It is not in /boot/copal-repos and 'copal-code rm copal' will not remove
+   it -- it is the floor under the list rather than part of it. List your own
+   fork of Copal in stage 1 and that fork is cloned instead; the name in
+   ~/code is what decides, so only one of them ever lands there.
+
+   WHERE THE LIST COMES FROM
+
+   Stage 1 asks for it, next to the name and email for git commits -- the last
+   moment in the install when anybody is expected to be at the keyboard. Stage
+   7 clones what was listed, while the machine still has a network and you are
+   still nearby. If the card was written with 'make answers', the list came
+   from there and stage 1 only confirmed it.
+
+   THE COMMAND
+
+      copal-code              clone anything not here yet, and 'git pull'
+                              anything that is. Safe to run repeatedly.
+      copal-code list         the list, and which of it is on disk. Copal's
+                              own line is marked 'built in'
+      copal-code add URL      add to the list        (needs doas)
+      copal-code rm NAME      remove from the list   (needs doas). By URL or
+                              by the directory name. The CHECKOUT is left
+                              alone -- this edits a list, it does not delete
+                              your work.
+      copal-code path         where the list is
+
+   The list lives on the FAT boot partition, at /boot/copal-repos, one URL per
+   line with '#' comments. That is why editing it needs doas, and it is also
+   why the card can be put in a reader on another machine and the list fixed
+   there -- the same reason the git identity and the install's own state live
+   on that partition.
+
+   AND BUILT
+
+   A checkout is a directory; copal-build is what makes it a program. It runs
+   at the end of every 'copal-code' sync and can be run on its own:
+
+      copal-build             build every checkout it recognises the shape
+                              of, and install the results into ~/.local/bin
+                              -- which is on PATH, so the launcher, the menu
+                              and a terminal all see them
+      copal-build NAME        one of them, by directory name
+      copal-build list        each checkout's shape, and what it has made
+      copal-build clean NAME  delete the build directories, keep the source
+
+   BY SHAPE, NOT BY NAME: a CMakeLists.txt gets cmake, a Cargo.toml gets
+   cargo, a go.mod gets go, a package.json gets npm, and a Makefile that
+   calls cl65 is a Commodore program whose committed .prg and .d64 are what
+   runs. Your own repositories build the same way if they are one of those
+   shapes. The ones that stage 1 proposes:
+
+      birdshot          cmake  -> birdshot, and birdshot-gui with Qt 6.
+                                 THE CAMERA: Super+Shift+B, or Camera at the
+                                 top of the menu, opens it (copal-camera
+                                 decides which; CAMERA= in ~/.profile
+                                 overrides). Without Qt the browser
+                                 viewfinder is what opens.
+      ascitty           cargo  -> ascitty, in a terminal
+      urfinkel          cc65   -> a wrapper that runs the committed
+                                 build/urfinkel.d64 in VICE (Retro -> VICE
+                                 in the Install menu)
+      codexofconquest   npm    -> a wrapper that starts its node server and
+                                 opens play.html in $BROWSER
+      gonex             go     -> gonex, Team Yodacon's game (Ebitengine)
+      yodacon           none   -> nothing on PATH. Python tools that run in
+                                 place ('python3 -m yodaed'), and a Makefile
+                                 that builds its gonex submodule. Its
+                                 submodules -- gonex, the konex fork -- come
+                                 down with it: copal-code clones with
+                                 --recurse-submodules.
+
+   The menu shows them under Projects, and in the applications pane like
+   anything else. A build that fails says why -- usually a compiler that is
+   not installed, and the message names the package -- and 'copal-build
+   NAME' retries that one without touching the rest.
+
+   NOTHING IT DOES DIRTIES A CHECKOUT. copal-code updates these with 'git
+   pull --ff-only', which refuses to cross a modified tracked file, so a
+   build that rewrote one would stop that repository updating for good.
+   That is why npm runs 'ci' where there is a lockfile, and why the Plus/4
+   programs are not recompiled in place: their build/ is committed and
+   date-stamped, and a rebuild changes it by design. To work on one of
+   those, install the cross-compiler and say so:
+
+      doas copal-install cc65@testing
+      COPAL_BUILD_PLUS4=1 copal-build urfinkel
+
+   HTTPS AND SSH -- BOTH, IN THAT ORDER
+
+   Every clone tries the SSH remote first and falls back to HTTPS. You do not
+   choose between them and the list does not have to be written in one form:
+   whichever URL is listed, both are derived and tried.
+
+      git@github.com:you/thing.git      tried first
+      https://github.com/you/thing.git  used if that fails
+
+   SSH first because it is the one you can push from. HTTPS second because it
+   is the one that always works. The ssh attempt runs with BatchMode on, so a
+   machine with no key fails it in a second rather than stopping to ask for a
+   password -- an unattended install is never held up by this.
+
+   'git remote -v' in a checkout says which one it got. If it says https and
+   you would rather push, add a key and repoint it:
+
+      ssh-keygen -t ed25519 -C "$(hostname)"
+      cat ~/.ssh/id_ed25519.pub        # paste into GitHub -> SSH keys
+      git -C ~/code/thing remote set-url origin git@github.com:you/thing.git
+
+   The key copal-prep.sh put on the card is NOT this key: that one authorises
+   you INTO this machine, not this machine out to GitHub.
+
+   Nothing is shallow-cloned. A --depth 1 checkout cannot be pushed from until
+   it has been fetched --unshallow, and this is a machine to work on rather
+   than a machine to read code on, so the full history is fetched even though
+   it costs more of the card.
+
+   IF A CLONE FAILED
+
+   Stage 7 says so and carries on -- one unreachable repository does not stop
+   an install. Fix the URL with 'doas copal-code rm NAME' and 'doas copal-code
+   add URL', then run 'copal-code'. Anything already cloned is left alone.
+
+   See also:  copal-guide ide         building and debugging what you cloned
+              copal-guide tmux        keeping a long build running
+              copal-build list        what the checkouts made, and where
+GUIDE
+
     cat > "$_g/nvim.txt" <<'GUIDE'
 NEOVIM -- a primer, from nothing to useful
 
    Copal configures nvim as an IDE with no plugins. This is what it can do.
    If you have never used a modal editor, read section 1 and stop; come back
    for the rest when the first part is reflex.
+
+   THE SHORT VERSION, IF YOU KNOW LAZYVIM ALREADY. Omarchy's editor is
+   LazyVim, and this one is arranged to match it as far as the hardware
+   allows: the leader is SPACE, pressing it and waiting opens a menu of what
+   it can do, <leader><Space> finds a file, <leader>e is the sidebar,
+   <leader>sg greps the project, <leader>gg is lazygit, <leader>ca is a code
+   action, Shift-H and Shift-L walk the buffers. Where LazyVim uses a plugin,
+   this uses the built-in that plugin was written to make bearable, or fzf.
+
+   WHY NOT ACTUAL LAZYVIM. Two reasons, and only the first is decisive.
+   LazyVim compiles a treesitter parser per language with gcc the first time
+   you open a file of that language; on one ARMv6 core that is the better part
+   of an hour and it wants more memory than a Pi Zero has. And the two plugins
+   everyone installs first -- nvim-lspconfig and nvim-cmp -- existed because
+   Neovim had no built-in LSP configuration and no built-in completion. Since
+   0.11 it has both, and Alpine ships 0.12. So the keys are copied and the
+   machinery is not, because the machinery is already in the editor.
+
+   THE COLOURS FOLLOW THE DESKTOP. 'copal-theme' lists the themes and switches
+   the whole desktop between them -- 'copal-theme --toggle' (Super+Shift+N)
+   flips light and dark; a running nvim repaints within a few seconds without
+   being restarted. :Theme does the same from inside the editor.
 
  ---------------------------------------------------------------------------
  1. THE ONE IDEA
@@ -9528,7 +16433,14 @@ NEOVIM -- a primer, from nothing to useful
  ---------------------------------------------------------------------------
 
       :e path       open a file        :find name   open by name from anywhere
-      <leader>n     the file browser (netrw)
+      <leader>e     the file browser -- a sidebar on the left, toggling on
+                    the same key. Inside it, a adds a file, A adds a
+                    directory, d deletes, r renames -- neo-tree's letters,
+                    which is what a LazyVim key list will tell you.
+      <leader><Space>  find a file by fuzzy search (needs fzf)
+      <leader>,     switch buffer by fuzzy search
+      Shift-H / L   previous / next buffer
+      <leader>bd    close this buffer, keep the window
       :b name       switch to an open buffer, by any part of its name
       :ls           list the open buffers
       Ctrl-^        the previous buffer -- toggles between two files
@@ -9552,9 +16464,11 @@ NEOVIM -- a primer, from nothing to useful
       ]q  [q        next, previous compiler error
       gd  gr  K     definition, references, documentation
       <leader>ci    who calls this function
-      <leader>rn    rename this symbol everywhere
+      <leader>cr    rename this symbol everywhere
       <leader>ca    code action -- the "fix it for me" menu
-      <leader>F     format the file
+      <leader>cf    format the file
+      <leader>sg    grep the whole project into the quickfix list
+      <leader>gg    lazygit, in a window over the editor
       ]d  [d        next, previous diagnostic
       F4 F9 F8 F10 F11   debugger: start, breakpoint, continue, over, into
       Ctrl-X Ctrl-O completion, if you would rather ask than be offered
@@ -9993,12 +16907,14 @@ TERMINALS -- which one, and why the fast ones are not
       find the line   set $term urxvt
       change it, then Super+Shift+R to reload i3
 
-   Every terminal here wears the desktop's theme: Antiquity's helios by
-   default, faded and at alpha 0.9, each colour readable on the ground, no
-   blinking. 'copal-terminal-theme eros' (or eris, priapus, hades, sand)
-   switches all of them, '--alpha 1' makes them opaque; run it with no
-   argument to follow the desktop again, or after a program's own settings
-   dialog has overwritten it.
+   Every terminal here wears the desktop's theme, each colour readable on
+   the ground, at alpha 0.9, no blinking. 'copal-theme --toggle'
+   (Super+Shift+N) flips the whole desktop between light (Antiquity's
+   helios) and dark (Tokyo Night): terminals, bar, launcher, notifications,
+   borders, wallpaper, GTK, the prompt, mc and the editor at once.
+   'copal-terminal-theme eros' (or eris, priapus, hades, night, sand) sets
+   the terminals alone, '--alpha 1' makes them opaque; run it with no
+   argument to follow the desktop again.
 
    Fonts and colours for xterm and urxvt live in ~/.Xresources. After editing:
 
@@ -10636,8 +17552,10 @@ GUIDE
 # pitch is speed. On a Pi 4 or 5 with real video they are reasonable. They are in
 # the catalogue with that noted, and not installed here.
 #
-# foot is deliberately absent from the catalogue entirely: it is Wayland-only and
-# this is an X11 desktop, so it would install and then never open a window.
+# foot is absent from THIS list because it is Wayland-only and this is the X11
+# catalogue -- it would install and then never open a window. It is not absent
+# from the system: stage 17 installs it as the Antiquity desktop's terminal,
+# which is the session where it does open one.
 dev_install_terminals() {
     say "Terminal multiplexers"
     add_optional tmux screen
@@ -10806,6 +17724,509 @@ lsp_present() {
     done
 }
 
+# ---------------------------------------------------------------------------
+# THE THEME, and how Neovim follows it.
+#
+# Omarchy keeps its editor in lockstep with the rest of the desktop with three
+# small pieces: a symlink at ~/.config/nvim/lua/plugins/theme.lua pointing into
+# the current theme's directory, a setup script that creates it, and a watcher
+# plugin that hot-reloads the colorscheme when the file underneath changes. No
+# part of that needs LazyVim -- it needs a symlink and vim.uv -- so all three
+# are here, adapted to the two looks Copal actually ships:
+#
+#   tokyo-night   stage 4's desktop. The same six hex values already in the i3
+#                 config, the Xresources and the i3status bar.
+#   antiquity     stage 17's desktop. Linux Antiquity's *helios* palette, which
+#                 is the light half of that theme -- ink on aged paper -- and
+#                 is what its kitty.conf paints the terminal with. An editor in
+#                 that terminal that stayed dark would be the one rectangle on
+#                 the screen fighting everything around it.
+#
+# So the chain is: nvim reads ~/.config/copal/current/theme/neovim.lua, that
+# is a symlink to /usr/local/share/copal/themes/<name>/, and copal-theme moves
+# the symlink. A running editor notices within a few seconds; nothing has to
+# be restarted, and nothing has to be re-run when a new theme is added -- it
+# is a directory with a theme.conf and a neovim.lua in it, under themes/ in
+# the repository, copied to /usr/local/share/copal/themes/ at install (a
+# user's own go in ~/.local/share/copal/themes/ and win by name).
+#
+# Everything that cannot read through a symlink -- terminals, the bar, the
+# launcher, mako, the compositor's borders, i3, GTK, the prompt, mc -- has
+# its own file written from theme.conf by copal-theme, in its own format, and
+# is told to reload where it can be. 'copal-theme --toggle' flips between a
+# theme and its PARTNER (antiquity <-> tokyo-night): light and dark, the
+# whole desktop, one key. docs/THEME.md, "The toggle".
+copal_theme_dir=/usr/local/share/copal/themes
+
+copal_write_themes() {
+    say "Writing the Copal themes"
+    _src="$(cd "$(dirname "$0")" && pwd)"
+    if [ -d "$_src/themes" ]; then
+        mkdir -p "$copal_theme_dir"
+        for _t in "$_src"/themes/*/; do
+            [ -d "$_t" ] || continue
+            _n=$(basename "$_t")
+            mkdir -p "$copal_theme_dir/$_n"
+            cp "$_t"/* "$copal_theme_dir/$_n/" && chmod 0644 "$copal_theme_dir/$_n"/*
+            note "theme: $_n  ($(sed -n 's/^NAME="\(.*\)"/\1/p' "$_t/theme.conf" 2>/dev/null))"
+        done
+    else
+        warn "themes/ not found beside copal-prep.sh; the Copal themes are not installed"
+    fi
+    # copal-theme: the whole of switching. Omarchy spends omarchy-theme-set on
+    # this; the job is the same one -- a symlink, then each program's file.
+    install -m 0755 "$_src/tools/copal-theme" /usr/local/bin/copal-theme 2>/dev/null \
+        || warn "tools/copal-theme not found beside copal-prep.sh; there is no theme switch"
+
+    # Point each home that has no theme yet at one, so nothing has to run
+    # copal-theme before Neovim has colours. A home that already has one
+    # keeps it: stage 17 sets antiquity when it installs the Hyprland
+    # desktop, and the manifest runs 17 BEFORE this stage, so setting
+    # tokyo-night here unconditionally undid that four minutes later --
+    # 'copal-theme --list' then showed the i3 palette as current on an
+    # Antiquity desktop. The default follows the session this machine has
+    # claimed, for the same reason: on a Wayland machine that somehow got
+    # here without a link, the other palette would be the wrong guess.
+    _def=tokyo-night
+    [ "$(cat /etc/copal/session 2>/dev/null)" = wayland ] && _def=antiquity
+    copal_set_theme "$_def" --if-unset
+}
+
+# Set the current-theme symlink in every home this script writes to. Split
+# out because stage 17 calls it too, with the other name. With --if-unset,
+# a home whose link already points at an installed theme is left alone:
+# that is a choice, stage 17's or the user's, and a later stage does not
+# get to overrule it.
+copal_set_theme() {  # <theme name> [--if-unset]
+    for _h in /root "$(user_home)"; do
+        [ -n "$_h" ] && [ -d "$_h" ] || continue
+        if [ "${2:-}" = --if-unset ] && [ -d "$_h/.config/copal/current/theme/." ]; then
+            continue
+        fi
+        ensure_user_home || true
+        mkdir -p "$_h/.config/copal/current"
+        ln -sfn "$copal_theme_dir/$1" "$_h/.config/copal/current/theme"
+        # Ownership follows the home directory, the same rule and the same
+        # incantation install_home_file uses -- root's copy stays root's, and
+        # 'user' can re-point its own symlink without doas. Not a hardcoded
+        # $PI_USER: that would hand root's ~/.config/copal to the admin user.
+        _own=$(stat -c '%u:%g' "$_h" 2>/dev/null) && chown -Rh "$_own" "$_h/.config/copal" 2>/dev/null || true
+    done
+    note "theme: $1"
+}
+
+# Apply a theme in every home this script writes to: the symlink and every
+# layer copal-theme knows. Falls back to the symlink alone where the tool is
+# missing. Run AFTER the files it edits are written -- last in a stage --
+# because it edits them in place (the bar's stylesheet, mako's config,
+# hyprland.conf's source line, .bashrc's prompt line).
+copal_apply_theme() {  # <theme name>
+    if [ ! -x /usr/local/bin/copal-theme ]; then copal_set_theme "$1"; return; fi
+    for _h in /root "$(user_home)"; do
+        [ -n "$_h" ] && [ -d "$_h" ] || continue
+        ensure_user_home || true
+        HOME="$_h" /usr/local/bin/copal-theme -q "$1" >/dev/null 2>&1 || warn "copal-theme $1 failed for $_h"
+        _own=$(stat -c '%u:%g' "$_h" 2>/dev/null) && chown -Rh "$_own" "$_h/.config" "$_h/.bashrc" 2>/dev/null || true
+    done
+    note "theme: $1"
+}
+
+# The theme layer and the LazyVim-shaped keys: the two Lua files that make
+# this feel like Omarchy's editor without being LazyVim.
+#
+# What Omarchy gets from plugins and what this gets instead:
+#
+#   which-key           <leader> alone opens a menu of what <leader> can do.
+#                       Here that is one floating window and a table.
+#   telescope/fzf-lua   the file, buffer and grep pickers. Here that is fzf in
+#                       a floating terminal -- the same fzf the shell already
+#                       uses -- with ripgrep behind the grep.
+#   neo-tree            the sidebar. Here that is netrw with neo-tree's five
+#                       letters bound onto it (in ~/.vimrc).
+#   lazygit.nvim        <leader>gg. Here that is lazygit in a floating
+#                       terminal, which is all the plugin does either.
+#   theme hot-reload    Omarchy ships omarchy-theme-hotreload.lua for exactly
+#                       this. So does this file, in about the same number of
+#                       lines, because vim.uv does the work in both.
+#
+# Every one of them degrades to a message naming the missing program rather
+# than a stack trace, because on a Zero fzf, ripgrep and lazygit are all
+# 'add_optional' -- present on most boards, absent on some.
+dev_write_nvim_ui() {
+    command -v nvim >/dev/null 2>&1 || return 0
+
+    say "Writing ~/.config/nvim/theme.lua (follows the desktop theme)"
+    cat > /tmp/nvtheme.$$ <<'NVTHEME'
+-- Generated by copal-init.sh. The editor's half of the system theme.
+--
+-- Reads ~/.config/copal/current/theme/neovim.lua, which is a symlink into
+-- /usr/local/share/copal/themes/<name>/. 'copal-theme <name>' moves the
+-- symlink; this file notices and repaints a running editor.
+--
+-- Edit freely: nothing regenerates this file after the install. To pin the
+-- editor to one look regardless of the desktop, delete the watcher at the
+-- bottom and dofile() the theme you want.
+
+local M = {}
+
+local link = vim.fn.expand('~/.config/copal/current/theme/neovim.lua')
+
+-- vim.uv on 0.10+, vim.loop on everything before it. Named once here so the
+-- rest of the file does not repeat the conditional.
+local uv = vim.uv or vim.loop
+
+function M.load(announce)
+  if vim.fn.filereadable(link) == 0 then
+    -- No theme selected. Not an error: ~/.vimrc has already set a perfectly
+    -- good dark colorscheme, and saying so on every startup would be noise.
+    return false
+  end
+  local ok, err = pcall(dofile, link)
+  if not ok then
+    vim.notify('Copal theme failed to load: ' .. tostring(err), vim.log.levels.WARN)
+    return false
+  end
+  if announce then
+    -- The theme's directory name, read back out of the symlink, so the
+    -- message names what you switched TO rather than the path it lives at.
+    local target = uv.fs_realpath(vim.fn.expand('~/.config/copal/current/theme')) or '?'
+    vim.notify('theme: ' .. vim.fn.fnamemodify(target, ':t'), vim.log.levels.INFO)
+  end
+  return true
+end
+
+M.load(false)
+
+-- THE WATCHER, and why it polls rather than subscribes.
+--
+-- fs_event is the cheaper mechanism and it is the wrong one here. Switching
+-- theme does not modify a file -- it replaces a SYMLINK, one directory up
+-- from anything an editor would think to watch, and inotify on the link path
+-- watches the file the link resolved to at the time the watch was set. The
+-- old theme's file never changes, so the event never comes.
+--
+-- fs_poll stats the path fresh each time, through the symlink, so a swapped
+-- link shows up as a changed inode. The cost is one stat every three seconds,
+-- which is not measurable even on a Zero -- and it is only paid while an
+-- editor is actually open.
+local poll = uv.new_fs_poll()
+if poll then
+  poll:start(link, 3000, function()
+    -- Callbacks from libuv run outside the main loop, where touching the
+    -- editor is not allowed. schedule() hands the work back to it.
+    vim.schedule(function() M.load(true) end)
+  end)
+end
+
+-- The manual version, for when you have just run copal-theme in the terminal
+-- next door and do not want to wait out the poll.
+vim.api.nvim_create_user_command('Theme', function(opts)
+  if opts.args ~= '' then
+    -- Switching from inside the editor: shell out to the same script the
+    -- terminal would use, so there is exactly one thing that knows how the
+    -- symlink is made.
+    local out = vim.fn.system({ 'copal-theme', opts.args })
+    if vim.v.shell_error ~= 0 then
+      vim.notify(out, vim.log.levels.ERROR)
+      return
+    end
+  end
+  M.load(true)
+end, {
+  nargs = '?',
+  desc = 'Reload the system theme, or switch to a named one',
+  complete = function()
+    local names = {}
+    for _, p in ipairs(vim.fn.glob('/usr/local/share/copal/themes/*', false, true)) do
+      table.insert(names, vim.fn.fnamemodify(p, ':t'))
+    end
+    return names
+  end,
+})
+
+return M
+NVTHEME
+    install_home_file .config/nvim/theme.lua /tmp/nvtheme.$$
+    rm -f /tmp/nvtheme.$$
+
+    say "Writing ~/.config/nvim/keys.lua (the LazyVim key shape)"
+    cat > /tmp/nvkeys.$$ <<'NVKEYS'
+-- Generated by copal-init.sh. LazyVim's keys, on Neovim's built-ins.
+--
+-- Nothing here is required for the editor to work -- ~/.vimrc and lsp.lua are
+-- the editor. This file is the discoverability layer: the pickers, the git
+-- window, the grep, and <leader> as a menu. Delete it and you lose those and
+-- nothing else.
+
+-- The same guard lsp.lua carries, and for the same reason: floating windows
+-- with titles, jobstart's term option and vim.uv all landed by 0.11, and
+-- Alpine v3.24 ships 0.12. On anything older this file would error partway
+-- through and leave half its keys set, which is worse than none of them.
+if vim.fn.has('nvim-0.11') == 0 then
+  vim.notify('Copal: the key layer needs Neovim 0.11+; skipping.', vim.log.levels.WARN)
+  return
+end
+
+local map = function(mode, lhs, rhs, desc)
+  vim.keymap.set(mode, lhs, rhs, { silent = true, desc = desc })
+end
+
+-- Every external program this file reaches for is optional on this hardware.
+-- One place that says so, so a missing one is a sentence and not a traceback.
+local function need(bin)
+  if vim.fn.executable(bin) == 1 then return true end
+  vim.notify(bin .. " is not installed on this machine.\n"
+    .. "Install it from the menu (Devtools) or: apk add " .. bin,
+    vim.log.levels.WARN)
+  return false
+end
+
+-- ---------------------------------------------------------------------------
+-- A floating window, which is the whole of the "plugin" half of this file.
+-- Sized to a fraction of the editor because on a 640x480 console a fixed
+-- 100x30 float is bigger than the screen.
+local function float(buf, title)
+  local w = math.min(vim.o.columns - 4, math.max(60, math.floor(vim.o.columns * 0.8)))
+  local h = math.min(vim.o.lines - 4, math.max(10, math.floor(vim.o.lines * 0.8)))
+  return vim.api.nvim_open_win(buf, true, {
+    relative = 'editor', width = w, height = h,
+    row = math.floor((vim.o.lines - h) / 2 - 1),
+    col = math.floor((vim.o.columns - w) / 2),
+    style = 'minimal', border = 'rounded', title = title, title_pos = 'center',
+  })
+end
+
+-- Run a full-screen terminal program in that float and call back when it is
+-- done. This is lazygit, and it is also the picker below -- the difference is
+-- only what happens on exit.
+local function term(cmd, title, on_exit)
+  local buf = vim.api.nvim_create_buf(false, true)
+  local win = float(buf, title)
+  vim.fn.jobstart(cmd, {
+    term = true,
+    on_exit = function(_, code)
+      if vim.api.nvim_win_is_valid(win) then vim.api.nvim_win_close(win, true) end
+      if on_exit then vim.schedule(function() on_exit(code) end) end
+    end,
+  })
+  vim.cmd.startinsert()
+end
+
+-- fzf, reading from stdin, writing the choice to a temporary file. Reading
+-- the terminal buffer's own text back would work until a filename contained
+-- something fzf drew, so the answer travels out of band.
+local function pick(source, prompt, action)
+  if not (need('fzf')) then return end
+  local out = vim.fn.tempname()
+  term({ 'sh', '-c', source .. ' | fzf --prompt=' .. vim.fn.shellescape(prompt .. '> ')
+         .. ' --height=100% > ' .. vim.fn.shellescape(out) },
+    prompt,
+    function()
+      if vim.fn.filereadable(out) == 0 then return end
+      local lines = vim.fn.readfile(out)
+      vim.fn.delete(out)
+      local choice = lines[1]
+      -- Empty file means fzf was cancelled with Esc, which is a normal way to
+      -- leave a picker and not something to report.
+      if choice and choice ~= '' then action(choice) end
+    end)
+end
+
+-- fd is faster and honours .gitignore; find is on every machine there has
+-- ever been. Whichever exists.
+--
+-- The find branch is deliberately plain. GNU find's -printf '%P' would drop
+-- the leading './' in one flag, and busybox find -- which is the find on a
+-- default Alpine -- does not have -printf at all, so the picker would print
+-- an error instead of a file list on exactly the machines this project cares
+-- about most. sed does the same job everywhere.
+local function file_source()
+  if vim.fn.executable('fd') == 1 then
+    return 'fd --type f --hidden --exclude .git'
+  end
+  -- '!' rather than '-not': GNU find accepts both, busybox find only the
+  -- first, and busybox find is the find on a default Alpine.
+  return "find . -type f ! -path '*/.git/*' | sed 's|^\\./||'"
+end
+
+-- ---------------------------------------------------------------------------
+-- Files and buffers.  LazyVim's <leader><space> and <leader>f tree.
+map('n', '<leader><Space>', function() pick(file_source(), 'files', vim.cmd.edit) end,
+    'Find file')
+map('n', '<leader>ff', function() pick(file_source(), 'files', vim.cmd.edit) end,
+    'Find file')
+map('n', '<leader>fr', function()
+  local recent = {}
+  for _, f in ipairs(vim.v.oldfiles) do
+    if vim.fn.filereadable(f) == 1 then table.insert(recent, f) end
+  end
+  pick('printf %s\\\\n ' .. vim.fn.shellescape(table.concat(recent, '\n')),
+       'recent', vim.cmd.edit)
+end, 'Recent files')
+map('n', '<leader>fn', vim.cmd.enew, 'New file')
+
+local function buffer_source()
+  local names = {}
+  for _, b in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.fn.buflisted(b) == 1 then
+      local n = vim.api.nvim_buf_get_name(b)
+      if n ~= '' then table.insert(names, vim.fn.fnamemodify(n, ':.')) end
+    end
+  end
+  return 'printf %s\\\\n ' .. vim.fn.shellescape(table.concat(names, '\n'))
+end
+map('n', '<leader>,',  function() pick(buffer_source(), 'buffers', vim.cmd.edit) end,
+    'Switch buffer')
+map('n', '<leader>fb', function() pick(buffer_source(), 'buffers', vim.cmd.edit) end,
+    'Switch buffer')
+
+-- ---------------------------------------------------------------------------
+-- Search.  <leader>sg is LazyVim's grep-the-project and the one people reach
+-- for most; it goes through the quickfix list, which is where every other
+-- list in this editor already goes.
+if vim.fn.executable('rg') == 1 then
+  vim.o.grepprg = 'rg --vimgrep --smart-case'
+  vim.o.grepformat = '%f:%l:%c:%m'
+end
+map('n', '<leader>sg', function()
+  if not need('rg') then return end
+  vim.ui.input({ prompt = 'grep: ' }, function(pat)
+    if not pat or pat == '' then return end
+    -- silent, because :grep otherwise clears the screen and waits for a
+    -- keypress before showing the list it just built.
+    vim.cmd('silent grep! ' .. vim.fn.shellescape(pat))
+    if vim.tbl_isempty(vim.fn.getqflist()) then
+      vim.notify('no matches for ' .. pat, vim.log.levels.INFO)
+    else
+      vim.cmd.copen()
+    end
+  end)
+end, 'Grep the project')
+map('n', '<leader>sw', function()
+  if not need('rg') then return end
+  vim.cmd('silent grep! ' .. vim.fn.shellescape(vim.fn.expand('<cword>')))
+  vim.cmd.copen()
+end, 'Grep the word under the cursor')
+map('n', '<leader>sb', '/', 'Search this buffer')
+map('n', '<leader>sk', ':map<CR>', 'All key mappings')
+
+-- ---------------------------------------------------------------------------
+-- Git.  lazygit is a full git client and it is already in the shell tooling
+-- stage 7 installs; the plugin everyone uses for this does exactly this.
+map('n', '<leader>gg', function()
+  if not need('lazygit') then return end
+  term({ 'lazygit' }, ' lazygit ', function()
+    -- lazygit changes files on disk under a running editor. checktime is the
+    -- built-in that notices and reloads the buffers it touched.
+    vim.cmd.checktime()
+  end)
+end, 'Lazygit')
+map('n', '<leader>gb', ':echo system("git blame -L " . line(".") . ",+1 " . expand("%"))<CR>',
+    'Git blame this line')
+
+-- ---------------------------------------------------------------------------
+-- Windows, terminals and the odds and ends LazyVim binds.
+map('n', '<Esc>', vim.cmd.nohlsearch, 'Clear the search highlight')
+map('n', '<leader>qq', ':qa<CR>', 'Quit everything')
+map('n', '<leader>w', ':w<CR>', 'Write this file')
+map('n', '<leader>-', ':split<CR>', 'Split below')
+map('n', '<leader>|', ':vsplit<CR>', 'Split right')
+map('n', '<leader>fT', function() term({ vim.o.shell }, ' terminal ') end, 'Terminal (float)')
+-- Esc in a terminal buffer belongs to the program running inside it. Double
+-- Esc is how you get back to the editor without taking that key away.
+map('t', '<Esc><Esc>', '<C-\\><C-n>', 'Leave terminal mode')
+
+-- ---------------------------------------------------------------------------
+-- <leader> AS A MENU -- the which-key idea, without which-key.
+--
+-- No hooking is needed for this. <leader> is mapped to open the menu AND is
+-- the prefix of every mapping above; Neovim already waits 'timeoutlen' to
+-- find out which you meant. Type <leader>ff quickly and you get the picker;
+-- press <leader> and hesitate and you get the list. That is which-key's
+-- entire user-visible behaviour.
+local menu = {
+  '',
+  '   <leader> is SPACE          j k scroll  ·  q or Esc closes',
+  '',
+  '   FIND                              CODE  (where a server is attached)',
+  '     <leader><Space>  find a file      gd   go to definition',
+  '     <leader>ff       find a file      gr   find all references',
+  '     <leader>fr       recent files     K    hover documentation',
+  '     <leader>,        switch buffer    <leader>ca  code action',
+  '     <leader>fn       new file         <leader>cr  rename everywhere',
+  '     <leader>e        sidebar          <leader>cf  format',
+  '                                       <leader>ci  who calls this',
+  '   SEARCH                              <leader>co  what this calls',
+  '     <leader>sg  grep the project      <leader>ss  symbols here',
+  '     <leader>sw  grep this word        <leader>sS  symbols everywhere',
+  '     <leader>sb  search this file',
+  '     <leader>sk  every key mapping    LISTS',
+  '                                        <leader>xx  diagnostics',
+  '   BUFFERS                              <leader>xq  quickfix',
+  '     Shift+H / Shift+L  prev / next     ]d  [d      next / prev problem',
+  '     <leader>bd  close this one         ]q  [q      next / prev error',
+  '',
+  '   GIT                                DEBUG  (Termdebug -- real gdb)',
+  '     <leader>gg  lazygit                F4  start   F9  breakpoint',
+  '     <leader>gb  blame this line        F8  go      F10 step over',
+  '                                        F11 step in <leader>de evaluate',
+  '   BUILD',
+  '     F5  make          F6  make run    THEME',
+  '     <leader>xq  the error list          :Theme  reload / switch',
+  '',
+  '   :Lsp  which language servers are attached      :Tutor  learn vim',
+  '',
+}
+
+local function show_menu()
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, menu)
+  vim.bo[buf].modifiable = false
+  local w = math.min(vim.o.columns - 2, 78)
+  local h = math.min(vim.o.lines - 2, #menu)
+  local win = vim.api.nvim_open_win(buf, true, {
+    relative = 'editor', width = w, height = h,
+    row = math.max(0, math.floor((vim.o.lines - h) / 2 - 1)),
+    col = math.max(0, math.floor((vim.o.columns - w) / 2)),
+    style = 'minimal', border = 'rounded',
+    title = ' Copal / LazyVim keys ', title_pos = 'center',
+  })
+  local function close()
+    if vim.api.nvim_win_is_valid(win) then vim.api.nvim_win_close(win, true) end
+  end
+  -- Closing keys, and SCROLLING keys, and the second set is not decoration.
+  -- This menu is about thirty lines. The console on the hardware this project
+  -- is for is eighty by twenty-four, so the float gets clamped to twenty-two
+  -- rows and the last third -- git, build, debug -- is simply not on screen.
+  -- With 'any key closes' and no scrolling there was no way to reach it and
+  -- nothing to say it was there, which makes a cheat sheet that lies.
+  --
+  -- So the close set is the five keys people actually press to dismiss a
+  -- thing, and everything else that would have closed it now scrolls instead.
+  for _, k in ipairs({ '<Esc>', 'q', '<CR>', '<Space>', '<C-c>' }) do
+    vim.keymap.set('n', k, close, { buffer = buf, nowait = true })
+  end
+  -- j/k and the arrows move a line, Ctrl-D/U a half page, gg/G to the ends.
+  -- These are vim's own keys and they already do this in a normal buffer --
+  -- they are re-set here only because 'style = minimal' plus a scratch buffer
+  -- is easy to leave in a state where they are not.
+  for _, k in ipairs({ 'j', 'k', '<Down>', '<Up>', '<C-d>', '<C-u>', 'gg', 'G' }) do
+    vim.keymap.set('n', k, k, { buffer = buf, nowait = true, remap = false })
+  end
+  vim.wo[win].cursorline = true
+  vim.api.nvim_create_autocmd({ 'BufLeave', 'WinLeave' },
+    { buffer = buf, once = true, callback = close })
+end
+
+map('n', '<leader>', show_menu, 'Show the key menu')
+map('n', '<leader>?', show_menu, 'Show the key menu')
+vim.api.nvim_create_user_command('Keys', show_menu, { desc = 'Show the key menu' })
+NVKEYS
+    install_home_file .config/nvim/keys.lua /tmp/nvkeys.$$
+    rm -f /tmp/nvkeys.$$
+    note "In nvim, press Space and wait -- or run :Keys -- for the key menu."
+}
+
 # Neovim as an IDE, with no plugin manager and no plugins.
 #
 # This is the part that would normally mean LazyVim, Mason, nvim-lspconfig,
@@ -10896,6 +18317,7 @@ vim.api.nvim_create_autocmd('LspAttach', {
     map('gd', vim.lsp.buf.definition,      'go to definition')
     map('gD', vim.lsp.buf.declaration,     'go to declaration')
     map('gi', vim.lsp.buf.implementation,  'go to implementation')
+    map('gI', vim.lsp.buf.implementation,  'go to implementation (LazyVim spelling)')
     map('gy', vim.lsp.buf.type_definition, 'go to type definition')
     map('gr', vim.lsp.buf.references,      'find all references')
 
@@ -10906,17 +18328,19 @@ vim.api.nvim_create_autocmd('LspAttach', {
 
     -- What things are
     map('K',  vim.lsp.buf.hover,          'hover documentation')
-    map('<leader>s', vim.lsp.buf.document_symbol,  'symbols in this file')
-    map('<leader>S', vim.lsp.buf.workspace_symbol, 'symbols in the project')
+    map('<leader>ss', vim.lsp.buf.document_symbol,  'symbols in this file')
+    map('<leader>sS', vim.lsp.buf.workspace_symbol, 'symbols in the project')
 
-    -- Changing things
-    map('<leader>rn', vim.lsp.buf.rename,      'rename everywhere')
+    -- Changing things. These live under <leader>c because that is where
+    -- LazyVim puts them, and matching it means every LazyVim key list ever
+    -- written is also a key list for this editor.
+    map('<leader>cr', vim.lsp.buf.rename,      'rename everywhere')
     map('<leader>ca', vim.lsp.buf.code_action, 'code action / quick fix')
-    map('<leader>F',  function() vim.lsp.buf.format({ async = true }) end, 'format buffer')
+    map('<leader>cf', function() vim.lsp.buf.format({ async = true }) end, 'format buffer')
 
     -- Diagnostics
-    map('<leader>e', vim.diagnostic.open_float, 'show the error on this line')
-    map('<leader>d', function() vim.diagnostic.setloclist() end, 'all diagnostics in a list')
+    map('<leader>cd', vim.diagnostic.open_float, 'show the error on this line')
+    map('<leader>xx', function() vim.diagnostic.setloclist() end, 'all diagnostics in a list')
     map(']d', function() vim.diagnostic.jump({ count =  1, float = true }) end, 'next diagnostic')
     map('[d', function() vim.diagnostic.jump({ count = -1, float = true }) end, 'previous diagnostic')
 
@@ -11324,8 +18748,46 @@ MSG
     add_optional nodejs npm
 }
 
+# What the default checkouts build with, beyond the toolchain stage 7 already
+# installs. Optional, and skipped without complaint where absent:
+#
+#   qt6-qtbase-dev   birdshot-gui, the camera's window. Without it birdshot
+#                    still builds -- the pipeline and the CLI are dependency-
+#                    free -- and copal-camera falls back to the browser
+#                    viewfinder. Qt is not small, which is a real decision on
+#                    a 512 MB board; it is made in favour of the window,
+#                    because the camera is what that machine is for.
+#
+# NOT cc65, deliberately. urfinkel and ascitty's Plus/4 target are 6502
+# programs whose compiled .prg and .d64 are committed, date-stamped, with a
+# push gate upstream that checks them against a clean build; copal-build runs
+# those as committed rather than recompiling a tracked file in place (which
+# would block every later 'git pull'). Somebody who wants to work ON them
+# installs the compiler by hand -- 'doas copal-install cc65@testing' -- and
+# sets COPAL_BUILD_PLUS4=1; see copal-build.
+#
+# Checked against the APKINDEX on 2026-09-01: qt6-qtbase-dev, cmake, cargo,
+# rust, go (1.26.3), nodejs, npm and the header packages above are in v3.24
+# for all five ports; cc65 is in
+# edge/testing for armhf, aarch64 and x86_64 and in neither v3.24 branch for
+# any port. VICE, to RUN the Plus/4 builds, is a catalogue row -- Retro,
+# 'vice@testing' -- and stage 9's business, not this stage's.
+#   X11, GL and ALSA headers   gonex: Ebitengine draws and plays through
+#                    cgo, and cgo wants the headers. Small, and all of them
+#                    in v3.24 main/community for every port.
+dev_checkout_deps() {
+    say "What the checkouts build with"
+    add_optional qt6-qtbase-dev
+    add_optional libx11-dev libxcursor-dev libxinerama-dev libxi-dev libxrandr-dev \
+                 libxxf86vm-dev mesa-dev alsa-lib-dev pkgconf
+}
+
 stage_dev() {
     say "Stage 7: development environment"
+
+    # The toolchain is 2-3 GB. Before this check existed, running it diskless
+    # is what filled a 2.9 GB tmpfs and wedged a machine.
+    require_disk_root "The toolchain (2-3 GB)" || return 0
     cat <<'MSG'
     Modelled on Omarchy's tool choices, with the pieces that need a GPU or a
     fast machine swapped for equivalents this board can actually run. The
@@ -11387,7 +18849,13 @@ MSG
     dev_languages_core
     dev_languages_optional
     configure_git_identity
+    # Claude Code BEFORE the checkouts, because saying yes to it is what
+    # installs node -- and npm is what one of the default checkouts builds
+    # with. The other way round, copal-build skipped codexofconquest on every
+    # machine that would have had npm a minute later.
     install_claude_code
+    dev_checkout_deps
+    clone_user_repos
 
     say "AVR toolchain (Arduino-class microcontrollers)"
     # The Arduino IDE itself is Electron/Java and will not run here. The
@@ -11407,6 +18875,23 @@ MSG
 " Generated by copal-init.sh. Deliberately plugin-free: on this board every
 " plugin is startup latency and RAM, and the built-ins cover the workflow.
 set nocompatible
+
+" THE LEADER IS SPACE, and it is set before the first mapping in this file
+" because a mapping made with the old leader keeps the old leader forever.
+"
+" Space is LazyVim's leader, which is Omarchy's editor, and the reason to
+" match it is not fashion: every LazyVim key list on the internet, and every
+" answer anyone gives you about Neovim, is written in Space. The default
+" backslash is a key nobody's fingers know and half the keyboards in the
+" world put somewhere different. Space is under both thumbs on all of them.
+"
+" Space is also a motion in normal mode -- it moves the cursor right, which
+" is what 'l' is for -- so nothing of value is lost. maplocalleader keeps the
+" backslash for filetype-local maps, which is the LazyVim arrangement too.
+let mapleader = " "
+let maplocalleader = "\\"
+nnoremap <Space> <Nop>
+
 syntax on
 filetype plugin indent on
 
@@ -11422,9 +18907,15 @@ set nobackup nowritebackup
 set updatetime=500
 set path+=**
 set tags=./tags;,tags;
+" Space is the leader now, so it has to wait to find out whether a whole
+" chord was meant. Long enough to type one deliberately, short enough that a
+" mistake gives the key back before you notice.
+set timeoutlen=500
 
 " Tokyo Night-ish, using only colours the terminal already defines, so this
-" needs no colour scheme file and no truecolour support.
+" needs no colour scheme file and no truecolour support. Neovim replaces this
+" from ~/.config/nvim/theme.lua, which follows the desktop's theme; vim keeps
+" what is set here.
 set background=dark
 silent! colorscheme habamax
 highlight Normal ctermbg=NONE
@@ -11439,7 +18930,23 @@ nnoremap <F5> :wa<CR>:make<CR>
 nnoremap <F6> :wa<CR>:make run<CR>
 nnoremap ]q :cnext<CR>
 nnoremap [q :cprevious<CR>
-nnoremap <leader>q :copen<CR>
+
+" --- LazyVim's key shape, on built-ins --------------------------------------
+" The prefixes below are LazyVim's, and they are the reason this file uses
+" them: <leader>c is code, <leader>b is buffers, <leader>s is search,
+" <leader>g is git, <leader>x is the diagnostic and quickfix lists,
+" <leader>d is debugging. Neovim adds the richer versions of several of these
+" in ~/.config/nvim/keys.lua; vim gets the half that needs no Lua.
+nnoremap <leader>xq :copen<CR>
+nnoremap <leader>xl :lopen<CR>
+
+" Buffers are LazyVim's tabs: Shift+H and Shift+L walk them, <leader>bd
+" closes one. :bdelete would close the window with it, so the two-step keeps
+" the window and moves it to the previous buffer first.
+nnoremap <S-h> :bprevious<CR>
+nnoremap <S-l> :bnext<CR>
+nnoremap <leader>bd :bprevious<bar>bdelete #<CR>
+nnoremap <leader>bb :buffers<CR>:buffer<Space>
 
 " --- debugging --------------------------------------------------------------
 " Termdebug ships with vim and neovim: a real gdb session with breakpoints,
@@ -11453,13 +18960,50 @@ nnoremap <F10> :Over<CR>
 nnoremap <F11> :Step<CR>
 nnoremap <F12> :Finish<CR>
 nnoremap <F8>  :Continue<CR>
-nnoremap <leader>e :Evaluate<CR>
+" <leader>e used to be :Evaluate here. It is the file explorer in LazyVim and
+" that is the more-reached key by a wide margin, so Termdebug's evaluate
+" moved under the debug prefix where the rest of its keys would live.
+nnoremap <leader>de :Evaluate<CR>
+nnoremap <leader>db :Break<CR>
+nnoremap <leader>dc :Continue<CR>
 
 " --- files ------------------------------------------------------------------
+" netrw is the sidebar. :Lexplore opens it on the left and toggles closed on
+" the same key, which is <leader>e in LazyVim and <leader>e here.
 let g:netrw_banner = 0
 let g:netrw_liststyle = 3
-nnoremap <leader>f :find
-nnoremap <leader>n :Explore<CR>
+let g:netrw_winsize = 25
+nnoremap <leader>e :Lexplore<CR>
+nnoremap <leader>ff :find<Space>
+nnoremap <leader><Space> :find<Space>
+" Ctrl+W W already jumps between the sidebar and the editor -- that is vim's,
+" not a plugin's, and it is what LazyVim's key list means by the same chord.
+nnoremap <C-Left>  :vertical resize -5<CR>
+nnoremap <C-Right> :vertical resize +5<CR>
+
+" LazyVim's neo-tree sidebar answers a, A, d, m and r; netrw spells the same
+" five differently. Teach netrw the LazyVim letters, buffer-locally, so the
+" published key list is true here as well. netrw's own bindings are untouched
+" everywhere they do not collide.
+augroup copal_netrw_keys
+  autocmd!
+  " nnoremap, not nmap, and that is load-bearing: 'A' is mapped to netrw's
+  " 'd' while 'd' is itself being mapped to netrw's 'D'. Recursive mappings
+  " would send A through both and delete the file you meant to create a
+  " directory next to.
+  autocmd FileType netrw nnoremap <buffer> a %
+  autocmd FileType netrw nnoremap <buffer> A d
+  autocmd FileType netrw nnoremap <buffer> d D
+  " netrw has no separate move: R renames, and a rename that includes a path
+  " moves. So r and m are the same key underneath, as they nearly are in
+  " neo-tree too.
+  autocmd FileType netrw nnoremap <buffer> r R
+  autocmd FileType netrw nnoremap <buffer> m R
+augroup END
+
+" Yours. ~/.vimrc is rewritten when stage 7 runs; ~/.vimrc.local is not, and
+" it is read last, so a setting there wins over the same setting above.
+silent! source ~/.vimrc.local
 VIMRC
     install_home_file .vimrc /tmp/vimrc.$$
 
@@ -11470,19 +19014,43 @@ VIMRC
     # does not need a language server.
     cat > /tmp/initvim.$$ <<'INITVIM'
 " Generated by copal-init.sh.
+"
+" THE LOAD ORDER, and it is not arbitrary. Omarchy's Neovim is LazyVim plus a
+" theme layer, and lazy.nvim decides the order there. There is no plugin
+" manager here, so the order is written down instead:
+"
+"   ~/.vimrc          the half vim also gets: options, building, Termdebug,
+"                     buffers, netrw. Edit THIS for anything both editors
+"                     should agree about.
+"   theme.lua         the colours, and the watcher that reloads them when the
+"                     desktop's theme changes underneath a running editor.
+"                     First, so nothing draws in the wrong palette.
+"   keys.lua          the LazyVim-shaped keys that need Lua: the pickers, the
+"                     git window, the grep, and <leader> itself as a menu.
+"   lsp.lua           the language servers. Last, because its keys are set
+"                     per-buffer on attach and win over anything above.
+"
+" Each is guarded: a missing one is a feature you do not have, not an error
+" on every startup.
 set runtimepath^=~/.vim runtimepath+=~/.vim/after
 let &packpath = &runtimepath
-" Everything shared with vim lives in ~/.vimrc -- edit that, not this.
 source ~/.vimrc
-" Neovim-only: the language servers. Guarded so a missing file is not an error
-" on every startup.
-if filereadable(expand('~/.config/nvim/lsp.lua'))
-  luafile ~/.config/nvim/lsp.lua
-endif
+
+" 'local' is yours: ~/.config/nvim/local.lua is never written by Copal, and
+" it runs after everything else, so it wins. ~/.vimrc.local is the same
+" hatch in Vimscript, read through ~/.vimrc above.
+for s:f in ['theme', 'keys', 'lsp', 'local']
+  let s:p = expand('~/.config/nvim/' . s:f . '.lua')
+  if filereadable(s:p)
+    execute 'luafile' fnameescape(s:p)
+  endif
+endfor
 INITVIM
     install_home_file .config/nvim/init.vim /tmp/initvim.$$
     rm -f /tmp/vimrc.$$ /tmp/initvim.$$
 
+    copal_write_themes
+    dev_write_nvim_ui
     dev_write_lsp_config
     dev_write_kate_config
     dev_write_emacs_config
@@ -11575,9 +19143,11 @@ MAKEFILE
 
     Or from a shell:  make run    make debug    make clean
 
-    Yodacon, with Gonex and Konex inside it, is in ~/code if you said yes.
-    'copal-code' rebuilds them after a pull; 'copal-code status' says what
-    is there.
+    THE CHECKOUTS in ~/code were cloned and then built, and what they made
+    is in ~/.local/bin, which is on PATH: 'copal-build list' says what each
+    one produced. birdshot is the camera -- Super+Shift+B, or Camera at the
+    top of the menu. 'copal-code' pulls and rebuilds them all; 'copal-build
+    NAME' rebuilds one.
 
     THE GUIDES. These are the tutorials, on this machine, no network needed.
     Super+Shift+G opens the list; from a terminal:
@@ -11585,6 +19155,7 @@ MAKEFILE
         copal-guide ide           compiling, breakpoints, stepping, call traces
         copal-guide nvim          the editor itself, from nothing to useful
         copal-guide languages     what exists on THIS board, and why
+        copal-guide code          ~/code: copal-code fills it, copal-build compiles it
         copal-guide tmux          tmux and screen
         copal-guide terminals     which terminal, and why the GPU ones are not
         copal-guide instruments   bases, matrices, inverse Laplace, FFT, scopes
@@ -11608,7 +19179,7 @@ P3MNT=/media/snapshots
 
 stage_snapshots() {
     say "Stage 11: snapshots"
-    is_diskless && { warn "run stage 3 first"; return 0; }
+    require_disk_root "This stage" || return 0
 
     cat <<'MSG'
     Three things worth knowing before choosing how to do this.
@@ -16723,7 +24294,7 @@ RADBEEPERUDEV
 
 stage_extras() {
     say "Stage 10: wireless, bluetooth, audio, capture, hex, graphics, disks"
-    is_diskless && { warn "run stage 3 first"; return 0; }
+    require_disk_root "This stage" || return 0
     require_network || return 1
 
     # --- wireless ----------------------------------------------------------
@@ -17248,7 +24819,7 @@ VICEREADME
 
 stage_emulators() {
     say "Stage 9: retro emulators"
-    is_diskless && { warn "run stage 3 first -- there is nowhere to build"; return 0; }
+    require_disk_root "A source build (there is nowhere to build)" || return 0
     require_network || return 1
     apk info -e build-base >/dev/null 2>&1 || { warn "run stage 7 first (needs a C toolchain)"; return 0; }
 
@@ -17830,6 +25401,15 @@ FOLD
 stage_apps() {
     say "Stage 12: applications"
 
+    # Written first and unconditionally, the way stage 7 writes copal-code: a
+    # machine that declines the catalogue should still have the command that
+    # installs fonts later.
+    install_copal_fonts
+
+    # The catalogue is 3-5 GB installed -- the largest single thing this
+    # script does, and the one with the least chance of fitting in RAM.
+    require_disk_root "The application catalogue (3-5 GB)" || return 0
+
     if ! x_installed; then
         warn "X is not installed. Most of this catalogue is graphical."
         confirm "Install the terminal programs anyway?" || return 0
@@ -17930,8 +25510,33 @@ MSG
         m|M) _want="dillo links lynx bombadillo claws-mail audacious
                     audacious-plugins mousepad pcmanfm gpicview zathura
                     zathura-pdf-mupdf galculator xarchiver 7zip unzip" ;;
-        a|A) _want=$(catalogue_available \
-                     | grep -vE '\|(gimp|blender|freecad|kicad|libreoffice-writer|calibre@testing|texlive-full|krita|chromium|remmina|filezilla)\|' \
+        a|A) # The standing exclusions: too big to install unattended, and
+             # listed in the 'a' description above so this is not a surprise.
+             _excl='gimp|blender|freecad|kicad|libreoffice-writer|calibre@testing|texlive-full|krita|chromium|remmina|filezilla'
+             # AND, at the FULL level only, the other graphical browsers.
+             #
+             # That level installs Brave in stage 4, and Firefox ESR is left
+             # in the catalogue as the second engine -- Gecko beside Blink,
+             # which is the pair worth having. Dillo, NetSurf and BadWolf are
+             # then three more rendering engines nobody asked for on a machine
+             # that already has two good ones, and a browser you never open is
+             # just card and menu clutter.
+             #
+             # Only at 'full'. On medium and server BadWolf may be the ONLY
+             # browser the machine gets (stage 4 picks it there), and Dillo
+             # and NetSurf are the small-and-fast pair that make a Zero
+             # usable -- removing them there would be taking the browser off
+             # the boards that need one most.
+             #
+             # The TEXT browsers stay at every level: links, elinks, w3m, lynx
+             # and retawq are a few hundred kB each, they work over SSH with
+             # no display at all, and they are tools rather than browsers.
+             if [ "$(copal_profile)" = full ]; then
+                 _excl="$_excl|dillo|netsurf|badwolf"
+                 note "full install: Brave and Firefox ESR only -- skipping Dillo, NetSurf, BadWolf"
+             fi
+             _want=$(catalogue_available \
+                     | grep -vE "\|($_excl)\|" \
                      | cut -d'|' -f3 | tr '\n' ' ')
              # THUNDERBIRD IS IN THIS SET, and it is the one heavyweight that
              # is. It was withheld with the others, which put a full install
@@ -17981,6 +25586,34 @@ MSG
     dev_write_emacs_config
     seed_app_configs
     offer_source_builds
+
+    # ------------------------------------------------------------------
+    # The fonts, after the catalogue rather than inside it. They are not
+    # applications and they do not belong in a menu: nothing here opens, and
+    # what they change is how everything else looks.
+    #
+    # THREE GROUPS BY DEFAULT and one left out. coding, console and ibmpc go on
+    # unattended; 'web' -- the metric-compatible document set -- does not,
+    # because it is the group whose absence you notice only when opening
+    # somebody's .docx, and that is a thing to install when it happens rather
+    # than 120 MB carried by every machine. One command away either way:
+    #
+    #   doas copal-fonts install web
+    #
+    # Unattended the answer is yes: a coding machine that arrives with DejaVu
+    # Sans Mono and nothing else has failed at the one thing it was for.
+    say "Fonts"
+    note "coding faces (ligature and plain), console/TTY, and the IBM PC set."
+    note "About 215 MB. Iosevka and the large Nerd cuts are NOT in this --"
+    note "they are 1.9 GB between them; 'copal-fonts install coding-extra' asks."
+    note "'copal-fonts' afterwards for those and for the document fonts."
+    if [ "${AUTO:-0}" = 1 ]; then AUTO_DEFAULT=y; fi
+    if confirm_yes "Install them?"; then
+        require_network && /usr/local/bin/copal-fonts install coding console ibmpc \
+            || warn "fonts skipped -- 'doas copal-fonts install coding console ibmpc' later"
+    else
+        note "Skipped. 'doas copal-fonts install coding' when you want them."
+    fi
 
     say "Done"
     note "Open the menu (Super+z) -- everything installed now appears in it,"
@@ -19311,6 +26944,439 @@ PCBZIP
     note "ngspice circuit.cir         simulate"
 }
 
+# ------------------------------------- stage 14: the ADI instrument stack ---
+#
+# The ADALM2000, the ADALM-Pluto, and anything else that speaks IIO. Analog
+# Devices ships this stack ready-made for Kuiper Linux, which is a Debian;
+# Alpine packages exactly one piece of it -- libiio, and only in edge/testing.
+# Everything else is built here, which is why this bundle is the longest
+# read in stage 14: each piece says what it is and where it comes from.
+#
+#   libiio, iiod, iio_*   apk, edge/testing. The library every other piece
+#                         links against; the daemon that serves this board's
+#                         own IIO devices to the network; the command-line
+#                         tools (iio_info, iio_attr, iio_readdev ...).
+#   pyadi-iio             pip. Pure Python on top of libiio's bindings,
+#                         which come from apk too (py3-libiio).
+#   libad9361-iio         source. The Pluto's transceiver helpers.
+#   libm2k, m2kcli        source. The ADALM2000 API, Python bindings included.
+#   iio-oscilloscope      source -- and gtkdatabox and matio with it, which
+#                         Alpine does not have and it will not build without.
+#   GNU Radio blocks      source. Alpine's gnuradio (stage 12) is built
+#                         WITHOUT gr-iio: its APKBUILD never asks for libiio,
+#                         so the in-tree IIO component is silently switched
+#                         off, and rebuilding GNU Radio is not a thing a Pi
+#                         does. So: gr-m2k for the ADALM2000, and
+#                         SoapyPlutoSDR, which reaches the Pluto through the
+#                         Soapy blocks that ARE in Alpine's package.
+#   Scopy                 not here, and not buildable here. It pins a forked
+#                         GNU Radio and a forked qwt, and ADI's ARM builds are
+#                         glibc AppImages made from a Kuiper root filesystem.
+#                         It runs on the desktop; the instrument does not
+#                         mind which machine it is plugged into.
+#
+# Every version is pinned, the way PianoBooster's is, and all of them sit on
+# the libiio 0.x line on purpose: Alpine's package is 0.25, libm2k and the
+# oscilloscope both say "0.26 or older", and libiio 1.0 has no tagged
+# release for any of them to have been built against yet.
+LIBAD9361_REF="${LIBAD9361_REF:-v0.4.0}"
+LIBM2K_REF="${LIBM2K_REF:-v0.9.1}"
+IIO_OSC_REF="${IIO_OSC_REF:-v0.18.1}"
+SOAPYPLUTO_REF="${SOAPYPLUTO_REF:-soapy-plutosdr-0.2.2}"
+GRM2K_REF="${GRM2K_REF:-v1.0.0}"
+MATIO_VER="${MATIO_VER:-1.6.0}"
+# gtkdatabox lives on SourceForge, which answers a plain wget with a 403 or a
+# page of HTML depending on the day. Fedora's source cache carries the same
+# tarball at a URL that is addressed by its own checksum, so the version and
+# the hash are one fact and are pinned together.
+GTKDATABOX_VER="${GTKDATABOX_VER:-1.0.0}"
+GTKDATABOX_SHA512="${GTKDATABOX_SHA512:-63007ab50e1e1eba185a2c05ccc1a8759aded91797688c4b4888728af3527514cc79280851981e36b01e24859fe8e0f95d660a219d456edeb50e0b847d7b9999}"
+
+# How many compilers to run at once. nproc alone is wrong on a Zero 2 W: four
+# cores and 512 MB, and one gr-m2k translation unit with the GNU Radio and
+# pybind11 headers in it wants most of that. Roughly 600 MB a job, never
+# fewer than one, never more than there are cores.
+iio_jobs() {
+    _c=$(nproc 2>/dev/null || echo 1)
+    _m=$(awk '/^MemTotal/ { print int($2 / 1024) }' /proc/meminfo 2>/dev/null || echo 0)
+    _j=$(( _m / 600 ))
+    [ "$_j" -ge 1 ] || _j=1
+    [ "$_j" -le "$_c" ] || _j=$_c
+    echo "$_j"
+}
+
+# One tarball, one build, one log.   iio_build <name> <url> <cmake|autotools> [args ...]
+#
+# The prefix is /usr, not /usr/local, and that is deliberate. gr-m2k has to
+# land where gnuradio looks for blocks, SoapyPlutoSDR where SoapySDR looks
+# for modules, and libm2k's Python module where python3 looks for modules --
+# and none of those search /usr/local on Alpine. No apk owns any of these
+# files, so nothing that apk installed is written over. The tarball is kept
+# in /usr/local/src, so a failed build re-run does not download again.
+iio_build() {
+    _n=$1; _u=$2; _style=$3; shift 3
+    _log=/var/log/iio-build-$_n.log
+    _tgz=$SRCDIR/$_n.tar.gz
+    say "Building $_n"
+    if [ -s "$_tgz" ]; then
+        note "using $_tgz, already downloaded"
+    else
+        note "downloading $_u"
+        wget -q -O "$_tgz" "$_u" \
+            || { rm -f "$_tgz"; warn "$_n: could not download $_u"; return 1; }
+    fi
+    rm -rf "$SRCDIR/$_n"; mkdir -p "$SRCDIR/$_n"
+    tar xzf "$_tgz" -C "$SRCDIR/$_n" --strip-components=1 \
+        || { warn "$_n: the archive did not unpack -- delete $_tgz and try again"
+             rm -rf "$SRCDIR/$_n"; return 1; }
+    : > "$_log"
+    # -DCMAKE_POLICY_VERSION_MINIMUM=3.5 for the same reason PianoBooster
+    # needs it: SoapyPlutoSDR still says cmake_minimum_required(2.8.9), and
+    # the CMake 4 that Alpine ships refuses anything under 3.5 without it.
+    if ! ( cd "$SRCDIR/$_n" && case "$_style" in
+            cmake)
+                mkdir -p build && cd build \
+                && cmake .. -DCMAKE_BUILD_TYPE=Release \
+                            -DCMAKE_INSTALL_PREFIX=/usr \
+                            -DCMAKE_INSTALL_LIBDIR=lib \
+                            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 "$@" ;;
+            autotools)
+                { [ -x configure ] || autoreconf -fi; } \
+                && ./configure --prefix=/usr "$@" ;;
+        esac ) >> "$_log" 2>&1
+    then
+        warn "$_n: configure failed -- the last lines of $_log:"
+        tail -n 15 "$_log" | sed 's/^/    /' >&2
+        return 1
+    fi
+    _dir=$SRCDIR/$_n
+    [ "$_style" = cmake ] && _dir=$_dir/build
+    _j=$(iio_jobs)
+    note "compiling with $_j job(s) on $(nproc 2>/dev/null || echo 1) core(s) -- the log is $_log"
+    if ! make -C "$_dir" -j"$_j" >> "$_log" 2>&1; then
+        warn "$_n: the compile failed -- the last lines of $_log:"
+        tail -n 20 "$_log" | sed 's/^/    /' >&2
+        return 1
+    fi
+    make -C "$_dir" install >> "$_log" 2>&1 \
+        || { warn "$_n: make install failed -- see $_log"; return 1; }
+    note "$_n built and installed"
+    return 0
+}
+
+# iiod as a service. libiio-tools puts the daemon in /usr/bin and nothing
+# else: the aport carries no init script, and upstream only knows systemd,
+# sysvinit and upstart. So it is four lines of OpenRC here. It serves the IIO
+# devices THIS board's kernel has -- a sensor on the I2C pins, an ADC on SPI
+# -- to any libiio client on the network, on port 30431; it does not proxy an
+# instrument plugged into this board's USB, since that instrument runs its
+# own iiod and answers on its own address (see the network note below).
+iio_write_iiod_service() {
+    say "Installing /etc/init.d/iiod"
+    cat > /etc/init.d/iiod <<'IIOD'
+#!/sbin/openrc-run
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# iiod -- serve this board's IIO devices to libiio clients on the network.
+#
+# Options go in /etc/conf.d/iiod as IIOD_OPTS, e.g. IIOD_OPTS="-p 30431".
+# A client on another machine reaches it with:  iio_info -u ip:<this host>
+description="libiio network daemon (port 30431)"
+command=/usr/bin/iiod
+command_args="${IIOD_OPTS:-}"
+command_background=yes
+pidfile=/run/iiod.pid
+
+depend() {
+    need net
+    use avahi-daemon
+}
+IIOD
+    chmod 0755 /etc/init.d/iiod
+    # Advertised over mDNS if avahi is running, which is how a desktop's
+    # `iio_info -s` finds this board without being told its address. avahi is
+    # not installed for this alone -- if it is here, iiod uses it.
+    if rc-update add iiod default >/dev/null 2>&1; then
+        note "iiod starts at boot. rc-update del iiod default  to stop that."
+        rc-service iiod start >/dev/null 2>&1 || note "(not started now -- it will be at the next boot)"
+    else
+        warn "could not enable iiod -- rc-update add iiod default, by hand"
+    fi
+}
+
+# An instrument on USB, as an ordinary user. libiio opens the device through
+# libusb, which means /dev/bus/usb/BBB/DDD, and mdev creates those root:root
+# 0660 -- so out of the box every ADI tool works as root and fails as you.
+#
+# Three things fix that, and all three are needed. A 'usb' group, because
+# Alpine has none. A rule in mdev.conf that hands USB devices to that group
+# as they are plugged in -- the SUBSYSTEM=...;DEVTYPE=...; form is the one
+# Alpine's own mdev.conf uses for network interfaces, and it was tried on
+# Alpine 3.24 before being written here. And a boot-time sweep, because the
+# coldplug scan at boot (`mdev -s`) does not carry DEVTYPE and so recreates
+# whatever was plugged in before power-on as root:root; the rule only ever
+# sees a hotplug event. /etc/local.d is the same hook stage 5 uses for zram.
+iio_usb_access() {
+    say "USB access for $PI_USER"
+    getent group usb >/dev/null 2>&1 || addgroup -S usb 2>/dev/null || true
+    addgroup "$PI_USER" usb 2>/dev/null || true
+    note "'$PI_USER' is in the usb group -- log out and in again for it to count"
+
+    if ! grep -q 'DEVTYPE=usb_device' /etc/mdev.conf 2>/dev/null; then
+        printf 'SUBSYSTEM=usb;DEVTYPE=usb_device;.*\troot:usb 0660 */lib/mdev/usbdev\n' > /tmp/copal-usb-rule
+        if grep -q '^# load drivers for usb devices' /etc/mdev.conf 2>/dev/null; then
+            sed -i '/^# load drivers for usb devices/r /tmp/copal-usb-rule' /etc/mdev.conf
+        else
+            cat /tmp/copal-usb-rule >> /etc/mdev.conf
+        fi
+        rm -f /tmp/copal-usb-rule
+        note "mdev.conf: USB devices are root:usb 0660 from now on"
+    else
+        note "mdev.conf already hands USB devices to a group"
+    fi
+
+    mkdir -p /etc/local.d
+    cat > /etc/local.d/usb-group.start <<'USBGRP'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# The mdev coldplug scan at boot recreates USB device nodes root:root; the
+# rule in /etc/mdev.conf only sees hotplug events. Hand whatever was already
+# plugged in at power-on to the usb group, so libiio can open it as a user.
+[ -d /dev/bus/usb ] || exit 0
+find /dev/bus/usb -type c -exec chgrp usb {} + -exec chmod 0660 {} + 2>/dev/null
+exit 0
+USBGRP
+    chmod +x /etc/local.d/usb-group.start
+    rc-update add local default >/dev/null 2>&1 || true
+    /etc/local.d/usb-group.start
+    # Report what actually happened rather than what was meant to.
+    _bad=$(find /dev/bus/usb -type c ! -group usb 2>/dev/null | wc -l)
+    if [ "${_bad:-0}" -eq 0 ]; then
+        note "every USB device node is now group usb"
+    else
+        warn "$_bad USB device node(s) are still not group usb -- iio-scan will say; doas works meanwhile"
+    fi
+}
+
+# pyadi-iio is pure Python and lives on PyPI only; its two dependencies,
+# numpy and libiio's bindings, come from apk -- and --no-deps is what makes
+# pip leave them alone. That matters on armv7, where PyPI has no numpy wheel
+# and pip would otherwise start compiling one.
+iio_pyadi() {
+    say "pyadi-iio (pip)"
+    add_optional py3-pip py3-numpy
+    if python3 -m pip install --break-system-packages --no-deps pyadi-iio \
+            > /var/log/iio-pyadi.log 2>&1; then
+        if python3 -c 'import adi, iio' 2>/dev/null; then
+            note "pyadi-iio installed:  python3 -c 'import adi; print(adi.__version__)'"
+        else
+            warn "pyadi-iio installed but 'import adi' fails -- see /var/log/iio-pyadi.log"
+        fi
+    else
+        warn "pip could not install pyadi-iio -- the last lines of /var/log/iio-pyadi.log:"
+        tail -n 8 /var/log/iio-pyadi.log | sed 's/^/    /' >&2
+    fi
+}
+
+# iio-scan -- what libiio can see from this board, and the usual reasons it
+# cannot. 'my instrument is not found' has four causes here and this names
+# the one you have.
+iio_write_scan_helper() {
+    say "Installing /usr/local/bin/iio-scan"
+    cat > /usr/local/bin/iio-scan <<'IIOSCAN'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# iio-scan -- what libiio can see from here, and why it might not.
+#
+#   iio-scan              scan USB, the network and this board's own devices
+#   iio-scan URI          describe one context, e.g. usb:1.4.5 or ip:192.168.2.1
+#
+# The ADALM2000 and the Pluto are reached two ways, and both work at once:
+#   usb:      libiio talks to the instrument's own iiod over USB. Needs the
+#             /dev/bus/usb node to be group usb (stage 14 arranges that).
+#   ip:       the instrument is also a USB network adapter at 192.168.2.1.
+#             Give usb0 an address on that subnet and it answers there too:
+#                 doas ip addr add 192.168.2.10/24 dev usb0; doas ip link set usb0 up
+#             (permanently: an 'iface usb0' stanza in /etc/network/interfaces)
+set -eu
+command -v iio_info >/dev/null 2>&1 || { echo "iio-scan: libiio-tools is not installed" >&2; exit 1; }
+
+if [ $# -gt 0 ]; then exec iio_info -u "$1"; fi
+
+echo "--- libiio scan (usb, ip, local)"
+iio_info -s 2>&1 || true
+
+echo
+echo "--- USB devices from Analog Devices (vendor 0456)"
+found=0
+for d in /sys/bus/usb/devices/*; do
+    [ -f "$d/idVendor" ] || continue
+    [ "$(cat "$d/idVendor")" = 0456 ] || continue
+    found=1
+    printf '  %s  %s  ' "$(cat "$d/busnum" "$d/devnum" 2>/dev/null | tr '\n' '/' | sed 's|/$||')" \
+        "$(cat "$d/product" 2>/dev/null || echo '?')"
+    node=$(printf '/dev/bus/usb/%03d/%03d' "$(cat "$d/busnum")" "$(cat "$d/devnum")")
+    if [ -r "$node" ] && [ -w "$node" ]; then echo "(readable by you)"
+    else echo "(NOT accessible by you -- $(stat -c '%U:%G %a' "$node" 2>/dev/null); 'id' should list usb, and a re-login after stage 14)"
+    fi
+done
+[ "$found" = 1 ] || echo "  none -- is it plugged in and powered? 'lsusb' if usbutils is installed"
+
+echo
+echo "--- usb0 (the instrument as a network adapter)"
+if [ -d /sys/class/net/usb0 ]; then ip -4 addr show usb0 2>/dev/null | sed 's/^/  /'
+else echo "  no usb0 -- appears when a Pluto or M2K is plugged in and the cdc_ether/rndis_host module loads"; fi
+
+echo
+echo "--- this board's own IIO devices (what iiod serves)"
+ls /sys/bus/iio/devices/ 2>/dev/null | sed 's/^/  /' || echo "  none"
+[ -n "$(ls /sys/bus/iio/devices/ 2>/dev/null)" ] || echo "  none -- a sensor on I2C/SPI with an IIO driver would appear here"
+IIOSCAN
+    chmod 0755 /usr/local/bin/iio-scan
+    note "iio-scan            what libiio can see, and why not"
+}
+
+workshop_iio() {
+    say "Instruments: ADALM2000, ADALM-Pluto and IIO"
+    cat <<'MSG'
+
+    Analog Devices' lab stack -- what Kuiper Linux carries -- on this board.
+    Alpine packages one piece of it. The rest is compiled here, and most of
+    it is small; the two GNU Radio modules are the long part.
+
+      libiio, iiod, iio_*   edge/testing. The library, the network daemon
+                            (started at boot), and the command-line tools.
+      pyadi-iio             pip, on top of apk's numpy and py3-libiio.
+      libad9361-iio         source. Pluto transceiver helpers.
+      libm2k, m2kcli        source. The ADALM2000 API and its Python module.
+      iio-oscilloscope      source. The basic GTK debugging GUI, with the two
+                            libraries Alpine lacks (gtkdatabox, matio).
+      gr-m2k                source. ADALM2000 blocks for GNU Radio.
+      SoapyPlutoSDR         source. The Pluto through GNU Radio's Soapy
+                            blocks -- because Alpine's gnuradio is built
+                            without gr-iio, and a Pi does not rebuild
+                            GNU Radio.
+
+    NOT here, and do not go looking on this board:
+
+      Scopy         glibc-only on ARM (an AppImage from a Kuiper root), and
+                    it pins a forked GNU Radio and qwt. Run Scopy on the
+                    desktop: the instrument plugs into whichever machine has
+                    the screen, and this board serves iiod either way.
+      gr-iio        the in-tree IIO blocks. Missing from Alpine's package;
+                    gr-m2k and SoapyPlutoSDR are the answer above.
+
+    THE BUILDS ARE LONG. gtk+3.0-dev and gnuradio-dev come down first, then
+    seven compiles. An hour on a Pi 4; longer on a Zero 2 W, where 512 MB
+    means one job at a time. Every build has its own /var/log/iio-build-*.log
+    and a failed one costs only itself.
+
+MSG
+    have_space_mb 2500 "the instrument stack (GTK and GNU Radio headers, seven source trees)" \
+        || return 0
+    confirm_yes "Install the instrument stack now?" || {
+        note "Not installed. Run stage 14 again and choose the instruments bundle."
+        return 0
+    }
+
+    # --- the one packaged piece, and everything that needs only it ---
+    say "libiio, iiod and the iio_* tools (edge/testing)"
+    add_optional libiio@testing libiio-tools@testing libiio-dev@testing py3-libiio@testing
+    if ! apk info -e libiio >/dev/null 2>&1; then
+        warn "libiio did not install -- nothing else in this bundle can be built without it"
+        return 1
+    fi
+    note "iio_info -s         scan for anything libiio can reach"
+    note "iio_attr -a         read and write attributes"
+    note "iio_readdev         stream samples to stdout"
+    add_optional usbutils
+    iio_write_iiod_service
+    iio_usb_access
+    iio_write_scan_helper
+    iio_pyadi
+
+    # --- the source builds ---
+    say "Build tools"
+    add_optional build-base cmake pkgconf swig python3-dev py3-setuptools \
+                 autoconf automake libtool libusb-dev libxml2-dev
+    command -v cmake >/dev/null 2>&1 || { warn "no cmake -- cannot build the rest"; return 1; }
+    SRCDIR=/usr/local/src
+    mkdir -p "$SRCDIR"
+
+    _gh=https://github.com/analogdevicesinc
+    iio_build libad9361-iio "$_gh/libad9361-iio/archive/refs/tags/$LIBAD9361_REF.tar.gz" cmake || true
+
+    # INSTALL_UDEV_RULES is for udev, which this board does not run; the
+    # mdev rule above does that job. Tools give m2kcli.
+    if iio_build libm2k "$_gh/libm2k/archive/refs/tags/$LIBM2K_REF.tar.gz" cmake \
+            -DENABLE_PYTHON=ON -DENABLE_TOOLS=ON -DENABLE_EXCEPTIONS=ON \
+            -DINSTALL_UDEV_RULES=OFF; then
+        note "m2kcli              the ADALM2000 from the command line (m2kcli --help)"
+        note "python3 -c 'import libm2k; print(libm2k.getAllContexts())'"
+    fi
+
+    say "iio-oscilloscope and the two libraries it needs"
+    add_optional gtk+3.0-dev glib-dev fftw-dev jansson-dev curl-dev
+    _osc=1
+    iio_build gtkdatabox \
+        "https://src.fedoraproject.org/repo/pkgs/gtkdatabox/gtkdatabox-$GTKDATABOX_VER.tar.gz/sha512/$GTKDATABOX_SHA512/gtkdatabox-$GTKDATABOX_VER.tar.gz" \
+        autotools --disable-static || _osc=0
+    # No HDF5: the oscilloscope saves MAT v5 files, and HDF5 is 20 minutes
+    # of compile for a format it never writes.
+    iio_build matio "https://github.com/tbeu/matio/releases/download/v$MATIO_VER/matio-$MATIO_VER.tar.gz" \
+        autotools --disable-static --without-hdf5 || _osc=0
+    if [ "$_osc" = 1 ]; then
+        if iio_build iio-oscilloscope "$_gh/iio-oscilloscope/archive/refs/tags/$IIO_OSC_REF.tar.gz" cmake; then
+            note "osc                 the oscilloscope -- run it as $PI_USER, from the desktop"
+            note "osc -c usb:1.4.5    or -c ip:192.168.2.1, to skip the connect dialog"
+        fi
+    else
+        note "iio-oscilloscope skipped: it needs gtkdatabox and matio, and one of them did not build"
+    fi
+
+    say "GNU Radio: ADALM2000 blocks, and the Pluto through Soapy"
+    cat <<'MSG'
+
+    Alpine's gnuradio package has every component but gr-iio, so the ADI
+    instruments reach it two other ways. gr-m2k is ADI's own out-of-tree
+    module for the ADALM2000 -- Analog In/Out and Digital In/Out blocks in
+    Companion. The Pluto goes through SoapySDR: Alpine's gnuradio is built
+    with the Soapy blocks, SoapyPlutoSDR teaches SoapySDR to open a Pluto,
+    and "Soapy PlutoSDR Source / Sink" appear in Companion.
+
+MSG
+    if ! apk info -e gnuradio >/dev/null 2>&1; then
+        note "GNU Radio is not installed yet (it is in stage 12's Radio section)"
+        confirm_yes "Install gnuradio now, for the blocks?" || {
+            note "Skipping the GNU Radio modules. Re-run this bundle after installing gnuradio."
+            say "Instruments bundle complete."
+            return 0
+        }
+    fi
+    add_optional gnuradio gnuradio-dev soapy-sdr soapy-sdr-dev
+    if ! apk info -e gnuradio-dev >/dev/null 2>&1; then
+        warn "no gnuradio-dev -- the GNU Radio modules cannot be built"
+        say "Instruments bundle complete."
+        return 0
+    fi
+    if iio_build SoapyPlutoSDR "https://github.com/pothosware/SoapyPlutoSDR/archive/refs/tags/$SOAPYPLUTO_REF.tar.gz" cmake; then
+        note "SoapySDRUtil --find=driver=plutosdr     is the Pluto visible to Soapy?"
+    fi
+    if [ -f /usr/lib/cmake/libm2k/libm2kConfig.cmake ] || [ -f /usr/lib/libm2k.so ]; then
+        if iio_build gr-m2k "$_gh/gr-m2k/archive/refs/tags/$GRM2K_REF.tar.gz" cmake; then
+            note "gnuradio-companion: the M2K blocks are under 'm2k'"
+        fi
+    else
+        note "gr-m2k skipped: libm2k did not build, and it is the whole point of gr-m2k"
+    fi
+
+    say "Instruments bundle complete."
+    note "iio-scan            first thing to run with the instrument plugged in"
+    note "As $PI_USER, after logging in again: iio_info -s should list it."
+}
+
 workshop_maths() {
     say "LaTeX and mathematics"
     cat <<'MSG'
@@ -20037,24 +28103,24 @@ PIANOMIDI
 stage_workshop() {
     say "Stage 14: the workshop -- engineering, science and music"
 
-    if is_diskless; then
-        warn "the root filesystem is still a tmpfs. None of this will fit."
-        note "Run stage 3 first."
-        confirm "Try anyway?" || return 0
-    fi
+    require_disk_root "The workshop bundles (CAD, EDA, LaTeX)" || return 0
     require_network || return 1
 
     note "architecture: $(apk --print-arch 2>/dev/null || echo unknown)  (gate: $ARCH_GATE)"
     cat <<'MSG'
 
-    Five bundles. Each says what it can and cannot do on this board before
+    Eight bundles. Each says what it can and cannot do on this board before
     it installs anything.
 
       c   CAD and 3D modelling      SolveSpace, FreeCAD, Blender, Goxel
       p   3D printing (Ender 3)     CuraEngine + slice-ender3, admesh,
                                     optionally OctoPrint and the Cura GUI
       e   Electronics               ngspice, KiCad, and pcbzip for the fab
-      m   LaTeX and mathematics     TeX Live, Maxima + wxMaxima, Octave, SymPy
+      i   Instruments               ADALM2000, ADALM-Pluto, IIO: libiio and
+                                    iiod, pyadi-iio, libm2k, the oscilloscope,
+                                    GNU Radio blocks (mostly compiled)
+      m   LaTeX and mathematics     TeX Live, Maxima + wxMaxima, Octave, SymPy,
+                                    Gnuplot
       u   Music                     trackers, SID, MIDI, Hydrogen, Audacity
       k   Learning to play piano    PianoBooster (compiles), piano-midi
       w   Windows programs          Wine in sandboxed boxes; Notepad++, 7-Zip
@@ -20062,17 +28128,18 @@ stage_workshop() {
       q   Back to the menu
 
 MSG
-    ask "Choose [c/p/e/m/u/k/w/a/q]:"
+    ask "Choose [c/p/e/i/m/u/k/w/a/q]:"
     case "$REPLY" in
         c|C) workshop_cad ;;
         p|P) workshop_3dprint ;;
         e|E) workshop_electronics ;;
+        i|I) workshop_iio ;;
         m|M) workshop_maths ;;
         u|U) workshop_music ;;
         k|K) workshop_piano ;;
         w|W) workshop_windows ;;
         a|A) workshop_cad; workshop_3dprint; workshop_electronics
-             workshop_maths; workshop_music; workshop_piano; workshop_windows ;;
+             workshop_iio; workshop_maths; workshop_music; workshop_piano; workshop_windows ;;
         *)   note "Nothing installed."; return 0 ;;
     esac
 
@@ -23316,7 +31383,8 @@ auto_manifest() {
 5|Memory|Compressed swap in RAM (zram)|4
 6|Access|Install the SSH key from the card|3
 4|Desktop|X.Org, i3, a terminal and a browser|9
-7|Toolchain|Compilers, debuggers and editors|12
+17|Desktop|Hyprland and the Antiquity theme|10
+7|Toolchain|Compilers, editors, Claude Code and the ~/code checkouts|13
 10|Hardware|Wireless, audio, capture and disks|8
 12|Software|The application catalogue|4
 14|Workshop|CAD, 3D printing, EDA, LaTeX, trackers|6
@@ -23328,6 +31396,30 @@ MANIFEST
 
 # Derived, so the run order and the checklist can never disagree.
 auto_seq_from_manifest() { auto_manifest | cut -d'|' -f1 | tr '\n' ' '; }
+
+# The three levels the guided install offers, as subsets of the one manifest
+# -- subsets, not separate lists, so a stage added to the manifest lands in
+# the right levels by default and the lists can never drift apart:
+#
+#   server   the machine with no screen: base system, persistent root, zram,
+#            SSH, grown partition, root handed over. Nothing graphical.
+#   medium   server plus the X desktop and everything downstream of it --
+#            the install this script performed before levels existed, and
+#            the ceiling for a Pi Zero.
+#   full     the whole manifest, stage 17 included: Hyprland and the Linux
+#            Antiquity theme take the session, X stays as the fallback.
+#
+# Anything unrecognised -- including 'custom', which guided_install records
+# when the menu is chosen instead -- means the full manifest, because the
+# only caller is auto_run and a wrong-but-complete sequence beats a wrong-
+# and-missing one.
+seq_for_profile() {  # <server|medium|full|anything>
+    case "$1" in
+        server) auto_seq_from_manifest | tr ' ' '\n' | grep -vE '^(4|17|7|9|10|12|14)$' | tr '\n' ' ' ;;
+        medium) auto_seq_from_manifest | tr ' ' '\n' | grep -v  '^17$' | tr '\n' ' ' ;;
+        *)      auto_seq_from_manifest ;;
+    esac
+}
 auto_phases_in_order()   { auto_manifest | cut -d'|' -f2 | awk '!seen[$0]++'; }
 auto_field() {  # <stage> <field-number>
     auto_manifest | awk -F'|' -v s="$1" -v f="$2" '$1 == s { print $f; exit }'
@@ -24011,6 +32103,14 @@ RESUME
 
 auto_run() {
     AUTO=1
+    # The guided install records a level on the boot partition -- FAT, so it
+    # survives the stage 3 reboot that wipes the tmpfs this shell lives on --
+    # and the level decides the sequence. No file means the full manifest,
+    # which is what 'a' always meant.
+    if [ -f "$BOOT/copal-profile" ]; then
+        AUTO_SEQ=$(seq_for_profile "$(cat "$BOOT/copal-profile" 2>/dev/null)")
+        note "install level '$(cat "$BOOT/copal-profile" 2>/dev/null)' -- stages: $AUTO_SEQ"
+    fi
     say "FULL AUTOMATIC INSTALL"
     cat <<'MSG'
 
@@ -24031,7 +32131,11 @@ auto_run() {
         ten-second pause -- with that one password.
       - Stage 4 asks whether the desktop should start by itself at boot.
         Unattended, the answer is yes: tty1 logs the admin user in and runs
-        startx. Deleting /etc/copal/autostart-desktop undoes it.
+        copal-session. Deleting /etc/copal/autostart-desktop undoes it.
+      - Stage 17 (Hyprland and the Linux Antiquity theme) runs only on
+        aarch64 and x86_64 -- a Pi Zero declines it by itself and keeps the
+        X desktop from stage 4. Where it does run, it takes the session:
+        /etc/copal/session says which desktop the console gets.
 
     It ends by rebooting -- the install changes the kernel, the root
     filesystem and the login path, and a reboot is the only honest way to see
@@ -24119,6 +32223,7 @@ MSG
             13) stage_lockroot ;;
             14) AUTO_DEFAULT=a; stage_workshop ;;    # every bundle
             16) stage_fleet ;;                       # a no-op with no fleet named
+            17) stage_hyprland ;;                    # skips itself on armhf/armv7
         esac
         _rc=$?
         set -e
@@ -24205,16 +32310,153 @@ grep -q "Raspberry Pi" /proc/device-tree/model 2>/dev/null \
 # The question is asked first because it is the only one whose answer changes
 # what the whole session is. Answering no gives the ordinary menu and is not
 # asked again this run.
+# ONE STAGE, BY NUMBER, WITHOUT THE MENU.
+#
+# The menu and the unattended run each had their own copy of the number ->
+# function mapping, which is fine while there are two and a bug the day there
+# are three. This is the third caller, so the mapping moves here and the menu
+# uses it. The auto loop keeps its own copy on purpose: it sets AUTO_DEFAULT
+# per stage (9 takes Mini vMac + VICE and not Basilisk, 12 the whole
+# catalogue, 14 every bundle) and those choices belong to that path, not to
+# this one.
+#
+# WHAT IT IS FOR is the edit-and-see-it loop. Every stage is re-runnable and
+# always has been, but re-running one meant starting the script, reading a
+# screen of menu and typing a number -- which is a fine thing to ask of
+# somebody installing a machine and the wrong thing to ask of somebody who has
+# just changed four lines of stage 17 and wants to look at the result. See
+# 'make redeploy' in the repository, which is this with the extraction in
+# front of it.
+run_stage() {  # <number>
+    case "$1" in
+        1)  stage_base_config ;;
+        2)  stage_ext4_cache ;;
+        3)  stage_sys_install ;;
+        4)  stage_gui ;;
+        5)  stage_zram ;;
+        6)  stage_sshkey ;;
+        7)  stage_dev ;;
+        8)  stage_grow ;;
+        9)  stage_emulators ;;
+        10) stage_extras ;;
+        11) stage_snapshots ;;
+        12) stage_apps ;;
+        13) stage_lockroot ;;
+        14) stage_workshop ;;
+        15) stage_sdcard ;;
+        16) stage_fleet ;;
+        17) stage_hyprland ;;
+        v|V) stage_verify ;;
+        *)  warn "not a stage: $1"; return 2 ;;
+    esac
+}
+
+# The stages named on the command line, in the order given. Commas or spaces,
+# because both are what people type: --stage 17 and --stage 4,17 and
+# --stage "4 17" all mean the same thing.
+#
+# set +e around each one for the same reason the auto loop does it: this
+# script runs under set -e, and a stage that returns non-zero would otherwise
+# end the run silently with no summary. Here the exit status is kept and
+# returned, so a script or a Makefile can tell whether the redeploy worked.
+run_stages() {  # <list> ...
+    _rc_all=0
+    for _spec in "$@"; do
+        for _s in $(printf '%s' "$_spec" | tr ',' ' '); do
+            say "STAGE $_s"
+            set +e
+            run_stage "$_s"
+            _rc=$?
+            set -e
+            [ "$_rc" = 0 ] || { warn "stage $_s exited $_rc"; _rc_all=$_rc; }
+        done
+    done
+    say "Done. Transcript: $LOG"
+    return "$_rc_all"
+}
+
 case "${1:-}" in
     --auto|-a) auto_run; exit 0 ;;
+    --stage|-s)
+        shift
+        [ $# -gt 0 ] || { echo "usage: copal-init.sh --stage N[,N...] [--auto]" >&2; exit 2; }
+        # --auto here means "and do not ask me anything", which is the same
+        # AUTO the unattended install uses: every question answers itself. It
+        # is what a redeploy from a Makefile wants and the wrong default for a
+        # person at a terminal, so it is a word you type.
+        _stages=""
+        for _a in "$@"; do
+            case "$_a" in
+                --auto|-a) AUTO=1 ;;
+                *) _stages="$_stages $_a" ;;
+            esac
+        done
+        run_stages $_stages
+        exit $? ;;
     --help|-h)
-        echo "usage: copal [--auto]"
-        echo "  --auto   run every stage unattended, resuming across reboots"
+        echo "usage: copal [--auto] [--stage N[,N...] [--auto]]"
+        echo "  --auto         run every stage unattended, resuming across reboots"
+        echo "  --stage N,...  run only those stages, in that order. Add --auto"
+        echo "                 to answer their questions automatically."
         echo
         echo "The 'copal' command itself has more: -U to update from the"
-        echo "repository, --check, --version. Run: copal --help"
+        echo "repository or from a checkout, --check, --version. Run: copal --help"
         exit 0 ;;
 esac
+
+guided_install() {
+    say "GUIDED INSTALL -- pick a level, or take the menu"
+    cat <<MSG
+
+    Every Copal install moves through the same three acts:
+
+      SETTLE    stages 1-3   answers applied, packages made persistent, the
+                             root filesystem moved onto the card. Everything
+                             else needs these; stage 3 reboots once.
+      FURNISH   stages 4-12  a desktop, zram, SSH, toolchain, emulators,
+                             media, the application catalogue.
+      HARDEN    stage 13     root locked, '$PI_USER' + doas from then on.
+
+    The levels only differ in how much furniture act two brings in:
+
+      s) SERVER      no screen attached: settle, zram, SSH, grow the
+                     partition, harden. Nothing graphical is installed.
+      m) MEDIUM      the X desktop -- X.Org on the framebuffer, i3, the
+                     catalogue, emulators, workshop. The ceiling for a
+                     Pi Zero, and the whole install as it always was.
+      f) FULL MONTY  everything medium installs, then stage 17 on top:
+                     Hyprland on Wayland with the Linux Antiquity theme --
+                     kitty, mako, the star-chart look. Takes the session;
+                     X stays installed as the fallback. Needs aarch64 or
+                     x86_64 -- on a Pi Zero this level declines itself and
+                     lands exactly where medium does.
+
+    X and Hyprland cannot own the screen at once, so the desktop at boot is
+    one word in /etc/copal/session -- stage 4 writes 'x11', stage 17 writes
+    'wayland', re-running either flips it. Nothing is ever uninstalled.
+
+    Enter takes you to the menu instead: every stage by hand, in any order,
+    re-runnable -- the levels above are only bundles of the same stages.
+MSG
+    ask "Level [s/m/f, Enter for the menu]:"
+    case "$REPLY" in
+        s|S) _prof=server ;;
+        m|M) _prof=medium ;;
+        f|F) _prof=full ;;
+        *)   _prof=custom ;;
+    esac
+    mount -o remount,rw "$BOOT" 2>/dev/null || true
+    printf '%s\n' "$_prof" > "$BOOT/copal-profile" 2>/dev/null \
+        || warn "could not record the level on $BOOT -- a resume after reboot will run the full manifest"
+    # The return value is the answer to "did an install just run?", which is
+    # what the caller needs to decide between exiting and showing the menu.
+    # 'custom' is not a failure -- it is somebody asking for the menu -- so it
+    # returns non-zero to mean "carry on", not to mean "something went wrong".
+    case "$_prof" in
+        custom) note "No level chosen -- the menu it is."; return 1 ;;
+        *)      auto_run; return 0 ;;
+    esac
+}
 
 if auto_state_load; then
     say "An automatic install was interrupted"
@@ -24230,24 +32472,31 @@ elif ! apkovl_exists && is_diskless; then
     cat <<'MSG'
 
     ======================================================================
-      FULL AUTOMATIC INSTALL
+      THIS CARD HAS NOT BEEN SET UP YET
     ======================================================================
 
-    This card has not been set up yet. Copal can do the whole thing by
-    itself -- every stage, every question answered yes, resuming on its own
-    across the reboot in the middle.
+    Copal can do the whole thing by itself -- every stage, resuming on its
+    own across the reboot in the middle. Choose how far it should go.
 
     Early on it asks who you are -- a name and email for git commits, with
     whatever the Mac that wrote this card uses offered as the default -- and
-    then for a ROOT PASSWORD, which setup-alpine has no way to be told in
-    advance. After those you can walk away. It takes hours.
-
-    Answer no for the ordinary menu, where you choose each stage yourself.
+    which repositories to check out into ~/code, and then for a ROOT
+    PASSWORD, which setup-alpine has no way to be told in advance. After
+    those you can walk away.
 
 MSG
-    if confirm "Do a full automatic install?"; then
-        auto_run; exit 0
-    fi
+    # HOW MUCH, not just whether. This used to be one yes/no question, which
+    # asked the wrong thing: "everything, for hours" and "nothing, here is a
+    # menu of sixteen" are not the only two answers anybody wants, and a
+    # machine with no screen attached has no business installing a desktop
+    # either way. guided_install describes the flow and offers three levels --
+    # server, medium, full monty -- each a computed subset of the same
+    # manifest, and Enter still falls through to the menu.
+    #
+    # It is called HERE rather than nearer the menu because this block is the
+    # one that actually runs on a virgin machine: it is guarded on no apkovl
+    # and a tmpfs root, which is precisely "nothing has been installed yet".
+    if guided_install; then exit 0; fi
     note "Manual it is. The menu is below; stages can be run in any order."
 fi
 
@@ -24285,9 +32534,19 @@ fi
 # There is no signature check. The transport is TLS to raw.githubusercontent.com
 # and that is the whole of the trust model; say so plainly rather than implying
 # more. Anyone who wants better can point COPAL_REPO at their own fork.
+# WRITTEN TO A TEMPORARY NAME AND RENAMED, never `cat >` over the path.
+# Stage 3 leaves a copy of THIS WHOLE SCRIPT at /usr/local/bin/copal, and the
+# next `copal` on that machine runs it from there. A `cat >` onto the file
+# being run truncates it under the parser, and the shell reaches end-of-file
+# in the middle of an `if` twenty thousand lines down:
+#
+#     /usr/local/bin/copal: line 21043: syntax error: unexpected end of file
+#
+# which is what `make redeploy` produced on the first VM it was tried on. A
+# rename replaces the directory entry and leaves the running inode alone.
 install_frontdoor() {
     [ -d /usr/local/bin ] || mkdir -p /usr/local/bin 2>/dev/null || return 0
-    cat > /usr/local/bin/copal <<'COPALCMD'
+    cat > /usr/local/bin/copal.new <<'COPALCMD'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
@@ -24319,19 +32578,85 @@ copal -- Copal Alpine Linux, on the machine itself.
 
   copal                 the stage menu
   copal --auto          every stage, unattended, resuming across reboots
+  copal --stage N,...   run only those stages. Add --auto after them to
+                        answer their questions automatically.
   copal -U [ref]        update from the repository (default branch: main).
                         'ref' may be any branch, tag or commit SHA, which is
                         how you pin a version or go back to an older one.
+  copal -U --from PATH  update from a checkout on THIS machine instead of the
+                        network: a directory holding copal-prep.sh, the file
+                        itself, or an already-extracted copal-init.sh. This is
+                        how you test a change you have not pushed.
   copal --check [ref]   say whether an update is available; change nothing
+  copal --check --from PATH   the same, against a checkout
   copal --version       what is installed, and where it came from
   copal --help          this
 
-Updating fetches copal-prep.sh over HTTPS and extracts copal-init.sh from it --
-one file, because every stage, guide and helper on this machine lives inside
-it. The old copy is kept as copal-init.sh.bak. Updating changes what the
-stages WILL do; it does not re-run anything. Re-run the stages you care about
-afterwards.
+Updating fetches copal-prep.sh -- over HTTPS, or from --from -- and extracts
+copal-init.sh from it: one file, because every stage, guide and helper on this
+machine lives inside it. The old copy is kept as copal-init.sh.bak. Updating
+changes what the stages WILL do; it does not re-run anything. Re-run the
+stages you care about afterwards, with the menu or with --stage.
+
+  copal -U --from ~/code/copal && copal --stage 17 --auto
+
+is the whole edit-and-see-it loop on the machine itself. 'make redeploy' in
+that checkout is the same two commands with the checks in front of them.
 USAGE
+}
+
+# THE EXTRACTION, shared by the network path and the --from path.
+#
+# copal-init.sh is a heredoc inside copal-prep.sh; this is the same sed the
+# Makefile's lint target runs on the Mac. The sh -n at the end is the check
+# that makes any of this safe to do unattended: a truncated download, an HTML
+# error page or a half-saved editor buffer cannot parse, and an unparseable
+# init script is a machine with no way to run any stage at all.
+extract_init() {  # <copal-prep.sh> <destination>
+    sed -n '/^cat > .*copal-init\.sh" <<.COPALINIT.$/,/^COPALINIT$/p' "$1" \
+        | sed '1d;$d' > "$2"
+    [ -s "$2" ] || return 1
+    sh -n "$2" >&2 || return 2
+    return 0
+}
+
+# A local checkout instead of the network. Three things are accepted because
+# all three are things somebody will type: the directory they cloned into, the
+# copal-prep.sh inside it, or a copal-init.sh they extracted earlier by hand.
+local_init() {  # <path> <destination>
+    _path="$1"; _dest="$2"
+    [ -e "$_path" ] || die "no such path: $_path"
+    [ -d "$_path" ] && _path="$_path/copal-prep.sh"
+    [ -f "$_path" ] || die "not a file: $_path (a checkout should hold copal-prep.sh)"
+    # The file that was actually read, absolute where it can be worked out, so
+    # /etc/copal/version records something meaningful rather than "." -- the
+    # point of that file is to answer "where did this machine's installer come
+    # from" a month later.
+    case "$_path" in
+        /*) INIT_SOURCE="$_path" ;;
+        *)  INIT_SOURCE="$(cd "$(dirname "$_path")" 2>/dev/null && pwd)/$(basename "$_path")" ;;
+    esac
+
+    if grep -q '^cat > .*copal-init\.sh" <<.COPALINIT.$' "$_path" 2>/dev/null; then
+        printf 'Extracting copal-init.sh from %s\n' "$_path" >&2
+        _rc=0; extract_init "$_path" "$_dest" || _rc=$?
+        case "$_rc" in
+            0) : ;;
+            1) die "no copal-init.sh inside $_path" ;;
+            *) die "the extracted copal-init.sh does not parse -- refusing to install it" ;;
+        esac
+    else
+        # Already an init script? It has to look like one and it has to parse;
+        # anything else is somebody pointing --from at the wrong file, which is
+        # worth saying rather than installing.
+        head -1 "$_path" | grep -q '^#!/bin/sh' \
+            || die "$_path is neither copal-prep.sh nor a copal-init.sh"
+        grep -q 'copal-init\.sh -- the installer' "$_path" \
+            || die "$_path does not look like copal-init.sh"
+        sh -n "$_path" || die "$_path does not parse -- refusing to install it"
+        cat "$_path" > "$_dest"
+        printf 'Using %s as it is\n' "$_path" >&2
+    fi
 }
 
 # Fetch and extract, into $2. Prints the temporary source path on success.
@@ -24352,43 +32677,57 @@ fetch_init() {  # <ref> <destination>
     [ "$_sz" -gt 100000 ] || { rm -f "$_src"; die "downloaded $_sz bytes -- that is not copal-prep.sh"; }
     head -1 "$_src" | grep -q '^#!/bin/bash' || { rm -f "$_src"; die "downloaded file is not a shell script"; }
 
-    # The same extraction the Makefile does on the Mac: the heredoc, minus its
-    # own opening and closing lines.
-    sed -n '/^cat > .*copal-init\.sh" <<.COPALINIT.$/,/^COPALINIT$/p' "$_src" \
-        | sed '1d;$d' > "$_dest"
-    [ -s "$_dest" ] || { rm -f "$_src"; die "no copal-init.sh inside that copal-prep.sh"; }
-
-    # The check that makes this safe to do unattended: a corrupt or truncated
-    # extraction cannot parse, and an unparseable init script is a machine with
-    # no way to run any stage at all.
-    sh -n "$_dest" || { rm -f "$_src"; die "the extracted copal-init.sh does not parse -- refusing to install it"; }
+    _rc=0; extract_init "$_src" "$_dest" || _rc=$?
+    case "$_rc" in
+        0) : ;;
+        1) rm -f "$_src"; die "no copal-init.sh inside that copal-prep.sh" ;;
+        *) rm -f "$_src"; die "the extracted copal-init.sh does not parse -- refusing to install it" ;;
+    esac
 
     echo "$_src"
 }
 
 sha() { sha256sum "$1" 2>/dev/null | cut -d' ' -f1; }
 
-cmd_update() {  # <ref> <check-only 0|1>
-    _ref="${1:-main}"; _checkonly="${2:-0}"
+# Whatever the source was, in one string, for the messages and for
+# /etc/copal/version: "vonglurt/copal@main" or "/home/user/code/copal".
+cmd_update() {  # <ref-or-path> <check-only 0|1> <from-a-checkout 0|1>
+    _ref="${1:-main}"; _checkonly="${2:-0}"; _from="${3:-0}"
     _cur=$(find_init) || die "cannot find copal-init.sh -- is the boot partition mounted?"
 
     _new=$(mktemp /tmp/copal-init.XXXXXX) || die "cannot write to /tmp"
-    _src=$(fetch_init "$_ref" "$_new")
+    _src=""
+    if [ "$_from" = 1 ]; then
+        INIT_SOURCE=""
+        local_init "$_ref" "$_new"
+        _label="${INIT_SOURCE:-$_ref}"
+    else
+        _src=$(fetch_init "$_ref" "$_new")
+        _label="$REPO@$_ref"
+    fi
+    # The network path leaves a downloaded copal-prep.sh behind; the checkout
+    # path leaves nothing, and rm with an empty argument is an error on
+    # busybox, so every removal goes through here.
+    _clean() { rm -f "$_new"; [ -n "$_src" ] && rm -f "$_src"; return 0; }
 
     if [ "$(sha "$_new")" = "$(sha "$_cur")" ]; then
-        rm -f "$_new" "$_src"
-        printf 'Already current: %s is identical to %s@%s\n' "$_cur" "$REPO" "$_ref"
+        _clean
+        printf 'Already current: %s is identical to %s\n' "$_cur" "$_label"
         return 0
     fi
 
     # busybox wc does not pad, GNU/BSD wc does; strip it either way.
     _oldl=$(wc -l < "$_cur" | tr -d ' '); _newl=$(wc -l < "$_new" | tr -d ' ')
-    printf 'Update available: %s lines installed, %s lines at %s@%s\n' \
-           "$_oldl" "$_newl" "$REPO" "$_ref"
+    printf 'Update available: %s lines installed, %s lines at %s\n' \
+           "$_oldl" "$_newl" "$_label"
 
     if [ "$_checkonly" = 1 ]; then
-        rm -f "$_new" "$_src"
-        printf 'Nothing changed. Run "copal -U %s" to install it.\n' "$_ref"
+        _clean
+        if [ "$_from" = 1 ]; then
+            printf 'Nothing changed. Run "copal -U --from %s" to install it.\n' "$_ref"
+        else
+            printf 'Nothing changed. Run "copal -U %s" to install it.\n' "$_ref"
+        fi
         return 0
     fi
 
@@ -24412,20 +32751,21 @@ cmd_update() {  # <ref> <check-only 0|1>
     fi
 
     mkdir -p /etc/copal 2>/dev/null || true
-    { printf 'repo=%s\nref=%s\nsha256=%s\nupdated=%s\n' \
-             "$REPO" "$_ref" "$(sha "$_cur")" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    { printf 'source=%s\nsha256=%s\nupdated=%s\n' \
+             "$_label" "$(sha "$_cur")" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     } > "$VERFILE" 2>/dev/null || true
 
     [ "$_remounted" = 1 ] && mount -o remount,ro "$_mnt" 2>/dev/null || true
-    rm -f "$_new" "$_src"
+    _clean
 
     cat <<'AFTER'
 
 Updated. Nothing has been re-run: an update changes what the stages will do,
 not what is already installed. To pick the changes up, re-run the stages they
-touch -- "copal" for the menu. Stage 1 is the cheap one to re-run and repairs
-the admin account, doas and the shell files; stage 4 rewrites the desktop, its
-key bindings and the helper programs.
+touch -- "copal" for the menu, or "copal --stage N,... --auto" for a named few
+without one. Stage 1 is the cheap one to re-run and repairs the admin account,
+doas and the shell files; stage 4 rewrites the desktop, its key bindings and
+the helper programs; stage 17 the Hyprland desktop and its theme.
 AFTER
 }
 
@@ -24443,17 +32783,35 @@ cmd_version() {
     fi
 }
 
+# -U and --check take either a git ref or "--from PATH", never both: one names
+# a place on the network and the other a place on this disk, and a command that
+# accepted both would have to decide which wins.
+update_args() {  # <check-only 0|1> [ref | --from PATH]
+    _co="$1"; shift
+    case "${1:-}" in
+        --from|-f)
+            shift
+            [ -n "${1:-}" ] || die "--from wants a path: a checkout, a copal-prep.sh, or a copal-init.sh"
+            cmd_update "$1" "$_co" 1 ;;
+        *)  cmd_update "${1:-main}" "$_co" 0 ;;
+    esac
+}
+
 case "${1:-}" in
-    -U|--update)  shift; cmd_update "${1:-main}" 0 ;;
-    --check)      shift; cmd_update "${1:-main}" 1 ;;
+    -U|--update)  shift; update_args 0 "$@" ;;
+    --check)      shift; update_args 1 "$@" ;;
     --version|-V) cmd_version ;;
     --help|-h)    usage ;;
     -a|--auto)    _i=$(find_init) || die "cannot find copal-init.sh"; exec sh "$_i" --auto ;;
+    # Straight through to the installer, which is where the stage numbers and
+    # their meanings live -- this command knows only that it is not its own.
+    -s|--stage)   shift; _i=$(find_init) || die "cannot find copal-init.sh"; exec sh "$_i" --stage "$@" ;;
     "")           _i=$(find_init) || die "cannot find copal-init.sh"; exec sh "$_i" ;;
     *)            printf 'copal: unknown option "%s"\n\n' "$1" >&2; usage >&2; exit 2 ;;
 esac
 COPALCMD
-    chmod 0755 /usr/local/bin/copal
+    chmod 0755 /usr/local/bin/copal.new
+    mv -f /usr/local/bin/copal.new /usr/local/bin/copal
 }
 
 # The log tools, written beside the front door and for the same reason: they
@@ -25337,8 +33695,21 @@ COPALLOGS
     chmod 0755 /usr/local/bin/copal-logs
 }
 
+# ------------------------------------------------------- guided install ----
+#
+# The menu below is sixteen numbered stages, and the first question every new
+# install raises is which of them are actually wanted. This answers it with
+# one letter instead of sixteen numbers: a description of how the install
+# flows, then three levels, each a named subset of the same manifest the
+# full-automatic mode runs (see seq_for_profile). Choosing one records it on
+# the boot partition -- FAT, so it survives the stage 3 reboot -- and hands
+# over to auto_run, which reads it back on every resume. Declining records
+# 'custom', so the offer is made exactly once and the menu is the answer
+# from then on.
+
 install_frontdoor
 install_log_tools
+
 
 while :; do
     state_report
@@ -25359,6 +33730,28 @@ while :; do
     else                                            SUGGEST=v
     fi
 
+    # A BANNER RATHER THAN A SUGGESTION LINE. "Suggested next" is one line at
+    # the bottom of a screen of sixteen options, and it is easy to read past
+    # -- which is how a machine ends up with 2.8 GB of packages in a RAM disk.
+    # While / is a tmpfs, say so above the menu, in the words that matter:
+    # what will happen, and which stage fixes it.
+    if is_diskless; then
+        printf '\n    \033[33m%s\033[0m\n' \
+          "================================================================"
+        printf '    \033[1;33m  / IS STILL A RAM DISK (%s). NOTHING LARGE CAN BE INSTALLED.\033[0m\n' \
+          "$(df -h / 2>/dev/null | awk 'NR==2{print $2}')"
+        printf '    \033[33m%s\033[0m\n' \
+          "================================================================"
+        printf '      Packages installed now live in memory, vanish at reboot,\n'
+        printf '      and when this fills, every command on the machine fails.\n'
+        printf '      \033[1mStage 3 moves / onto the disk and reboots.\033[0m Do that first;\n'
+        printf '      stages 4, 7, 12, 14 and 16 will refuse until you have.\n'
+        if sys_installed; then
+            printf '      \033[1;33mStage 3 has already run -- press r to reboot into it.\033[0m\n'
+        fi
+        printf '\n'
+    fi
+
     cat <<MSG
 
     1) Base configuration      setup-alpine from answers.txt, then lbu commit
@@ -25372,7 +33765,9 @@ while :; do
     5) Compressed RAM swap     zram -- the biggest win available on 512 MB
     6) Authorise the SSH key   the Mac's public key for '$PI_USER'
     7) Development environment gcc/make/gdb, nvim configured for building and
-                               breakpoints, python, geany, AVR, TUI tooling
+                               breakpoints, python, geany, AVR, TUI tooling,
+                               and Claude Code (installed by default, where
+                               node runs -- not on a Zero)
     8) Grow COPALROOT             extend p2 into the unallocated space after it.
                                Non-destructive; works on a mounted root
     9) Retro emulators         Mini vMac (Mac Plus, fast) and VICE (C64,
@@ -25397,6 +33792,12 @@ while :; do
    16) The fleet              join a named fleet: announce on the LAN, trust
                                one certificate authority, answer one console.
                                Skipped entirely on a card with no fleet on it
+   17) The Antiquity desktop  Hyprland on Wayland, themed as diinki's Linux
+                              Antiquity -- the full monty. Takes the session
+                              from X (one word in /etc/copal/session flips
+                              it back). aarch64/x86_64 only; needs 3 done
+    g) Guided install         the three levels -- server, medium, full --
+                              described, then run unattended
     r) Reboot
     v) Verify and show state
     q) Quit
@@ -25404,7 +33805,7 @@ while :; do
     Suggested next: $SUGGEST
 MSG
 
-    ask "Choose [1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16/a/r/v/q]:"
+    ask "Choose [1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16/17/a/g/r/v/q]:"
     case "$REPLY" in
         r|R) if confirm_yes "Reboot now?"; then
                  say "Rebooting. Log back in as ROOT (not $PI_USER), then run:  sh /boot/copal-init.sh"
@@ -25413,22 +33814,8 @@ MSG
                  reboot
                  exit 0
              fi ;;
-        1) stage_base_config ;;
-        2) stage_ext4_cache ;;
-        3) stage_sys_install ;;
-        4) stage_gui ;;
-        5) stage_zram ;;
-        6) stage_sshkey ;;
-        7) stage_dev ;;
-        8) stage_grow ;;
-        9) stage_emulators ;;
-        10) stage_extras ;;
-        11) stage_snapshots ;;
-        12) stage_apps ;;
-        13) stage_lockroot ;;
-        14) stage_workshop ;;
-        15) stage_sdcard ;;
-        16) stage_fleet ;;
+        [1-9]|1[0-7]) run_stage "$REPLY" ;;
+        g|G) guided_install ;;
         a|A) auto_run ;;
         v|V) stage_verify ;;
         q|Q|"") say "Nothing further changed. Transcript: $LOG"; exit 0 ;;
@@ -25459,6 +33846,7 @@ step "Verify the card, then flush and eject" \
     "this finishes: macOS buffers writes, and removing it early truncates" \
     "files that appear to have copied successfully."
 
+phase "Verify and flush"
 info "Verifying required boot files on the card..."
 MISSING=0
 case "$PLATFORM" in
@@ -25495,6 +33883,56 @@ for required in $_verify; do
         MISSING=1
     fi
 done
+
+# THE FILE IS THERE. DOES IT PARSE?
+#
+# Every check above asks whether a file exists, and copal-init.sh is the one
+# file on this card where that is not the interesting question: it is 20,000
+# lines of shell that the target runs as its whole install, and a syntax error
+# in it is a card that boots to
+#
+#     /media/vda1/copal-init.sh: line 2951: syntax error: unexpected end of
+#     file (expecting "}")
+#
+# which is exactly what one shipped as, once. The bug was a lone backtick in
+# an UNQUOTED heredoc -- text, in a help message -- which opens a command
+# substitution that runs to the end of the file.
+#
+# AND `sh -n` ON THIS MAC DID NOT CATCH IT. /bin/sh here is bash, which parses
+# that without complaint; the target runs busybox ash, which does not. So the
+# check that matters is a POSIX shell, not the host's: dash if this machine
+# has one, and if it does not, say so rather than printing a tick that means
+# nothing. bash -n stays as the fallback because it still catches the ordinary
+# unbalanced-quote kind of mistake.
+_posix_sh=""
+for _c in dash /bin/dash busybox; do
+    command -v "$_c" >/dev/null 2>&1 && { _posix_sh="$_c"; break; }
+done
+case "$_posix_sh" in
+    busybox) _parse="busybox sh -n" ;;
+    "")      _parse="" ;;
+    *)       _parse="$_posix_sh -n" ;;
+esac
+if [ -n "$_parse" ]; then
+    if $_parse "$MNT/copal-init.sh" 2>/tmp/copalparse.$$; then
+        printf '    ok      copal-init.sh parses (%s)\n' "$_parse"
+    else
+        printf '    BROKEN  copal-init.sh does not parse under %s:\n' "$_parse"
+        sed 's/^/            /' /tmp/copalparse.$$
+        printf '            The target runs busybox ash, which parses the same way.\n'
+        printf '            This card would boot to that error and install nothing.\n'
+        MISSING=1
+    fi
+    rm -f /tmp/copalparse.$$
+else
+    if sh -n "$MNT/copal-init.sh" 2>/dev/null; then
+        printf '    ok      copal-init.sh parses (bash -n -- no POSIX shell here)\n'
+        printf '    \033[2m        install dash for the check the target actually needs\033[0m\n'
+    else
+        printf '    BROKEN  copal-init.sh does not parse\n'
+        MISSING=1
+    fi
+fi
 
 # Device tree: one match is enough, and which one depends on the board. A PC has
 # none -- the firmware describes itself through ACPI -- so this whole check is
@@ -25775,7 +34213,7 @@ ON THE PI -- there is only one command to run
        so 316 is the count on a 64-bit port and fewer on armhf.
 
        Three front ends, one table. The desktop menu (Super+z) is built from
-       it, the Copal Center (Super+c) lists all 316 with a status column and
+       it, the Copal Center (Super+Shift+c) lists all 316 with a status column and
        a Run button that installs first if it has to, and this stage bulk
        installs from it. Nothing can appear in a menu that is not
        installable, and nothing installable is missing from the menus.

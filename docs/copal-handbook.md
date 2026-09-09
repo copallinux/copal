@@ -104,6 +104,7 @@ runs as the `user` account. The installer says so at every handover, and
 | `COPALBOOT/copal-auto` | Present only during an automatic install. Records progress; delete it to stop resuming |
 | `COPALBOOT/copal-git` | The name and email for git commits, asked in stage 1 and applied by stage 7. Plain `key=value`; editable from the Mac |
 | `lab-report.md` | The lab report (IEEE format) — procedure, results, findings |
+| `interface-report.md` | The design position (IEEE format) — simplifying the interface for capable users, and the twelve rules the desktop is built to |
 | `work/` | Scratch directory the script downloads and extracts into |
 
 The split matters: macOS cannot create ext4, so the card can only be taken so
@@ -117,7 +118,8 @@ be retyped at the Pi's console.
 |---|---|
 | `copal` | The installer. Fifteen stages, all optional, all re-runnable |
 | `copal --auto` | Run every stage unattended, resuming across the reboot |
-| `copal-menu` | Clickable app menu, built from what is installed (**Super+Z**) |
+| `copal-desk` | Lay the workspaces out the same way every time (**Super+Shift+D**) |
+| `copal-menu` | The menu, built from what is installed: applications on the left, categories/settings/session on the right (**Super+Space**, or **Super+Z** for the right side) |
 | `copal-center` | One window listing all 316 programs — run or install (**Super+C**) |
 | `copal-guide` | Plain-text guides — eleven of them, on the machine, no network (**Super+Shift+G**) |
 | `copal-startx` | Starts the desktop, and refuses to do it as root |
@@ -154,6 +156,25 @@ That single file is also the entire update mechanism. Every stage, guide,
 helper and the whole catalogue live inside it, so `copal -U` is one fetch and
 one `sh -n` rather than a package manager, an index and a signing key — none of
 which help on a board whose commonest problem is having no network yet.
+
+**And the same mechanism runs backwards, from a checkout on the machine
+itself.** `copal -U --from ~/code/copal` extracts `copal-init.sh` out of the
+`copal-prep.sh` in a working tree instead of fetching one over HTTPS — same
+`sh -n` gate, same `copal-init.sh.bak` — and `copal --stage 17 --auto` re-runs
+named stages without the menu. In the checkout, `make redeploy STAGES=17` is
+those two commands with the lint in front of them. That is the edit-and-see-it
+loop for anyone changing a stage: no image to rebuild, no commit to push, and
+the machine you are testing on is the machine you are typing on. `make
+redeploy` refuses to run anywhere that has no `answers.txt` on a boot
+partition, which is how it tells the Mac apart from the guest.
+
+It reports which branch the checkout is on and whether it is dirty — "I
+redeployed and my change was not in it" is nearly always one of those two —
+and if the branch is behind its remote it *asks* before pulling. It never
+pulls unasked: the reason to run this target is usually an edit that is not
+committed yet. `PULL=1` answers yes, `PULL=0` skips the question, no terminal
+means no. After a pull it stops rather than continuing, because make had
+already read the pre-pull Makefile.
 
 The name is the design. Copal is tree resin caught halfway to amber: hardened,
 but not yet stone. Alpine is the sap — small, generic, still runny. This
@@ -865,9 +886,10 @@ end.
 need a human, and both are answered in the same minute rather than an hour and
 a half apart:
 
-- **Your git identity.** A name and an email for commits. Whatever the Mac that
-  wrote the card commits under is offered as the default, so Enter accepts it;
-  Enter with no default skips. The answer is saved to
+- **Your git identity.** A name and an email for commits. Whatever `make
+  answers` put in answers.txt is offered as the default, so Enter accepts it;
+  with nothing there the prompt is empty and Enter skips. The installer does
+  not read the Mac's own git config. The answer is saved to
   `COPALBOOT/copal-git` and applied by stage 7 to `user`'s `~/.gitconfig`, not
   root's — which is what stops stage 7 sitting at a prompt with nobody in the
   room. There is no defensible *invented* default for somebody's name: a
@@ -932,14 +954,14 @@ copal --auto      # also starts it, and is what the resume hook calls
 | 4 | X.Org on the framebuffer, i3, terminal, file manager, the Copal menu, Center, guides and splash. Tokyo Night everywhere | 3, network |
 | 5 | zram — compressed swap in RAM. The biggest single win on 512 MB | network |
 | 6 | Installs the Mac's public key for `user` with the permissions sshd insists on | 1 |
-| 7 | Development environment: **gcc and clang, Rust, Go, Fortran, PHP+Composer+Xdebug, Forth, and a dozen more**; Neovim as an IDE via its built-in LSP (no plugins); gdb/cgdb/lldb/valgrind; terminals and multiplexers; the morse trainer; eight guides; and the git identity from stage 1, written to `user`'s `~/.gitconfig`; optionally Gonex and Yodacon checked out into `~/code` and built, with `copal-code` to rebuild them | 3, network |
+| 7 | Development environment: **gcc and clang, Rust, Go, Fortran, PHP+Composer+Xdebug, Forth, and a dozen more**; Neovim as an IDE via its built-in LSP (no plugins); gdb/cgdb/lldb/valgrind; terminals and multiplexers; the morse trainer; eight guides; and the git identity from stage 1, written to `user`'s `~/.gitconfig`; the `~/code` checkouts from stage 1, cloned (`copal-code`) and then compiled onto `PATH` (`copal-build`) — birdshot, the camera, among them | 3, network |
 | 8 | Grows `COPALROOT` into any unallocated space after it, and resizes a `/tmp` still capped at 64 MB to a fifth of RAM, live. Non-destructive, works on a mounted root | network |
 | 9 | Retro emulators: Mini vMac (Macintosh Plus — fast, and the one that works) and VICE (C64, now a package rather than an overnight build). Both get a directory under your home with disk images and launchers | 7, network |
 | 10 | Peripherals and media: wifi, bluetooth, HDMI audio, the PipeWire sound server, tcpdump/tshark, hex editors, HFS and disk-image tools, and **radbeeper** for a GQ GMC Geiger counter on USB | 3, network |
 | 11 | Snapshots: rsync snapshots on a third partition, and Timeshift if you want it. **Offers to repartition** | 3, network |
 | 12 | Applications: the 316-program catalogue, as a minimal set, by section, or all of it. **Everything** now includes Thunderbird where it is packaged, given 700 MB free | 3, network |
 | 13 | Hands over root: locks the root password, `PermitRootLogin no`, leaving `user` + `doas`. Verifies the admin account first and declines if it is not ready | 1 |
-| 14 | The workshop: CAD and 3D printing for the Ender 3, KiCad with its templates, demos and plugin set, gerber export, ngspice, LaTeX and maths (wxMaxima compiled from source), trackers and SID, a piano tutor built from source, and Windows programs under Wine in sandboxed boxes (`winebox`). Seven bundles, each stating what this port lacks before it installs | 3, network |
+| 14 | The workshop: CAD and 3D printing for the Ender 3, KiCad with its templates, demos and plugin set, gerber export, ngspice, the ADI instrument stack (libiio and iiod, pyadi-iio, libm2k, the IIO oscilloscope, GNU Radio blocks — mostly compiled), LaTeX and maths (wxMaxima compiled from source), trackers and SID, a piano tutor built from source, and Windows programs under Wine in sandboxed boxes (`winebox`). Eight bundles, each stating what this port lacks before it installs | 3, network |
 | 15 | SD card and logs: log policy, syslog caps, and a genuinely read-only root via `overlaytmpfs`. **Not run unattended** — read-only root would discard everything the later stages did | 3 |
 
 > **Stage 3 reboots the machine**, and must — `/` does not actually become
@@ -1092,13 +1114,38 @@ and degrades to a plain colour if ImageMagick or feh is missing.
 
 | Key | Action |
 |---|---|
-| **Super + Space** or **Super + D** | Run a program (dmenu) — anything on `PATH` |
+| **Super + Space**, **Alt + Space** or **Super + D** | Run a program (dmenu) — anything on `PATH` |
 | **Super + Return** | Terminal |
 | **Super + Z** | The app menu (jgmenu), built from what is installed |
-| **Super + C** | The Copal Center — every program, run or install |
+| **Right-click on the desktop** | The same app menu, opened where you clicked |
+| **Super + Shift + C** | The Copal Center — every program, run or install |
+| **Super + Shift + N** | The editor (nvim) |
+| **Super + Shift + M** | Music (cmus, or mpv on `~/Music`) |
+| **Super + Ctrl + A** | Volume (alsamixer) |
+| **Super + Ctrl + T** | What the machine is doing (btop, or htop) |
 | **Super + E** | File manager (pcmanfm) |
 | **Super + T** | Task manager (htop) |
 | **Super + comma** | Settings (`copal-config`) — users, hostname, services, SSH |
+
+### Copy and paste — the same keys everywhere
+
+| Key | Action |
+|---|---|
+| **Super + C** | Copy |
+| **Super + X** | Cut (copies, does not delete, in a terminal) |
+| **Super + V** | Paste |
+| **Super + Ctrl + V** | Clipboard history — the last hundred things you copied |
+
+Omarchy's universal clipboard, adopted here. Normally a terminal needs
+**Ctrl + Shift + C** and everything else needs **Ctrl + C**, so you have to know
+which kind of window you are in before you can copy out of it. `copal-clip` asks
+the window manager what has focus and sends whichever chord that window wants.
+
+**Caps Lock is a second Super on this machine**, so these are `CapsLock + C` and
+`CapsLock + V` — as close to `Cmd + C` and `Cmd + V` as a PC keyboard gets.
+
+Two bindings moved to make room: the Copal Center is now **Super + Shift + C**,
+and *split downwards* is **Super + Shift + V**.
 
 ### Finding out what the keys are
 
@@ -1172,13 +1219,23 @@ reaches the guest in any form. Its three keyboard preferences are `IsCapsLockKey
 `IsCtrlCmdSwapped` and `IsISOKeySwapped` — Caps Lock is the only one of the three
 that buys a free modifier.
 
-If you press the real Super key anyway, every affected binding has a second one,
-and the rule is the whole table: **where Super is eaten, press Ctrl + Alt
-instead.** The rest of the binding does not move.
+If you press the real Super key anyway, there is a second way in — and not only
+for the bindings macOS eats. **Every** Super binding in both desktops has a
+Ctrl + Alt twin, so the rule never runs out halfway through a session. Two lines
+are the whole of it:
+
+> **Where Super is eaten, press Ctrl + Alt instead.**
+> **Where the binding also has Ctrl in it, press Ctrl + Alt + Shift.**
+
+The rest of the binding does not move. The second line is not a special case
+somebody forgot to simplify: a modifier set has no duplicates, so Super + Ctrl +
+V cannot become "Ctrl + Alt with a Ctrl in it" — that is just Ctrl + Alt + V,
+which the first rule has already given to Super + V. The Super + Ctrl family
+needs a modifier of its own and Shift is the one left.
 
 | Instead of | Press | Because macOS uses it for |
 |---|---|---|
-| **Super + Space** | **Ctrl + Space**, or Ctrl + Alt + Space | Spotlight |
+| **Super + Space** | **Alt + Space**, Ctrl + Space, or Ctrl + Alt + Space | Spotlight |
 | **Super + Tab** | **Ctrl + Alt + Tab** | Application switcher |
 | **Super + H** | **Ctrl + Alt + H** | Hide the front application |
 | **Super + W** | **Ctrl + Alt + W** | Close the UTM window |
@@ -1186,7 +1243,15 @@ instead.** The rest of the binding does not move.
 | **Super + /** | **Ctrl + Alt + /** | (Super + F1 mirrors displays) |
 | **Super + Shift + Q** | **Ctrl + Alt + Shift + Q** | Log out of macOS |
 | **Super + Shift + 1..5** | **Ctrl + Alt + Shift + 1..5** | Cmd+Shift+3/4/5 are screenshots |
-| **Super + Ctrl + arrows** | **Ctrl + Alt + Left / Right** | Mission Control, switch desktop |
+| **Super + Ctrl + V** | **Ctrl + Alt + Shift + V** | (clipboard history — the Ctrl rule) |
+| **Super + Ctrl + arrows** | **Ctrl + Alt + Shift + Left / Right** | Mission Control, switch desktop |
+
+The twins are generated from the Super bindings when the config is written, not
+kept as a second list by hand — add a binding and its twin appears with it. Two
+bindings could not satisfy both rules at once and gave way to the Super + Ctrl
+claimant: **moving a window left and right** is Ctrl + Alt + Shift + H and + L
+rather than the arrows, and **split vertical** is Ctrl + Alt + Shift + B, next
+to splith on B.
 
 Ctrl + Alt rather than plain Ctrl, because i3 grabs a binding globally: Ctrl + W
 and Ctrl + H bound in i3 would stop being kill-word and backspace in every
@@ -1194,11 +1259,18 @@ terminal on the machine, permanently. Ctrl + Alt is claimed by nothing in i3 and
 nothing in a shell — on the Mac side only by VoiceOver, which is off unless you
 turned it on.
 
-The launcher is the one exception, and it does cost something. **Ctrl + Space**
-is bound as well as Ctrl + Alt + Space, because it is reached dozens of times a
-day and Spotlight takes it most reliably. i3 grabs it globally, so it stops
-reaching emacs as set-mark and IBus as its input switcher. If either matters
-more, delete that one line from `~/.config/i3/config` and use Ctrl + Alt + Space.
+The launcher is the exception, and it gets two extra bindings rather than one,
+because it is reached dozens of times a day and Spotlight takes Cmd + Space most
+reliably of all. **Alt + Space** is the one to reach for: Alt is Option, it sits
+beside Command on a Mac keyboard, and macOS reserves nothing on it. **Ctrl +
+Space** is bound too, and that one does cost something — i3 grabs it globally, so
+it stops reaching emacs as set-mark and IBus as its input switcher. If either
+matters more, delete that one line from `~/.config/i3/config`; Alt + Space and
+Ctrl + Alt + Space both still do the job.
+
+Alt + Space is not free either, but it is cheap: it is the window menu in a few
+GTK and Qt programs and just-one-space in emacs. The Wayland desktop binds it as
+well, so the two do not disagree about how the launcher opens.
 
 On a Pi or a PC nothing steals anything and none of this applies; the extra
 bindings are harmless there and are written unconditionally.
@@ -1210,6 +1282,443 @@ is yours to configure:
   Spotlight search* and Cmd + Space is free for good.
 - **UTM → Settings → Input** — *Capture input automatically when window is
   focused* hands more of the keyboard to the guest while its window has focus.
+
+### When the display is slow
+
+A guest whose desktop draws like it is underwater is almost always running the
+wrong X driver, and the fix is in the guest rather than on the Mac.
+
+`xf86-video-fbdev` is the right driver for a Pi — VideoCore has no accelerated X
+driver worth using, so X renders on the CPU into the framebuffer. In a VM it is
+the wrong one. The hypervisor hands the guest a virtio-gpu, which is a real KMS
+device, and fbdev cannot talk to one. It talks to `/dev/fb0`, which on a KMS
+device is an emulation layer: the kernel keeps a shadow copy of the screen in
+ordinary memory, write-protects its pages, takes a page fault on every write X
+makes, and periodically copies the dirtied regions into the real scanout buffer.
+Every pixel is drawn twice with a trap in between. That is the treacle.
+
+Stage 4 now installs **modesetting** instead whenever it finds itself in a guest
+with a KMS device — it is part of `xorg-server` and needs no package — plus
+`mesa-dri-gallium` so that glamor can put the drawing on the virtual GPU rather
+than the CPU. It writes `/etc/X11/xorg.conf.d/20-modesetting.conf` to say so
+outright rather than trusting X's autodetection to keep preferring the right one.
+Re-run stage 4 on an older card to pick this up. To check which one is live:
+
+```sh
+grep -o 'modesetting\|fbdev' /var/log/Xorg.0.log | sort -u
+```
+
+If the screen is **black** after this, comment out the `AccelMethod` line in that
+file: modesetting then draws on the CPU, which is still far quicker than fbdev.
+On a Pi nothing changes — `is_vm()` answers *no* for a Raspberry Pi before it
+looks at anything else, so the tested path stays the tested path.
+
+**On the Wayland desktop none of the above applies**, and this is worth saying
+plainly because it inverts the advice: Hyprland never opens an X server, so the
+X driver is irrelevant to it. It talks to KMS and EGL itself. What decides its
+speed is whether the host offered 3D at all — and when it did not, mesa hands it
+`llvmpipe` and every frame is composited by the CPU. Measured on a real guest:
+
+```
+  renderer       llvmpipe (LLVM 22.1.3, 128 bits) -- SOFTWARE, drawing on the CPU
+```
+
+That is what a slow Antiquity desktop is, and no guest-side change fixes it. It
+is the display device, so the fix is on the host.
+
+The host end. `GPU=` picks the display device at create time:
+
+```sh
+GPU=ramfb-gl utm/utm-vm.sh create --target aarch64 --name Copal-gl
+```
+
+| `GPU=` | Device | What it is |
+|---|---|---|
+| *(unset)* or `ramfb-gl` | `virtio-ramfb-gl` | **The aarch64 default.** VirGL, plus a framebuffer the firmware can draw on. |
+| `plain` | `virtio-gpu-pci` / `virtio-vga` | Paravirtualised GPU, no host acceleration. The x86_64 default, and the way back on aarch64. |
+| `gl` | `virtio-gpu-gl-pci` / `virtio-vga-gl` | VirGL without the framebuffer half. The only accelerated option on x86_64. |
+| `ramfb` | `ramfb` | A bare linear framebuffer, no acceleration and no KMS. For bringing up a machine that will not display any other way. |
+
+The accelerated ones add **VirGL**: the guest's mesa encodes GL commands, UTM
+replays them on the Mac's GPU through Metal, and glamor becomes real
+acceleration rather than llvmpipe on the CPU.
+
+`ramfb-gl` is two devices in one, and the second half is why it is worth
+preferring on ARM. A ramfb is a plain linear framebuffer that firmware can draw
+on with no driver at all. ARM's `virt` machine has no VGA, so with a pure
+virtio-gpu **nothing** appears until Linux has bound the `virtio_gpu` driver —
+the UEFI menu, GRUB and the early kernel messages all happen on a black window.
+With ramfb they are visible, and on a machine whose failure mode is *the window
+stayed black* that is the difference between a diagnosis and a guess: it tells
+you whether the guest got as far as loading a driver at all. On x86_64 there is
+nothing for it to add, because `virtio-vga` is already the VGA-compatible
+device, so `GPU=ramfb-gl` is refused there rather than quietly ignored.
+
+The argument against making an accelerated device the default used to be its
+failure mode: a slightly slow guest is still usable, while a VirGL guest whose
+host renderer refuses is a black window with no console to fix it from, and a
+default is what somebody unfamiliar gets on their first attempt. **The ramfb
+half is the answer to that**, and it is why this device rather than
+`virtio-gpu-gl-pci` is the one promoted. The framebuffer needs no driver and no
+renderer, so it draws from the first frame of firmware and keeps drawing
+whatever happens to the accelerated half. What is left if VirGL does not come
+up is a guest that is merely *unaccelerated* — the old default — which you can
+see, log into, and diagnose. `GPU=plain` is the way back.
+
+### Is it actually accelerated?
+
+Four different faults produce one symptom, and none of them is visible on
+screen: the host may never have offered acceleration, the kernel may not have
+bound the device, X may have picked the wrong driver, or mesa may be falling
+back to software while every layer above it looks correct. `copal-gpu` in the
+guest reports one line per layer and names the first thing that went wrong.
+
+```
+$ copal-gpu
+Display stack
+  card0          virtio_gpu
+  3D (VirGL)     yes -- host offered it (+virgl +edid -resource_blob)
+  X driver       modesetting  (/var/log/Xorg.0.log)
+  acceleration   glamor -- drawing on the GPU
+  OpenGL         virgl (Apple M2)
+
+Accelerated. The drawing is happening on the host's GPU.
+```
+
+It reports whichever session is running. On Wayland the compositor's own log
+gives the answer in one line, so the X driver and glamor rows are replaced by a
+`renderer` row; on X it reads `Xorg.0.log`. It exits 0 when accelerated, 1 when
+the display works but draws on the CPU, and 2 when it cannot tell yet — which normally means X has not run since boot, since
+the X half of the answer is read out of `Xorg.0.log` rather than from the
+running server. That also makes it answer over SSH and after the session has
+exited. It is in the app menu under **System → Display and acceleration**.
+
+The last layer is the one that lies most convincingly: mesa can quietly resolve
+to `llvmpipe`, which is software rendering with a hardware-sounding name, while
+the kernel, the driver and glamor all report success. `mesa-demos` is installed
+in a guest so that `glxinfo` is there to catch it.
+
+### The keys on this desktop
+
+Not the i3 list above. The modifier is the same and almost nothing else is, so
+the desktop ships its own list: **Super + /** (or **Super + F1**) opens it in a
+window, and `copal-guide antiquity-keys` prints it anywhere.
+
+| Key | Action |
+|---|---|
+| **Super + Space** or **Super + D** | The menu, on the applications side |
+| **Super + Z** | The same menu, on the system side |
+| **Left / Right** in the menu | Move between the two sides |
+| **Super + Return** | Terminal |
+| **Super + E** | File manager |
+| **Super + Shift + N / M / W** | Editor / music / the wallpaper picker |
+| **Super + Ctrl + A / T** | Volume / what the machine is doing |
+| **Super + C / X / V** | Copy / cut / paste — the terminal included |
+| **Super + Ctrl + V** | Clipboard history |
+| **Super + arrows** or **H J K L** | Move focus |
+| **Super + Shift +** those | Move the window |
+| **Super + Ctrl + arrows** | Resize. Held down; there is no resize mode here |
+| **Alt + Tab** (**Super + Tab**) | Switch window; add Shift to go backwards |
+| **Super + F** | Fullscreen |
+| **Super + Shift + Space** | Float this window, or put it back |
+| **Super + 1..0** | Workspaces, ten of them; add Shift to send the window |
+| **Super + Shift + S** | Screenshot a region |
+| **Super + Shift + P** / **Super + Shift + Delete** | Shut down / reboot |
+| **Super + Shift + E** | Leave the session |
+
+**Closing a window is two keys, and they are not the same operation.** Both are
+listed because the polite one can fail:
+
+| Key | What it does |
+|---|---|
+| **Super + Q**, or **Super + Escape** | *Close*. Asks the window to go, the way its own X button does — the program runs its "save changes?" and may refuse. This is the one you want. |
+| **Super + Shift + Escape** | *Kill*. SIGKILLs the client: nothing asked, nothing saved. `kill -9` aimed with the mouse, for the program that has stopped answering. |
+
+The pair sits on one key with Shift as the whole difference, so the
+unrecoverable one costs a finger rather than occupying a key of its own that can
+be hit by accident. Nothing is bound to **Super + `** — an earlier arrangement
+put *close* there, and it is gone.
+
+### The desk, laid out the same way every time
+
+`copal-desk` (**Super + Shift + D**, or *Style → Lay the desk out* in the menu)
+opens a set of programs on fixed workspaces in one command. The layout that
+ships is called `code`:
+
+| Workspace | What lands there |
+|---|---|
+| **1** | nothing — where you are left standing, and where you throw a window when you need room |
+| **2** | the editor and a terminal, side by side. The work. |
+| **3** | a Claude Code session, already `cd`'d to `~/code`, waiting for input |
+| **5** | the browser |
+
+4 and 6–10 stay empty on purpose: a layout that fills every workspace leaves
+nowhere for the thing you did not plan for.
+
+**Why fixed numbers rather than "wherever it opens".** This is the one idea
+worth stealing from competitive StarCraft, and Day[9]'s macro drills are its
+clearest statement: you do not get faster by thinking faster, you get faster by
+moving decisions out of your head and into your hands — and hands can only
+learn a position that does not move. A tiling desktop with ten interchangeable
+workspaces is the opposite of that. Whatever you opened first is on 1 today and
+on 3 tomorrow, so every switch starts with a look at the screen to find out
+where you are. Omarchy answers this with numbered workspaces that always hold
+the same kind of thing; `copal-desk` is that answer plus one key that puts them
+there.
+
+**Writing your own.** A layout is a text file. Copy the shipped one and edit it:
+
+```sh
+mkdir -p ~/.config/copal/layouts
+copal-desk --show code > ~/.config/copal/layouts/mine.layout
+copal-desk mine
+```
+
+Each line is a workspace number and a role, in the order they should open —
+the first line on a workspace is the left-hand window:
+
+```
+focus 1
+2 editor
+2 terminal
+3 claude
+5 browser
+```
+
+Roles resolve to whatever the machine actually has: `editor` is a graphical
+editor if one is installed and `nvim` in a terminal if not, `browser` walks the
+same preference list `$BROWSER` does, and `terminal`, `files`, `music` and
+`claude` do the obvious thing. A role this machine cannot fill is reported at
+the end and skipped, not treated as a failure. For anything not covered there
+are two escape hatches:
+
+```
+4 run: mpv --no-video ~/Music     run this command as it stands
+4 term: ssh pi@fileserver         run it inside a terminal
+```
+
+`copal-desk --list` shows the layouts on the machine; `--show NAME` prints one
+without running it.
+
+**Both desktops.** On Hyprland each window is placed before it opens
+(`[workspace N silent]`), so the layout builds behind you and the screen does
+not flick through five workspaces. i3 has no such thing, so there `copal-desk`
+switches workspace before each program and switches back at the end.
+
+**It does not run itself at login.** On a board this size, five programs
+starting during login is the slowest possible moment for them to do it — and a
+layout that runs itself is one you cannot decline on the morning you wanted an
+empty machine. If you want it anyway, add `exec-once = copal-desk` to
+`~/.config/hypr/hyprland.conf`.
+
+`COPAL_DESK_DELAY` (default 1 second) is the pause between windows. It exists
+because two windows opening on one workspace in the same instant race to be the
+first half of the split, which is the one thing the layout is supposed to
+decide. A Pi Zero starting a browser may want 2 or 3.
+
+### Your own settings survive a re-run
+
+Every configuration file the installer writes is rewritten when its stage runs
+again, and the copy it replaces is kept beside it as `.bak`. Each of them ends
+by reading a companion file that the installer creates once, empty, and never
+touches again:
+
+| Written by the installer, every run | Yours, never rewritten |
+|---|---|
+| `~/.config/hypr/hyprland.conf` | `~/.config/hypr/local.conf`, sourced last |
+| `~/.config/i3/config` | `~/.config/i3/local.conf`, included last |
+| `~/.vimrc` · `~/.config/nvim/init.vim` | `~/.vimrc.local` · `~/.config/nvim/local.lua` |
+| `~/.bashrc` · `~/.profile` | `~/.bashrc.local` · `~/.profile.local` |
+
+A binding, a monitor line, a display scale, an alias: put it in the right-hand
+file and `make redeploy` can run all day. The installer says so when it
+replaces a file you had changed since it last wrote it, and names the
+`.bak`. The left-hand files remain the place to change what *Copal* does —
+edit the stage in `~/code/copal/copal-prep.sh` and redeploy, which is the loop
+`copal-guide code` describes.
+
+Three more keys, for hands arriving from Omarchy: Super + Shift + T opens the
+theme picker, and Super + Alt + Space and Super + Ctrl + Space open the menu's
+System side and the wallpaper picker, the chords Omarchy uses for the same
+two things.
+
+### Scrolling goes the way the content goes
+
+Both desktops scroll *naturally*: roll the wheel away from you and the content
+moves away, the way it does on a Mac and on every phone. libinput's own default
+is the opposite — the wheel moves the scrollbar — and on the usual setup here,
+a VM on a Mac, the host had already flipped it and the guest was flipping it
+back mid-gesture.
+
+| Session | File | Setting |
+|---|---|---|
+| Hyprland | `~/.config/hypr/hyprland.conf` | `natural_scroll` — twice, once in `input` for the wheel and once in `touchpad` for fingers |
+| X / i3 | `/etc/X11/xorg.conf.d/30-scrolling.conf` | `Option "NaturalScrolling"`, for pointers and touchpads separately |
+
+Set them to `false` for the old direction; deleting the X file does the same,
+since `false` is what libinput does unconfigured. Change both if you use both
+sessions — nothing keeps them in step for you.
+
+### One menu, two sides
+
+Super+Space used to open `wofi --show drun` — a flat searchable list of
+`.desktop` files, with no categories, no settings and no way to log out — and
+Super+Z opened `copal-menu`, which had all of that and no search across the
+applications. Two menus on adjacent keys, each missing the other's half.
+Omarchy ships the same split; there was no reason to inherit it.
+
+They are now one menu with two panes, and **Left** and **Right** move between
+them:
+
+- **Left — applications.** Every `.desktop` file the system advertises, which
+  is what drun showed, *plus* every installed row of the catalogue — the
+  terminal programs, which have no `.desktop` file and are most of what is on
+  a machine this size. Deduplicated by name and sorted. Type to filter.
+- **Right — everything else,** under headings: the key list, the terminal,
+  the Center and System Settings; **Session** — lock, log out, reboot, shut
+  down — at the top level rather than two clicks in; **Categories**, each a
+  submenu of what is installed under it, plus Development, Projects and
+  Emulators; and **Setup** — Style, **Install software** for the rest of the
+  catalogue, the guides, System.
+
+Super+Space and Super+D open it on the applications; **Super+Z** opens it on
+the system side (`copal-menu --system`), which is where that key always led.
+The first entry of each pane crosses to the other, because the mouse and the
+X11/dmenu fallback have no arrow keys to bind.
+
+**The list is cached.** Building it — 300 catalogue rows asked of PATH, every
+`.desktop` file parsed — took four seconds on the UTM guest, every time the
+key was pressed. It is now built once into `~/.cache/copal/` and the menu
+opens from the file in the time wofi takes to draw; it rebuilds itself in the
+background when anything it was built from is newer (a directory on PATH, the
+`.desktop` directories, the catalogue), and `copal-install` rebuilds it after
+every install. `copal-menu --rebuild` forces it; so does *System > Rebuild
+this menu now*.
+
+**How the arrows work,** because wofi cannot do it alone: wofi 1.5's user-bound
+keys only arm an exit status for when Enter or Escape is eventually pressed —
+the picker stays up. So while the picker is on screen `copal-menu` enters a
+Hyprland submap (`submap = menu` in `hyprland.conf`) in which Left and Right
+are Hyprland's: each ends the picker with a signal the menu reads as "the other
+pane". Every other key passes through, so typing still filters. The bar's
+submap indicator reads `menu` while it is open.
+
+The cost, stated plainly: **Left and Right no longer move the cursor inside the
+search box.** Typing, backspace and Ctrl-W still edit the query. On X11 the
+pane entries do the same job and the arrows are untouched.
+
+### The bar, the menu button, and the widgets
+
+The Antiquity theme's bar is 99 QML files for quickshell, which no Alpine
+repository packages, so waybar draws it in the same palette. `copal-bar` prefers
+quickshell the moment one exists, so this is a stand-in rather than a fork.
+
+**Top left is a menu button** — `☰`, in the accent colour. Left-click opens
+`copal-menu`, right-click shuts down. It is there because it is the one thing on
+the bar a person who knows no key bindings can find; everything else is a number
+you read. **Workspaces 1–5 sit immediately to its right**, and all five are
+always drawn, not just the ones with windows on them — otherwise a fresh session
+shows a single `1` and `Super`+`2` looks like it does nothing.
+
+The menu is Omarchy-shaped: a flat picker shown **one level at a time**, arrow
+keys and Enter, type to filter, `Back` at the top of each branch. It gained a
+**Style** branch — wallpaper, theme, and the widgets guide — which is Omarchy's
+own top-level entry and the one Copal was missing.
+
+It also runs on Wayland now, which it previously could not. `copal-menu` drew
+itself with jgmenu or dmenu, both X11 programs, so on the Antiquity desktop the
+menu had nothing to draw with. It uses wofi there — the same launcher as
+`Super`+`D`, styled to the theme in `~/.config/wofi/style.css`.
+
+Two widgets were missing against the theme's own set: **temperature**, now on
+the right of the bar, and **weather**, configured but off. Temperature shows
+nothing on a machine with no sensor — a VM usually has none — and removes itself
+cleanly when that happens. Weather asks wttr.in, which needs no key and
+geolocates by IP, so every fetch told a third party where the machine was; its
+block stays in the config and its name is in no module list. Add
+`custom/weather` to `modules-right` to have it back, with a city in the URL if
+the IP should stay out of it.
+
+To change any of it: `copal-guide widgets`, which covers moving things between
+the three lists, the clock's format, pinning the weather to a city, naming a
+sensor path, and adding a widget of your own.
+
+**And the widgets on the wallpaper.** The big clock and the date that sit on
+the desktop under your windows — the thing the theme's screenshots
+show and the part people go hunting for — are drawn by a second waybar on the
+bottom layer, click-through, from `~/.config/waybar/desktop.json`.
+`copal-widgets --off` hides them, `--on` brings them back, `--status` says what
+is running.
+
+The theme's own versions of those widgets are quickshell, and they have a
+second reason for being invisible that has nothing to do with Alpine: upstream
+ships no `widgets.json`, and that file is the entire model
+`WidgetScreen.qml` draws from. It is written by the shell's settings window,
+so until somebody clicks *Settings → Widgets → +* there is nothing to draw and
+the widgets look broken when they were only never placed. `copal-widgets
+--seed` writes it — a clock per monitor that `hyprctl` reports, the weather one
+too once an OpenWeatherMap key exists — and `copal-bar` runs it at login, so a
+machine that later gets a quickshell already has its widgets laid out.
+
+### Wallpapers
+
+`copal-wallpaper --pick` (or `Super`+`Shift`+`W`, or the menu's Style branch)
+gives a picker with thumbnails: wofi with images on Wayland, feh's thumbnail
+grid on X. The choice is remembered in `~/.config/copal/wallpaper`.
+
+Three arrive with the theme. The author publishes about twenty more at
+[diinki/wallpapers](https://github.com/diinki/wallpapers), and
+`copal-wallpaper --fetch` downloads them — all of them, or any name fragment:
+
+```sh
+copal-wallpaper --fetch HIRAETH
+copal-wallpaper --fetch kitty aquarium
+```
+
+They arrive downscaled to your screen and the original is discarded. These are
+4K PNGs of five to twenty-two megabytes each; the same picture at 1280×800 is
+about one, which on a Pi is the difference between a wallpaper and a machine
+that swaps.
+
+**They are fetched, not shipped, and the reason is the licence.** That
+repository has no licence file. Its README says the wallpapers are published
+*"in case any of you want to use them"* — the author inviting you to use them,
+which is not a grant to redistribute. So they are not in the image, not in this
+repository, and not vendored the way the theme is; the theme *is* MIT, which is
+why that one can be. `--fetch` brings them to your machine at your request, the
+same act as saving them from that page in a browser. Redistributing them is a
+question for the author, whose Discord and Ko-fi are linked in that README.
+
+### The two toasts on a fresh Antiquity desktop
+
+Both are expected, and one of them is now gone.
+
+**"Hyprland was started without start-hyprland."** `copal-session` used to launch
+the compositor bare, because upstream's launcher needs `XDG_RUNTIME_DIR` and
+nothing on this system set it — `start-hyprland` died with *XDG_RUNTIME_DIR is
+not set!* before it ever reached Hyprland. Now that the variable is set for the
+session, the launcher works and `copal-session` uses it.
+
+**"Your system does not have hyprland-guiutils installed."** Stage 17 now
+switches this off, and there is still nothing to install. Alpine packages
+neither `hyprland-guiutils` nor its old name `hyprland-qtutils`: it has
+`hyprland-qt-support`, which is the QML style and not the binaries, and
+`hyprpolkitagent`, which is something else again — neither provides
+`hyprland-dialog`, the program the check looks for. The knob that silences it
+is `misc:disable_hyprland_guiutils_check`, and the spelling is the whole story:
+upstream renamed the package and the variable together, so 0.54.3 registers
+only the *guiutils* name and answers *no such option* to *qtutils* — which is
+why this warning looked permanent for a while. The generated `hyprland.conf`
+sets it. What it powers is the update screen, the donate screen and the
+app-not-responding prompt, and Copal updates through `copal -U`.
+
+Stage 4 reports the kernel half of the same answer at install time, when
+somebody is actually watching — the host's VirGL offer is knowable then, and it
+says so either way.
+
+On an emulated x86_64 guest `GPU=gl` is accepted and is a worse idea than it
+sounds — that guest is already being translated instruction by instruction, and
+VirGL adds a GL implementation to translate on top of it.
 
 ### Inside a terminal
 
@@ -1514,6 +2023,25 @@ unusable here: **treesitter compiles a parser per language with gcc on first
 launch**, which on a single ARMv6 core is most of an hour and then wants more RAM
 than a Zero has.
 
+**The keys are LazyVim's anyway.** That is the deliberate part: LazyVim is a set
+of conventions about which key does what, wrapped around plugins that make those
+things possible. Here the conventions are free and the plugins are not, so the
+conventions are taken and the plugins are replaced with the built-ins they were
+written to paper over. The leader is **Space**, so every LazyVim key list ever
+published is also a key list for this editor.
+
+| Omarchy / LazyVim has | Here |
+|---|---|
+| `which-key` — Space opens a menu | a floating window and a table (`~/.config/nvim/keys.lua`). Neovim's own `timeoutlen` is the "press and wait" part |
+| `telescope` / `fzf-lua` | `fzf` in a floating terminal, `ripgrep` behind the grep, results into the quickfix list |
+| `neo-tree` | `netrw`, with neo-tree's `a` `A` `d` `r` `m` bound onto it |
+| `lazygit.nvim` | `lazygit` in a floating terminal, which is all the plugin does either |
+| `nvim-lspconfig`, `mason`, `nvim-cmp` | `vim.lsp.config` / `.enable` / `.completion`, built in since 0.11 |
+| `omarchy-theme-hotreload.lua` | `~/.config/nvim/theme.lua`, same job, same size |
+| `:LazyExtras` to add a language | one row in `lsp_catalogue()`, which also feeds Kate's and Emacs's copies of the same table |
+
+Press **Space** and wait half a second for the menu, or run `:Keys`.
+
 What you get without any of it:
 
 | Key | Action |
@@ -1526,21 +2054,39 @@ What you get without any of it:
 | `gd` `gD` `gi` `gy` | Go to definition / declaration / implementation / type |
 | `gr` | Every reference in the project |
 | `K` | Hover documentation |
-| `\ci` / `\co` | **Incoming / outgoing calls** — the call hierarchy |
-| `\rn` / `\ca` / `\F` | Rename everywhere / code action / format |
-| `]d` / `[d` / `\e` | Next / previous diagnostic / show this one |
+| `<leader>ci` / `<leader>co` | **Incoming / outgoing calls** — the call hierarchy |
+| `<leader>cr` / `<leader>ca` / `<leader>cf` | Rename everywhere / code action / format |
+| `]d` / `[d` / `<leader>cd` | Next / previous diagnostic / show this one |
+| `<leader><Space>` / `<leader>,` | Find a file / switch buffer (fuzzy, needs `fzf`) |
+| `<leader>e` | The sidebar |
+| `<leader>sg` / `<leader>sw` | Grep the project / the word under the cursor |
+| `<leader>gg` | `lazygit`, in a window over the editor |
+| `Shift-H` / `Shift-L` / `<leader>bd` | Previous / next buffer, close this one |
 | `:Lsp` | Which language servers are enabled, and attached here |
 | `Ctrl-O` | Back to wherever you jumped from |
 
-`\ci` — **incoming calls** — is the "what calls this function" that people miss
+`<leader>` is the **space bar** — LazyVim's leader, not vim's backslash.
+
+`<leader>ci` — **incoming calls** — is the "what calls this function" that people miss
 most when they leave a graphical IDE. It answers it for the whole project, not
 just the current run. Its runtime counterpart is gdb's `bt`, `up` and `down`,
 which walk the actual call stack; `copal-guide ide` section 3 covers the
 difference, because they answer genuinely different questions.
 
 One config serves both editors: `~/.vimrc` is shared by vim and nvim, and
-`~/.config/nvim/lsp.lua` is the Neovim-only half. vim keeps the editing,
-building and debugging; nvim adds the language servers.
+`~/.config/nvim/` holds the Neovim-only half — `theme.lua`, `keys.lua`,
+`lsp.lua`, loaded in that order. vim keeps the editing, building and debugging;
+nvim adds the language servers, the pickers and the theme. Any of the three Lua
+files can be deleted: you lose that layer and nothing else.
+
+**The colours follow the desktop.** `copal-theme` lists the installed themes and
+switches between them by moving a symlink at
+`~/.config/copal/current/theme`; a running Neovim notices within about three
+seconds and repaints without being restarted (`:Theme` does it on demand). Two
+are shipped — **tokyo-night**, stage 4's palette, and **antiquity**, the *helios*
+palette stage 17's `kitty.conf` uses — and stage 17 switches to the second when
+it installs that desktop. Adding a theme is adding a directory with a
+`neovim.lua` in it under `/usr/local/share/copal/themes/`.
 
 ### Languages
 
@@ -1726,8 +2272,32 @@ It writes foot, kitty, Alacritty, WezTerm, xterm and urxvt (`~/.Xresources`),
 Sakura, LXTerminal, Xfce Terminal, Terminator, Tilda and QTerminal, in each
 one's own format, and can be run again after a terminal's own settings dialog
 has changed things. `st` compiles its colours in and Cool Retro Term is amber
-on purpose, so those two keep their own. Switching in the Themes menu does not
-yet re-run the script; that is a one-line hook for Antiquity's `Config.qml`.
+on purpose, so those two keep their own.
+
+**The toggle: light and dark, the whole desktop.** `copal-theme` is the switch
+above the terminal one. A theme is a directory (`themes/` in the repository,
+`/usr/local/share/copal/themes/` installed, `~/.local/share/copal/themes/` for
+your own) holding `theme.conf`, the tokens, and `neovim.lua`, the editor's half.
+Two ship: **antiquity**, Linux Antiquity's helios (dark chrome, cream paper,
+the collage wallpaper) and **tokyo-night**, the universal dark one (the palette
+stage 4's i3 already wears, diinki's star chart for the wallpaper). Each names
+the other as its partner, so `copal-theme --toggle`, Super+Shift+N, or "Light
+or dark" in the menu flips between them. One switch sets: the terminals
+(through `copal-terminal-theme`), the bar and launcher (a `@define-color` token
+file their stylesheets import; the bar restarts), mako, Hyprland's borders (a
+sourced file), i3's client colours (an included file), the wallpaper, GTK 3 and
+4 with the libadwaita colour scheme, the shell prompt (the same shape in the
+theme's two colours, plus `$COPAL_THEME`), mc's skin, Helix's theme, and the
+symlink Neovim watches. Antiquity's own Themes menu in quickshell is hooked as
+well: choosing helios there applies antiquity everywhere, night applies
+tokyo-night, and the other three of the five set the terminal palette. Every
+write is idempotent and every layer is skipped where its program has no
+config, so running it twice is the same as once.
+
+    copal-theme                  # list, * marks the current one
+    copal-theme --toggle         # light <-> dark
+    copal-theme tokyo-night      # by name
+    copal-theme --show           # the tokens
 
 ## Instruments, radio, and learning the keyboard
 
@@ -1765,12 +2335,16 @@ multi-core machine.
 |---|---|---|
 | Hyprland | i3 | Wayland compositing needs GLES the VideoCore IV cannot usefully provide |
 | Alacritty | urxvt / xterm | Alacritty requires OpenGL 3.3 |
-| Neovim + LazyVim | Neovim, hand-written config | LazyVim compiles treesitter parsers on first launch — an hour on one ARMv6 core, then wants more RAM than exists |
+| Neovim + LazyVim | Neovim, hand-written config, **LazyVim's keys** | LazyVim compiles treesitter parsers on first launch — an hour on one ARMv6 core, then wants more RAM than exists. The key conventions cost nothing, so those are kept |
 | Walker | dmenu | GTK4 + Wayland |
 | Nautilus | pcmanfm | GNOME stack is far too heavy |
 | Btop | btop, htop fallback | fine if the armhf build exists |
+| Waybar | **waybar**, same as Omarchy | the Antiquity theme's own bar is quickshell QML, and quickshell is packaged in no Alpine repository — so waybar draws the bar, the widgets and the window list, in the theme's helios palette. `copal-bar` prefers quickshell the moment it exists |
+| Walker (launcher) | wofi | GTK4 + Wayland; bound to `Super`+`Space` and `Super`+`D` |
 | Lazygit, ripgrep, fzf, bat, eza, zoxide, tmux | same, best-effort | Rust/Go armhf availability varies; installed individually so a miss cannot fail the stage |
-| 19 themes | Tokyo Night, everywhere | one palette across i3, terminal, nvim, i3status |
+| 19 themes | two: tokyo-night and antiquity | `copal-theme` switches them the way `omarchy-theme-set` does — by moving a symlink; nvim hot-reloads |
+| `cliphist` + Walker | `copal-clip` | `cliphist` is Go and has no armhf build; the fallback records the history in 50 lines of `sh` |
+| Universal clipboard (Super+C/X/V) | same, unchanged | the one thing adopted outright — and Caps Lock is already a second Super here, so it reads as `Cmd`+`C` |
 
 The menu structure is borrowed too: a short top level of categories, each a
 submenu with a Back entry, and Install as a sibling of the applications rather
@@ -1984,7 +2558,7 @@ saving writes that were never the problem.
 
 ## The workshop (stage 14)
 
-Six bundles, each of which states what this port cannot do before installing
+Eight bundles, each of which states what this port cannot do before installing
 anything.
 
 **CAD and 3D.** SolveSpace on every port — parametric, constraint-solving,
@@ -2046,6 +2620,57 @@ file is missing, which is the expensive mistake:
 kicad-cli pcb export gerbers --output gerbers/ board.kicad_pcb
 kicad-cli pcb export drill   --output gerbers/ board.kicad_pcb
 pcbzip gerbers/
+```
+
+**Instruments — the ADALM2000, the ADALM-Pluto, and IIO.** Analog Devices
+ships this stack ready-made for its Kuiper Linux, which is a Debian and is
+dated; Alpine packages exactly one piece of it, and that piece only in
+`edge/testing`. So the bundle is one `apk add` and seven compiles, each with
+its own `/var/log/iio-build-*.log`, and a failed one costs only itself.
+
+| piece | from | what it is |
+|---|---|---|
+| libiio, `iiod`, `iio_info` / `iio_attr` / `iio_readdev` | apk, `edge/testing` | the library everything else links; the daemon; the tools |
+| pyadi-iio | pip, `--no-deps` over apk's numpy and `py3-libiio` | the Python layer |
+| libad9361-iio | source | Pluto transceiver helpers |
+| libm2k, `m2kcli` | source, Python bindings on | the ADALM2000 API |
+| iio-oscilloscope (`osc`) | source, plus gtkdatabox and matio | the basic GTK debugging GUI |
+| gr-m2k | source, against `gnuradio-dev` | ADALM2000 blocks in Companion |
+| SoapyPlutoSDR | source | the Pluto through GNU Radio's Soapy blocks |
+
+Every version is pinned to the libiio 0.x line on purpose — Alpine's package
+is 0.25, libm2k and the oscilloscope both say "0.26 or older", and libiio 1.0
+has no tagged release yet. Three things the board imposes:
+
+- **Alpine's `gnuradio` is built without gr-iio.** Its APKBUILD never asks
+  for libiio, so the in-tree IIO component is silently switched off, and
+  rebuilding GNU Radio is not something a Pi does. gr-m2k and SoapyPlutoSDR
+  are the two routes that remain, and both give you blocks in Companion.
+- **Scopy is not here and cannot be built here.** It pins a forked GNU Radio
+  and a forked qwt, and ADI's ARM builds are glibc AppImages made from a
+  Kuiper root filesystem. Run Scopy on the desktop; the instrument does not
+  mind which machine it is plugged into, and this board serves `iiod` either
+  way.
+- **An instrument on USB, as you rather than root.** libiio opens it through
+  libusb, and mdev creates `/dev/bus/usb/*/*` as `root:root 0660`. The bundle
+  creates a `usb` group (Alpine has none), puts you in it, adds an mdev rule
+  that hands USB devices to that group on hotplug, and sweeps the nodes at boot
+  from `/etc/local.d`, because the coldplug scan at power-on does not see the
+  rule. Log in again for the group to count.
+
+`iiod` starts at boot and serves whatever IIO devices *this board's kernel*
+has — a sensor on the I2C pins — to any libiio client on port 30431. It does
+not proxy a USB instrument: that runs its own `iiod`, and is also a USB
+network adapter at `192.168.2.1`, so it answers on `ip:` as well as `usb:`.
+
+```sh
+iio-scan                          # what libiio can see from here, and why not
+iio_info -s                       # the raw scan
+iio_info -u ip:192.168.2.1        # the Pluto or M2K over its USB network
+osc -c usb:1.4.5                  # the oscilloscope, straight to one device
+m2kcli --help                     # the ADALM2000 from the shell
+python3 -c 'import adi, libm2k'   # both Python layers
+SoapySDRUtil --find=driver=plutosdr
 ```
 
 **Maths and LaTeX.** All available on every port — this is the one area where

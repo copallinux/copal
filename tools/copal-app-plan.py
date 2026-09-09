@@ -35,7 +35,7 @@ NOTES = {
     "supertux2": "starts; ALSA 'cannot find card' -- the sound card question",
     "freeciv-sdl2": "starts; ALSA 'cannot find card' -- the sound card question",
     "krusader": "an 'Information' box on the very first start only; the second start went straight to the panes. Its one-time notice about optional helper tools -- leave",
-    "xboard": "exit 2, 'Unable to create font set': Xwayland's font path is built-ins only. RESOLVED on the antiquity-desktop branch (stage 16): an exec-once adds the misc/75dpi/100dpi directories; verified by hand with xset +fp",
+    "xboard": "exit 2, 'Unable to create font set': Xwayland's font path is built-ins only. RESOLVED on the antiquity-desktop branch (stage 17): an exec-once adds the misc/75dpi/100dpi directories; verified by hand with xset +fp",
     "xfig": "starts; its 'Cannot convert string -misc-fixed-*' warning is the same Xwayland font path, gone with the same fix",
     "welle-io": "SIGSEGV on start: the Qt Quick renderer on llvmpipe, same as MuseScore. RESOLVED by the same QT_QUICK_BACKEND=software (verified: opens its window). Needs an RTL-SDR to receive anything",
     "kitty": "exits 1: needs OpenGL 3.3 through EGL and this guest's llvmpipe/virtio-gpu EGL path fails to create a screen. A software-GL guest problem; fine on hardware. foot is the terminal here",
