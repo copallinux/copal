@@ -170,6 +170,12 @@ CFG_SSHKEY=~/.ssh/id_ed25519.pub make image MODEL=pi4
 
 The git identity in the file has the same property, with a smaller cost.
 
+**The installer already gets this right once.** `COPAL_GROVE_CA` is an absolute
+path too, and a missing one is `die "grove CA not found: …"` — the build stops
+and says so. A missing `CFG_SSHKEY` is `warn "… continuing without one"` and a
+finished card. Same class of mistake, one machine apart, and only one of them
+costs you a card you have to write again.
+
 ## 9 · A Pi is not a VM, in one way that matters
 
 `MODEL=pi4` covers the Pi 4, the 400 and the CM4 — aarch64, BCM2711, the same
