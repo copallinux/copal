@@ -10,7 +10,9 @@ Copyright (c) 2026 Paul Richeson. MIT licensed — see `LICENSE`.
 This is the reference for somebody running a grove, not for somebody building
 one. The architecture is [`grove-plan.md`](grove-plan.md); the interface design
 and its prior art are [`grove-lab-report.md`](grove-lab-report.md); the current
-milestone is [`grove-m4-backlog.md`](grove-m4-backlog.md).
+milestone is [`grove-m4-backlog.md`](grove-m4-backlog.md); adding a
+machine by copying one you already have is
+[`cloning-a-node.md`](cloning-a-node.md).
 
 **Each command below is marked with what is true of it today.** `works` has run
 end to end on this machine or a VM. `written` exists and is syntax-checked and
@@ -56,7 +58,10 @@ make answers-node N=2           # card 2, 3, … without another interview
 make answers-node N=6 ROLE=warden TAGS=sdr,north
 ```
 *works.* Both write into `answers.txt`; `copal-prep.sh` carries the values to
-the card and stage 16 picks them up at the next install.
+the card and stage 16 picks them up at the next install. A card written on a
+different machine than the one that answered the interview needs `CFG_SSHKEY=`
+naming a key that exists there — see [`cloning-a-node.md`](cloning-a-node.md)
+§8, which is a warning rather than an error and produces a card with no key.
 
 ```
 copal grove ca --create         # this grove's certificate authority, once
