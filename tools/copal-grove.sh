@@ -735,7 +735,15 @@ view_run() {  # <mode> [extra args for the view]
     [ -f "$VIEW" ] || die "no $VIEW -- this is not a full checkout"
     command -v python3 >/dev/null 2>&1 \
         || die "the live views need python3 on this machine. 'copal grove ls' does not."
-    browse > "$TMP/vbeacons" 2>/dev/null || : > "$TMP/vbeacons"
+    # A SUBSHELL, because `browse` reports "nothing to browse with" by calling
+    # die, and an exit inside a function is an exit of this whole program: the
+    # `|| :` that used to sit here never ran, and the 2>/dev/null ate the one
+    # sentence that said why. `copal grove ls` explained itself and the wall
+    # showed a red row with nothing in it. Same failure, same message, both.
+    if ! (browse) > "$TMP/vbeacons" 2>"$TMP/vbrowse"; then
+        [ -s "$TMP/vbrowse" ] && cat "$TMP/vbrowse" >&2
+        exit 1
+    fi
     expected_nodes > "$TMP/vexpect" 2>/dev/null || : > "$TMP/vexpect"
     _waddr=""
     _w=$(warden_of)

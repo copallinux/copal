@@ -30,6 +30,7 @@ That is a real reading rather than a placeholder pretending to be a picture.
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -133,6 +134,9 @@ def notices_for(verb, targets, code, text, nodes, at=None):
 
 # ------------------------------------------------------------ the picture ---
 
+ESCAPES = re.compile(r"\x1b\[[0-9;]*m")
+
+
 def read_state(grove_cmd, grove, timeout=45):
     """`copal grove state --json`, and nothing else.  Never the network."""
     argv = list(grove_cmd) + ["state", "--json"]
@@ -143,7 +147,17 @@ def read_state(grove_cmd, grove, timeout=45):
     except (OSError, subprocess.SubprocessError) as exc:
         return None, str(exc)
     if out.returncode != 0:
-        return None, (out.stderr or out.stdout).strip().splitlines()[:1] or ["failed"]
+        # A STRING, like every other return in here.  A list came out of
+        # frame()'s str(err) as "['failed']", which is a python repr in the one
+        # place an operator is looking, and it said nothing about what broke.
+        first = (out.stderr or out.stdout).strip().splitlines()
+        if not first:
+            return None, "state failed with no message (exit %d)" % out.returncode
+        # copal-grove.sh colours unconditionally -- it has no tty test -- so its
+        # message arrives with escapes in it.  They are not text: they survive
+        # the width slice below as a half-written sequence that colours the rest
+        # of the wall, and the row already has its own "!" and its own red.
+        return None, ESCAPES.sub("", first[0]).replace("error: ", "", 1).strip()
     try:
         return json.loads(out.stdout), None
     except ValueError:
