@@ -164,7 +164,8 @@ conf_get() {  # <key> -- from ~/.copal/groves/<grove>/grove.conf
 #   COPAL_GROVE_BEACONS   a file of beacon lines. Testing, and a browse
 #                         captured somewhere else.
 #   avahi-browse          this machine can see the segment. Linux, Alpine, and
-#                         a console running ON a node.
+#                         a console running ON a node. Heard nothing and there
+#                         is a nodes file? Fall through to it -- see below.
 #   --via HOST            ask a node to browse for us. The macOS path.
 #   nodes file            a written-down list, for discovery=static.
 beacons() {
@@ -215,8 +216,18 @@ browse() {
                 n = split(txt, kv, ";")
                 for (i = 1; i <= n; i++) if (kv[i] ~ /^n=/) id = substr(kv[i], 3)
                 print id "\t" addr "\t" txt
-            }' | sort -u
-        return 0
+            }' | sort -u > "$TMP/avahi"
+        # A SILENT SEGMENT IS NOT THE SAME ANSWER AS NO WAY TO ASK. If avahi
+        # heard something, that is the answer. If it heard nothing and a
+        # written list exists, fall through and read it -- otherwise merely
+        # installing avahi-tools would make the static list unreachable, and
+        # the escape hatch for a grove whose discovery is off would be shut
+        # by the package that is supposed to be for the grove where it is on.
+        # With no list either, empty is the honest answer and not an error:
+        # browsing worked, nobody answered.
+        if [ -s "$TMP/avahi" ] || [ ! -f "$NODES_FILE" ]; then
+            cat "$TMP/avahi"; return 0
+        fi
     fi
     if [ -f "$NODES_FILE" ]; then
         # A static list carries no TXT record, so it claims nothing -- which is
