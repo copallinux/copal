@@ -296,9 +296,21 @@ is how it gets tested rather than merely stated.
 
 ## 6 · When it goes wrong
 
-**`copal grove ls` shows nothing.** Is `avahi-daemon` running on the nodes, and
-does this machine have `avahi-browse`? A Mac does not — use `--via` and ask a
-node that can already see the grove.
+**`copal grove ls` shows nothing.** Two different things wear this face, and
+the console tells them apart. If it *errors*, this machine has no way to
+browse: a node has `avahi-browse` already because stage 16 installed it, a Mac
+has none and never will — use `--via HOST` — and a separate Linux console is
+the case nothing installs for, so do it once:
+
+```sh
+doas apk add avahi-tools dbus
+doas rc-service dbus start && doas rc-service avahi-daemon start
+```
+
+If instead it prints an **empty table**, browsing worked and nothing answered.
+That is a real answer rather than a failure, and the next question is the
+nodes: are they on, on this segment, and is `DISCOVERY` set to `mdns` on their
+cards rather than `static` or `off`?
 
 **A node shows `?` and `enrol` will not sign it.** The token check is refusing
 to sign a machine that is not the one you made that card for. That is the check

@@ -171,6 +171,28 @@ beacons() {
     [ -f "$TMP/beacons" ] || browse > "$TMP/beacons"
     cat "$TMP/beacons"
 }
+# The advice printed when there is no way to browse. It fires at exactly the
+# moment somebody needs a package name, so it has to be the RIGHT one: Alpine
+# calls it avahi-tools, Debian calls it avahi-utils, and naming the other
+# distribution's package to somebody at a prompt is worse than naming none.
+# A Mac has neither and never will -- that is what --via exists for, and
+# saying so here is cheaper than a doc somebody reads afterwards.
+browse_help() {
+    if [ "$(uname -s)" = Darwin ]; then
+        printf 'a Mac has no avahi-browse and never will --\n'
+        printf '    pass --via HOST to ask a node that can already see the grove,'
+    elif command -v apk >/dev/null 2>&1; then
+        printf 'this machine can see the segment once avahi is on it:\n'
+        printf '    doas apk add avahi-tools dbus\n'
+        printf '    doas rc-service dbus start && doas rc-service avahi-daemon start\n'
+        printf '    or pass --via HOST,'
+    elif command -v apt-get >/dev/null 2>&1; then
+        printf 'sudo apt-get install avahi-utils, or pass --via HOST,'
+    else
+        printf 'install avahi-browse, whatever this system calls it,'
+    fi
+}
+
 browse() {
     if [ -n "${COPAL_GROVE_BEACONS:-}" ]; then
         [ -f "$COPAL_GROVE_BEACONS" ] || die "no such beacon file: $COPAL_GROVE_BEACONS"
@@ -204,7 +226,9 @@ browse() {
             | awk -v g="$GROVE" 'NF >= 2 { print $1 "\t" $2 "\t" "g=" g }'
         return 0
     fi
-    die "nothing to browse with. Install avahi-utils, pass --via HOST, or write $NODES_FILE"
+    die "nothing to browse with.
+    $(browse_help)
+    or write $NODES_FILE"
 }
 
 txt_get() {  # <txt blob> <key>
@@ -319,7 +343,8 @@ cmd_ls() {
 # who cannot, and it costs one extra browse.
 strangers() {
     if ! command -v avahi-browse >/dev/null 2>&1; then
-        note "strangers need avahi-browse on this machine"; return 0
+        note "strangers need avahi-browse on this machine"
+        note "$(browse_help)"; return 0
     fi
     beacons | cut -f2 | sort -u > "$TMP/mine"
     printf "    ${Y}Strangers${Z} ${D}-- on this network, not in the grove${Z}\n"
