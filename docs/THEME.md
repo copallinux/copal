@@ -779,7 +779,7 @@ dark chrome, cream paper, the collage) and **tokyo-night** (the palette
 stage 4's i3, i3status and `.Xresources` already wore; diinki's star chart
 `oc_the_blackboard.png` for the sky). `copal-theme --toggle` applies the
 current theme's partner; Super+Shift+N and the menu's "Light or dark" run
-it. The stylesheets stage 16 writes now use the tokens directly; a
+it. The stylesheets stage 17 writes now use the tokens directly; a
 stylesheet written before this (the bench) is converted once, literal by
 literal, with the import line put at its top — the same map as §VI-F's
 recolouring table.

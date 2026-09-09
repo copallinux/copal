@@ -11080,7 +11080,7 @@ XRES
     # GTK, the prompt, mc, the editor -- from a theme directory, and it is
     # written here rather than in stage 7 so that a machine that stops at
     # the medium level still has the switch. tokyo-night is this desktop's
-    # (i3, i3status and .Xresources already wear it); stage 16 applies
+    # (i3, i3status and .Xresources already wear it); stage 17 applies
     # antiquity. Run last, after every file it edits has been written.
     [ -d "$copal_theme_dir/antiquity" ] || copal_write_themes
     copal_apply_theme tokyo-night

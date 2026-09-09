@@ -112,7 +112,7 @@ step_terminal() {
         || say "terminals: copal-terminal-theme $TERMINAL failed"
 }
 # The bar and the launcher: GTK CSS, which knows @define-color. The tokens
-# go in one file; the stylesheets import it. A stylesheet stage 16 wrote
+# go in one file; the stylesheets import it. A stylesheet stage 17 wrote
 # before this existed carries helios's colours as literals, so it is
 # converted once, literal by literal, and the import line put at its top.
 CSS_TOKENS="181818:base 121212:shadow 333333:highlight 2a2a2a:highlight fccf8a:accent 87704f:accent-dark d0daed:text-light ff723e:urgent fc5870:danger fcd37b:warning ffffff:white"
