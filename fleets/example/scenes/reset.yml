@@ -6,12 +6,12 @@
 #
 # It becomes root, so it asks for a password once:
 #
-#     copal grove scene reset --pass
+#     copal fleet scene reset --pass
 #
 # The password-free path to the same effect is the forced command, which has
 # its own narrow doas rule and needs no shell:
 #
-#     copal grove run snapshot restore
+#     copal fleet run snapshot restore
 #
 # Both exist on purpose. Invariant 8: every layer has to be removable and
 # leave a console somebody can still work with.

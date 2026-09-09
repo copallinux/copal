@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson
 #
-#  COPAL GROVE -- the console for a fleet of Copal machines on one LAN.
+#  COPAL FLEET -- the console for a fleet of Copal machines on one LAN.
 #
-# A GROVE is a named set of Copal machines that trust one certificate
+# A FLEET is a named set of Copal machines that trust one certificate
 # authority. They announce themselves by mDNS, prove themselves by SSH
-# certificate, and answer this program. See docs/grove-plan.md for the design
-# and docs/grove-lab-report.md for the interface it is growing into.
+# certificate, and answer this program. See docs/fleet-plan.md for the design
+# and docs/fleet-lab-report.md for the interface it is growing into.
 #
 # THE ONE RULE THIS FILE EXISTS TO ENFORCE: discovery announces, it never
 # authorizes. A beacon fills a list. A certificate decides. Every function
@@ -15,42 +15,42 @@
 # verdict, and only a node that passes it is ever handed a credential.
 #
 # Usage:
-#   copal grove ls                 what is out there, and what it has proved
-#   copal grove ca [--create]      the grove certificate authority
-#   copal grove trust              teach this machine to trust the grove
-#   copal grove login              an 8-hour operator certificate
-#   copal grove sign NODE...       sign one node's host key
-#   copal grove enrol              sign every candidate with a matching token
-#   copal grove run VERB [ARG...]  one verb, fanned out, a result per node
-#   copal grove status NODE        one node's facts
-#   copal grove inventory          an Ansible inventory, out of discovery
-#   copal grove bus                put every enrolled node on the message bus
-#   copal grove bus --check        what the warden says the bus is doing
-#   copal grove logs [NODE]        the grove's logs, including nodes that died
-#   copal grove state [--json]     the whole grove as one document
-#   copal grove watch              the same thing, redrawn -- the wall, no TUI
-#   copal grove notify --all-up    exits 0 when every declared node is up
-#   copal grove browse             what discovery actually said, unadorned
-#   copal grove console            the wall: every node at once, in a terminal
+#   copal fleet ls                 what is out there, and what it has proved
+#   copal fleet ca [--create]      the fleet certificate authority
+#   copal fleet trust              teach this machine to trust the fleet
+#   copal fleet login              an 8-hour operator certificate
+#   copal fleet sign NODE...       sign one node's host key
+#   copal fleet enrol              sign every candidate with a matching token
+#   copal fleet run VERB [ARG...]  one verb, fanned out, a result per node
+#   copal fleet status NODE        one node's facts
+#   copal fleet inventory          an Ansible inventory, out of discovery
+#   copal fleet bus                put every enrolled node on the message bus
+#   copal fleet bus --check        what the warden says the bus is doing
+#   copal fleet logs [NODE]        the fleet's logs, including nodes that died
+#   copal fleet state [--json]     the whole fleet as one document
+#   copal fleet watch              the same thing, redrawn -- the wall, no TUI
+#   copal fleet notify --all-up    exits 0 when every declared node is up
+#   copal fleet browse             what discovery actually said, unadorned
+#   copal fleet console            the wall: every node at once, in a terminal
 #
-# The day, once a grove directory exists (milestone 3):
-#   copal grove init               make groves/<name>/ from the template
-#   copal grove scene              which scenes this grove has
-#   copal grove scene NAME         apply one: wake, show, reset, rest, sleep
-#   copal grove power on|off       the machines a console can switch (see 9.1)
-#   copal grove wait               block until the grove has announced itself
+# The day, once a fleet directory exists (milestone 3):
+#   copal fleet init               make fleets/<name>/ from the template
+#   copal fleet scene              which scenes this fleet has
+#   copal fleet scene NAME         apply one: wake, show, reset, rest, sleep
+#   copal fleet power on|off       the machines a console can switch (see 9.1)
+#   copal fleet wait               block until the fleet has announced itself
 #
 # Options most verbs take:
-#   --grove NAME   which grove (default: the one named in answers.txt)
+#   --fleet NAME   which fleet (default: the one named in answers.txt)
 #   --via HOST     browse from HOST over ssh instead of browsing here. macOS
-#                  has no avahi-browse, so this is how a Mac sees the grove:
+#                  has no avahi-browse, so this is how a Mac sees the fleet:
 #                  it asks a node that can already see it. The Mac is the
 #                  certificate authority, not the eyes.
 #   --tag TAG      only nodes carrying that tag
 #   --node ID      only that node
 #   --user NAME    the login account on the nodes (default: from answers.txt)
 #   --all          with ls, also list strangers -- machines on this network
-#                  that are not in the grove
+#                  that are not in the fleet
 #   --json         with inventory, JSON for Ansible instead of an INI file
 #   --check        with scene, ansible's dry run: report, change nothing
 #   --pass         with scene, ask for the doas password once and reuse it
@@ -67,12 +67,12 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ANSWERS="${COPAL_ANSWERS:-$ROOT/answers.txt}"
 HOME_COPAL="${COPAL_HOME:-$HOME/.copal}"
 NKEYS="$ROOT/tools/copal_nkeys.py"
-VIEW="$ROOT/tools/copal-grove-view"
-CONSOLE="$ROOT/tools/copal-grove-console.py"
-SERVICE="_copal-grove._tcp"
+VIEW="$ROOT/tools/copal-fleet-view"
+CONSOLE="$ROOT/tools/copal-fleet-console.py"
+SERVICE="_copal-fleet._tcp"
 TAB=$(printf '\t')
 
-TMP="${TMPDIR:-/tmp}/copal-grove.$$"
+TMP="${TMPDIR:-/tmp}/copal-fleet.$$"
 mkdir -p "$TMP"
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
@@ -85,7 +85,7 @@ answer() {  # <key>
         | sed "s/[\"']\{0,1\}[[:space:]]*$//" | head -1
 }
 
-GROVE=""; VIA=""; TAG=""; ONLY=""; LOGIN_USER=""; HOURS=8; SHOW_ALL=0; CREATE=0
+FLEET=""; VIA=""; TAG=""; ONLY=""; LOGIN_USER=""; HOURS=8; SHOW_ALL=0; CREATE=0
 JSON=0; CHECK=0; ASKPASS=0; TIMEOUT=120
 SHIFTN=0
 
@@ -95,8 +95,8 @@ SHIFTN=0
 take_common() {
     SHIFTN=1
     case "$1" in
-        --grove)   GROVE="${2:?--grove needs a name}"; SHIFTN=2 ;;
-        --grove=*) GROVE="${1#*=}" ;;
+        --fleet)   FLEET="${2:?--fleet needs a name}"; SHIFTN=2 ;;
+        --fleet=*) FLEET="${1#*=}" ;;
         --via)     VIA="${2:?--via needs a host}"; SHIFTN=2 ;;
         --via=*)   VIA="${1#*=}" ;;
         --tag)     TAG="${2:?--tag needs a tag}"; SHIFTN=2 ;;
@@ -120,35 +120,35 @@ take_common() {
 }
 
 settle() {
-    [ -n "$GROVE" ] || GROVE=$(answer COPAL_GROVE)
-    [ -n "$GROVE" ] || die "no grove named. Run 'make answers', or pass --grove NAME."
-    GDIR="$HOME_COPAL/groves/$GROVE"
+    [ -n "$FLEET" ] || FLEET=$(answer COPAL_FLEET)
+    [ -n "$FLEET" ] || die "no fleet named. Run 'make answers', or pass --fleet NAME."
+    FDIR="$HOME_COPAL/fleets/$FLEET"
     CADIR="$HOME_COPAL/ca"
-    CA="$CADIR/${GROVE}_ca"
+    CA="$CADIR/${FLEET}_ca"
     CAPUB="$CA.pub"
-    TOKENS="$GDIR/tokens"
-    NODES_FILE="$GDIR/nodes"
-    OPKEY="$GDIR/operator"
-    mkdir -p "$GDIR/hosts"
-    chmod 700 "$HOME_COPAL" "$HOME_COPAL/groves" "$GDIR" 2>/dev/null || true
+    TOKENS="$FDIR/tokens"
+    NODES_FILE="$FDIR/nodes"
+    OPKEY="$FDIR/operator"
+    mkdir -p "$FDIR/hosts"
+    chmod 700 "$HOME_COPAL" "$HOME_COPAL/fleets" "$FDIR" 2>/dev/null || true
     [ -n "$VIA" ] || VIA=$(conf_get via)
     [ -n "$LOGIN_USER" ] || LOGIN_USER=$(conf_get user)
     [ -n "$LOGIN_USER" ] || LOGIN_USER=$(answer COPAL_USER)
     [ -n "$LOGIN_USER" ] || LOGIN_USER=user
-    PSK=$(answer COPAL_GROVE_PSK)
+    PSK=$(answer COPAL_FLEET_PSK)
     # TWO DIRECTORIES, and the split is invariant 7 rather than tidiness.
-    # GDIR is ~/.copal/groves/<name>: private state -- the operator key, the
-    # token ledger, host keys. SDIR is groves/<name> in a git checkout: the
+    # FDIR is ~/.copal/fleets/<name>: private state -- the operator key, the
+    # token ledger, host keys. SDIR is fleets/<name> in a git checkout: the
     # scenes and the roles, which are what actually gets executed on eight
     # machines and therefore have to be reviewable, committed and signed. The
-    # grove executes what the repository says, not what the network says, and
+    # fleet executes what the repository says, not what the network says, and
     # a scene living in a dotfile directory nobody diffs is how that stops
     # being true.
-    SDIR="${COPAL_GROVE_DIR:-$ROOT/groves/$GROVE}"
+    SDIR="${COPAL_FLEET_DIR:-$ROOT/fleets/$FLEET}"
 }
-conf_get() {  # <key> -- from ~/.copal/groves/<grove>/grove.conf
-    [ -f "$GDIR/grove.conf" ] || return 0
-    sed -n "s/^$1[[:space:]]*=[[:space:]]*//p" "$GDIR/grove.conf" | head -1
+conf_get() {  # <key> -- from ~/.copal/fleets/<fleet>/fleet.conf
+    [ -f "$FDIR/fleet.conf" ] || return 0
+    sed -n "s/^$1[[:space:]]*=[[:space:]]*//p" "$FDIR/fleet.conf" | head -1
 }
 
 # --------------------------------------------------------------- beacons ---
@@ -161,7 +161,7 @@ conf_get() {  # <key> -- from ~/.copal/groves/<grove>/grove.conf
 #
 # Four sources, in this order, and the order is the whole portability story:
 #
-#   COPAL_GROVE_BEACONS   a file of beacon lines. Testing, and a browse
+#   COPAL_FLEET_BEACONS   a file of beacon lines. Testing, and a browse
 #                         captured somewhere else.
 #   avahi-browse          this machine can see the segment. Linux, Alpine, and
 #                         a console running ON a node.
@@ -172,13 +172,13 @@ beacons() {
     cat "$TMP/beacons"
 }
 browse() {
-    if [ -n "${COPAL_GROVE_BEACONS:-}" ]; then
-        [ -f "$COPAL_GROVE_BEACONS" ] || die "no such beacon file: $COPAL_GROVE_BEACONS"
-        cat "$COPAL_GROVE_BEACONS"; return 0
+    if [ -n "${COPAL_FLEET_BEACONS:-}" ]; then
+        [ -f "$COPAL_FLEET_BEACONS" ] || die "no such beacon file: $COPAL_FLEET_BEACONS"
+        cat "$COPAL_FLEET_BEACONS"; return 0
     fi
     if [ -n "$VIA" ]; then
-        ssh -n -o BatchMode=yes -o ConnectTimeout=8 "$VIA" 'copal-grove browse' 2>/dev/null \
-            || die "could not browse via $VIA -- is it up, and does it have copal-grove?"
+        ssh -n -o BatchMode=yes -o ConnectTimeout=8 "$VIA" 'copal-fleet browse' 2>/dev/null \
+            || die "could not browse via $VIA -- is it up, and does it have copal-fleet?"
         return 0
     fi
     if command -v avahi-browse >/dev/null 2>&1; then
@@ -201,7 +201,7 @@ browse() {
         # correct. Everything about these nodes has to be proved rather than
         # read, and cert_state below is what proves it.
         sed 's/#.*//' "$NODES_FILE" \
-            | awk -v g="$GROVE" 'NF >= 2 { print $1 "\t" $2 "\t" "g=" g }'
+            | awk -v f="$FLEET" 'NF >= 2 { print $1 "\t" $2 "\t" "f=" f }'
         return 0
     fi
     die "nothing to browse with. Install avahi-utils, pass --via HOST, or write $NODES_FILE"
@@ -213,7 +213,7 @@ txt_get() {  # <txt blob> <key>
 
 # The rolling HMAC in the beacon. A SPAM FILTER, and the comment sits here
 # because this is where somebody is most likely to be tempted: the key is on
-# every card in the grove, so it identifies a grove and authenticates nobody.
+# every card in the fleet, so it identifies a fleet and authenticates nobody.
 # Its whole job is to keep the list from filling with anything on the segment
 # that fancies calling itself museum-03.
 beacon_hmac_ok() {  # <id> <claimed> -- 0 ok, 1 bad, 2 cannot say
@@ -225,7 +225,7 @@ beacon_hmac_ok() {  # <id> <claimed> -- 0 ok, 1 bad, 2 cannot say
     # a clock that is a second out must not make a node look like a forgery.
     for _slip in 0 1; do
         _w=$(( (_now / 300) - _slip ))
-        _want=$(printf '%s' "$1$GROVE$_w" \
+        _want=$(printf '%s' "$1$FLEET$_w" \
             | openssl dgst -sha256 -hmac "$PSK" -r 2>/dev/null | cut -c1-16)
         [ "$_want" = "$2" ] && return 0
     done
@@ -268,12 +268,12 @@ cert_state() {  # <address> -> enrolled | candidate | foreign | unreachable | no
     if [ -n "$_signer" ] && [ "$_signer" = "$_fp" ]; then printf 'enrolled\n'; else printf 'foreign\n'; fi
 }
 
-# Beacons for this grove only, after --tag and --node, as id<TAB>addr<TAB>txt.
+# Beacons for this fleet only, after --tag and --node, as id<TAB>addr<TAB>txt.
 selected() {
     beacons | while IFS="$TAB" read -r _id _addr _txt; do
         [ -n "$_id" ] || continue
         _g=$(txt_get "$_txt" g)
-        [ -z "$_g" ] || [ "$_g" = "$GROVE" ] || continue
+        [ -z "$_g" ] || [ "$_g" = "$FLEET" ] || continue
         [ -z "$ONLY" ] || [ "$ONLY" = "$_id" ] || continue
         if [ -n "$TAG" ]; then
             case ",$(txt_get "$_txt" t)," in *",$TAG,"*) : ;; *) continue ;; esac
@@ -290,8 +290,8 @@ cmd_ls() {
     done
     settle
     if [ -f "$CAPUB" ]; then _cah="CA $(ca_fingerprint)"
-    else _cah="${R}no certificate authority${Z} -- copal grove ca --create"; fi
-    printf "\n${B}Grove ${C}%s${Z}${B}${Z}  ${D}%b${Z}\n\n" "$GROVE" "$_cah"
+    else _cah="${R}no certificate authority${Z} -- copal fleet ca --create"; fi
+    printf "\n${B}Fleet ${C}%s${Z}${B}${Z}  ${D}%b${Z}\n\n" "$FLEET" "$_cah"
     printf "        %-14s %-16s %-8s %-18s %s\n" "NODE" "ADDRESS" "ROLE" "PROVED" "SEEN"
     selected | while IFS="$TAB" read -r _id _addr _txt; do
         _role=$(txt_get "$_txt" r); [ -n "$_role" ] || _role="?"
@@ -313,7 +313,7 @@ cmd_ls() {
     printf "    ${D}A beacon fills this list. A certificate is what decides.${Z}\n\n"
 }
 
-# Machines on this network that are NOT in the grove. Shown, never contacted.
+# Machines on this network that are NOT in the fleet. Shown, never contacted.
 # The security value and the interface value are the same thing: an operator
 # who can see what appeared on the gallery network today is better off than one
 # who cannot, and it costs one extra browse.
@@ -322,7 +322,7 @@ strangers() {
         note "strangers need avahi-browse on this machine"; return 0
     fi
     beacons | cut -f2 | sort -u > "$TMP/mine"
-    printf "    ${Y}Strangers${Z} ${D}-- on this network, not in the grove${Z}\n"
+    printf "    ${Y}Strangers${Z} ${D}-- on this network, not in the fleet${Z}\n"
     avahi-browse -apt 2>/dev/null | awk -F';' '$1 == "=" { print $8 "\t" $4 }' \
         | sort -u | while IFS="$TAB" read -r _a _nm; do
             [ -n "$_a" ] || continue
@@ -340,7 +340,7 @@ cmd_ca() {
     done
     settle
     if [ -f "$CAPUB" ] && [ "$CREATE" = 0 ]; then
-        info "Grove '$GROVE' certificate authority"
+        info "Fleet '$FLEET' certificate authority"
         note "public   $CAPUB"
         if [ -f "$CA" ]; then note "private  $CA"
         else note "private  NOT ON THIS MACHINE -- it can verify, it cannot sign"; fi
@@ -349,16 +349,16 @@ cmd_ca() {
     fi
     [ -f "$CAPUB" ] && die "a CA already exists at $CAPUB -- delete it deliberately or keep it"
     mkdir -p "$CADIR"; chmod 700 "$CADIR"
-    info "Creating the certificate authority for grove '$GROVE'."
+    info "Creating the certificate authority for fleet '$FLEET'."
     note "The private half never leaves this machine and never goes on a card."
     note "Back it up: losing it means re-enrolling every machine by hand."
-    ssh-keygen -t ed25519 -a 100 -C "copal grove CA $GROVE" -f "$CA"
+    ssh-keygen -t ed25519 -a 100 -C "copal fleet CA $FLEET" -f "$CA"
     info "Created $CAPUB"
 }
 
 # ------------------------------------------------------------ trust --------
 #
-# One line in known_hosts for the whole grove, however large it grows. This is
+# One line in known_hosts for the whole fleet, however large it grows. This is
 # the payoff of having a CA at all, and it is worth being loud about: after it
 # there is no first-connection prompt for any node ever again -- and a host key
 # that CHANGES becomes an error this console can explain, rather than a warning
@@ -369,7 +369,7 @@ cmd_trust() {
         shift "$SHIFTN"
     done
     settle
-    [ -f "$CAPUB" ] || die "no CA. Run: copal grove ca --create"
+    [ -f "$CAPUB" ] || die "no CA. Run: copal fleet ca --create"
     _kh="$HOME/.ssh/known_hosts"
     mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"; : >> "$_kh"
     # awk and not `grep -v`, because grep exits 1 when it prints nothing --
@@ -377,21 +377,21 @@ cmd_trust() {
     # `&&` then skipped the rewrite and left the old line to be duplicated by
     # the append below. Running trust twice produced two lines; awk always
     # exits 0 and always rewrites.
-    awk -v g="$GROVE" '!index($0, "copal grove CA " g)' "$_kh" > "$TMP/kh"
+    awk -v g="$FLEET" '!index($0, "copal fleet CA " g)' "$_kh" > "$TMP/kh"
     cat "$TMP/kh" > "$_kh"
-    # Scoped to the grove's own names and to private address space rather than
+    # Scoped to the fleet's own names and to private address space rather than
     # to '*'. A bare '*' would let this CA vouch for any host this account ever
     # connects to, which is more authority than a museum's eight Raspberry Pis
     # have any business holding.
     printf '@cert-authority %s %s\n' \
-        "${GROVE}-*,${GROVE}-*.local,10.*,192.168.*,172.16.*" "$(cat "$CAPUB")" >> "$_kh"
-    info "Trusted the grove CA in $_kh"
-    note "One line, for every node this grove will ever have."
+        "${FLEET}-*,${FLEET}-*.local,10.*,192.168.*,172.16.*" "$(cat "$CAPUB")" >> "$_kh"
+    info "Trusted the fleet CA in $_kh"
+    note "One line, for every node this fleet will ever have."
 }
 
 # ------------------------------------------------------------ login --------
 #
-# An 8-hour operator certificate, on a key that belongs to the grove and to
+# An 8-hour operator certificate, on a key that belongs to the fleet and to
 # nothing else. The operator's own ~/.ssh/id_ed25519 is deliberately NOT
 # signed: writing a certificate beside somebody's everyday key changes how that
 # key behaves everywhere it is used, and a console should not do that to a
@@ -404,13 +404,13 @@ cmd_login() {
     settle
     [ -f "$CA" ] || die "no CA private key at $CA -- this machine cannot sign"
     if [ ! -f "$OPKEY" ]; then
-        info "Making an operator key for grove '$GROVE'. It is used for nothing else."
-        ssh-keygen -q -t ed25519 -N '' -C "copal grove operator $GROVE" -f "$OPKEY"
+        info "Making an operator key for fleet '$FLEET'. It is used for nothing else."
+        ssh-keygen -q -t ed25519 -N '' -C "copal fleet operator $FLEET" -f "$OPKEY"
     fi
     ssh-keygen -q -s "$CA" -I "$(id -un)@$(hostname 2>/dev/null || echo console)" \
-        -n grove-operator,grove-human -V "+${HOURS}h" "$OPKEY.pub"
+        -n fleet-operator,fleet-human -V "+${HOURS}h" "$OPKEY.pub"
     chmod 600 "$OPKEY"
-    info "Operator certificate, valid ${HOURS}h, principals grove-operator and grove-human"
+    info "Operator certificate, valid ${HOURS}h, principals fleet-operator and fleet-human"
     ssh-keygen -L -f "$OPKEY-cert.pub" 2>/dev/null \
         | sed -n 's/^ *Valid:/    valid:/p' >&2
     if command -v ssh-add >/dev/null 2>&1 && [ -n "${SSH_AUTH_SOCK:-}" ]; then
@@ -421,7 +421,7 @@ cmd_login() {
 
 ssh_as_operator() {  # <host> <command>
     _h="$1"; shift
-    ssh -n -o BatchMode=yes -o ConnectTimeout=8 -i "$OPKEY" "copal-grove@$_h" "$@"
+    ssh -n -o BatchMode=yes -o ConnectTimeout=8 -i "$OPKEY" "copal-fleet@$_h" "$@"
 }
 # The same, but WITHOUT -n, for the two verbs that read stdin. Kept separate
 # rather than made an option: -n is what stops ssh-keyscan and `while read`
@@ -429,7 +429,7 @@ ssh_as_operator() {  # <host> <command>
 # safe one. Only call this where stdin is a file you opened on purpose.
 ssh_as_operator_stdin() {  # <host> <command> -- stdin goes to the far end
     _h="$1"; shift
-    ssh -o BatchMode=yes -o ConnectTimeout=8 -i "$OPKEY" "copal-grove@$_h" "$@"
+    ssh -o BatchMode=yes -o ConnectTimeout=8 -i "$OPKEY" "copal-fleet@$_h" "$@"
 }
 ssh_as_login() {  # <host> <command> -- the bootstrap account, before certificates
     _h="$1"; shift
@@ -453,7 +453,7 @@ ledger_spend() {  # <id>
 sign_one() {  # <id> <address>
     _id="$1"; _addr="$2"
     [ -f "$CA" ] || die "no CA private key at $CA"
-    _hk="$GDIR/hosts/$_id.pub"
+    _hk="$FDIR/hosts/$_id.pub"
     ssh-keyscan -T 8 -t ed25519 "$_addr" 2>/dev/null </dev/null \
         | awk '/ssh-ed25519/ { print $2, $3; exit }' \
         | sed 's/^/ssh-ed25519 /' > "$_hk" || true
@@ -464,7 +464,7 @@ sign_one() {  # <id> <address>
     # that goes missing enrols zero further times than the once it was for.
     _want=$(ledger_token "$_id")
     if [ -n "$_want" ]; then
-        _have=$(ssh_as_login "$_addr" 'cat /etc/copal/grove/token 2>/dev/null' 2>/dev/null || true)
+        _have=$(ssh_as_login "$_addr" 'cat /etc/copal/fleet/token 2>/dev/null' 2>/dev/null || true)
         if [ -z "$_have" ]; then
             warn "$_id: could not read its enrolment token"
             note "The bootstrap login has to work first: ssh $LOGIN_USER@$_addr"
@@ -482,15 +482,15 @@ sign_one() {  # <id> <address>
 
     ssh-keygen -q -s "$CA" -I "$_id" -h -n "$_id,$_id.local,$_addr" -V '+90d' "$_hk" \
         || { warn "$_id: signing failed"; return 1; }
-    _cert="$GDIR/hosts/$_id-cert.pub"
+    _cert="$FDIR/hosts/$_id-cert.pub"
     [ -s "$_cert" ] || { warn "$_id: no certificate produced"; return 1; }
 
     # Installed through the login account with doas, which is the only way in
     # that exists before there is a certificate. This one step needs the
     # operator's own key already on the node -- stage 6 put it there.
-    if ! ssh_as_login "$_addr" 'doas /usr/bin/copal-grove install-cert' < "$_cert" >/dev/null 2>&1; then
+    if ! ssh_as_login "$_addr" 'doas /usr/bin/copal-fleet install-cert' < "$_cert" >/dev/null 2>&1; then
         warn "$_id: could not install the certificate"
-        note "By hand: ssh $LOGIN_USER@$_addr 'doas copal-grove install-cert' < $_cert"
+        note "By hand: ssh $LOGIN_USER@$_addr 'doas copal-fleet install-cert' < $_cert"
         return 1
     fi
     ledger_spend "$_id"
@@ -508,7 +508,7 @@ cmd_sign() {
         esac
     done
     settle
-    [ -n "$_want" ] || die "which node? copal grove sign museum-03"
+    [ -n "$_want" ] || die "which node? copal fleet sign museum-03"
     for _id in $_want; do
         _addr=$(beacons | awk -F'\t' -v id="$_id" '$1 == id { print $2; exit }')
         [ -n "$_addr" ] || _addr="$_id"
@@ -522,8 +522,8 @@ cmd_enrol() {
         shift "$SHIFTN"
     done
     settle
-    [ -f "$CA" ] || die "no CA private key at $CA. Run: copal grove ca --create"
-    info "Enrolling every candidate in grove '$GROVE'."
+    [ -f "$CA" ] || die "no CA private key at $CA. Run: copal fleet ca --create"
+    info "Enrolling every candidate in fleet '$FLEET'."
     selected > "$TMP/cand"
     _n=0
     while IFS="$TAB" read -r _id _addr _txt; do
@@ -534,24 +534,24 @@ cmd_enrol() {
     [ "$_n" -gt 0 ] || note "nothing was waiting to be enrolled"
 
     # A NODE THAT IS ENROLLED BUT NOT ON THE BUS IS A NODE THE WALL CANNOT SEE.
-    # Best effort and quiet about it: a grove with no warden announcing is the
+    # Best effort and quiet about it: a fleet with no warden announcing is the
     # ordinary state through milestone 3, and enrolment must not start failing
     # because milestone 4 exists.
     if [ "$_n" -gt 0 ] && [ -n "$(warden_of)" ]; then
         note ""
-        cmd_bus || warn "enrolled, but not put on the bus -- run: copal grove bus"
+        cmd_bus || warn "enrolled, but not put on the bus -- run: copal fleet bus"
     fi
-    note "Check with: copal grove ls"
+    note "Check with: copal fleet ls"
 }
 
 # --------------------------------------------------------------- bus -------
 #
-# Milestone 4, the console's half. The SSH CA stays the grove's identity root
+# Milestone 4, the console's half. The SSH CA stays the fleet's identity root
 # and this verb does nothing to change that: it talks only to nodes that
 # cert_state() already calls `enrolled`, and it asks each of them for a PUBLIC
 # key the node generated on itself. Nothing here makes a node's key and nothing
 # here ever sees a node's seed -- invariant 2, applied to a second key type.
-# See docs/grove-plan.md §6, "How the bus is authenticated".
+# See docs/fleet-plan.md §6, "How the bus is authenticated".
 #
 #   1. make this console's own bus identity, once
 #   2. ask every enrolled node for its public nkey
@@ -560,7 +560,7 @@ cmd_enrol() {
 #
 # Step 4 is the one worth defending. The console does not send nats.conf. It
 # sends ids and public keys, and the allow-lists of invariant 5 are built on
-# the warden from the warden's own idea of the grove's name. A console someone
+# the warden from the warden's own idea of the fleet's name. A console someone
 # has tampered with cannot widen a permission by sending a cleverer file,
 # because no file it sends is ever read as configuration.
 
@@ -594,15 +594,15 @@ cmd_bus() {
     settle
     command -v python3 >/dev/null 2>&1 || die "the bus needs python3 on this machine"
     [ -f "$NKEYS" ] || die "no $NKEYS -- this is not a full checkout"
-    [ -f "$OPKEY" ] || die "no operator certificate here. Run: copal grove login"
+    [ -f "$OPKEY" ] || die "no operator certificate here. Run: copal fleet login"
 
     _w=$(warden_of)
     if [ -z "$_w" ]; then
-        die "no node in grove '$GROVE' is announcing itself as the warden.
+        die "no node in fleet '$FLEET' is announcing itself as the warden.
 
     The bus lives on the warden, so there is nowhere to put it. Either no card
-    in this grove was given the warden role, or that machine is off. Check with
-    'copal grove ls' -- the role column is what this reads."
+    in this fleet was given the warden role, or that machine is off. Check with
+    'copal fleet ls' -- the role column is what this reads."
     fi
     _wid=${_w%%"$TAB"*}; _waddr=${_w#*"$TAB"}
 
@@ -613,7 +613,7 @@ cmd_bus() {
         return 0
     fi
 
-    info "Collecting bus identities in grove '$GROVE'."
+    info "Collecting bus identities in fleet '$FLEET'."
     note "A node makes its key the first time it is asked, and keeps it after."
     : > "$TMP/members"
     _n=0; _skip=0
@@ -642,7 +642,7 @@ cmd_bus() {
     done < "$TMP/buscand"
 
     [ "$_n" -gt 0 ] || die "not one enrolled node gave up a bus key -- nothing to install"
-    [ "$_skip" = 0 ] || note "$_skip machine(s) skipped: not enrolled. 'copal grove enrol' first."
+    [ "$_skip" = 0 ] || note "$_skip machine(s) skipped: not enrolled. 'copal fleet enrol' first."
 
     # THE CONSOLE IS A MEMBER TOO, and it goes in last so that the operator can
     # see it arrive. It publishes commands and subscribes to everything; it is
@@ -654,7 +654,7 @@ cmd_bus() {
     info "Installing the membership on the warden, $_wid."
     if ssh_as_operator_stdin "$_waddr" 'bus users' < "$TMP/members"; then
         note "The warden rendered it, nats-server accepted it, and reloaded."
-        note "Read it there: /etc/nats/grove-users.conf -- it is invariant 5 in"
+        note "Read it there: /etc/nats/fleet-users.conf -- it is invariant 5 in"
         note "the form the server enforces, and it is meant to be read."
     else
         die "$_wid refused the membership. Nothing on the bus changed.
@@ -667,7 +667,7 @@ cmd_bus() {
 
 # -------------------------------------------------------------- logs -------
 #
-# The grove's logs, out of the warden's collector. THE PROPERTY THAT MATTERS
+# The fleet's logs, out of the warden's collector. THE PROPERTY THAT MATTERS
 # is that this answers for a node that is not here: a Pi that died at 11:00 is
 # asked about at 16:00, and every other view in the console shows live
 # machines. This one does not, on purpose.
@@ -685,10 +685,10 @@ cmd_logs() {
     done
     settle
     case "$_days" in ''|*[!0-9]*) die "--since takes a number of days, e.g. --since 3" ;; esac
-    [ -f "$OPKEY" ] || die "no operator certificate here. Run: copal grove login"
+    [ -f "$OPKEY" ] || die "no operator certificate here. Run: copal fleet login"
 
     _w=$(warden_of)
-    [ -n "$_w" ] || die "no node in grove '$GROVE' is announcing itself as the warden.
+    [ -n "$_w" ] || die "no node in fleet '$FLEET' is announcing itself as the warden.
 
     The collector lives on the warden, so there is nowhere to read from. The
     lines are not lost -- they are on that machine's card. Bring it up, or say
@@ -707,7 +707,7 @@ cmd_logs() {
     # is three faces on ONE read model -- adding a second path here would be
     # the first crack in it. Three seconds is well inside what an operator
     # watching a room notices.
-    info "Following grove '$GROVE' from $_wid. Ctrl-C to stop."
+    info "Following fleet '$FLEET' from $_wid. Ctrl-C to stop."
     : > "$TMP/seen"
     while :; do
         if ssh_as_operator "$_waddr" "logs $_who $_days" > "$TMP/now" 2>/dev/null; then
@@ -721,24 +721,24 @@ cmd_logs() {
 # ------------------------------------------------------- state and watch ---
 #
 # Milestone 4's W6, and it comes BEFORE the wall on purpose. §12's rule is that
-# anything the TUI can do, `copal grove` can do, because the TUI calls it -- and
+# anything the TUI can do, `copal fleet` can do, because the TUI calls it -- and
 # the test of a rule like that is whether the demo which closes the milestone
 # can be performed without the TUI at all. So these are built first, and the
 # wall becomes a rendering of them rather than a second way of knowing things.
 #
-# The rendering lives in tools/copal-grove-view because it reads the BUS, and
-# the bus client is Python (D3). Discovery, the grove name and the credential
+# The rendering lives in tools/copal-fleet-view because it reads the BUS, and
+# the bus client is Python (D3). Discovery, the fleet name and the credential
 # stay here. That program is handed a beacon file and an address; it does not
 # browse and it does not decide who is a member.
 view_run() {  # <mode> [extra args for the view]
     _mode="$1"; shift
     [ -f "$VIEW" ] || die "no $VIEW -- this is not a full checkout"
     command -v python3 >/dev/null 2>&1 \
-        || die "the live views need python3 on this machine. 'copal grove ls' does not."
+        || die "the live views need python3 on this machine. 'copal fleet ls' does not."
     # A SUBSHELL, because `browse` reports "nothing to browse with" by calling
     # die, and an exit inside a function is an exit of this whole program: the
     # `|| :` that used to sit here never ran, and the 2>/dev/null ate the one
-    # sentence that said why. `copal grove ls` explained itself and the wall
+    # sentence that said why. `copal fleet ls` explained itself and the wall
     # showed a red row with nothing in it. Same failure, same message, both.
     if ! (browse) > "$TMP/vbeacons" 2>"$TMP/vbrowse"; then
         [ -s "$TMP/vbrowse" ] && cat "$TMP/vbrowse" >&2
@@ -751,10 +751,10 @@ view_run() {  # <mode> [extra args for the view]
     # THE REFRESH COMMAND, so that a loop sees new beacons rather than the same
     # four-minute-old picture forever. It re-enters this program at `browse`,
     # which keeps one parser for the beacon format.
-    _refresh="$0 browse --grove $GROVE"
+    _refresh="$0 browse --fleet $FLEET"
     [ -n "$VIA" ] && _refresh="$_refresh --via $VIA"
     python3 "$VIEW" "$_mode" \
-        --grove "$GROVE" \
+        --fleet "$FLEET" \
         --beacons "$TMP/vbeacons" \
         --expect "$TMP/vexpect" \
         --warden "$_waddr" \
@@ -806,7 +806,7 @@ cmd_watch() {
 # else until it chimes. Exits 0 when every declared node is up, non-zero on
 # timeout, and prints one line -- so it composes:
 #
-#     copal grove notify --all-up && copal grove scene wake
+#     copal fleet notify --all-up && copal fleet scene wake
 cmd_notify() {
     _all=0; _every=5
     while [ $# -gt 0 ]; do
@@ -820,17 +820,17 @@ cmd_notify() {
         esac
     done
     settle
-    [ "$_all" = 1 ] || die "notify takes --all-up. One node is 'copal grove watch NODE'."
+    [ "$_all" = 1 ] || die "notify takes --all-up. One node is 'copal fleet watch NODE'."
     view_run notify --all-up --every "$_every" --timeout "$TIMEOUT"
 }
 
 # ------------------------------------------------------------ console -----
 #
 # The wall. W7, and the milestone's architectural acceptance test lives in it:
-# THE TUI CALLS THIS PROGRAM, NEVER THE NETWORK. It runs `copal grove state
-# --json` for its picture and `copal grove scene|run|logs|notify` for its verbs,
+# THE TUI CALLS THIS PROGRAM, NEVER THE NETWORK. It runs `copal fleet state
+# --json` for its picture and `copal fleet scene|run|logs|notify` for its verbs,
 # so every screen it draws is a rendering of a command a person could have
-# typed. If that stops being true the console has become the thing the grove
+# typed. If that stops being true the console has become the thing the fleet
 # depends on, which is the failure §12 exists to prevent.
 #
 # It is handed "$0" for that reason -- it re-enters this file rather than
@@ -850,13 +850,13 @@ cmd_console() {
     settle
     [ -f "$CONSOLE" ] || die "no $CONSOLE -- this is not a full checkout"
     command -v python3 >/dev/null 2>&1 \
-        || die "the wall needs python3 here. 'copal grove watch' needs it too;
-    'copal grove ls' and 'copal grove run' do not, and they are the ones that
+        || die "the wall needs python3 here. 'copal fleet watch' needs it too;
+    'copal fleet ls' and 'copal fleet run' do not, and they are the ones that
     have to work when everything else does not."
     if [ -n "$_once" ]; then
-        python3 "$CONSOLE" --grove "$GROVE" --grove-cmd "$0" --once --keys "$_keys"
+        python3 "$CONSOLE" --fleet "$FLEET" --fleet-cmd "$0" --once --keys "$_keys"
     else
-        python3 "$CONSOLE" --grove "$GROVE" --grove-cmd "$0"
+        python3 "$CONSOLE" --fleet "$FLEET" --fleet-cmd "$0"
     fi
 }
 
@@ -873,8 +873,8 @@ cmd_run() {
         _verb="$*"; break
     done
     settle
-    [ -n "$_verb" ] || die "which verb? copal grove run state"
-    [ -s "$OPKEY-cert.pub" ] || die "no operator certificate. Run: copal grove login"
+    [ -n "$_verb" ] || die "which verb? copal fleet run state"
+    [ -s "$OPKEY-cert.pub" ] || die "no operator certificate. Run: copal fleet login"
 
     selected > "$TMP/sel"
     : > "$TMP/list"
@@ -882,7 +882,7 @@ cmd_run() {
         if [ "$(cert_state "$_addr")" = enrolled ]; then
             printf '%s\t%s\n' "$_id" "$_addr" >> "$TMP/list"
         else
-            printf "    ${Y}skip${Z}  %-14s not enrolled -- copal grove enrol\n" "$_id" >&2
+            printf "    ${Y}skip${Z}  %-14s not enrolled -- copal fleet enrol\n" "$_id" >&2
         fi
     done < "$TMP/sel"
     [ -s "$TMP/list" ] || die "no enrolled node matched"
@@ -924,13 +924,13 @@ cmd_status() {
         _id="$1"; shift
     done
     settle
-    [ -n "$_id" ] || die "which node? copal grove status museum-03"
+    [ -n "$_id" ] || die "which node? copal fleet status museum-03"
     _row=$(beacons | awk -F'\t' -v id="$_id" '$1 == id { print; exit }')
-    [ -n "$_row" ] || die "$_id is not announcing. Try: copal grove ls"
+    [ -n "$_row" ] || die "$_id is not announcing. Try: copal fleet ls"
     _addr=$(printf '%s' "$_row" | cut -f2)
     _txt=$(printf '%s' "$_row" | cut -f3)
     printf "\n${B}%s${Z}  ${D}%s${Z}\n\n" "$_id" "$_addr"
-    for _pair in "g grove" "r role" "a arch" "m ram-MB" "b build" "t tags" "u uptime" "s score" "c scene"; do
+    for _pair in "g fleet" "r role" "a arch" "m ram-MB" "b build" "t tags" "u uptime" "s score" "c scene"; do
         _k=${_pair%% *}; _l=${_pair#* }
         _v=$(txt_get "$_txt" "$_k"); [ -n "$_v" ] || continue
         printf '    %-9s %s\n' "$_l" "$_v"
@@ -938,8 +938,8 @@ cmd_status() {
     printf '    %-9s %s\n' "proved" "$(cert_state "$_addr")"
     _h=0; beacon_hmac_ok "$_id" "$(txt_get "$_txt" k)" || _h=$?
     case $_h in
-        0) printf '    %-9s %s\n' "beacon" "matches the grove key" ;;
-        1) printf '    %-9s %s\n' "beacon" "DOES NOT MATCH the grove key" ;;
+        0) printf '    %-9s %s\n' "beacon" "matches the fleet key" ;;
+        1) printf '    %-9s %s\n' "beacon" "DOES NOT MATCH the fleet key" ;;
         *) printf '    %-9s %s\n' "beacon" "not checked (no key here, or no openssl)" ;;
     esac
     printf '\n'
@@ -960,12 +960,12 @@ inventory_rows() {
     done
 }
 
-# Ansible's dynamic-inventory JSON, which is what groves/<name>/inventory/
-# copal_grove.py shells out to. Written here rather than in that script so
-# there is ONE implementation of "which machines are in this grove", and it is
+# Ansible's dynamic-inventory JSON, which is what fleets/<name>/inventory/
+# copal_fleet.py shells out to. Written here rather than in that script so
+# there is ONE implementation of "which machines are in this fleet", and it is
 # the one that checks certificates.
 inventory_json() {
-    inventory_rows | awk -F'\t' -v grove="$GROVE" -v user="$LOGIN_USER" '
+    inventory_rows | awk -F'\t' -v fleet="$FLEET" -v user="$LOGIN_USER" '
         function j(v) { gsub(/\\/, "\\\\", v); gsub(/"/, "\\\"", v); return "\"" v "\"" }
         function hostlist(s,   a, n, i, out) {
             n = split(s, a, " "); out = ""
@@ -989,7 +989,7 @@ inventory_json() {
                 printf "      %s: {", j(id)
                 printf "\"ansible_host\": %s, ", j(addr[id])
                 printf "\"ansible_user\": %s, ", j(user)
-                printf "\"copal_grove\": %s, ", j(grove)
+                printf "\"copal_fleet\": %s, ", j(fleet)
                 printf "\"copal_role\": %s, ", j(role[id])
                 printf "\"copal_arch\": %s, ", j(arch[id])
                 printf "\"copal_ram_mb\": %s, ", (ram[id] == "" ? "null" : ram[id] + 0)
@@ -998,8 +998,8 @@ inventory_json() {
                 printf "}%s\n", (i < n ? "," : "")
             }
             printf "    }\n  },\n"
-            printf "  \"all\": { \"children\": [%s] },\n", j(grove)
-            printf "  %s: { \"hosts\": [%s] }", j(grove), hostlist(members)
+            printf "  \"all\": { \"children\": [%s] },\n", j(fleet)
+            printf "  %s: { \"hosts\": [%s] }", j(fleet), hostlist(members)
             for (r in byrole) printf ",\n  %s: { \"hosts\": [%s] }", j(r), hostlist(byrole[r])
             for (t in bytag)  printf ",\n  %s: { \"hosts\": [%s] }", j("tag_" t), hostlist(bytag[t])
             printf "\n}\n"
@@ -1018,8 +1018,8 @@ cmd_inventory() {
         inventory_json
         return 0
     fi
-    printf '# generated by copal grove inventory -- do not edit\n'
-    printf '[%s]\n' "$GROVE"
+    printf '# generated by copal fleet inventory -- do not edit\n'
+    printf '[%s]\n' "$FLEET"
     # The count goes through a file rather than a variable: the loop is the
     # right-hand side of a pipe and runs in a subshell, so anything it
     # increments is gone by the time the test below reads it.
@@ -1029,26 +1029,26 @@ cmd_inventory() {
         printf 'x' >> "$TMP/inv.n"
         printf '%s ansible_host=%s ansible_user=%s\n' "$_id" "$_addr" "$LOGIN_USER"
     done
-    printf '\n[%s:vars]\nansible_python_interpreter=/usr/bin/python3\n' "$GROVE"
-    # An inventory holds ENROLLED nodes only, so a grove that is announcing
+    printf '\n[%s:vars]\nansible_python_interpreter=/usr/bin/python3\n' "$FLEET"
+    # An inventory holds ENROLLED nodes only, so a fleet that is announcing
     # loudly and has never been enrolled produces an empty one. That is
     # correct, and it looks exactly like a broken inventory, so it says which
     # it is -- on stderr, where it cannot end up inside the file Ansible reads.
     if [ ! -s "$TMP/inv.n" ]; then
         if [ -f "$CAPUB" ]; then
-            warn "no enrolled node in grove '$GROVE' -- the inventory is empty"
-            note "candidates are not in it by design. Run: copal grove enrol"
+            warn "no enrolled node in fleet '$FLEET' -- the inventory is empty"
+            note "candidates are not in it by design. Run: copal fleet enrol"
         else
             warn "no certificate authority here, so nothing can be enrolled"
-            note "run: copal grove ca --create, then copal grove enrol"
+            note "run: copal fleet ca --create, then copal fleet enrol"
         fi
     fi
 }
 
-# ---------------------------------------------------------- the grove file --
+# ---------------------------------------------------------- the fleet file --
 #
 # A DELIBERATELY SMALL READER, and it is not a TOML parser. It handles what a
-# grove file actually holds -- [section] headers, key = "value", and flat
+# fleet file actually holds -- [section] headers, key = "value", and flat
 # arrays of strings -- and ignores anything else rather than guessing at it.
 # The alternative was a real TOML library, which means a Python dependency on
 # the console for a file with nine values in it, or two hundred lines of awk
@@ -1056,7 +1056,7 @@ cmd_inventory() {
 #
 # Anything this cannot express belongs in a scene, where Ansible parses it.
 toml_get() {  # <section> <key> -- the value, or an array one item per line
-    [ -f "$SDIR/grove.toml" ] || return 0
+    [ -f "$SDIR/fleet.toml" ] || return 0
     awk -v want="$1" -v key="$2" '
         /^[[:space:]]*#/ { next }
         /^[[:space:]]*\[/ { sec = $0
@@ -1079,17 +1079,17 @@ toml_get() {  # <section> <key> -- the value, or an array one item per line
             }
             else { sub(/[[:space:]]*#.*$/, "", v); print v }
             exit
-        }' "$SDIR/grove.toml"
+        }' "$SDIR/fleet.toml"
 }
 
 need_scenes() {
-    [ -d "$SDIR" ] || die "no grove directory at $SDIR -- run: copal grove init"
+    [ -d "$SDIR" ] || die "no fleet directory at $SDIR -- run: copal fleet init"
     [ -d "$SDIR/scenes" ] || die "$SDIR has no scenes/ directory in it"
 }
 
 # --------------------------------------------------------------- init ------
 #
-# groves/<name>/ from groves/example/. The template is real, committed files
+# fleets/<name>/ from fleets/example/. The template is real, committed files
 # rather than heredocs in this script for one reason: they are Ansible, and
 # Ansible that lives inside a shell script cannot be linted, diffed or run by
 # anybody who has not first extracted it.
@@ -1099,7 +1099,7 @@ cmd_init() {
         shift "$SHIFTN"
     done
     settle
-    _tpl="$ROOT/groves/example"
+    _tpl="$ROOT/fleets/example"
     [ -d "$_tpl" ] || die "no template at $_tpl"
     [ ! -e "$SDIR" ] || die "$SDIR already exists -- edit it, or remove it deliberately"
     mkdir -p "$SDIR" || die "could not make $SDIR"
@@ -1109,21 +1109,21 @@ cmd_init() {
     # this repository runs on both. Write beside the file and move it over.
     _fp=$(ca_fingerprint 2>/dev/null || true)
     find "$SDIR" -type f -print | while IFS= read -r _f; do
-        sed -e "s|@GROVE@|$GROVE|g" -e "s|@USER@|$LOGIN_USER|g" \
-            -e "s|@CA@|${_fp:-unknown -- run copal grove ca --create}|g" \
+        sed -e "s|@FLEET@|$FLEET|g" -e "s|@USER@|$LOGIN_USER|g" \
+            -e "s|@CA@|${_fp:-unknown -- run copal fleet ca --create}|g" \
             "$_f" > "$_f.copal-new" && mv "$_f.copal-new" "$_f"
     done
-    chmod 0755 "$SDIR/inventory/copal_grove.py" 2>/dev/null || true
+    chmod 0755 "$SDIR/inventory/copal_fleet.py" 2>/dev/null || true
 
     info "Wrote $SDIR"
-    note "grove.toml         the grove file -- power, attachments, what a scene needs"
+    note "fleet.toml         the fleet file -- power, attachments, what a scene needs"
     note "scenes/            wake, show, reset, rest, sleep"
     note "roles/             what a scene actually does on a node"
     note "inventory/         the host list, out of discovery. Never edited by hand"
     note ""
-    note "It is meant to be committed. The grove executes what the repository"
+    note "It is meant to be committed. The fleet executes what the repository"
     note "says, not what the network says, so a scene nobody can diff is a scene"
-    note "nobody can trust. Then:   copal grove scene"
+    note "nobody can trust. Then:   copal fleet scene"
 }
 
 # ------------------------------------------------------------- power -------
@@ -1133,7 +1133,7 @@ cmd_init() {
 # "WoL at 08:30" cannot be built, and a console that implies otherwise costs a
 # museum its morning. What CAN be switched is the power itself, and that is a
 # property of the room and not of the machine -- a switchable USB hub, a relay,
-# a smart plug with a local API. So the grove file names one command per
+# a smart plug with a local API. So the fleet file names one command per
 # direction and a node-to-port list, and this runs them.
 #
 # THE PORT LIST IS THE SOURCE OF TRUTH HERE, not discovery, and that is the
@@ -1155,7 +1155,7 @@ power_apply() {  # <on|off>
         *) warn "power method '$_m' is not one this console knows"; return 1 ;;
     esac
     _tpl=$(toml_get power "$_dir")
-    [ -n "$_tpl" ] || { warn "the grove file has no [power] $_dir command"; return 1; }
+    [ -n "$_tpl" ] || { warn "the fleet file has no [power] $_dir command"; return 1; }
     _hub=$(toml_get power hub)
     _any=0
     for _pair in $(toml_get power ports); do
@@ -1164,7 +1164,7 @@ power_apply() {  # <on|off>
         _any=1
         # The command comes from a file in a git checkout, which is invariant 7
         # and the reason running it is acceptable: the console executes what the
-        # repository says. A grove file is as trusted as the console itself.
+        # repository says. A fleet file is as trusted as the console itself.
         _cmd=$(printf '%s' "$_tpl" \
             | sed -e "s|{hub}|$_hub|g" -e "s|{port}|$_port|g" -e "s|{node}|$_id|g")
         if sh -c "$_cmd" >/dev/null 2>&1; then
@@ -1186,8 +1186,8 @@ cmd_power() {
         shift
     done
     settle
-    [ -n "$_dir" ] || die "copal grove power on|off"
-    [ -f "$SDIR/grove.toml" ] || die "no grove file at $SDIR/grove.toml -- run: copal grove init"
+    [ -n "$_dir" ] || die "copal fleet power on|off"
+    [ -f "$SDIR/fleet.toml" ] || die "no fleet file at $SDIR/fleet.toml -- run: copal fleet init"
     info "power $_dir"
     power_apply "$_dir"
 }
@@ -1198,14 +1198,14 @@ cmd_power() {
 # discovered ones -- a node that never announces is the answer, and it can only
 # be missed by a list that was built from what announced.
 expected_nodes() {
-    _e=$(toml_get grove nodes)
+    _e=$(toml_get fleet nodes)
     if [ -n "$_e" ]; then printf '%s\n' "$_e"; return 0; fi
-    # No list in the grove file: fall back to the naming stage 16 gives a card,
-    # <grove>-NN, for as many cards as the interview said there were.
-    _n=$(answer COPAL_GROVE_SIZE); [ -n "$_n" ] || return 0
+    # No list in the fleet file: fall back to the naming stage 16 gives a card,
+    # <fleet>-NN, for as many cards as the interview said there were.
+    _n=$(answer COPAL_FLEET_SIZE); [ -n "$_n" ] || return 0
     _i=1
     while [ "$_i" -le "$_n" ]; do
-        printf '%s-%02d\n' "$GROVE" "$_i"
+        printf '%s-%02d\n' "$FLEET" "$_i"
         _i=$((_i + 1))
     done
 }
@@ -1250,22 +1250,22 @@ cmd_wait() {
 
 # ------------------------------------------------------------- scene -------
 #
-# A scene is a named, declarative, idempotent state of the whole grove, and
+# A scene is a named, declarative, idempotent state of the whole fleet, and
 # applying one twice does nothing the second time. "Today's task is different"
 # is one file changed rather than eight machines touched.
 #
 # THE CONSOLE DOES THREE THINGS HERE AND ANSIBLE DOES THE FOURTH. Power cannot
 # be done over SSH to a machine that is off, and waiting for beacons cannot be
 # done by a playbook whose inventory is the thing being waited for, so those
-# two are the console's. Recording what the grove is now doing is the
+# two are the console's. Recording what the fleet is now doing is the
 # console's. Everything that happens ON a node is Ansible's, because a
 # playbook is reviewable and a shell loop over ssh is not.
 #
 # Ansible logs in as the HUMAN account with the operator certificate, not as
-# the copal-grove service account: that account has a forced command by
+# the copal-fleet service account: that account has a forced command by
 # design, and a forced command cannot run a module. Host keys are checked
-# normally and that is not a compromise -- `copal grove trust` put the CA in
-# known_hosts, so every node in the grove validates without a prompt and a host
+# normally and that is not a compromise -- `copal fleet trust` put the CA in
+# known_hosts, so every node in the fleet validates without a prompt and a host
 # key that CHANGES is an error rather than a warning to press through.
 scene_list() {
     printf "\n${B}Scenes in ${C}%s${Z}\n\n" "$SDIR/scenes"
@@ -1277,7 +1277,7 @@ scene_list() {
         _d=$(sed -n 's/^# scene: *//p' "$_f" | head -1)
         printf "    ${C}%-8s${Z} %s\n" "$_n" "$_d"
     done
-    printf "\n    ${D}copal grove scene NAME    --check to report without changing${Z}\n\n"
+    printf "\n    ${D}copal fleet scene NAME    --check to report without changing${Z}\n\n"
 }
 cmd_scene() {
     _name=""
@@ -1291,8 +1291,8 @@ cmd_scene() {
     _play="$SDIR/scenes/$_name.yml"
     [ -f "$_play" ] || die "no scene called '$_name' in $SDIR/scenes"
     command -v ansible-playbook >/dev/null 2>&1 \
-        || die "no ansible-playbook on this console. Install ansible-core, or use 'copal grove run' for one verb"
-    [ -s "$OPKEY-cert.pub" ] || die "no operator certificate. Run: copal grove login"
+        || die "no ansible-playbook on this console. Install ansible-core, or use 'copal fleet run' for one verb"
+    [ -s "$OPKEY-cert.pub" ] || die "no operator certificate. Run: copal fleet login"
 
     _power=$(toml_get "scenes.$_name" power)
     if [ "$_power" = on ]; then
@@ -1304,14 +1304,14 @@ cmd_scene() {
 
     if [ "$(toml_get "scenes.$_name" become)" = true ] && [ "$ASKPASS" = 0 ]; then
         note "this scene becomes root on the nodes. If doas asks for a password,"
-        note "re-run it as: copal grove scene $_name --pass"
+        note "re-run it as: copal fleet scene $_name --pass"
     fi
 
     _limit=""
     [ -z "$ONLY" ] || _limit="$ONLY"
     [ -z "$TAG" ]  || _limit="tag_$TAG"
 
-    set -- ansible-playbook -i "$SDIR/inventory/copal_grove.py" "$_play"
+    set -- ansible-playbook -i "$SDIR/inventory/copal_fleet.py" "$_play"
     [ "$CHECK" = 0 ]   || set -- "$@" --check --diff
     [ "$ASKPASS" = 0 ] || set -- "$@" --ask-become-pass
     [ -z "$_limit" ]   || set -- "$@" --limit "$_limit"
@@ -1319,22 +1319,22 @@ cmd_scene() {
     else                       info "scene $_name"; fi
 
     _rc=0
-    COPAL_GROVE="$GROVE" \
-    COPAL_GROVE_USER="$LOGIN_USER" \
+    COPAL_FLEET="$FLEET" \
+    COPAL_FLEET_USER="$LOGIN_USER" \
     ANSIBLE_CONFIG="$SDIR/ansible.cfg" \
     ANSIBLE_PRIVATE_KEY_FILE="$OPKEY" \
     "$@" || _rc=$?
 
     if [ "$_rc" = 0 ] && [ "$CHECK" = 0 ]; then
-        printf '%s\t%s\n' "$_name" "$(date '+%Y-%m-%dT%H:%M:%S')" > "$GDIR/scene"
-        # The grove is now in a named state, and the console can say since when.
-        info "grove '$GROVE' is $_name since $(cut -f2 "$GDIR/scene")"
+        printf '%s\t%s\n' "$_name" "$(date '+%Y-%m-%dT%H:%M:%S')" > "$FDIR/scene"
+        # The fleet is now in a named state, and the console can say since when.
+        info "fleet '$FLEET' is $_name since $(cut -f2 "$FDIR/scene")"
         if [ "$(toml_get "scenes.$_name" power)" = "off-after" ]; then
             info "$_name: cutting power, now that every node has halted itself"
             power_apply off || warn "some ports were not switched"
         fi
     elif [ "$_rc" != 0 ]; then
-        warn "ansible-playbook exited $_rc -- the grove is in no named state"
+        warn "ansible-playbook exited $_rc -- the fleet is in no named state"
     fi
     return "$_rc"
 }
@@ -1365,5 +1365,5 @@ case "${1:-}" in
     browse)            shift; cmd_browse "$@" ;;
     console|wall)      shift; cmd_console "$@" ;;
     help|-h|--help|'') usage ;;
-    *) die "no grove verb called '$1'. Try: copal grove help" ;;
+    *) die "no fleet verb called '$1'. Try: copal fleet help" ;;
 esac

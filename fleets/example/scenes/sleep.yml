@@ -22,7 +22,7 @@
   tasks:
     - name: record the scene before the machine stops being able to
       ansible.builtin.copy:
-        dest: /etc/copal/grove/scene
+        dest: /etc/copal/fleet/scene
         content: "sleep\n"
         mode: "0644"
 

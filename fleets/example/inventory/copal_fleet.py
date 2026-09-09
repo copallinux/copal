@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson
-"""Ansible dynamic inventory for the Copal grove '@GROVE@'.
+"""Ansible dynamic inventory for the Copal fleet '@FLEET@'.
 
 It is a shim, on purpose. Everything that decides WHICH MACHINES ARE IN THIS
-GROVE -- browsing mDNS, dropping strangers and wrong-grove beacons, and
-checking each candidate's host certificate against the grove CA -- lives in
-`copal grove inventory --json`, and this asks that. Two implementations of
+FLEET -- browsing mDNS, dropping strangers and wrong-fleet beacons, and
+checking each candidate's host certificate against the fleet CA -- lives in
+`copal fleet inventory --json`, and this asks that. Two implementations of
 "which machines may we run commands on" is one implementation too many, and
 the one that would go stale is the one written in a language the rest of the
-grove is not written in.
+fleet is not written in.
 
 The consequence worth knowing: this inventory contains ENROLLED nodes only.
 A machine that is announcing but has never been signed does not appear here,
 and that is the invariant rather than an oversight -- an inventory is a list of
 machines Ansible is about to execute on, and a candidate has proved nothing.
-`copal grove ls` is where you look at candidates; `copal grove enrol` is what
+`copal fleet ls` is where you look at candidates; `copal fleet enrol` is what
 moves one into this file.
 
-  ./copal_grove.py --list        every host, with its facts
-  ./copal_grove.py --host NAME   nothing: --list already carries _meta
+  ./copal_fleet.py --list        every host, with its facts
+  ./copal_fleet.py --host NAME   nothing: --list already carries _meta
 """
 
 import json
@@ -34,7 +34,7 @@ def find_copal():
     override = os.environ.get("COPAL")
     if override:
         return [override]
-    # groves/<name>/inventory/copal_grove.py -> the repository root is three up.
+    # fleets/<name>/inventory/copal_fleet.py -> the repository root is three up.
     root = Path(__file__).resolve().parents[3]
     local = root / "copal"
     if local.is_file():
@@ -53,10 +53,10 @@ def main():
         print(__doc__.strip(), file=sys.stderr)
         return 2
 
-    cmd = find_copal() + ["grove", "inventory", "--json"]
-    grove = os.environ.get("COPAL_GROVE")
-    if grove:
-        cmd += ["--grove", grove]
+    cmd = find_copal() + ["fleet", "inventory", "--json"]
+    fleet = os.environ.get("COPAL_FLEET")
+    if fleet:
+        cmd += ["--fleet", fleet]
 
     try:
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -65,7 +65,7 @@ def main():
               file=sys.stderr)
         return 1
     except subprocess.TimeoutExpired:
-        print("`copal grove inventory` did not finish in 120s", file=sys.stderr)
+        print("`copal fleet inventory` did not finish in 120s", file=sys.stderr)
         return 1
 
     if out.returncode != 0:
@@ -73,21 +73,21 @@ def main():
         # is EMPTY are different facts, and a playbook that runs happily on
         # nothing because discovery broke is the failure this prevents.
         sys.stderr.write(out.stderr)
-        print("`copal grove inventory` failed -- refusing to hand Ansible a "
+        print("`copal fleet inventory` failed -- refusing to hand Ansible a "
               "guess about which machines exist", file=sys.stderr)
         return out.returncode
 
     try:
         data = json.loads(out.stdout)
     except json.JSONDecodeError as exc:
-        print(f"`copal grove inventory --json` did not return JSON: {exc}",
+        print(f"`copal fleet inventory --json` did not return JSON: {exc}",
               file=sys.stderr)
         return 1
 
     hosts = data.get("_meta", {}).get("hostvars", {})
     if not hosts:
-        print("no enrolled node in this grove -- `copal grove ls` will say "
-              "whether anything is announcing, `copal grove enrol` signs it",
+        print("no enrolled node in this fleet -- `copal fleet ls` will say "
+              "whether anything is announcing, `copal fleet enrol` signs it",
               file=sys.stderr)
     json.dump(data, sys.stdout, indent=2)
     print()

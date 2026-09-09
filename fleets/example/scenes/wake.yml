@@ -25,10 +25,10 @@
         msg: >-
           {{ inventory_hostname }} has no python3, so Ansible cannot manage it.
           Stage 7 installs it. Until then this node can still be driven by
-          `copal grove run`, which needs nothing on the node but sshd.
+          `copal fleet run`, which needs nothing on the node but sshd.
       when: copal_py.rc != 0
 
-- name: wake — the grove
+- name: wake — the fleet
   hosts: all
   gather_facts: true
   vars:

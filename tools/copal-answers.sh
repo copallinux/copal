@@ -35,15 +35,15 @@
 # looks. Set a real one here; that is the whole point of this being a file you
 # can edit.
 #
-# THE GROVE. Answer the grove questions and this file stops describing one
+# THE FLEET. Answer the fleet questions and this file stops describing one
 # machine and starts describing one machine OUT OF SEVERAL -- a named fleet
 # that shares a certificate authority, finds itself on the LAN, and is driven
-# from one console. See docs/grove-plan.md. Leave the grove name empty and
+# from one console. See docs/fleet-plan.md. Leave the fleet name empty and
 # nothing below it is asked, nothing is installed, and the machine built is
 # exactly the standalone machine it has always been.
 #
 # --node N is what makes eight cards bearable: it re-writes answers.txt for
-# card N of the grove -- new hostname, new one-time enrolment token, every
+# card N of the fleet -- new hostname, new one-time enrolment token, every
 # other answer left alone -- without asking a single question. Eight cards is
 # one interview and seven of these.
 #
@@ -51,7 +51,7 @@
 #   tools/copal-answers.sh              ask, then write answers.txt
 #   tools/copal-answers.sh --show       print the current answers, no password
 #   tools/copal-answers.sh --force      overwrite without confirming
-#   tools/copal-answers.sh --node N     card N of the grove; asks nothing
+#   tools/copal-answers.sh --node N     card N of the fleet; asks nothing
 #   tools/copal-answers.sh --node N --role warden --tags wall,sdr
 set -euo pipefail
 
@@ -107,7 +107,7 @@ if [ "$SHOW" -eq 1 ]; then
     # the same masking as the hash -- a screenshot of --show should not be a
     # working enrolment for somebody else's machine.
     sed -e "s/^\\(COPAL_ROOT_PW_HASH=\\).*/\\1<set>/" \
-        -e "s/^\\(COPAL_GROVE_TOKEN=\\).\\{1,\\}/\\1<set>/" "$ANSWERS"
+        -e "s/^\\(COPAL_FLEET_TOKEN=\\).\\{1,\\}/\\1<set>/" "$ANSWERS"
     exit 0
 fi
 
@@ -148,18 +148,18 @@ if [ -f "$ANSWERS" ]; then
     COPAL_MAIL_SMTP=$(get_answer COPAL_MAIL_SMTP)
     COPAL_AUTO=$(get_answer COPAL_AUTO)
     COPAL_SSH_PASSWORD_LOGIN=$(get_answer COPAL_SSH_PASSWORD_LOGIN)
-    # The grove. COPAL_GROVE_PSK and COPAL_GROVE_CA are properties of the
-    # GROVE and must be identical on every card in it; index and token are
+    # The fleet. COPAL_FLEET_PSK and COPAL_FLEET_CA are properties of the
+    # FLEET and must be identical on every card in it; index and token are
     # properties of THE CARD and differ on every one. --node changes the
     # second pair and nothing else, which is the whole reason it exists.
-    COPAL_GROVE=$(get_answer COPAL_GROVE)
-    COPAL_GROVE_SIZE=$(get_answer COPAL_GROVE_SIZE)
-    COPAL_GROVE_INDEX=$(get_answer COPAL_GROVE_INDEX)
-    COPAL_GROVE_ROLE=$(get_answer COPAL_GROVE_ROLE)
-    COPAL_GROVE_DISCOVERY=$(get_answer COPAL_GROVE_DISCOVERY)
-    COPAL_GROVE_CA=$(get_answer COPAL_GROVE_CA)
-    COPAL_GROVE_PSK=$(get_answer COPAL_GROVE_PSK)
-    COPAL_GROVE_TAGS=$(get_answer COPAL_GROVE_TAGS)
+    COPAL_FLEET=$(get_answer COPAL_FLEET)
+    COPAL_FLEET_SIZE=$(get_answer COPAL_FLEET_SIZE)
+    COPAL_FLEET_INDEX=$(get_answer COPAL_FLEET_INDEX)
+    COPAL_FLEET_ROLE=$(get_answer COPAL_FLEET_ROLE)
+    COPAL_FLEET_DISCOVERY=$(get_answer COPAL_FLEET_DISCOVERY)
+    COPAL_FLEET_CA=$(get_answer COPAL_FLEET_CA)
+    COPAL_FLEET_PSK=$(get_answer COPAL_FLEET_PSK)
+    COPAL_FLEET_TAGS=$(get_answer COPAL_FLEET_TAGS)
 fi
 
 # 16 bytes of urandom as hex, without depending on openssl or on a shell whose
@@ -169,7 +169,7 @@ rand_hex() { od -An -tx1 -N"${1:-16}" /dev/urandom | tr -d ' \n'; }
 
 # museum + 3 -> museum-03. Two digits because a fleet that reaches ten sorts
 # wrongly with one, and every list in the console is sorted by name.
-grove_hostname() { printf '%s-%02d' "$1" "$2"; }
+fleet_hostname() { printf '%s-%02d' "$1" "$2"; }
 
 # SINGLE quotes, always, and this is not stylistic. A SHA-512 crypt hash
 # begins "$6$rounds=..." -- inside double quotes the shell expands $6 as a
@@ -222,36 +222,36 @@ COPAL_SSH_PASSWORD_LOGIN=$(sq "${COPAL_SSH_PASSWORD_LOGIN}")
 # 1 = do not stop to ask anything the values above can answer.
 COPAL_AUTO=$(sq "${COPAL_AUTO:-1}")
 
-# --- the grove -------------------------------------------------------------
-# Empty COPAL_GROVE means a standalone machine and stage 16 does nothing at
+# --- the fleet -------------------------------------------------------------
+# Empty COPAL_FLEET means a standalone machine and stage 16 does nothing at
 # all. Everything below is read by copal-prep.sh, copied to the card, and used
-# once by copal-init.sh; see docs/grove-plan.md for what each one becomes.
+# once by copal-init.sh; see docs/fleet-plan.md for what each one becomes.
 #
-# Identical on every card in the grove:      GROVE, SIZE, CA, PSK, DISCOVERY
-# Different on every card in the grove:      INDEX, TOKEN, HOSTNAME, ROLE, TAGS
+# Identical on every card in the fleet:      FLEET, SIZE, CA, PSK, DISCOVERY
+# Different on every card in the fleet:      INDEX, TOKEN, HOSTNAME, ROLE, TAGS
 #
 # Write the other cards with:  tools/copal-answers.sh --node 2
-COPAL_GROVE=$(sq "${COPAL_GROVE:-}")
-COPAL_GROVE_SIZE=$(sq "${COPAL_GROVE_SIZE:-}")
-COPAL_GROVE_INDEX=$(sq "${COPAL_GROVE_INDEX:-}")
+COPAL_FLEET=$(sq "${COPAL_FLEET:-}")
+COPAL_FLEET_SIZE=$(sq "${COPAL_FLEET_SIZE:-}")
+COPAL_FLEET_INDEX=$(sq "${COPAL_FLEET_INDEX:-}")
 # node | warden | console -- a preference at first boot, not a fixed rank.
-COPAL_GROVE_ROLE=$(sq "${COPAL_GROVE_ROLE:-}")
+COPAL_FLEET_ROLE=$(sq "${COPAL_FLEET_ROLE:-}")
 # Comma separated. Scenes assign work by tag, so a dongle can move boards.
-COPAL_GROVE_TAGS=$(sq "${COPAL_GROVE_TAGS:-}")
+COPAL_FLEET_TAGS=$(sq "${COPAL_FLEET_TAGS:-}")
 # mdns | static | off
-COPAL_GROVE_DISCOVERY=$(sq "${COPAL_GROVE_DISCOVERY:-}")
-# The PUBLIC half of the grove certificate authority. Every card carries it so
+COPAL_FLEET_DISCOVERY=$(sq "${COPAL_FLEET_DISCOVERY:-}")
+# The PUBLIC half of the fleet certificate authority. Every card carries it so
 # that no machine is ever trusted on first sight. The private half stays in
 # ~/.copal/ca on the machine that ran this script and must never be on a card.
-COPAL_GROVE_CA=$(sq "${COPAL_GROVE_CA:-}")
+COPAL_FLEET_CA=$(sq "${COPAL_FLEET_CA:-}")
 # A spam filter on the discovery beacon, not a credential: it is on every card,
-# so it says which grove a beacon claims to be from and proves nothing. The
+# so it says which fleet a beacon claims to be from and proves nothing. The
 # certificate above is what actually decides. Do not promote this to a secret.
-COPAL_GROVE_PSK=$(sq "${COPAL_GROVE_PSK:-}")
+COPAL_FLEET_PSK=$(sq "${COPAL_FLEET_PSK:-}")
 # One-time enrolment token, THIS CARD ONLY, burned when the node is signed. A
 # fresh one is generated every time this script runs, so a card that goes
 # missing cannot enrol a second time.
-COPAL_GROVE_TOKEN=$(sq "${COPAL_GROVE_TOKEN:-}")
+COPAL_FLEET_TOKEN=$(sq "${COPAL_FLEET_TOKEN:-}")
 EOF
 chmod 600 "$ANSWERS"
 record_token
@@ -260,24 +260,24 @@ record_token
 # THE TOKEN LEDGER, and the reason it has to exist: answers.txt only ever holds
 # the token for the card being written NEXT. The console has to check card 3's
 # token months after card 8 was written, so each one is recorded here as it is
-# generated, and `copal grove enrol` marks it spent once the node is signed.
+# generated, and `copal fleet enrol` marks it spent once the node is signed.
 #
 # One unused entry per hostname. Re-running for the same card supersedes the
 # old token rather than adding to it -- two live tokens for one machine would
 # mean the check has two right answers, which is not a check.
 record_token() {
-    [ -n "${COPAL_GROVE:-}" ] || return 0
-    [ -n "${COPAL_GROVE_TOKEN:-}" ] || return 0
-    _led="$HOME/.copal/groves/$COPAL_GROVE"
+    [ -n "${COPAL_FLEET:-}" ] || return 0
+    [ -n "${COPAL_FLEET_TOKEN:-}" ] || return 0
+    _led="$HOME/.copal/fleets/$COPAL_FLEET"
     mkdir -p "$_led" || return 0
-    chmod 700 "$HOME/.copal" "$HOME/.copal/groves" "$_led" 2>/dev/null || true
+    chmod 700 "$HOME/.copal" "$HOME/.copal/fleets" "$_led" 2>/dev/null || true
     _f="$_led/tokens"
     : >> "$_f"
     # awk rather than `grep -v`: grep exits 1 when it prints nothing, which is
     # exactly the empty-ledger case, and the rewrite would then be skipped.
     awk -F'\t' -v h="$COPAL_HOSTNAME" '!($1 == h && $3 == "unused")' "$_f" > "$_f.new" \
         && mv "$_f.new" "$_f"
-    printf '%s\t%s\tunused\n' "$COPAL_HOSTNAME" "$COPAL_GROVE_TOKEN" >> "$_f"
+    printf '%s\t%s\tunused\n' "$COPAL_HOSTNAME" "$COPAL_FLEET_TOKEN" >> "$_f"
     chmod 600 "$_f"
 }
 
@@ -291,18 +291,18 @@ note "  hostname       ${COPAL_HOSTNAME}"
 note "  root password  stored as a SHA-512 hash, not recoverable"
 note "  ssh key        ${COPAL_SSH_KEY:-(none)}"
 note "  ssh passwords  $COPAL_SSH_PASSWORD_LOGIN"
-if [ -n "${COPAL_GROVE:-}" ]; then
-note "  grove          ${COPAL_GROVE} -- card ${COPAL_GROVE_INDEX} of ${COPAL_GROVE_SIZE}, role ${COPAL_GROVE_ROLE}"
-note "  grove tags     ${COPAL_GROVE_TAGS:-(none)}"
-note "  grove discovery ${COPAL_GROVE_DISCOVERY}"
-note "  grove CA       ${COPAL_GROVE_CA:-(none -- weaker; see docs/grove-plan.md)}"
+if [ -n "${COPAL_FLEET:-}" ]; then
+note "  fleet          ${COPAL_FLEET} -- card ${COPAL_FLEET_INDEX} of ${COPAL_FLEET_SIZE}, role ${COPAL_FLEET_ROLE}"
+note "  fleet tags     ${COPAL_FLEET_TAGS:-(none)}"
+note "  fleet discovery ${COPAL_FLEET_DISCOVERY}"
+note "  fleet CA       ${COPAL_FLEET_CA:-(none -- weaker; see docs/fleet-plan.md)}"
 note "  enrolment      a fresh single-use token for this card"
 fi
 note ""
 note "The next 'make alldebug' builds images that install without stopping."
 }
 
-# --- --node N: card N of the grove, without an interview --------------------
+# --- --node N: card N of the fleet, without an interview --------------------
 #
 # The seven cards after the first. Everything stays as it is except the three
 # things that MUST differ per card -- the index, the hostname derived from it,
@@ -310,25 +310,25 @@ note "The next 'make alldebug' builds images that install without stopping."
 # be run from a loop while cards are swapped.
 if [ -n "$NODE" ]; then
     [ -f "$ANSWERS" ] || die "no answers.txt yet. Run 'make answers' first."
-    [ -n "${COPAL_GROVE:-}" ] \
-        || die "answers.txt has no grove. Run 'make answers' and name one."
-    [ -n "${COPAL_GROVE_SIZE:-}" ] && [ "$NODE" -le "$COPAL_GROVE_SIZE" ] \
-        || die "card $NODE of a grove of ${COPAL_GROVE_SIZE:-?}"
-    COPAL_GROVE_INDEX="$NODE"
-    COPAL_HOSTNAME=$(grove_hostname "$COPAL_GROVE" "$NODE")
-    COPAL_GROVE_TOKEN=$(rand_hex 16)
+    [ -n "${COPAL_FLEET:-}" ] \
+        || die "answers.txt has no fleet. Run 'make answers' and name one."
+    [ -n "${COPAL_FLEET_SIZE:-}" ] && [ "$NODE" -le "$COPAL_FLEET_SIZE" ] \
+        || die "card $NODE of a fleet of ${COPAL_FLEET_SIZE:-?}"
+    COPAL_FLEET_INDEX="$NODE"
+    COPAL_HOSTNAME=$(fleet_hostname "$COPAL_FLEET" "$NODE")
+    COPAL_FLEET_TOKEN=$(rand_hex 16)
     # The role drops back to 'node' rather than being carried, because there is
     # one warden and it was almost certainly card 1. Carrying it would give a
-    # grove of eight machines that all prefer to be warden -- survivable, since
+    # fleet of eight machines that all prefer to be warden -- survivable, since
     # the election sorts it out in two announcement intervals, but it is a
     # confusing thing to read in a console and it is not what anybody meant.
     # --role says otherwise. Tags DO carry, because they usually describe the
     # fleet rather than the board; --tags is how the one with the dongle differs.
-    COPAL_GROVE_ROLE="${ROLE_ARG:-node}"
-    [ "$TAGS_SET" = 1 ] && COPAL_GROVE_TAGS="$TAGS_ARG"
+    COPAL_FLEET_ROLE="${ROLE_ARG:-node}"
+    [ "$TAGS_SET" = 1 ] && COPAL_FLEET_TAGS="$TAGS_ARG"
     write_answers
-    info "Card $NODE of $COPAL_GROVE_SIZE: $COPAL_HOSTNAME, role $COPAL_GROVE_ROLE, new enrolment token"
-    note "tags: ${COPAL_GROVE_TAGS:-(none)}"
+    info "Card $NODE of $COPAL_FLEET_SIZE: $COPAL_HOSTNAME, role $COPAL_FLEET_ROLE, new enrolment token"
+    note "tags: ${COPAL_FLEET_TAGS:-(none)}"
     note "Everything else is unchanged. Build the card, then --node $((NODE + 1))."
     exit 0
 fi
@@ -393,62 +393,62 @@ if [ -n "$COPAL_MAIL_ADDRESS" ]; then
 else
     COPAL_MAIL_NAME=""; COPAL_MAIL_IMAP=""; COPAL_MAIL_SMTP=""
 fi
-# --- the grove -------------------------------------------------------------
+# --- the fleet -------------------------------------------------------------
 #
-# Asked before the hostname, because a grove NAMES the hostname: card 3 of the
-# grove 'museum' is 'museum-03' and there is nothing to pick. Answer nothing
+# Asked before the hostname, because a fleet NAMES the hostname: card 3 of the
+# fleet 'museum' is 'museum-03' and there is nothing to pick. Answer nothing
 # here and the next question is the ordinary random-ocean one, which is what
 # every build up to now has had.
 printf '\n'
-note "A GROVE is a named fleet: several Copal machines on one LAN that trust"
+note "A FLEET is a named set of Copal machines on one LAN that trust"
 note "one certificate authority, find each other, and answer one console."
 note "Empty means a standalone machine -- everything below is then skipped."
-ask "Grove name (Enter: none)" "${COPAL_GROVE:-}" COPAL_GROVE
+ask "Fleet name (Enter: none)" "${COPAL_FLEET:-}" COPAL_FLEET
 
-# A grove name becomes a hostname, an mDNS label and an SSH principal, so it
+# A fleet name becomes a hostname, an mDNS label and an SSH principal, so it
 # has to survive all three. Lowercase letters, digits and dashes; that is the
 # intersection, and rejecting the rest here is cheaper than debugging a name
 # that resolves on one machine and not on another.
-if [ -n "$COPAL_GROVE" ]; then
-    case "$COPAL_GROVE" in
+if [ -n "$COPAL_FLEET" ]; then
+    case "$COPAL_FLEET" in
         *[!a-z0-9-]*|-*|*-|'')
-            die "grove name must be lowercase letters, digits and inner dashes" ;;
+            die "fleet name must be lowercase letters, digits and inner dashes" ;;
     esac
-    [ "${#COPAL_GROVE}" -le 24 ] \
-        || die "grove name is too long -- it has to leave room for '-08'"
+    [ "${#COPAL_FLEET}" -le 24 ] \
+        || die "fleet name is too long -- it has to leave room for '-08'"
 fi
 
-if [ -n "$COPAL_GROVE" ]; then
-    ask "  How many machines in the grove" "${COPAL_GROVE_SIZE:-8}" COPAL_GROVE_SIZE
-    ask "  Which one is THIS card"         "${COPAL_GROVE_INDEX:-1}" COPAL_GROVE_INDEX
-    case "$COPAL_GROVE_SIZE$COPAL_GROVE_INDEX" in
+if [ -n "$COPAL_FLEET" ]; then
+    ask "  How many machines in the fleet" "${COPAL_FLEET_SIZE:-8}" COPAL_FLEET_SIZE
+    ask "  Which one is THIS card"         "${COPAL_FLEET_INDEX:-1}" COPAL_FLEET_INDEX
+    case "$COPAL_FLEET_SIZE$COPAL_FLEET_INDEX" in
         *[!0-9]*) die "the size and the index are numbers" ;;
     esac
-    [ "$COPAL_GROVE_INDEX" -ge 1 ] || die "cards count from 1"
-    [ "$COPAL_GROVE_INDEX" -le "$COPAL_GROVE_SIZE" ] \
-        || die "card $COPAL_GROVE_INDEX of a grove of $COPAL_GROVE_SIZE"
+    [ "$COPAL_FLEET_INDEX" -ge 1 ] || die "cards count from 1"
+    [ "$COPAL_FLEET_INDEX" -le "$COPAL_FLEET_SIZE" ] \
+        || die "card $COPAL_FLEET_INDEX of a fleet of $COPAL_FLEET_SIZE"
 
     # The role is a STARTING role, not a fixed one. Any node can end up warden:
-    # the election in docs/grove-plan.md scores hardware and uptime and the
+    # the election in docs/fleet-plan.md scores hardware and uptime and the
     # answer here only decides what the machine tries to be on its first boot.
     note ""
     note "  node    an ordinary member -- the right answer for all eight"
     note "  warden  prefers to be the rendezvous and log sink at first boot"
     note "  console runs the operator's console as well as being a node"
-    ask "  Role (node | warden | console)" "${COPAL_GROVE_ROLE:-node}" COPAL_GROVE_ROLE
-    case "$COPAL_GROVE_ROLE" in
+    ask "  Role (node | warden | console)" "${COPAL_FLEET_ROLE:-node}" COPAL_FLEET_ROLE
+    case "$COPAL_FLEET_ROLE" in
         node|warden|console) ;;
         *) die "role must be node, warden or console" ;;
     esac
 
-    ask "  Tags, comma separated (Enter: none)" "${COPAL_GROVE_TAGS:-}" COPAL_GROVE_TAGS
+    ask "  Tags, comma separated (Enter: none)" "${COPAL_FLEET_TAGS:-}" COPAL_FLEET_TAGS
 
     note ""
     note "  mdns    announce on the LAN and be found -- avahi is installed"
     note "  static  no announcing; the console reads a list of addresses"
     note "  off     no discovery of any kind"
-    ask "  Discovery (mdns | static | off)" "${COPAL_GROVE_DISCOVERY:-mdns}" COPAL_GROVE_DISCOVERY
-    case "$COPAL_GROVE_DISCOVERY" in
+    ask "  Discovery (mdns | static | off)" "${COPAL_FLEET_DISCOVERY:-mdns}" COPAL_FLEET_DISCOVERY
+    case "$COPAL_FLEET_DISCOVERY" in
         mdns|static|off) ;;
         *) die "discovery must be mdns, static or off" ;;
     esac
@@ -457,28 +457,28 @@ if [ -n "$COPAL_GROVE" ]; then
     # worth anything. The PUBLIC half travels on every card and is what lets a
     # node verify the console and the console verify the node. The PRIVATE half
     # stays on this Mac in ~/.copal/ca and must never be written to a card --
-    # a CA private key on an SD card in a museum is the grove's whole security
+    # a CA private key on an SD card in a museum is the fleet's whole security
     # sitting in a slot anyone can pull.
     _cadir="$HOME/.copal/ca"
-    _ca="${COPAL_GROVE_CA:-$_cadir/${COPAL_GROVE}_ca.pub}"
+    _ca="${COPAL_FLEET_CA:-$_cadir/${COPAL_FLEET}_ca.pub}"
     if [ ! -f "$_ca" ]; then
         note ""
-        note "No certificate authority for grove '$COPAL_GROVE' yet."
+        note "No certificate authority for fleet '$COPAL_FLEET' yet."
         note "It signs host certificates (so no machine is ever trusted on"
         note "first sight) and 8-hour user certificates (so a stolen one"
         note "expires by itself). The private half never leaves this Mac."
         printf '  Create one now? [Y/n]: ' >&2
         IFS= read -r _mkca || true
         case "${_mkca:-y}" in
-            [Nn]*) note "No CA. The grove falls back to plain keys -- weaker."; _ca="" ;;
+            [Nn]*) note "No CA. The fleet falls back to plain keys -- weaker."; _ca="" ;;
             *)
                 mkdir -p "$_cadir" && chmod 700 "$_cadir"
-                if ssh-keygen -t ed25519 -a 100 -C "copal grove CA $COPAL_GROVE" \
-                              -f "$_cadir/${COPAL_GROVE}_ca"; then
-                    _ca="$_cadir/${COPAL_GROVE}_ca.pub"
+                if ssh-keygen -t ed25519 -a 100 -C "copal fleet CA $COPAL_FLEET" \
+                              -f "$_cadir/${COPAL_FLEET}_ca"; then
+                    _ca="$_cadir/${COPAL_FLEET}_ca.pub"
                     info "Created $_ca"
-                    note "Back up $_cadir/${COPAL_GROVE}_ca. Losing it means"
-                    note "re-enrolling every machine in the grove by hand."
+                    note "Back up $_cadir/${COPAL_FLEET}_ca. Losing it means"
+                    note "re-enrolling every machine in the fleet by hand."
                 else
                     warn "ssh-keygen did not complete -- continuing without a CA"
                     _ca=""
@@ -494,31 +494,31 @@ if [ -n "$COPAL_GROVE" ]; then
             _ca=""
         fi
     fi
-    COPAL_GROVE_CA="$_ca"
+    COPAL_FLEET_CA="$_ca"
 
     # The pre-shared key is a SPAM FILTER on the beacon, and calling it
     # anything more is a mistake the plan spends a paragraph on: it is on every
-    # card, so it identifies a grove and authenticates nobody. It stops the
+    # card, so it identifies a fleet and authenticates nobody. It stops the
     # console's candidate list from filling with whatever else on the segment
     # fancies calling itself 'museum-03'. The CA does the actual deciding.
-    [ -n "${COPAL_GROVE_PSK:-}" ] || COPAL_GROVE_PSK=$(rand_hex 16)
+    [ -n "${COPAL_FLEET_PSK:-}" ] || COPAL_FLEET_PSK=$(rand_hex 16)
 
     # The enrolment token is per CARD and single use. Regenerated here every
     # time, which is why --node is safe to run seven times: card 4 cannot enrol
     # as card 3, and a card that goes missing enrols zero further times.
-    COPAL_GROVE_TOKEN=$(rand_hex 16)
+    COPAL_FLEET_TOKEN=$(rand_hex 16)
 
-    COPAL_HOSTNAME=$(grove_hostname "$COPAL_GROVE" "$COPAL_GROVE_INDEX")
-    info "This card is $COPAL_HOSTNAME -- card $COPAL_GROVE_INDEX of $COPAL_GROVE_SIZE"
-    note "Build this card, then: make answers-node N=2   -- and so on to $COPAL_GROVE_SIZE."
+    COPAL_HOSTNAME=$(fleet_hostname "$COPAL_FLEET" "$COPAL_FLEET_INDEX")
+    info "This card is $COPAL_HOSTNAME -- card $COPAL_FLEET_INDEX of $COPAL_FLEET_SIZE"
+    note "Build this card, then: make answers-node N=2   -- and so on to $COPAL_FLEET_SIZE."
 else
-    COPAL_GROVE_SIZE=""; COPAL_GROVE_INDEX=""; COPAL_GROVE_ROLE=""
-    COPAL_GROVE_TAGS=""; COPAL_GROVE_DISCOVERY=""; COPAL_GROVE_CA=""
-    COPAL_GROVE_PSK="";  COPAL_GROVE_TOKEN=""
+    COPAL_FLEET_SIZE=""; COPAL_FLEET_INDEX=""; COPAL_FLEET_ROLE=""
+    COPAL_FLEET_TAGS=""; COPAL_FLEET_DISCOVERY=""; COPAL_FLEET_CA=""
+    COPAL_FLEET_PSK="";  COPAL_FLEET_TOKEN=""
 fi
 
 printf '\n'
-if [ -n "$COPAL_GROVE" ]; then
+if [ -n "$COPAL_FLEET" ]; then
     ask "Hostname"           "$COPAL_HOSTNAME"                       COPAL_HOSTNAME
 else
     ask "Hostname"           "${COPAL_HOSTNAME:-$(random_hostname)}" COPAL_HOSTNAME

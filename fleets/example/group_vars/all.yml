@@ -1,15 +1,15 @@
 ---
 # Everything a scene needs to know that is not a fact about one machine.
 # Ansible parses this, which is why the structured things live here rather
-# than in grove.toml -- see the comment at the top of that file.
+# than in fleet.toml -- see the comment at the top of that file.
 
-copal_grove_name: "@GROVE@"
+copal_fleet_name: "@FLEET@"
 
 # ---------------------------------------------------------------------------
 # ATTACHMENTS -- environment, not distribution. Network filesystems and model
 # endpoints differ per site and change without a rebuild, so baking them into
 # the image would make the image site-specific. A missing attachment is a
-# DEGRADED grove, never a broken boot, and the options below are what make
+# DEGRADED fleet, never a broken boot, and the options below are what make
 # that true: `soft` with a short timeo, and require: false.
 #
 # `hard` mounts plus a NAS that is still booting is a room full of hung Pis at
@@ -18,14 +18,14 @@ copal_grove_name: "@GROVE@"
 copal_attachments: []
 # copal_attachments:
 #   - name: treasure
-#     src: "10.0.0.5:/mnt/tank/grove/@GROVE@"
+#     src: "10.0.0.5:/mnt/tank/fleet/@FLEET@"
 #     path: /mnt/treasure
 #     fstype: nfs4
 #     opts: "nfsvers=4.2,ro,soft,timeo=50,retrans=2"
 #     require: false
 
-# Packages every node in this grove should have, beyond what the install gave
-# it. Kept short on purpose: a Pi Zero 2 has 512 MB and an SD card, and a grove
+# Packages every node in this fleet should have, beyond what the install gave
+# it. Kept short on purpose: a Pi Zero 2 has 512 MB and an SD card, and a fleet
 # is not a place to discover that a package pulled in a desktop.
 copal_node_packages: []
 
@@ -39,7 +39,7 @@ copal_node_packages: []
 # other plans for it.
 copal_pull_repo: ""
 copal_pull_branch: main
-copal_pull_playbook: "groves/@GROVE@/scenes/show.yml"
+copal_pull_playbook: "fleets/@FLEET@/scenes/show.yml"
 
 # ---------------------------------------------------------------------------
 # The display. X11 today: the exhibit session is i3 under startx, started by

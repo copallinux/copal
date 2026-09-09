@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!-- Copyright (c) 2026 Paul Richeson -- copal-alpine-linux -->
 
-# Copal Grove — orchestrating a room full of Copal machines
+# Copal Fleet — orchestrating a room full of Copal machines
 
 **A plan.** Eight Raspberry Pis on one switch, one console, and a day that
 starts by turning them on and ends by turning them off.
@@ -10,7 +10,7 @@ Copyright (c) 2026 Paul Richeson. MIT licensed — see `LICENSE`. Copal Linux is
 an aggregation of Alpine Linux, not a derivative work of it; Alpine and its
 packages remain under their own licences.
 
-Companion document: **[`grove-lab-report.md`](grove-lab-report.md)** — the
+Companion document: **[`fleet-lab-report.md`](fleet-lab-report.md)** — the
 survey of prior art, the museum-day requirement, and the console's interface
 design. This file is the architecture and the build order.
 
@@ -18,7 +18,7 @@ design. This file is the architecture and the build order.
 
 ## 0 · The one paragraph
 
-A **grove** is a named set of Copal machines on one LAN that trust one
+A **fleet** is a named set of Copal machines on one LAN that trust one
 certificate authority. They find each other by mDNS, prove themselves by SSH
 certificate, one of them elects itself **warden** to act as a rendezvous and a
 log sink, and a **console** on the operator's machine drives all of them —
@@ -35,19 +35,20 @@ dependency.
 
 Naming is not decoration here; it is what the console's labels say, what the
 subjects on the bus are called, and what a person shouts across a museum
-gallery. Copal is tree resin, so the fleet is what a stand of those trees is.
+gallery. Most of the vocabulary below follows the resin — gems, treasure — but
+the set of machines is called the plain thing it is.
 
 | Term | Means |
 |---|---|
-| **grove** | the fleet: machines sharing a name and a CA. `museum`, `lab-b`. |
-| **node** | one machine in the grove. Has an id, a role, and tags. |
+| **fleet** | the machines sharing a name and a CA. `museum`, `lab-b`. |
+| **node** | one machine in the fleet. Has an id, a role, and tags. |
 | **warden** | the node currently elected to be rendezvous, log sink and queue host. A *convenience*, never an authority — see §7. |
 | **console** | the operator's program. Runs on the Mac, on a node, or on both. |
 | **gem** | one unit of work. Self-describing, content-addressed, idempotent. |
 | **treasure** | the accumulated results of a job — the gems that came back. |
-| **scene** | a declarative state of the whole grove: what runs, what is on screen, what the console shows. The museum day is four scenes. |
-| **stranger** | a machine seen on the network that is *not* in the grove. Shown, never contacted. |
-| **attachment** | an optional external resource — a NAS export, an iSCSI LUN, a model endpoint — declared in the grove file, not installed into the image. |
+| **scene** | a declarative state of the whole fleet: what runs, what is on screen, what the console shows. The museum day is four scenes. |
+| **stranger** | a machine seen on the network that is *not* in the fleet. Shown, never contacted. |
+| **attachment** | an optional external resource — a NAS export, an iSCSI LUN, a model endpoint — declared in the fleet file, not installed into the image. |
 
 ---
 
@@ -61,23 +62,23 @@ purpose — it does not become safe by accident.
 1. **Discovery announces. It never authorizes.** mDNS has no authentication of
    any kind — anyone on the segment can answer any query and advertise any
    service. So discovery produces *candidates*, and a candidate becomes a node
-   only when its SSH host certificate validates against the grove CA.
+   only when its SSH host certificate validates against the fleet CA.
 2. **No private key crosses the network, ever.** Node keys are generated on the
    node. Only public keys go out, and only certificates come back.
 3. **Credentials are derived and short-lived.** Host certificates 90 days, user
-   certificates 8 hours, both signed by the grove CA and both re-issued
+   certificates 8 hours, both signed by the fleet CA and both re-issued
    automatically. Short lifetimes are what make revocation a rarity rather than
    a fire drill.
-4. **Automation gets a forced command, not a shell.** The `copal-grove`
+4. **Automation gets a forced command, not a shell.** The `copal-fleet`
    service account's authorized principal maps to one command that parses one
    verb. The human account keeps its ordinary shell; those are two jobs and the
-   grove keeps them apart, exactly as stages 1 and 13 keep root and the user
+   fleet keeps them apart, exactly as stages 1 and 13 keep root and the user
    apart.
 5. **A node may only speak for itself.** On the bus, publish permission is
-   scoped to `grove.<name>.node.<own-id>.*`. A compromised node can lie about
+   scoped to `fleet.<name>.node.<own-id>.*`. A compromised node can lie about
    its own temperature. It cannot forge another node's telemetry, and it cannot
    issue commands.
-6. **The grove is LAN-only.** Nothing in this plan opens a port to the internet,
+6. **The fleet is LAN-only.** Nothing in this plan opens a port to the internet,
    forwards one, or phones home. The one node that needs egress (§11) is named,
    is the only one that has it, and says so in the console.
 7. **Nothing discovered is executed.** Scenes and playbooks come from a git
@@ -101,7 +102,7 @@ flowchart TB
     L4["<b>L4 · Bus</b> — NATS subjects, JetStream gem queue, log collection"]
     L3["<b>L3 · Warden</b> — deterministic election, rendezvous, lease"]
     L2["<b>L2 · Discovery</b> — mDNS/DNS-SD beacons, the candidate list"]
-    L1["<b>L1 · Identity</b> — the grove SSH CA, host and user certificates"]
+    L1["<b>L1 · Identity</b> — the fleet SSH CA, host and user certificates"]
     L0["<b>L0 · Media</b> — one <code>make answers</code>, eight cards"]
     L0 --> L1 --> L2 --> L3 --> L4 --> L5 --> L6 --> L7 --> L8
 ```
@@ -110,12 +111,12 @@ flowchart TB
 |---|---|---|---|
 | L0 Media | eight cards from one interview | nothing — it is `answers.txt` doing more work | you type the interview eight times |
 | L1 Identity | no `known_hosts`, no shared passwords, no key copying | one CA to keep offline | keys per node, `known_hosts` churn, TOFU |
-| L2 Discovery | the node list fills itself in | `avahi` on each node, ~3 MB | you type addresses into the grove file |
+| L2 Discovery | the node list fills itself in | `avahi` on each node, ~3 MB | you type addresses into the fleet file |
 | L3 Warden | one place logs land and queues live | an election that must be boring | console holds the queue; nodes still work |
 | L4 Bus | fan-out commands, durable work, live telemetry | `nats-server`, one static binary | SSH fan-out; slower, no work queue |
 | L5 Config | a day is a file, not a memory | Ansible on the console, python3 on nodes | scripted `ssh` loops |
 | L6 Presence | the wall of screens; lock; broadcast | VNC server per node, screenshots | you walk to the machine |
-| L7 Console | one window for all of it | the program this plan is mostly about | `copal grove` on the command line |
+| L7 Console | one window for all of it | the program this plan is mostly about | `copal fleet` on the command line |
 | L8 Attachments | shared storage, containers, inference | per-site configuration | local disk, local work |
 
 The point of the table is the right-hand column. Read it as the failure plan:
@@ -131,34 +132,34 @@ gallery filling up.
 Each node runs Avahi and publishes one service type:
 
 ```
-_copal-grove._tcp   port 7420
+_copal-fleet._tcp   port 7420
 ```
 
 with a TXT record:
 
 | Key | Example | Why |
 |---|---|---|
-| `g` | `museum` | grove name — filters everything else out |
+| `f` | `museum` | fleet name — filters everything else out |
 | `n` | `museum-03` | node id, stable, equals the hostname |
 | `r` | `node` / `warden` | current role |
 | `s` | `1412` | warden score (§7) |
 | `a` | `aarch64` | architecture |
 | `m` | `1024` | RAM, MB |
 | `b` | `2026-09-04.3` | `COPAL_BUILD_ID` from `/etc/copal/build` |
-| `ca` | `SHA256:9f2c…` | fingerprint of the grove CA the node trusts |
+| `ca` | `SHA256:9f2c…` | fingerprint of the fleet CA the node trusts |
 | `t` | `wall,sdr,gallery-north` | tags |
 | `v` | `1` | beacon version |
 | `k` | `4e1a…` | rolling HMAC, below |
 
 `ca` is the one that matters for the operator: two machines that disagree about
-their CA fingerprint are not in the same grove no matter what `g` says, and the
-console shows that as a distinct state — **wrong grove** — rather than as a
+their CA fingerprint are not in the same fleet no matter what `g` says, and the
+console shows that as a distinct state — **wrong fleet** — rather than as a
 connection failure ten seconds later.
 
 ### Why a HMAC in a TXT record, and what it is not for
 
-`k` is `HMAC-SHA256(grove PSK, n || g || floor(unixtime/300))`, truncated to 8
-bytes. A grove PSK is generated by `make answers` and lives on the cards.
+`k` is `HMAC-SHA256(fleet PSK, n || g || floor(unixtime/300))`, truncated to 8
+bytes. A fleet PSK is generated by `make answers` and lives on the cards.
 
 It is a **spam filter, not a security control**, and the distinction is
 load-bearing. It costs nothing, and it means the console's candidate list is
@@ -177,14 +178,14 @@ starts treating `k` as proof is code that has broken invariant 1.
 ```
 
 `?` is the enrolment path (§5). `!` is a machine on the network that is not
-part of the grove — a printer, a phone, a visitor's laptop. Showing strangers
+part of the fleet — a printer, a phone, a visitor's laptop. Showing strangers
 is deliberate: a museum operator who can see what appeared on the network today
 is better off than one who cannot, and it costs one extra Avahi browse.
 
 ### Turning it off
 
-`COPAL_GROVE_DISCOVERY=static` in `answers.txt` installs no Avahi and reads the
-node list from the grove file. Sites that will not run mDNS get a grove that is
+`COPAL_FLEET_DISCOVERY=static` in `answers.txt` installs no Avahi and reads the
+node list from the fleet file. Sites that will not run mDNS get a fleet that is
 identical in every other respect.
 
 ---
@@ -200,8 +201,8 @@ shared secrets on the wire.
 
 | Key | Where it lives | Ever copied? |
 |---|---|---|
-| grove CA private | `~/.copal/ca/<grove>_ca` on the console, mode 600 | **never** |
-| grove CA public | on every card, in `/etc/ssh/copal_grove_ca.pub` | yes — it is public |
+| fleet CA private | `~/.copal/ca/<fleet>_ca` on the console, mode 600 | **never** |
+| fleet CA public | on every card, in `/etc/ssh/copal_fleet_ca.pub` | yes — it is public |
 | node host key | generated on the node at first boot | never leaves |
 
 ### Enrolment, once per node
@@ -219,17 +220,17 @@ sequenceDiagram
     N->>N: sshd HostCertificate; TrustedUserCAKeys
 ```
 
-The one-time token is `COPAL_GROVE_TOKEN` — 32 hex characters, different per
+The one-time token is `COPAL_FLEET_TOKEN` — 32 hex characters, different per
 card, written by `make answers`. A card that is lost enrols zero times more
 than the once it was for.
 
 ### After enrolment
 
 On the console, `~/.ssh/known_hosts` gains exactly one line for the whole
-grove:
+fleet:
 
 ```
-@cert-authority *.museum.local,10.0.0.* ssh-ed25519 AAAA… copal grove CA museum
+@cert-authority *.museum.local,10.0.0.* ssh-ed25519 AAAA… copal fleet CA museum
 ```
 
 That is the payoff. Eight machines, or eighty, and no `known_hosts` prompt ever
@@ -239,31 +240,31 @@ console can explain instead of a warning the operator learns to press through.
 On each node:
 
 ```
-TrustedUserCAKeys /etc/ssh/copal_grove_ca.pub
+TrustedUserCAKeys /etc/ssh/copal_fleet_ca.pub
 AuthorizedPrincipalsFile /etc/ssh/principals/%u
 HostCertificate /etc/ssh/ssh_host_ed25519_key-cert.pub
 ```
 
-with `principals/copal-grove` containing `grove-operator` and
-`principals/<user>` containing `grove-human`.
+with `principals/copal-fleet` containing `fleet-operator` and
+`principals/<user>` containing `fleet-human`.
 
 ### User certificates, and the forced command
 
-The operator runs `copal grove login`, which signs an 8-hour certificate with
+The operator runs `copal fleet login`, which signs an 8-hour certificate with
 both principals and adds it to the agent. Nothing else needs doing all day, and
 by tomorrow it has expired on its own.
 
-`grove-operator` is bound in `sshd_config` to a forced command:
+`fleet-operator` is bound in `sshd_config` to a forced command:
 
 ```
-Match User copal-grove
-    ForceCommand /usr/bin/copal-grove-exec
+Match User copal-fleet
+    ForceCommand /usr/bin/copal-fleet-exec
     PermitTTY no
     X11Forwarding no
     AllowTcpForwarding no
 ```
 
-`copal-grove-exec` reads `SSH_ORIGINAL_COMMAND`, and it accepts a *verb list*,
+`copal-fleet-exec` reads `SSH_ORIGINAL_COMMAND`, and it accepts a *verb list*,
 not a shell string: `scene apply rest`, `snapshot restore visitor`, `power off`,
 `state`, `log tail`. Anything else is a refusal with an exit code and a line in
 the log. This is invariant 4 made real, and it is the difference between "the
@@ -275,7 +276,7 @@ certificate can run anything on eight Pis".
 `step-ca` is the right answer at a hundred machines and an identity provider,
 and the plan should not pretend otherwise. At eight it is a service to run, back
 up and upgrade in exchange for automation of a thing that happens eight times.
-`ssh-keygen -s` on the console, driven by `copal grove sign`, is the same
+`ssh-keygen -s` on the console, driven by `copal fleet sign`, is the same
 cryptography with none of the operations. §14 puts step-ca in the "when it
 hurts" milestone with the migration path stated: the CA key is the same key, so
 moving to step-ca later re-signs nothing.
@@ -290,7 +291,7 @@ moving to step-ca later re-signs nothing.
 a Pi, subject-based fan-out with wildcards, and JetStream supplies the two
 things a plain pub/sub cannot: a durable work queue with acknowledgement and
 redelivery, and last-value retention so a console that just started can render
-the whole grove's state without asking anyone.
+the whole fleet's state without asking anyone.
 
 The alternatives were considered and are named honestly:
 
@@ -304,17 +305,17 @@ The alternatives were considered and are named honestly:
 ### Subjects
 
 ```
-grove.museum.hello                       node → all     presence, 10s
-grove.museum.node.<id>.state             node → all     telemetry, last-value retained
-grove.museum.node.<id>.thumb             node → all     screenshot, 1–5s, downscaled
-grove.museum.log.<id>                    node → warden  log lines
-grove.museum.cmd.all                     console → all  broadcast verb
-grove.museum.cmd.tag.<tag>               console → some
-grove.museum.cmd.node.<id>               console → one
-grove.museum.ack.<id>.<corr>             node → console per-command result
-grove.museum.work.<job>                  JetStream work queue — the gems
-grove.museum.gem.<job>.<seq>             worker → console  results
-grove.museum.event                       anything worth a toast
+fleet.museum.hello                       node → all     presence, 10s
+fleet.museum.node.<id>.state             node → all     telemetry, last-value retained
+fleet.museum.node.<id>.thumb             node → all     screenshot, 1–5s, downscaled
+fleet.museum.log.<id>                    node → warden  log lines
+fleet.museum.cmd.all                     console → all  broadcast verb
+fleet.museum.cmd.tag.<tag>               console → some
+fleet.museum.cmd.node.<id>               console → one
+fleet.museum.ack.<id>.<corr>             node → console per-command result
+fleet.museum.work.<job>                  JetStream work queue — the gems
+fleet.museum.gem.<job>.<seq>             worker → console  results
+fleet.museum.event                       anything worth a toast
 ```
 
 Permissions follow invariant 5: a node's credentials allow publish on
@@ -325,11 +326,11 @@ subscribes to everything.
 ### How the bus is authenticated
 
 *This section replaces a sentence that could not be built. Until 2026-09-08 it
-read "mTLS with certificates from the same grove CA, so there is one trust root
-in the entire system." The grove CA is an **SSH** certificate authority —
+read "mTLS with certificates from the same fleet CA, so there is one trust root
+in the entire system." The fleet CA is an **SSH** certificate authority —
 `ssh-keygen -s` — and an SSH CA key cannot sign an X.509 certificate, which is
 what mTLS wants. The intention was right and the mechanism did not exist. See
-`grove-m4-backlog.md` §3 D1 for the full working.*
+`fleet-m4-backlog.md` §3 D1 for the full working.*
 
 **Nodes authenticate to the bus with NATS nkeys, and the permission list lives
 in the warden's configuration.** An nkey is an ed25519 keypair in NATS's own
@@ -343,11 +344,11 @@ The single trust root survives, and it is the SSH CA. It decides *membership*;
 the nkey is a **scoped capability issued as a consequence of membership**, not
 a second authority:
 
-1. A node generates its own seed, on itself, at enrolment. `/etc/copal/grove/
+1. A node generates its own seed, on itself, at enrolment. `/etc/copal/fleet/
    nkey.seed`, mode 0600, root. Only the public half (`U…`) is ever read out —
    invariant 2, unchanged.
 2. The console reads that public half **over the channel the host certificate
-   just proved**. A machine that cannot present a valid grove host certificate
+   just proved**. A machine that cannot present a valid fleet host certificate
    never reaches this step, so invariant 1 decides here exactly as it decides
    everywhere else.
 3. The console writes the node's stanza into the warden's `nats.conf` with the
@@ -356,7 +357,7 @@ a second authority:
 Consequences worth knowing before they surprise somebody:
 
 - **Enrolment touches the warden.** Issuing a bus credential means editing a
-  file on a second machine. A grove whose warden is down can still enrol a node
+  file on a second machine. A fleet whose warden is down can still enrol a node
   over SSH; it just cannot put it on the bus until the warden is back.
 - **Revocation is a deletion.** Remove the stanza, reload, and the node is off
   the bus within a second. There is no revocation list to distribute and no
@@ -371,7 +372,7 @@ Commands are one line of JSON, and they carry their own idempotence:
 
 ```json
 {"v":1,"corr":"a3f1…","verb":"scene","args":["apply","rest"],
- "iss":"grove-operator","exp":1789042000,"once":"2026-09-08T09:14:22Z"}
+ "iss":"fleet-operator","exp":1789042000,"once":"2026-09-08T09:14:22Z"}
 ```
 
 `corr` correlates the acknowledgement. `exp` means a command that sat in a
@@ -409,7 +410,7 @@ tie-break: lowest node id, string compare
 ```
 
 Every node computes its own score, publishes it in the beacon TXT record, and
-the highest score that is currently announcing takes the role. `copal-grove
+the highest score that is currently announcing takes the role. `copal-fleet
 elect` is the half that reads the scores back; `role_now()` is only the field
 it writes.
 
@@ -426,7 +427,7 @@ intervals is eight minutes and any failover that waited on them would take
 that long. It does not, because the node agent holds an open connection to the
 warden: when the warden goes, the agent's socket fails within seconds, the
 agent records that id as announcing-but-not-answering, and the election
-discounts it and runs again. The beacon is how a grove learns the *scores*; the
+discounts it and runs again. The beacon is how a fleet learns the *scores*; the
 connection is how it learns who is *alive*. Earlier drafts of this section
 described the twenty seconds without saying which of the two produced it, and
 the code was built to the sentence rather than to the mechanism.
@@ -452,7 +453,7 @@ published on the bus, and the warden is one subscriber among many. **That is
 not true of this bus.** W1 puts `nats-server` *on* the warden, so two wardens
 are not one bus with two subscribers — they are two buses. A node connected to
 one does not see what is published on the other, and each has its own
-JetStream store. Split brain here costs a partitioned grove for as long as it
+JetStream store. Split brain here costs a partitioned fleet for as long as it
 lasts, not a duplicated log.
 
 What actually keeps it small is that the election is a **deterministic sort over
@@ -466,7 +467,7 @@ after the beacons agree again.
 And when it does happen, invariant 8 is what pays for it: `ls`, `enrol`, `run`,
 `scene`, `power` and `logs` are ssh verbs that never touch the bus, so a
 partitioned bus costs the wall going live, telemetry, and the log sink — not
-the grove. The console sees both wardens and prefers the higher score.
+the fleet. The console sees both wardens and prefers the higher score.
 
 **This has not been tested on hardware.** Two wardens need two machines and a
 power switch; W10 records it as not performed rather than as a claim, which is
@@ -475,7 +476,7 @@ what the rest of this section should have done from the start.
 If the warden is unplugged mid-day: the console notices in ten seconds, the
 next-highest node takes the role, the JetStream stream is re-created empty, and
 gems in flight are re-queued from the console's job manifest. Losing the warden
-costs the in-flight work of one job. It does not cost the grove.
+costs the in-flight work of one job. It does not cost the fleet.
 
 ---
 
@@ -501,7 +502,7 @@ timers. Porting `geerlingguy/k3s-ansible` to Alpine is a real afternoon, not a
 And there is a deeper mismatch. Those playbooks *install the operating system's
 software*. Copal already has a 15-stage installer that does that job better
 than a playbook can, because it does it with no network dependency and no
-Python on the target. Ansible's job in the grove is not installation. It is
+Python on the target. Ansible's job in the fleet is not installation. It is
 **the daily play**: apply a scene, gather facts, collect logs, restore a
 snapshot, upgrade a package on seven machines and skip the one that is off.
 
@@ -510,11 +511,11 @@ So the recommendation is: Ansible, scoped to the day, not to the build.
 ### The shape
 
 ```
-groves/
+fleets/
   museum/
-    grove.toml            the grove file — name, CA, nodes, tags, attachments
+    fleet.toml            the fleet file — name, CA, nodes, tags, attachments
     inventory/
-      copal_grove.py      dynamic inventory: mDNS + certificate check → hosts
+      copal_fleet.py      dynamic inventory: mDNS + certificate check → hosts
       static.ini          the fallback when discovery is off
     scenes/
       wake.yml  show.yml  reset.yml  rest.yml  sleep.yml
@@ -525,8 +526,8 @@ groves/
       copal_warden/       nats-server, the log sink
 ```
 
-`copal_grove.py` is the piece that makes discovery pay for itself: it browses
-`_copal-grove._tcp`, drops strangers and wrong-grove beacons, checks each
+`copal_fleet.py` is the piece that makes discovery pay for itself: it browses
+`_copal-fleet._tcp`, drops strangers and wrong-fleet beacons, checks each
 candidate's host certificate against the CA, and prints an inventory. The
 operator never edits a host list.
 
@@ -547,7 +548,7 @@ the randomised delay is `sleep $((RANDOM % 300))` at the top of the job rather
 than `RandomizedDelaySec`.
 
 Scenes are committed to git and the pull checks the signature, which is
-invariant 7: the grove executes what the console's repository says, not what
+invariant 7: the fleet executes what the console's repository says, not what
 the network says.
 
 ---
@@ -557,7 +558,7 @@ the network says.
 The requirement, in the operator's words: *every morning we turn all these
 Raspberry Pis on, and each day the task will be different.*
 
-A **scene** is a named, declarative, idempotent state of the whole grove.
+A **scene** is a named, declarative, idempotent state of the whole fleet.
 Applying a scene twice does nothing the second time. The day is four of them,
 and "today's task is different" means one file changed, not eight machines
 touched.
@@ -614,7 +615,7 @@ that needs a human with a plug.
 
 ---
 
-## 10 · The work — what the grove computes
+## 10 · The work — what the fleet computes
 
 Three jobs, chosen so that each demonstrates a different property, and all
 three producing something a visitor can watch.
@@ -687,9 +688,9 @@ exhibit it is a thorium mantle making a picture, and the label writes itself.
  "want":{"sha256":true},"deadline_s":120}
 ```
 
-`run` names a **runner** — a small executable in `/usr/libexec/copal-grove/run/`
+`run` names a **runner** — a small executable in `/usr/libexec/copal-fleet/run/`
 that reads a gem on stdin and writes a result on stdout. Adding a job to the
-grove is adding one file to that directory and one entry to the scene. There is
+fleet is adding one file to that directory and one entry to the scene. There is
 no plugin API beyond stdin and stdout, deliberately.
 
 ---
@@ -699,15 +700,15 @@ no plugin API beyond stdin and stdout, deliberately.
 The brief drew this line and it is the right line: network filesystems, iSCSI
 LUNs and model endpoints are **environment**, not distribution. They differ per
 site, they change without a rebuild, and baking them into the image would make
-the image site-specific. So they live in `grove.toml`, they are applied by the
-`wake` scene, and a missing attachment is a degraded grove rather than a broken
+the image site-specific. So they live in `fleet.toml`, they are applied by the
+`wake` scene, and a missing attachment is a degraded fleet rather than a broken
 boot.
 
 ```toml
 [[attachment]]
 kind    = "nfs"
 name    = "treasure"
-export  = "10.0.0.5:/mnt/tank/grove/museum"
+export  = "10.0.0.5:/mnt/tank/fleet/museum"
 at      = "/mnt/treasure"
 options = "nfsvers=4.2,ro,soft,timeo=50,retrans=2"
 require = false          # a missing NAS must not hang the boot
@@ -724,7 +725,7 @@ require = false          # a missing NAS must not hang the boot
   machines, no cards to fail — and it is also a direct contradiction of what
   Copal *is*: an installer whose entire premise is that Alpine's diskless model
   does not survive a graphical workload, which the original lab report
-  established with numbers. A grove could be netbooted; a Copal grove should
+  established with numbers. A fleet could be netbooted; a Copal fleet should
   not be. Noted, argued, declined.
 
 ### The model endpoint, and where the AI actually runs
@@ -737,7 +738,7 @@ to a swap-thrashing exhibit. So:
 
 ```mermaid
 flowchart LR
-    subgraph G["the grove — eight head clients"]
+    subgraph G["the fleet — eight head clients"]
         N1["museum-01<br/>display + session"]
         N2["museum-02"]
         N3["museum-0…"]
@@ -760,25 +761,25 @@ Two rules make this safe rather than merely convenient:
    advertises `_copal-model._tcp` with its model list in TXT. A node that finds
    a local endpoint uses it and never leaves the building; a node that finds
    none falls back to the egress node, or to nothing, and says which in the
-   console. A grove with no internet is a working grove with a smaller
+   console. A fleet with no internet is a working fleet with a smaller
    vocabulary.
 
-### k3s, and whether the grove should be Kubernetes
+### k3s, and whether the fleet should be Kubernetes
 
 It should not, and the reasoning is short. k3s genuinely runs on a Pi — a single
 binary, SQLite instead of etcd, 512 MB is its floor rather than its comfort — and
 if the workload were long-running containerised services with rolling updates
-it would be the correct choice. The grove's workload is *a room of desktops that
+it would be the correct choice. The fleet's workload is *a room of desktops that
 run a different thing each day, and a batch queue*. Kubernetes has no opinion
 about a screen, a logged-in session, a display server or a visitor, and those
 are the actual objects here. Running k3s to schedule a path tracer means paying
 for a control plane to get a work queue that JetStream gives away.
 
-It remains an attachment: a site that wants k3s on top of a Copal grove installs
+It remains an attachment: a site that wants k3s on top of a Copal fleet installs
 it as one, and `geerlingguy/k3s-ansible` ported to `apk` is the honest starting
 point.
 
-### Nix, and what it would actually buy a grove
+### Nix, and what it would actually buy a fleet
 
 The proposal is worth taking seriously and it splits into two questions that
 have different answers: **Nix as a package manager on a Copal machine**, and
@@ -789,7 +790,7 @@ stronger of the two by a distance.
 
 Eight machines running `apk add` on eight different afternoons are eight
 machines running eight slightly different things. Alpine's repositories move,
-`apk` resolves against whatever is current, and the grove drifts — quietly,
+`apk` resolves against whatever is current, and the fleet drifts — quietly,
 and in a way that only shows up when one node renders the exhibit differently
 from the other seven. Nix's answer is that a package is a store path, a store
 path is a hash of everything that went into it, and a closure copied to eight
@@ -799,7 +800,7 @@ that it behaves identically, that is the right shape.
 It is also the right shape for **the gem runner in M5**. A gem is currently
 "a program the runner directory knows how to start". A gem could be a closure:
 the console builds it once, copies it, and every node runs bit-identical work.
-Reproducible results out of a grove that computes things is worth more than it
+Reproducible results out of a fleet that computes things is worth more than it
 sounds — it is the difference between an exhibit and an experiment.
 
 #### Where it goes: an attachment, and a copy verb
@@ -808,7 +809,7 @@ sounds — it is the difference between an exhibit and an experiment.
 the right shape for it.** `nix copy --to ssh-ng://museum-03` needs the far end
 to run `nix-store --serve`, which is not a shell — it is one program speaking
 one protocol on stdin and stdout. That is exactly what invariant 4 asks for,
-so it is one more verb in `/usr/bin/copal-grove-exec` beside `power` and
+so it is one more verb in `/usr/bin/copal-fleet-exec` beside `power` and
 `snapshot`:
 
 ```
@@ -833,7 +834,7 @@ The Pis are, again, head clients.
    so `zero` (Pi Zero / Zero W / Pi 1) and `pi2b` would compile every package
    from source on a single core — which is not slow, it is impossible in any
    useful sense. Nix is a `zero2` / `pi4` / `pi5` / `pc` / `vm` feature, and a
-   grove with an original Zero in it is a grove where half the fleet cannot
+   fleet with an original Zero in it is one where half the machines cannot
    have this.
 2. **Alpine is musl and Nix is glibc.** This works — everything in
    `/nix/store` carries its own glibc, which is the whole point of the store —
@@ -860,8 +861,8 @@ after stage 3, as a thing a user opts into for their own profile, contradicts
 nothing.
 
 So: an **attachment** in the sense of §11 — configured, not installed, declared
-per site, and a grove without it is a grove with a smaller vocabulary rather
-than a broken one. `copal grove nix copy <path>` and a `nix-serve` verb are a
+per site, and a fleet without it is a fleet with a smaller vocabulary rather
+than a broken one. `copal fleet nix copy <path>` and a `nix-serve` verb are a
 milestone of their own, after the wall and before the gems, and the first thing
 that milestone should produce is not code but a measurement: a store on a Zero 2
 on a real card, and how long `nix copy` of one small closure actually takes over
@@ -874,7 +875,7 @@ on a real card, and how long `nix copy` of one small closure actually takes over
 Its design — the wall, the tree, Control / Observe / Exchange / Send, the
 notification model, and what is taken from Timbuktu, from Veyon and from Xen
 Orchestra — is the second half of
-**[`grove-lab-report.md`](grove-lab-report.md)**, because it is a design
+**[`fleet-lab-report.md`](fleet-lab-report.md)**, because it is a design
 argument with prior art rather than an architecture.
 
 The one architectural commitment made here: the console is **three faces on one
@@ -882,12 +883,12 @@ read model**, and the read model is the bus.
 
 | Face | For | Built |
 |---|---|---|
-| `copal grove …` | scripts, and the developer | first — it is the API |
+| `copal fleet …` | scripts, and the developer | first — it is the API |
 | the TUI | the operator at a terminal, in the existing `copal` menu idiom | second |
 | the web wall | the gallery screen, and the phone in the operator's pocket | third, served by the warden, read-mostly |
 
-Anything the TUI or the web view can do, `copal grove` can do, because they call
-it. That ordering is what stops the console from becoming the thing the grove
+Anything the TUI or the web view can do, `copal fleet` can do, because they call
+it. That ordering is what stops the console from becoming the thing the fleet
 depends on.
 
 ---
@@ -896,21 +897,21 @@ depends on.
 
 | File | Change | State |
 |---|---|---|
-| `tools/copal-answers.sh` | a grove section — name, size, index, role, tags, discovery mode, CA, PSK, per-card token; the CA is created here if it does not exist; `--node N` writes card N with a fresh token and asks nothing (`--role`, `--tags` for the board that differs) | **done** |
+| `tools/copal-answers.sh` | a fleet section — name, size, index, role, tags, discovery mode, CA, PSK, per-card token; the CA is created here if it does not exist; `--node N` writes card N with a fresh token and asks nothing (`--role`, `--tags` for the board that differs) | **done** |
 | `Makefile` | `make answers-node N=2 [ROLE=warden] [TAGS=sdr,north]` | **done** |
-| `copal-prep.sh` | read `COPAL_GROVE_*` from `answers.txt`, carry them to the card uninterpreted, and copy the CA's public half on as `grove_ca.pub` — refusing outright if it is a private key | **done** |
+| `copal-prep.sh` | read `COPAL_FLEET_*` from `answers.txt`, carry them to the card uninterpreted, and copy the CA's public half on as `fleet_ca.pub` — refusing outright if it is a private key | **done** |
 | `copal-prep.sh` | **stage 16** — avahi and the beacon, the CA into `sshd_config`, the forced command, first enrolment. `nats-server` on a warden and the runner directory are still M4–M5 | **done** |
-| `tools/copal-grove.sh` | signing, enrolment, inventory, and the scene verbs — `init`, `scene`, `power`, `wait` | **done** |
-| `copal` | `copal grove …` — the console's command face | **done** |
-| `groves/<name>/` | the grove file, scenes, roles, dynamic inventory; `copal grove init` writes one from `groves/example/` | **done** |
-| `docs/grove-plan.md` | this file | **done** |
-| `docs/grove-lab-report.md` | the survey and the interface design | **done** |
+| `tools/copal-fleet.sh` | signing, enrolment, inventory, and the scene verbs — `init`, `scene`, `power`, `wait` | **done** |
+| `copal` | `copal fleet …` — the console's command face | **done** |
+| `fleets/<name>/` | the fleet file, scenes, roles, dynamic inventory; `copal fleet init` writes one from `fleets/example/` | **done** |
+| `docs/fleet-plan.md` | this file | **done** |
+| `docs/fleet-lab-report.md` | the survey and the interface design | **done** |
 
 What "done" buys today, with no stage 16 written yet: `make answers` names a
-grove and makes its certificate authority, eight cards can be written from one
-interview, and every card carries the grove's name, its CA, its own index and
+fleet and makes its certificate authority, eight cards can be written from one
+interview, and every card carries the fleet's name, its CA, its own index and
 its own single-use enrolment token. The machines that come up are ordinary
-Copal machines that are *carrying the grove's identity* and not yet using it —
+Copal machines that are *carrying the fleet's identity* and not yet using it —
 which is exactly the right place for the first commit to stop, because nothing
 in it changes how a machine behaves.
 
@@ -921,16 +922,16 @@ so every one of "no such key file — continuing without one" killed the script
 instead of continuing. It was found by a test that supplied a `HOME` with no
 `.ssh` directory, which is a case nobody had run.
 
-### Stage 16 — "the grove"
+### Stage 16 — "the fleet"
 
 It belongs at the end for the same reason stage 13 does: it is the stage that
 changes who can reach the machine, so it runs after the machine is finished. It
 is also the first stage that is **opt-out by default** — a Copal install with no
-`COPAL_GROVE` in its answers skips it entirely and is exactly the machine it is
+`COPAL_FLEET` in its answers skips it entirely and is exactly the machine it is
 today.
 
 ```
-16 | the grove | avahi + the beacon, the CA public key into sshd,
+16 | the fleet | avahi + the beacon, the CA public key into sshd,
                  the forced command, nats-server if warden, the runner
                  directory, and the first enrolment
 ```
@@ -946,28 +947,28 @@ Five milestones. Each one is useful on its own, and each one is a thing that can
 be demonstrated to somebody before the next is started.
 
 M1, M2 and M3 are built. What follows M3 is the console proper, and the work
-the grove computes.
+the fleet computes.
 
-**M1 · Eight cards and a list.** `make answers` learns the grove; eight cards
-get written; every node advertises; `copal grove ls` prints the table with
+**M1 · Eight cards and a list.** `make answers` learns the fleet; eight cards
+get written; every node advertises; `copal fleet ls` prints the table with
 `✓ / ? / !`. No commands yet. *This alone replaces a spreadsheet of IP
 addresses.*
 
 **M2 · The CA and one verb.** Enrolment, host and user certificates, the
-forced command, and `copal grove run <verb>` fanned out over SSH. `copal grove
+forced command, and `copal fleet run <verb>` fanned out over SSH. `copal fleet
 run power off` turns off eight Pis. *This alone is the end of the working day.*
 
-**M3 · Scenes.** The grove file, the dynamic inventory, `wake` / `show` /
+**M3 · Scenes.** The fleet file, the dynamic inventory, `wake` / `show` /
 `reset` / `rest` / `sleep`, `ansible-pull` under `crond`. *This alone is the
 museum's morning.*
 
 **M4 · The bus and the wall.** `nats-server` on the warden, telemetry, log
 collection, thumbnails, and the TUI. *This alone is the console.* Broken into
 work items, with its three blocking decisions, in
-[`grove-m4-backlog.md`](grove-m4-backlog.md) — start there, and start with D1.
+[`fleet-m4-backlog.md`](fleet-m4-backlog.md) — start there, and start with D1.
 
 **M4½ · Nix, if it measures well.** A `nix-serve` verb behind the forced
-command, `copal grove nix copy`, and closures instead of `apk` for the things
+command, `copal fleet nix copy`, and closures instead of `apk` for the things
 that must be identical on every node. It is placed here rather than earlier
 because it excludes `zero` and `pi2b` entirely, and because the first thing it
 owes anybody is a measurement rather than code. See §11.
@@ -985,16 +986,16 @@ project stops after M3 the museum still opens.
 **Not a hypervisor.** The comparison to XCP-ng is about the *interface* — the
 pool, the tree, the host dashboard, the bulk selection — and not about the
 machinery. There are no VMs here, no live migration, and no shared block store
-holding disk images. A grove is bare metal that boots the same way every time.
+holding disk images. A fleet is bare metal that boots the same way every time.
 
 **Not high availability.** The warden is elected within seconds of the old one
 refusing a connection — see §7 for why that, and not the four-minute beacon, is
 what sets the number — and holds no
-state that matters. Nothing in the grove is designed to survive a partition,
+state that matters. Nothing in the fleet is designed to survive a partition,
 because there is no partition to survive on one switch in one room.
 
-**Not multi-tenant.** One grove, one operator, one CA. Two groves on one segment
-is supported and tested; two operators with different rights on one grove is
+**Not multi-tenant.** One fleet, one operator, one CA. Two fleets on one segment
+is supported and tested; two operators with different rights on one fleet is
 not, and would be the first thing to get wrong.
 
 **Not internet-facing.** Stated again because it is the invariant most likely to
@@ -1007,11 +1008,11 @@ Open questions, honestly held:
   needs measuring, on the Zero 2 and not on the VM. Adaptive interval, or a
   thumbnail only for the focused node, are both plausible outcomes.
 - **X11 or Wayland for Control.** `wayvnc` for Hyprland, `x11vnc` for the i3
-  session; the grove has both kinds of node and the console should not care.
+  session; the fleet has both kinds of node and the console should not care.
 - **Whether the console belongs on a node.** Running it on the warden means the
   museum needs no Mac in the morning. It also means the console is inside the
   thing it is watching. Probably: both, with the Mac authoritative for the CA.
-- **Two groves, one PSK.** Sites that clone a card between groves will do this,
+- **Two fleets, one PSK.** Sites that clone a card between fleets will do this,
   and the failure mode should be a clear error rather than a subtle one.
 - **Whether Nix is worth its store on a card.** §11 argues the shape is right —
   build on the console, copy closures to nodes — and that the cost is a
@@ -1022,7 +1023,7 @@ Open questions, honestly held:
   `--pass` asks once per run. A site that wants a genuinely unattended morning
   writes a narrow nopass rule for exactly the commands its scenes run. That is
   a real security decision and it deliberately belongs to the site, but the
-  grove should probably help it be written correctly rather than leaving
+  fleet should probably help it be written correctly rather than leaving
   everybody to invent it.
 
 ---
@@ -1030,7 +1031,7 @@ Open questions, honestly held:
 ## References
 
 Surveyed 2026-09-08. Full annotations, and what each one was actually taken
-from, are in `grove-lab-report.md` § "Prior art".
+from, are in `fleet-lab-report.md` § "Prior art".
 
 - Veyon — <https://veyon.io/en/> · <https://github.com/veyon/veyon>
 - Epoptes — <https://epoptes.org/>

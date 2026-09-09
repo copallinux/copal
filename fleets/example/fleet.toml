@@ -1,8 +1,8 @@
-# The grove file for @GROVE@.
+# The fleet file for @FLEET@.
 #
 # What is true about the ROOM rather than about a machine: which nodes there
 # are, how their power is switched, and what each scene needs before it can
-# run. It is read by `copal grove` and by nothing on a node.
+# run. It is read by `copal fleet` and by nothing on a node.
 #
 # It is parsed by a deliberately small reader -- [sections], key = "value", and
 # flat arrays of strings. Keep it to that. Anything that wants more structure
@@ -11,20 +11,20 @@
 # sketches as [[attachment]] tables live there instead: the console never reads
 # them, so making the console able to parse them would be work for nobody.
 
-[grove]
-name = "@GROVE@"
+[fleet]
+name = "@FLEET@"
 user = "@USER@"
 ca   = "@CA@"
 
-# The machines that are SUPPOSED to be here. `copal grove wait` reads this, and
+# The machines that are SUPPOSED to be here. `copal fleet wait` reads this, and
 # it has to be written down rather than discovered: a node that never comes up
 # can only be noticed by a list that was expecting it. Leave it empty and the
-# console assumes @GROVE@-01 .. @GROVE@-NN from the size in answers.txt.
+# console assumes @FLEET@-01 .. @FLEET@-NN from the size in answers.txt.
 nodes = []
 
 # --------------------------------------------------------------------------
 [power]
-# READ 9.1 OF docs/grove-plan.md BEFORE CHANGING THIS.
+# READ 9.1 OF docs/fleet-plan.md BEFORE CHANGING THIS.
 #
 # A RASPBERRY PI CANNOT BE WOKEN BY WAKE-ON-LAN. There is no standby rail
 # feeding the NIC, so a powered-off Pi cannot be reached by anything at all on
@@ -45,7 +45,7 @@ on   = "uhubctl -a on  -l {hub} -p {port}"
 off  = "uhubctl -a off -l {hub} -p {port}"
 hub  = "1-1"
 ports = []
-# ports = ["@GROVE@-01:1", "@GROVE@-02:2", "@GROVE@-03:3"]
+# ports = ["@FLEET@-01:1", "@FLEET@-02:2", "@FLEET@-03:3"]
 
 # --------------------------------------------------------------------------
 # One section per scene: what the console must do before and after the
@@ -54,9 +54,9 @@ ports = []
 # `become = true` means the scene runs doas on the node, and stage 1 configured
 # doas as `permit persist :wheel` -- it asks for a password. Ansible asks once
 # and reuses it for every host, and every card written from one answers.txt has
-# the same password, so it is one prompt for the whole grove:
+# the same password, so it is one prompt for the whole fleet:
 #
-#     copal grove scene wake --pass
+#     copal fleet scene wake --pass
 #
 # A site that wants an unattended morning writes a narrow nopass rule into
 # /etc/doas.d for exactly the commands its scenes run. That is a real choice

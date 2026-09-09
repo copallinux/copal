@@ -1,23 +1,23 @@
 ---
-# What is true of every node in the grove, whatever it is for.
+# What is true of every node in the fleet, whatever it is for.
 
-- name: this is a Copal machine that has joined a grove
-  # Stage 16 wrote /etc/copal/grove. Its absence means the card was built
-  # before groves existed, or was built without one -- which is not a failure
+- name: this is a Copal machine that has joined a fleet
+  # Stage 16 wrote /etc/copal/fleet. Its absence means the card was built
+  # before fleets existed, or was built without one -- which is not a failure
   # of this play so much as a machine that was never invited.
   ansible.builtin.stat:
-    path: /etc/copal/grove/name
-  register: copal_grove_marker
+    path: /etc/copal/fleet/name
+  register: copal_fleet_marker
 
-- name: refuse to configure a machine that is not in this grove
+- name: refuse to configure a machine that is not in this fleet
   ansible.builtin.fail:
     msg: >-
-      {{ inventory_hostname }} has no /etc/copal/grove -- it is not a grove
-      node. Rebuild its card with a grove named in answers.txt, or run stage 16
+      {{ inventory_hostname }} has no /etc/copal/fleet -- it is not a fleet
+      node. Rebuild its card with a fleet named in answers.txt, or run stage 16
       on it. Nothing was changed here.
-  when: not copal_grove_marker.stat.exists
+  when: not copal_fleet_marker.stat.exists
 
-- name: the packages this grove wants everywhere
+- name: the packages this fleet wants everywhere
   community.general.apk:
     name: "{{ copal_node_packages }}"
     state: present
@@ -73,15 +73,15 @@
 
 # ---------------------------------------------------------------------------
 - name: record which scene this node is in
-  # One word in one file, so that the node's own `copal-grove state` and the
-  # console agree about what the grove is doing. The console records the same
+  # One word in one file, so that the node's own `copal-fleet state` and the
+  # console agree about what the fleet is doing. The console records the same
   # name on its side; when the two disagree, the node is right.
   # NO become. Stage 16 leaves this one file owned by the login account,
   # because a scene name is a LABEL and not a permission: everything in the
   # directory beside it stays root's. That is what lets `show` and `rest` --
   # the two scenes a museum applies most often -- run without a password.
   ansible.builtin.copy:
-    dest: /etc/copal/grove/scene
+    dest: /etc/copal/fleet/scene
     content: "{{ copal_scene }}\n"
     mode: "0644"
   notify: rewrite the beacon

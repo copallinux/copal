@@ -3,8 +3,8 @@
 # Copyright (c) 2026 Paul Richeson
 """copal-bus-test -- prove that a node cannot speak for another node.
 
-THIS FILE IS INVARIANT 5.  docs/grove-plan.md §2 says "A node may only speak
-for itself", and docs/grove-m4-backlog.md §4 W2 says, correctly, that without a
+THIS FILE IS INVARIANT 5.  docs/fleet-plan.md §2 says "A node may only speak
+for itself", and docs/fleet-m4-backlog.md §4 W2 says, correctly, that without a
 test which watches a server refuse, that sentence is an aspiration rather than
 a property.  This is the test.
 
@@ -17,7 +17,7 @@ do.  A pass means a real NATS server turned each of them down.
     tools/copal-bus-test.py -v           say what each check did
 
 Exit status:  0 every check passed
-              1 a check failed -- the grove's permissions are not what the plan says
+              1 a check failed -- the fleet's permissions are not what the plan says
              77 skipped: no nats-server here.  NOT a pass, and it says so.
 
 77 is the autotools convention for a skip, and it is used rather than 0 so that
@@ -38,7 +38,7 @@ sys.path.insert(0, HERE)
 import copal_nats   # noqa: E402
 import copal_nkeys  # noqa: E402
 
-GROVE = "testgrove"
+FLEET = "testfleet"
 VERBOSE = "-v" in sys.argv or "--verbose" in sys.argv
 
 G = "\033[32m"; R = "\033[31m"; Y = "\033[33m"; Z = "\033[0m"
@@ -118,12 +118,12 @@ def main():
             "museum-02 %s warden" % pubs["museum-02"],
             "console %s console" % pubs["console"],
         ]))
-        users = os.path.join(tmp, "grove-users.conf")
+        users = os.path.join(tmp, "fleet-users.conf")
         with open(users, "w") as fh:
-            fh.write(copal_nats.render_users(GROVE, rows))
+            fh.write(copal_nats.render_users(FLEET, rows))
         conf = os.path.join(tmp, "nats.conf")
         with open(conf, "w") as fh:
-            fh.write('host: 127.0.0.1\nport: %d\ninclude "grove-users.conf"\n' % port)
+            fh.write('host: 127.0.0.1\nport: %d\ninclude "fleet-users.conf"\n' % port)
 
         # The warden asks nats-server to parse before it installs; so does this.
         parse = subprocess.run([nats, "-t", "-c", conf],
@@ -150,34 +150,34 @@ def main():
         one.connect()
         check("connects with its own nkey", True)
 
-        ok, errs = allowed(one, "grove.%s.node.museum-01.state" % GROVE)
+        ok, errs = allowed(one, "fleet.%s.node.museum-01.state" % FLEET)
         check("may publish its own state", ok, str(errs))
-        ok, errs = allowed(one, "grove.%s.log.museum-01" % GROVE)
+        ok, errs = allowed(one, "fleet.%s.log.museum-01" % FLEET)
         check("may publish its own log", ok, str(errs))
-        ok, errs = allowed(one, "grove.%s.hello" % GROVE)
+        ok, errs = allowed(one, "fleet.%s.hello" % FLEET)
         check("may say hello", ok, str(errs))
 
         # THE ONE THAT MATTERS.
-        ok, errs = refused(one, "grove.%s.node.museum-02.state" % GROVE)
+        ok, errs = refused(one, "fleet.%s.node.museum-02.state" % FLEET)
         check("MAY NOT publish as museum-02", ok,
               "the server allowed it -- invariant 5 is not enforced")
-        ok, errs = refused(one, "grove.%s.log.museum-02" % GROVE)
+        ok, errs = refused(one, "fleet.%s.log.museum-02" % FLEET)
         check("MAY NOT write museum-02's log", ok, str(errs))
-        ok, errs = refused(one, "grove.%s.ack.museum-02.abc" % GROVE)
+        ok, errs = refused(one, "fleet.%s.ack.museum-02.abc" % FLEET)
         check("MAY NOT acknowledge for museum-02", ok, str(errs))
-        ok, errs = refused(one, "grove.%s.cmd.all" % GROVE)
+        ok, errs = refused(one, "fleet.%s.cmd.all" % FLEET)
         check("MAY NOT issue a command", ok, str(errs))
-        ok, errs = refused(one, "grove.othergrove.node.x.state")
-        check("MAY NOT reach another grove", ok, str(errs))
+        ok, errs = refused(one, "fleet.otherfleet.node.x.state")
+        check("MAY NOT reach another fleet", ok, str(errs))
 
-        one.subscribe("grove.%s.cmd.>" % GROVE)
+        one.subscribe("fleet.%s.cmd.>" % FLEET)
         errs = one.flush()
         check("may subscribe to commands", not errs, str(errs))
-        one.subscribe("grove.%s.>" % GROVE)
+        one.subscribe("fleet.%s.>" % FLEET)
         errs = one.flush()
-        check("MAY NOT subscribe to the whole grove",
+        check("MAY NOT subscribe to the whole fleet",
               any("Permissions Violation" in e for e in errs), str(errs))
-        one.subscribe("grove.%s.log.>" % GROVE)
+        one.subscribe("fleet.%s.log.>" % FLEET)
         errs = one.flush()
         check("MAY NOT read every node's log",
               any("Permissions Violation" in e for e in errs), str(errs))
@@ -189,17 +189,17 @@ def main():
                               name="museum-02", timeout=8)
         war.connect()
         check("connects with its own nkey", True)
-        war.subscribe("grove.%s.log.>" % GROVE)
+        war.subscribe("fleet.%s.log.>" % FLEET)
         errs = war.flush()
         check("may collect every node's log", not errs, str(errs))
-        ok, errs = refused(war, "grove.%s.node.museum-01.state" % GROVE)
+        ok, errs = refused(war, "fleet.%s.node.museum-01.state" % FLEET)
         check("MAY NOT publish as museum-01 either", ok,
               "being the warden bought a publish grant it should not have")
-        ok, errs = refused(war, "grove.%s.cmd.all" % GROVE)
+        ok, errs = refused(war, "fleet.%s.cmd.all" % FLEET)
         check("MAY NOT issue a command", ok, str(errs))
-        war.subscribe("grove.%s.>" % GROVE)
+        war.subscribe("fleet.%s.>" % FLEET)
         errs = war.flush()
-        check("MAY NOT subscribe to the whole grove",
+        check("MAY NOT subscribe to the whole fleet",
               any("Permissions Violation" in e for e in errs), str(errs))
         war.close()
 
@@ -209,12 +209,12 @@ def main():
                               name="console", timeout=8)
         con.connect()
         check("connects with the console's nkey", True)
-        ok, errs = allowed(con, "grove.%s.cmd.all" % GROVE)
+        ok, errs = allowed(con, "fleet.%s.cmd.all" % FLEET)
         check("may issue a command", ok, str(errs))
-        con.subscribe("grove.%s.>" % GROVE)
+        con.subscribe("fleet.%s.>" % FLEET)
         errs = con.flush()
-        check("may subscribe to the whole grove", not errs, str(errs))
-        ok, errs = refused(con, "grove.%s.node.museum-01.state" % GROVE)
+        check("may subscribe to the whole fleet", not errs, str(errs))
+        ok, errs = refused(con, "fleet.%s.node.museum-01.state" % FLEET)
         check("MAY NOT impersonate a node", ok, str(errs))
         con.close()
 
@@ -243,9 +243,9 @@ def main():
                                name="museum-01", timeout=8)
         try:
             shut.connect()
-            check("an unenrolled grove admits nobody", False, "museum-01 still got in")
+            check("an unenrolled fleet admits nobody", False, "museum-01 still got in")
         except copal_nats.NatsError as exc:
-            check("an unenrolled grove admits nobody", "uthorization" in str(exc), str(exc))
+            check("an unenrolled fleet admits nobody", "uthorization" in str(exc), str(exc))
         finally:
             shut.close()
 

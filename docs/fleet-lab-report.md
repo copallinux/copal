@@ -1,4 +1,4 @@
-# One Console for a Room of Machines: What Timbuktu, Veyon and Xen Orchestra Each Got Right, and the Interface a Copal Grove Should Have
+# One Console for a Room of Machines: What Timbuktu, Veyon and Xen Orchestra Each Got Right, and the Interface a Copal Fleet Should Have
 
 *Lab Report — IEEE Format*
 
@@ -7,7 +7,7 @@ Copyright (c) 2026 Paul Richeson. MIT licensed — see `LICENSE`. Copal Linux is
 an aggregation of Alpine Linux, not a derivative work of it; Alpine and its
 packages remain under their own licences.
 
-Companion document: **[`grove-plan.md`](grove-plan.md)** — the architecture,
+Companion document: **[`fleet-plan.md`](fleet-plan.md)** — the architecture,
 the security invariants and the build order. This report is the survey and the
 interface.
 
@@ -27,7 +27,7 @@ thumbnails, lock, broadcast, power); imaging systems in the FOG lineage own the
 lineage own the *object model* (a pool, a tree, a host dashboard, filter and
 bulk action). This report reads all four against the museum requirement, states
 what each contributes and what each would cost to adopt whole, and designs the
-Copal Grove console from the parts that survive. The central finding is a
+Copal Fleet console from the parts that survive. The central finding is a
 division that none of the four makes cleanly and that the museum case makes
 unavoidable: **a fleet console has two audiences with opposite needs — the
 operator who must see every machine at once and act on all of them, and the
@@ -103,7 +103,7 @@ never an authority.
 **Connection documents** is the third, and it is the most underrated. A saved
 file that *is* the host, that can be put on a desktop, mailed to a colleague and
 double-clicked, is a better abstraction than a row in an application's private
-database. The grove file in the plan is a connection document for eight
+database. The fleet file in the plan is a connection document for eight
 machines, and putting it in git is the natural extension.
 
 **Install-over-SSH** is the fourth, and it is quietly the whole configuration
@@ -112,9 +112,9 @@ not have it yet, provided the machine already has SSH. Copal's stage 16 is that
 idea with a certificate authority behind it.
 
 What does *not* carry over: the transport (UDP then TCP on port 407, with SSH
-tunnelling bolted on later — a grove is certificate-authenticated from the
+tunnelling bolted on later — a fleet is certificate-authenticated from the
 first packet), the user-database integration (OpenDirectory, Active Directory —
-a grove has one CA and no directory), and the assumption of one operator to one
+a fleet has one CA and no directory), and the assumption of one operator to one
 target. The brief states no compatibility is required, and none is attempted.
 
 ### B. Veyon, Epoptes — the room
@@ -162,13 +162,13 @@ memory test. It is the right tool for "make fifty identical Windows machines"
 and it is the wrong shape here for a reason that is interesting rather than
 incidental.
 
-FOG's unit of change is **the disk image**. A grove's is **the scene** — and
+FOG's unit of change is **the disk image**. A fleet's is **the scene** — and
 below that, the stage-11 rsync snapshot, which restores a user's home in seconds
 where an image restores a machine in minutes. "Quit all programs and get ready
 for the next user" happens between visitors, possibly every fifteen minutes,
 and the imaging model is two orders of magnitude too heavy for it. FOG is
 recorded here as the correct answer to a question the museum is not asking:
-rebuilding a node from nothing, which in a grove is done by writing a card.
+rebuilding a node from nothing, which in a fleet is done by writing a card.
 
 ### D. Xen Orchestra and XCP-ng — the object model
 
@@ -180,33 +180,33 @@ screen-sharing tool.
 What XO does that is worth copying exactly:
 
 1. **The pool as the first-class object.** XO opens one connection to a pool
-   master and manages every host through it. The grove's warden is a
+   master and manages every host through it. The fleet's warden is a
    deliberately weakened version of this — §7 of the plan — and the weakening is
-   the point: XO *must* reach the pool coordinator, whereas a grove console
+   the point: XO *must* reach the pool coordinator, whereas a fleet console
    falls back to talking to nodes directly. Adopting XO's model without adopting
    its single point of dependency is the main architectural borrowing in this
    design.
 2. **The type selector.** A header that switches the whole view between VMs,
-   hosts and pools. The grove's equivalent is **Nodes · Jobs · Scenes · Logs**,
+   hosts and pools. The fleet's equivalent is **Nodes · Jobs · Scenes · Logs**,
    and having it be a selector rather than a navigation tree is what keeps the
    window from growing a sidebar of sidebars.
 3. **Assisted filters, and the count.** A list header showing "6 of 8" with
-   filters by pool, host and tag. In a grove this is the mechanism for every
+   filters by pool, host and tag. In a fleet this is the mechanism for every
    bulk operation: filter to a set, see how many you have, act on the set. "Quit
    all programs" is not a special command — it is `reset` applied to a
    selection, and the selection is visible before it is acted on.
 4. **The host dashboard.** Version, hardware model, sockets and RAM, whether it
-   is the primary, alarms, missing patches. The grove's node dashboard is that
+   is the primary, alarms, missing patches. The fleet's node dashboard is that
    list with the Pi's words substituted: `COPAL_BUILD_ID`, Alpine version, arch,
    RAM and zram, SoC temperature, the firmware throttle flags, card wear, uptime,
    last beacon, whether it is warden, pending `apk` upgrades.
 5. **A live console on the object itself**, full-screen, openable in its own
-   tab. The grove's is the SSH session and the VNC session, and "openable in its
+   tab. The fleet's is the SSH session and the VNC session, and "openable in its
    own window" is not a small detail — it is what lets an operator leave a
    machine open while going back to the wall.
 
 XO 6's addition of a tree view and dashboards is the confirmation that the type
-selector alone stops scaling; a grove of eight does not need the tree yet, and
+selector alone stops scaling; a fleet of eight does not need the tree yet, and
 the design leaves room for it rather than building it.
 
 ### E. BOINC — the work model, and the display
@@ -215,7 +215,7 @@ BOINC is the survey's fifth entry and it is here for two things.
 
 The first is **the superhost pattern**: a site running many machines promotes
 one host to superhost, all others talk only to it, and only it needs internet
-access. That is the grove's warden and the grove's egress node arrived at
+access. That is the fleet's warden and the fleet's egress node arrived at
 independently by a project with twenty years of deployment behind it, which is
 reassuring.
 
@@ -246,7 +246,7 @@ Everything the console shows is one of six things. Keeping this list short is
 what keeps the interface small.
 
 ```
-grove ── node ── session      (a login, a display, what is on screen)
+fleet ── node ── session      (a login, a display, what is on screen)
       │       └─ attachment   (a mount, an endpoint, present or not)
       ├─ scene                (a declared state; applied or not)
       ├─ job  ── gem          (work; queued, running, done, redelivered)
@@ -255,7 +255,7 @@ grove ── node ── session      (a login, a display, what is on screen)
 
 A node is not "a connection". This is the first departure from Timbuktu and the
 one that everything else depends on. In Timbuktu a machine exists in the
-interface because you opened a document for it; in a grove a node exists because
+interface because you opened a document for it; in a fleet a node exists because
 it announced itself and its certificate checked out, and the connection is a
 thing you may or may not currently have to it. The console is therefore a
 *monitor* that can open connections, rather than a *connection manager* that
@@ -268,7 +268,7 @@ experience.
 chip. This is Veyon's monitoring mode with XO's filter header on top of it.
 
 ```
-┌─ COPAL GROVE · museum ─────────────────────── 8 of 8 ·  ⌂ wall ─┐
+┌─ COPAL FLEET · museum ─────────────────────── 8 of 8 ·  ⌂ wall ─┐
 │ scene: show · since 09:58        tags: [all] [wall] [sdr] [north]│
 ├─────────────────┬─────────────────┬─────────────────┬───────────┤
 │ museum-01  ●    │ museum-02  ●    │ museum-03  ●    │ museum-04 ●│
@@ -316,7 +316,7 @@ losing what the console knows about it.
 one rule the interface must not break is that **the operator cannot get stuck
 inside a machine**.
 
-**Both are built** — M4 W7 and W8, `tools/copal-grove-console.py`. Two
+**Both are built** — M4 W7 and W8, `tools/copal-fleet-console.py`. Two
 departures from the sketches above, and both are the same decision. The wall's
 thumbnail is a temperature bar and the seat's screen is the node's log, because
 neither a thumbnail (W5) nor a live screen (L6) exists yet, and a real reading
@@ -338,7 +338,7 @@ one node or forty — and each names its scope in the confirmation.
 | **Exchange** `e` | two-pane SFTP browser | refused |
 | **Send** `s` | push a file to a folder | push to all — the exhibit's assets, at once |
 | **Message** `m` | banner on the node's screen | banner on all; the museum's "please stand back" |
-| **Run** `r` | one verb through `copal-grove-exec` | fan-out with a per-node result column |
+| **Run** `r` | one verb through `copal-fleet-exec` | fan-out with a per-node result column |
 | **Scene** `S` | — | apply a scene; the only way to change what the room is doing |
 | **Snapshot** `k` | restore the home from stage 11 | the reset, per selection |
 | **Power** `p` | off / reboot / on, if capable | the end of the day |
@@ -352,7 +352,7 @@ thing" — is `Scene` or `Run`, both of which are declarative and both of which
 report per-node results. An interface that offers control-all offers a way to
 put the room into eight different broken states with one gesture.
 
-**Notify on the whole grove is the morning's real primitive.** "Tell me when all
+**Notify on the whole fleet is the morning's real primitive.** "Tell me when all
 eight are up" is what the operator wants at 08:31, and it is the difference
 between watching a screen for ten minutes and doing something else until it
 chimes.
@@ -362,7 +362,7 @@ chimes.
 Because §III-F found no prior art, the scene system is built as thin as it can
 be and no thinner:
 
-- A scene is a YAML file in the grove's git checkout. Five ship: `wake`, `show`,
+- A scene is a YAML file in the fleet's git checkout. Five ship: `wake`, `show`,
   `reset`, `rest`, `sleep`.
 - Applying a scene publishes one command and runs one Ansible play. Both paths
   exist because both fail differently — the bus is fast and lossy, the play is
@@ -385,10 +385,10 @@ rather than by how bad they sound:
 | **chip** | a node needs attention and the wall can show which | the node's tile turns amber and stays |
 | **alarm** | the room is not in the state the scene says | a bar across the top that does not go away until acknowledged or fixed |
 
-The log collector is the warden subscribing to `grove.museum.log.>` and writing
+The log collector is the warden subscribing to `fleet.museum.log.>` and writing
 per-node dated files — the same shape stage 10 already uses for the Geiger
 counter's per-counter logs, which is a pattern this repository has already
-tested. The console's log view is `tail -f` over the grove with a node filter
+tested. The console's log view is `tail -f` over the fleet with a node filter
 and a text filter, and its single most important property is that **it keeps the
 logs of a node that has gone away**. The failure the museum will actually hit is
 a Pi that dies at 11:00 and is asked about at 16:00, and a log collector that
@@ -484,7 +484,7 @@ because in them a found machine is either managed or invisible.
 The mDNS literature is blunt: there is no authentication of any kind, any device
 can answer any query, and Avahi's own transaction-ID handling has been a spoofing
 CVE. Every one of those facts is survivable here for one reason — nothing in the
-grove believes a beacon. The beacon fills a list. A certificate decides.
+fleet believes a beacon. The beacon fills a list. A certificate decides.
 
 ### C. The tempting designs that were rejected, and why
 
@@ -506,7 +506,7 @@ monitoring mode costs rather than by admiring what it does.
 
 **A central database of nodes.** Rejected in favour of the beacon plus the
 certificate, because a database is a thing that goes stale and a beacon cannot.
-The grove file holds intent — names, tags, attachments — and the network holds
+The fleet file holds intent — names, tags, attachments — and the network holds
 fact. Keeping those apart is what makes "6 of 8" a truthful header.
 
 **Voice intercom.** Timbuktu had it and it is charming. In a gallery it is a
@@ -516,7 +516,7 @@ speaker that startles visitors. Deferred, not declined.
 
 | Source | Taken |
 |---|---|
-| Timbuktu | Control/Observe as separate verbs · Exchange and Send as separate verbs · discovery beside the address field · connection documents (→ the grove file) · install-over-SSH (→ stage 16) · notify-on-active (→ notify-all-up) |
+| Timbuktu | Control/Observe as separate verbs · Exchange and Send as separate verbs · discovery beside the address field · connection documents (→ the fleet file) · install-over-SSH (→ stage 16) · notify-on-active (→ notify-all-up) |
 | Veyon | the wall of live thumbnails · lock and broadcast · power operations framed as session preparation and follow-up · the finding that ARM boards can host it, and the measurement of what it would cost |
 | Epoptes | grouping clients for targeted action (→ tags) · remote command execution as a first-class operation |
 | FOG | the counter-example that fixed the reset mechanism at snapshots rather than images |
@@ -554,7 +554,7 @@ art — supplies the answer to *each day the task will be different*.
 
 Three things should be built before anything else, and none of them is the
 console: the beacon, the certificate authority, and one fanned-out verb. With
-those, `copal grove run power off` ends the day, which is the operation the
+those, `copal fleet run power off` ends the day, which is the operation the
 museum performs most reliably and enjoys least. The wall can wait; it is the
 part everyone will want to build first and the part that is worth nothing
 without the three below it.
@@ -566,8 +566,8 @@ above the first removed. This is the checklist, each line performed and dated,
 and it is reproducible rather than a claim: `tools/copal-degrade-test.py`, or
 `make degrade-test`.
 
-Run **2026-09-08** on a workstation, against a fixture grove of eight, a real
-`nats-server` 2.14.0 and the real `copal-grove-agent`. **18 passed, 1 failed,
+Run **2026-09-08** on a workstation, against a fixture fleet of eight, a real
+`nats-server` 2.14.0 and the real `copal-fleet-agent`. **18 passed, 1 failed,
 1 not performed.** A layer that has become load-bearing is a bug, and this item
 exists to find it. It found one.
 
@@ -575,7 +575,7 @@ exists to find it. It found one.
 
 | | |
 |---|---|
-| ✓ | `copal grove state --json` still answers, and still returns JSON |
+| ✓ | `copal fleet state --json` still answers, and still returns JSON |
 | ✓ | the document says the bus is unreachable, and why |
 | ✓ | all seven announced nodes are still listed — the list does not shrink |
 | ✓ | **no node is called live.** They are `announced`, which is all a beacon can prove |
@@ -605,7 +605,7 @@ anything. The console uses it only to break ties between machines that already
 
 So §7's description — "every node computes this, publishes it, and the highest
 score that is currently announcing takes the role" — is not implemented. Pull
-the warden's plug and the grove has no warden until somebody rewrites a card.
+the warden's plug and the fleet has no warden until somebody rewrites a card.
 
 It is worth being precise about what does and does not break, because it is
 less than it sounds: **the bus is a convenience and every verb over ssh is
@@ -619,7 +619,7 @@ half of that sentence was untrue when it was written, and building on it is how
 this went unnoticed through W1, W3 and W7.
 
 **Resolved 2026-09-08, and the line above stands as it was run.** The election
-was written: `copal-grove elect`, the sort §7 describes, with hysteresis that
+was written: `copal-fleet elect`, the sort §7 describes, with hysteresis that
 is quick to yield and slow to take, a `warden-lease` that tells a rebooted
 warden from a card off a shelf, and a `role-pin` for an operator who wants the
 sort to keep out of it. The re-run reads **20 passed, 0 failed, 2 not
@@ -658,15 +658,15 @@ Performed with a `PATH` carrying every command except avahi's, rather than with
 an empty `PATH` — emptying it proves only that a shell without `sh` cannot run,
 which is not the question.
 
-The last line also failed first. The backlog said addresses come from the grove
-file's `nodes` key; that key is a list of **ids** for `copal grove wait` and
+The last line also failed first. The backlog said addresses come from the fleet
+file's `nodes` key; that key is a list of **ids** for `copal fleet wait` and
 carries no addresses at all. The mechanism was right and the sentence was not,
 and a checklist naming the wrong file is one somebody follows into a wall at
 nine in the morning. The document is corrected and the suite now checks it.
 
 ### 4. Console killed mid-command — a re-run is safe · **PASS** · 2026-09-08
 
-Performed against a real `nats-server` and the real `copal-grove-agent`, driven
+Performed against a real `nats-server` and the real `copal-fleet-agent`, driven
 by the real client. **This is also W3's acceptance test, which had not been
 made until now.**
 
@@ -677,7 +677,7 @@ made until now.**
 | ✓ | still exactly once **after the agent was restarted**, which is what proves the seen-list is on disk and not in memory |
 | ✓ | a command that expired while the node was off **did not fire** |
 | ✓ | a fresh command still ran — the node is idempotent, not deaf |
-| ✓ | every command went through `copal-grove-exec`, as a verb |
+| ✓ | every command went through `copal-fleet-exec`, as a verb |
 
 The last line is the one that matters for the security boundary: a command
 arriving over NATS is executed by the same forced command sshd uses, so a verb

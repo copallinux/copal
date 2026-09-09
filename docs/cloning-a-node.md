@@ -1,14 +1,14 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!-- Copyright (c) 2026 Paul Richeson -- copal-alpine-linux -->
 
-# Cloning a VM into a grove node
+# Cloning a VM into a fleet node
 
 **A second machine in twenty minutes, without building an image — and the five
 things that must stop being identical before it is safe to boot.**
 
 Copyright (c) 2026 Paul Richeson. MIT licensed — see `LICENSE`.
 
-The supported way to add a machine to a grove is `make answers-node N=2` and a
+The supported way to add a machine to a fleet is `make answers-node N=2` and a
 fresh image. This file is the other way: copy a VM that already works, then
 take its identity away. It exists because the three items M4 leaves *not
 performed* — the twenty-second failover, two wardens at once, and a node
@@ -17,7 +17,7 @@ and cloning a VM is the cheapest two machines available. Killing a VM is the
 power switch.
 
 **A clone is not a node until its identity is new.** Everything below is one
-idea: a grove proves who a machine is, and a clone arrives claiming to be
+idea: a fleet proves who a machine is, and a clone arrives claiming to be
 somebody who already exists.
 
 ---
@@ -41,10 +41,10 @@ poweroff        # in the guest, or: utm/utm-vm.sh stop --target aarch64
 **Do this first, because it is the one that is not merely untidy.**
 
 If the machine you are cloning is the console — the one that ran `make answers`
-or `copal grove ca --create` — then `~/.copal` holds the **private half of the
-grove's certificate authority**, plus the operator key and the token ledger.
-Cloning it puts the authority that signs every machine in the grove onto every
-machine in the grove. That is the "CA private key on an SD card in a museum"
+or `copal fleet ca --create` — then `~/.copal` holds the **private half of the
+fleet's certificate authority**, plus the operator key and the token ledger.
+Cloning it puts the authority that signs every machine in the fleet onto every
+machine in the fleet. That is the "CA private key on an SD card in a museum"
 failure `tools/copal-answers.sh` spends a paragraph warning about, moved
 somewhere it is easier to forget.
 
@@ -53,7 +53,7 @@ rm -rf ~/.copal                 # ON THE CLONE, never on the console
 ```
 
 There is exactly one console. A node never needs `~/.copal`; it carries the CA's
-**public** half in `/etc/copal/grove/`, which is all it needs to verify.
+**public** half in `/etc/copal/fleet/`, which is all it needs to verify.
 
 ## 2 · The MAC address
 
@@ -89,15 +89,15 @@ name. Avahi publishes from the hostname too, so two machines called `neagh` on
 one segment become `neagh` and `neagh-2` silently, which is a beacon carrying a
 name nobody chose.
 
-## 4 · The SSH host keys — the one that breaks the grove
+## 4 · The SSH host keys — the one that breaks the fleet
 
 ```sh
 rm -f /etc/ssh/ssh_host_*
 ssh-keygen -A
 ```
 
-This is not hygiene. `copal grove` proves a node by a **host certificate over
-its host key**: `copal grove trust` writes one `@cert-authority` line, and
+This is not hygiene. `copal fleet` proves a node by a **host certificate over
+its host key**: `copal fleet trust` writes one `@cert-authority` line, and
 `cert_state` is what turns a `?` into a `✓`. Two clones sharing a host key are
 one identity to the console — indistinguishable, both validating, and invariant
 5 broken *below* the bus, where `copal-bus-test.py` cannot see it.
@@ -128,28 +128,28 @@ rc-service sshd restart
 
 Substitute the source VM's own hostname for `neagh`.
 
-## 7 · Turning the clone into an actual grove node
+## 7 · Turning the clone into an actual fleet node
 
-A clone of a machine built without a grove is not a node: `stage_grove` is a
-no-op on a card with no grove on it, so there is no `copal-grove`, no beacon and
+A clone of a machine built without a fleet is not a node: `stage_fleet` is a
+no-op on a card with no fleet on it, so there is no `copal-fleet`, no beacon and
 no agent. The boot partition still carries the installer, which means the stage
 can be run in place — no image, no card, no Mac:
 
 1. On the console, generate this card's answers: `make answers-node N=2`.
-2. Copy the seven `COPAL_GROVE_*` values from the console's `answers.txt` into
+2. Copy the seven `COPAL_FLEET_*` values from the console's `answers.txt` into
    the clone's `/boot/answers.txt`, and the CA's public half to
-   `/boot/grove_ca.pub` — `grove_install_ca` looks for it there.
-3. On the clone: `sh /boot/copal-init.sh`, then choose `16) The grove`.
+   `/boot/fleet_ca.pub` — `fleet_install_ca` looks for it there.
+3. On the clone: `sh /boot/copal-init.sh`, then choose `16) The fleet`.
 
 **This path is written, not proved.** The stage menu offers 16 on its own and
-`grove_joined()` gates on the answers file, but running stage 16 on an
+`fleet_joined()` gates on the answers file, but running stage 16 on an
 already-installed system has not been performed here. The failure mode is a
 stage that declines to run, which costs nothing.
 
-Every card needs its **own** `COPAL_GROVE_INDEX` and its **own**
-`COPAL_GROVE_TOKEN`. The token is single-use and burned at enrolment; two
-machines sharing one means the second cannot enrol. `COPAL_GROVE`,
-`_SIZE`, `_CA`, `_PSK` and `_DISCOVERY` are properties of the grove and are
+Every card needs its **own** `COPAL_FLEET_INDEX` and its **own**
+`COPAL_FLEET_TOKEN`. The token is single-use and burned at enrolment; two
+machines sharing one means the second cannot enrol. `COPAL_FLEET`,
+`_SIZE`, `_CA`, `_PSK` and `_DISCOVERY` are properties of the fleet and are
 identical on every card by design.
 
 ## 8 · answers.txt does not travel between machines
@@ -170,8 +170,8 @@ CFG_SSHKEY=~/.ssh/id_ed25519.pub make image MODEL=pi4
 
 The git identity in the file has the same property, with a smaller cost.
 
-**The installer already gets this right once.** `COPAL_GROVE_CA` is an absolute
-path too, and a missing one is `die "grove CA not found: …"` — the build stops
+**The installer already gets this right once.** `COPAL_FLEET_CA` is an absolute
+path too, and a missing one is `die "fleet CA not found: …"` — the build stops
 and says so. A missing `CFG_SSHKEY` is `warn "… continuing without one"` and a
 finished card. Same class of mistake, one machine apart, and only one of them
 costs you a card you have to write again.
@@ -185,14 +185,14 @@ killed VM drops its link instantly, and how fast a real card stops answering is
 the thing the twenty-second failover measurement is actually about.
 
 One real difference is worth knowing before buying anything. §9.1 of
-[`grove-plan.md`](grove-plan.md) says a **Pi Zero 2 cannot be woken by
+[`fleet-plan.md`](fleet-plan.md) says a **Pi Zero 2 cannot be woken by
 Wake-on-LAN** — no standby rail feeds the NIC. A **Pi 4 or CM4 can be woken
-from the `GLOBAL_EN` / power-button header**, so a grove built on Pi 4s has a
-morning-automation option that a grove of Zero 2s does not.
+from the `GLOBAL_EN` / power-button header**, so a fleet built on Pi 4s has a
+morning-automation option that a fleet of Zero 2s does not.
 
 ---
 
-**See also** — [`grove-console.md`](grove-console.md) for the verbs,
-[`grove-plan.md`](grove-plan.md) for the invariants, and
-[`grove-m4-backlog.md`](grove-m4-backlog.md) §4 W10 for what two machines are
+**See also** — [`fleet-console.md`](fleet-console.md) for the verbs,
+[`fleet-plan.md`](fleet-plan.md) for the invariants, and
+[`fleet-m4-backlog.md`](fleet-m4-backlog.md) §4 W10 for what two machines are
 still needed to prove.

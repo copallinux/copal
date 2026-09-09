@@ -108,7 +108,7 @@ help:
 	@printf '  make layout     arrange the four VM windows on screen\n'
 	@printf '  make layout-auto  the same, then log in and start the install\n'
 	@printf '  make answers    identity and root password for an unattended install\n'
-	@printf '  make answers-node N=2   card N of a grove -- asks nothing; see docs/grove-plan.md\n'
+	@printf '  make answers-node N=2   card N of a fleet -- asks nothing; see docs/fleet-plan.md\n'
 	@printf '                  Creates the VM only if there is not one already. Never replaces one.\n'
 	@printf '\n'
 	@printf '\033[1m  Building the VM image\033[0m\n'
@@ -386,13 +386,13 @@ answers:
 answers-show:
 	@tools/copal-answers.sh --show
 
-# Card N of a grove, without repeating the interview. The grove's name, size,
+# Card N of a fleet, without repeating the interview. The fleet's name, size,
 # certificate authority and shared answers stay exactly as they are; the
 # hostname becomes NAME-0N and a fresh single-use enrolment token is written,
 # so that eight cards cost one interview and seven of these. Build the card
 # between each one -- the answers file describes whichever card is next.
 #
-#   make answers            once, naming the grove
+#   make answers            once, naming the fleet
 #   make image MODEL=zero2  card 1
 #   make answers-node N=2
 #   make image MODEL=zero2  card 2   ... and so on
@@ -498,14 +498,14 @@ RADBEEPER_SRC ?= $(HOME)/code/radbeeper/radbeeper
 ## This is the fix when lint says the embedded copy has drifted -- edit
 ## radbeeper in its own checkout, run this, commit both.
 .PHONY: sync-radbeeper
-## sync-agent: copy tools/copal-grove-agent into the heredoc in copal-prep.sh.
+## sync-agent: copy tools/copal-fleet-agent into the heredoc in copal-prep.sh.
 sync-agent:
 	@python3 -c 'import sys;\
 	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
-	m="    cat > /usr/bin/copal-grove-agent <<\x27COPALAGENT\x27\n";\
+	m="    cat > /usr/bin/copal-fleet-agent <<\x27COPALAGENT\x27\n";\
 	i=s.index(m)+len(m);j=s.index("\nCOPALAGENT\n",i);\
-	open(p,"w").write(s[:i]+prog.rstrip("\n")+s[j:])' $(PREP) tools/copal-grove-agent
-	@printf '  ok      tools/copal-grove-agent -> $(PREP)\n'
+	open(p,"w").write(s[:i]+prog.rstrip("\n")+s[j:])' $(PREP) tools/copal-fleet-agent
+	@printf '  ok      tools/copal-fleet-agent -> $(PREP)\n'
 	@$(MAKE) --no-print-directory lint
 
 ## sync-nats: copy tools/copal_nats.py into the heredoc in copal-prep.sh.
@@ -568,19 +568,19 @@ lint: | $(BUILDDIR)
 	    && printf '  ok      tools/copal_nats.py\n'
 	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-bus-test.py \
 	    && printf '  ok      tools/copal-bus-test.py\n'
-	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-grove-agent \
-	    && printf '  ok      tools/copal-grove-agent\n'
-	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-grove-view \
-	    && printf '  ok      tools/copal-grove-view\n'
-	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-grove-console.py \
-	    && printf '  ok      tools/copal-grove-console.py\n'
+	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-fleet-agent \
+	    && printf '  ok      tools/copal-fleet-agent\n'
+	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-fleet-view \
+	    && printf '  ok      tools/copal-fleet-view\n'
+	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-fleet-console.py \
+	    && printf '  ok      tools/copal-fleet-console.py\n'
 	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal-degrade-test.py \
 	    && printf '  ok      tools/copal-degrade-test.py\n'
 	@python3 tools/copal_nkeys.py self-test | sed 's/^/  ok      /'
 	@python3 tools/copal_nats.py self-test | sed 's/^/  ok      /'
-	@python3 tools/copal-grove-agent --self-test 2>/dev/null | sed 's/^/  ok      /'
-	@python3 tools/copal-grove-view self-test | sed 's/^/  ok      /'
-	@python3 tools/copal-grove-console.py --self-test | sed 's/^/  ok      /'
+	@python3 tools/copal-fleet-agent --self-test 2>/dev/null | sed 's/^/  ok      /'
+	@python3 tools/copal-fleet-view self-test | sed 's/^/  ok      /'
+	@python3 tools/copal-fleet-console.py --self-test | sed 's/^/  ok      /'
 	@sed -n "/^    cat > \/usr\/lib\/copal\/copal_nkeys.py <<'COPALNKEYS'$$/,/^COPALNKEYS$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.nkeys.lint.py
 	@test -s $(BUILDDIR)/.nkeys.lint.py \
@@ -599,24 +599,24 @@ lint: | $(BUILDDIR)
 	    && printf '  ok      copal_nats.py in $(PREP) matches tools/\n' \
 	    || { printf '\033[31merror:\033[0m copal_nats.py in $(PREP) has drifted -- run: make sync-nats\n'; \
 	         diff -u tools/copal_nats.py $(BUILDDIR)/.nats.lint.py | head -20; exit 1; }
-	@sed -n "/^    cat > \/usr\/bin\/copal-grove-agent <<'COPALAGENT'$$/,/^COPALAGENT$$/p" $(PREP) \
+	@sed -n "/^    cat > \/usr\/bin\/copal-fleet-agent <<'COPALAGENT'$$/,/^COPALAGENT$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.agent.lint.py
 	@test -s $(BUILDDIR)/.agent.lint.py \
-	    || { printf '\033[31merror:\033[0m could not extract copal-grove-agent from $(PREP)\n'; exit 1; }
-	@cmp -s $(BUILDDIR)/.agent.lint.py tools/copal-grove-agent \
-	    && printf '  ok      copal-grove-agent in $(PREP) matches tools/\n' \
-	    || { printf '\033[31merror:\033[0m copal-grove-agent in $(PREP) has drifted -- run: make sync-agent\n'; \
-	         diff -u tools/copal-grove-agent $(BUILDDIR)/.agent.lint.py | head -20; exit 1; }
+	    || { printf '\033[31merror:\033[0m could not extract copal-fleet-agent from $(PREP)\n'; exit 1; }
+	@cmp -s $(BUILDDIR)/.agent.lint.py tools/copal-fleet-agent \
+	    && printf '  ok      copal-fleet-agent in $(PREP) matches tools/\n' \
+	    || { printf '\033[31merror:\033[0m copal-fleet-agent in $(PREP) has drifted -- run: make sync-agent\n'; \
+	         diff -u tools/copal-fleet-agent $(BUILDDIR)/.agent.lint.py | head -20; exit 1; }
 	@rm -f $(BUILDDIR)/.nkeys.lint.py $(BUILDDIR)/.nats.lint.py $(BUILDDIR)/.agent.lint.py
-	@sed -n "/^    cat > \/usr\/bin\/copal-grove <<'COPALGROVE'$$/,/^COPALGROVE$$/p" $(PREP) \
-	    | sed '1d;$$d' > $(BUILDDIR)/.copal-grove.lint.sh
-	@test -s $(BUILDDIR)/.copal-grove.lint.sh && sh -n $(BUILDDIR)/.copal-grove.lint.sh \
-	    && printf '  ok      copal-grove (embedded, %s lines)\n' "$$(wc -l < $(BUILDDIR)/.copal-grove.lint.sh | xargs)"
-	@sed -n "/^    cat > \/usr\/bin\/copal-grove-exec <<'COPALGROVEEXEC'$$/,/^COPALGROVEEXEC$$/p" $(PREP) \
-	    | sed '1d;$$d' > $(BUILDDIR)/.grove-exec.lint.sh
-	@test -s $(BUILDDIR)/.grove-exec.lint.sh && sh -n $(BUILDDIR)/.grove-exec.lint.sh \
-	    && printf '  ok      copal-grove-exec (embedded, %s lines)\n' "$$(wc -l < $(BUILDDIR)/.grove-exec.lint.sh | xargs)"
-	@rm -f $(BUILDDIR)/.copal-grove.lint.sh $(BUILDDIR)/.grove-exec.lint.sh
+	@sed -n "/^    cat > \/usr\/bin\/copal-fleet <<'COPALFLEET'$$/,/^COPALFLEET$$/p" $(PREP) \
+	    | sed '1d;$$d' > $(BUILDDIR)/.copal-fleet.lint.sh
+	@test -s $(BUILDDIR)/.copal-fleet.lint.sh && sh -n $(BUILDDIR)/.copal-fleet.lint.sh \
+	    && printf '  ok      copal-fleet (embedded, %s lines)\n' "$$(wc -l < $(BUILDDIR)/.copal-fleet.lint.sh | xargs)"
+	@sed -n "/^    cat > \/usr\/bin\/copal-fleet-exec <<'COPALFLEETEXEC'$$/,/^COPALFLEETEXEC$$/p" $(PREP) \
+	    | sed '1d;$$d' > $(BUILDDIR)/.fleet-exec.lint.sh
+	@test -s $(BUILDDIR)/.fleet-exec.lint.sh && sh -n $(BUILDDIR)/.fleet-exec.lint.sh \
+	    && printf '  ok      copal-fleet-exec (embedded, %s lines)\n' "$$(wc -l < $(BUILDDIR)/.fleet-exec.lint.sh | xargs)"
+	@rm -f $(BUILDDIR)/.copal-fleet.lint.sh $(BUILDDIR)/.fleet-exec.lint.sh
 	@sed -n "/^    cat > \/usr\/local\/bin\/radbeeper <<'RADBEEPERPY'$$/,/^RADBEEPERPY$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.radbeeper.lint.py
 	@test -s $(BUILDDIR)/.radbeeper.lint.py \

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson
-"""copal_nats -- the grove's half of NATS: the permission list, and the wire.
+"""copal_nats -- the fleet's half of NATS: the permission list, and the wire.
 
 Two things live here because they are two halves of one subject, and keeping
-them together means there is ONE place that knows what a grove's subjects are
+them together means there is ONE place that knows what a fleet's subjects are
 called:
 
   render_users()   the warden's authorization block -- invariant 5, rendered
@@ -13,7 +13,7 @@ called:
 WHY NOT `nats-py`:  the console's home is the operator's Mac, where `apk` does
 not exist and the fallback is `pip install` into whatever environment happens
 to be current.  A museum console that needs pip at 08:45 is a console that is
-down.  See grove-m4-backlog.md §3 D3.
+down.  See fleet-m4-backlog.md §3 D3.
 
 WHY THE RENDERER IS HERE AND NOT IN THE SHELL:  because the test that proves
 invariant 5 has to render exactly what the warden renders.  Two copies of those
@@ -26,10 +26,10 @@ first INFO knows everything it needs:
     S: INFO {"nonce":"...","auth_required":true}
     C: CONNECT {"nkey":"U...","sig":"...","name":"...","verbose":false}
     C: PING                                 S: PONG
-    C: SUB grove.museum.cmd.> 1
-    C: PUB grove.museum.hello 0
-    S: MSG grove.museum.cmd.all 1 17
-    S: -ERR 'Permissions Violation for Publish to "grove.museum.node.x.state"'
+    C: SUB fleet.museum.cmd.> 1
+    C: PUB fleet.museum.hello 0
+    S: MSG fleet.museum.cmd.all 1 17
+    S: -ERR 'Permissions Violation for Publish to "fleet.museum.node.x.state"'
 
 A permission violation is an -ERR that does NOT close the connection.  An
 authorization failure is an -ERR that does.  The difference is the whole of
@@ -49,33 +49,33 @@ ID_OK = set("abcdefghijklmnopqrstuvwxyz0123456789-")
 
 # ------------------------------------------------------- the permissions ---
 #
-# INVARIANT 5 OF docs/grove-plan.md, and this function is the only place in the
+# INVARIANT 5 OF docs/fleet-plan.md, and this function is the only place in the
 # system where these strings are built.  Both arguments are checked by the
-# caller before they arrive: `grove` against ID_OK by render_users, and `nid`
+# caller before they arrive: `fleet` against ID_OK by render_users, and `nid`
 # the same.  Nothing here interpolates anything a network could choose.
 
 ROLES = ("node", "warden", "console")
 
 
-def perms_for(grove, nid, role):
+def perms_for(fleet, nid, role):
     """(publish allow-list, subscribe allow-list) for one member."""
     if role == "console":
         # The console is the one member that may command, and the one member
         # that may listen to everything.  It is not a node and does not get a
         # node's shape.
-        return (["grove.%s.cmd.>" % grove],
-                ["grove.%s.>" % grove])
+        return (["fleet.%s.cmd.>" % fleet],
+                ["fleet.%s.>" % fleet])
     if role not in ("node", "warden"):
         raise ValueError("role is one of %s, not %r" % (", ".join(ROLES), role))
 
     # A node publishes under its own id and nowhere else.  This is invariant 5.
-    publish = ["grove.%s.node.%s.>" % (grove, nid),
-               "grove.%s.log.%s" % (grove, nid),
-               "grove.%s.ack.%s.>" % (grove, nid),
-               "grove.%s.gem.>" % grove,
-               "grove.%s.hello" % grove]
-    subscribe = ["grove.%s.cmd.>" % grove,
-                 "grove.%s.work.>" % grove]
+    publish = ["fleet.%s.node.%s.>" % (fleet, nid),
+               "fleet.%s.log.%s" % (fleet, nid),
+               "fleet.%s.ack.%s.>" % (fleet, nid),
+               "fleet.%s.gem.>" % fleet,
+               "fleet.%s.hello" % fleet]
+    subscribe = ["fleet.%s.cmd.>" % fleet,
+                 "fleet.%s.work.>" % fleet]
 
     # THE WARDEN IS A NODE THAT ALSO COLLECTS LOGS, and this is the whole of
     # the difference.  W4 has it subscribe to every node's log subject and
@@ -83,12 +83,12 @@ def perms_for(grove, nid, role):
     # correctly, since a node has no business reading another node's log.
     #
     # It is a SUBSCRIBE grant and never a publish one: the warden may read what
-    # the grove says and still cannot say anything in another node's name. A
-    # compromised warden costs the grove its log sink and its queue. It does
+    # the fleet says and still cannot say anything in another node's name. A
+    # compromised warden costs the fleet its log sink and its queue. It does
     # not let the warden forge telemetry, which is what invariant 5 is for and
     # why §7 can call the warden a convenience rather than an authority.
     if role == "warden":
-        subscribe = subscribe + ["grove.%s.log.>" % grove]
+        subscribe = subscribe + ["fleet.%s.log.>" % fleet]
     return (publish, subscribe)
 
 
@@ -129,22 +129,22 @@ def parse_members(text):
     return rows
 
 
-def render_users(grove, rows):
-    """The warden's /etc/nats/grove-users.conf, as text."""
-    if not grove or set(grove) - ID_OK:
-        raise ValueError("refusing to render a grove name that is not [a-z0-9-]: %r" % grove)
+def render_users(fleet, rows):
+    """The warden's /etc/nats/fleet-users.conf, as text."""
+    if not fleet or set(fleet) - ID_OK:
+        raise ValueError("refusing to render a fleet name that is not [a-z0-9-]: %r" % fleet)
     out = [
-        "# /etc/nats/grove-users.conf -- rendered by `copal-grove bus-users`.",
+        "# /etc/nats/fleet-users.conf -- rendered by `copal-fleet bus-users`.",
         "# Do not edit: the next enrolment overwrites it. %d members." % len(rows),
         "#",
-        "# THIS FILE IS INVARIANT 5 of docs/grove-plan.md, in the form the server",
+        "# THIS FILE IS INVARIANT 5 of docs/fleet-plan.md, in the form the server",
         "# enforces it. A node publishes under its own id and nowhere else. Read",
         "# it against the plan -- that is what it is here for.",
         "authorization {",
         "    users = [",
     ]
     for nid, nkey, role in rows:
-        pub, sub = perms_for(grove, nid, role)
+        pub, sub = perms_for(fleet, nid, role)
         quoted = lambda xs: ", ".join('"%s"' % x for x in xs)  # noqa: E731
         out.append("        # %s (%s)" % (nid, role))
         out.append("        { nkey: %s, permissions: {" % nkey)
@@ -164,7 +164,7 @@ class NatsError(Exception):
 
 class Nats:
     """One connection.  Not thread-safe, and deliberately not a reconnector --
-    W3's agent owns the backoff policy, because only it knows that a grove with
+    W3's agent owns the backoff policy, because only it knows that a fleet with
     no warden is the ordinary state during a handover rather than a fault."""
 
     def __init__(self, host, port=4222, seed=None, name="copal", timeout=5.0):
@@ -333,9 +333,9 @@ class Nats:
 
 # -------------------------------------------------------------------- cli ---
 
-USAGE = """copal_nats -- the grove's permission list, and a client for the bus
+USAGE = """copal_nats -- the fleet's permission list, and a client for the bus
 
-  copal_nats.py render GROVE FILE    the warden's authorization block
+  copal_nats.py render FLEET FILE    the warden's authorization block
   copal_nats.py ping HOST[:PORT]     is there a bus there, and does it want a key
   copal_nats.py self-test            the renderer, and the wire against a stub
 """
@@ -347,8 +347,8 @@ def main(argv):
         return 0
     try:
         if argv[1] == "render":
-            grove, path = argv[2], argv[3]
-            sys.stdout.write(render_users(grove, parse_members(open(path).read())))
+            fleet, path = argv[2], argv[3]
+            sys.stdout.write(render_users(fleet, parse_members(open(path).read())))
         elif argv[1] == "ping":
             where = argv[2]
             host, _, port = where.partition(":")
@@ -459,11 +459,11 @@ def self_test():
     checks += 1
 
     # A node's own subjects are there; another node's are not, anywhere.
-    assert '"grove.museum.node.museum-01.>"' in conf
-    assert '"grove.museum.log.museum-01"' in conf
-    assert conf.count('"grove.museum.cmd.>"') == 3   # two nodes subscribe, console publishes
-    assert '"grove.museum.>"' in conf                # the console, and only the console
-    assert conf.count('"grove.museum.>"') == 1
+    assert '"fleet.museum.node.museum-01.>"' in conf
+    assert '"fleet.museum.log.museum-01"' in conf
+    assert conf.count('"fleet.museum.cmd.>"') == 3   # two nodes subscribe, console publishes
+    assert '"fleet.museum.>"' in conf                # the console, and only the console
+    assert conf.count('"fleet.museum.>"') == 1
     checks += 5
 
     # The publish allow-list of a node must not mention any other node's id.
@@ -471,7 +471,7 @@ def self_test():
         pub, sub = perms_for("museum", nid, "node")
         other = "museum-02" if nid == "museum-01" else "museum-01"
         assert not any(other in s for s in pub + sub), "a node's list names another node"
-        assert not any(s == "grove.museum.>" for s in pub + sub), "a node got the console's wildcard"
+        assert not any(s == "fleet.museum.>" for s in pub + sub), "a node got the console's wildcard"
         checks += 2
 
     # The warden gets exactly one thing a node does not, and it is a
@@ -479,8 +479,8 @@ def self_test():
     npub, nsub = perms_for("museum", "museum-06", "node")
     wpub, wsub = perms_for("museum", "museum-06", "warden")
     assert wpub == npub, "the warden was given a publish grant a node lacks"
-    assert set(wsub) - set(nsub) == {"grove.museum.log.>"}, wsub
-    assert "grove.museum.log.>" not in nsub, "a plain node may read every log"
+    assert set(wsub) - set(nsub) == {"fleet.museum.log.>"}, wsub
+    assert "fleet.museum.log.>" not in nsub, "a plain node may read every log"
     checks += 3
 
     for bad, why in [
@@ -505,7 +505,7 @@ def self_test():
         except ValueError:
             checks += 1
         else:
-            raise AssertionError("rendered a grove name it should have refused: %r" % bad)
+            raise AssertionError("rendered a fleet name it should have refused: %r" % bad)
 
     # -- the wire, against the stub -------------------------------------
     srv = socket.socket()
@@ -524,16 +524,16 @@ def self_test():
     client = Nats("127.0.0.1", port, seed=seeds["museum-01"], name="museum-01")
     client.connect()                                    # handshake + signature
     checks += 1
-    sid = client.subscribe("grove.museum.cmd.>")
+    sid = client.subscribe("fleet.museum.cmd.>")
     assert sid == 1
-    client.publish("grove.museum.node.museum-01.state", b"temp=41")
+    client.publish("fleet.museum.node.museum-01.state", b"temp=41")
     assert client.flush() == [], "an allowed publish drew an error"
     checks += 2
-    client.publish("grove.museum.node.forbidden.state", b"nope")
+    client.publish("fleet.museum.node.forbidden.state", b"nope")
     errs = client.flush()
     assert len(errs) == 1 and "Permissions Violation" in errs[0], errs
     checks += 1
-    client.publish("grove.museum.echo", b"hello")
+    client.publish("fleet.museum.echo", b"hello")
     got = client.messages(0.5)
     assert got and got[0][3] == b"hello", got
     checks += 1
@@ -543,7 +543,7 @@ def self_test():
     # This used to raise AttributeError on a lazily-created buffer, and it was
     # found by deliberately breaking a permission to check that the invariant
     # test could fail -- the console heard itself and the client fell over.
-    client.publish("grove.museum.echo", b"during-flush")
+    client.publish("fleet.museum.echo", b"during-flush")
     assert client.flush() == [], "the echo drew an error"
     heard = client.messages(0.2)
     assert any(m[3] == b"during-flush" for m in heard), heard
@@ -552,7 +552,7 @@ def self_test():
     client.close()
     thread.join(timeout=5)
     srv.close()
-    assert observed.get("sub") == ["SUB grove.museum.cmd.> 1"], observed.get("sub")
+    assert observed.get("sub") == ["SUB fleet.museum.cmd.> 1"], observed.get("sub")
     checks += 1
 
     # A client with no seed must refuse to talk to a server that wants one,

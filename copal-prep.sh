@@ -416,26 +416,26 @@ CFG_SSH_PASSWORD_LOGIN="${CFG_SSH_PASSWORD_LOGIN:-${COPAL_SSH_PASSWORD_LOGIN:-}}
 CFG_ROOT_PW_HASH="${CFG_ROOT_PW_HASH:-${COPAL_ROOT_PW_HASH:-}}"
 CFG_AUTO_ANSWERS="${CFG_AUTO_ANSWERS:-${COPAL_AUTO:-0}}"
 
-# THE GROVE, carried and not interpreted. This script does nothing with any of
+# THE FLEET, carried and not interpreted. This script does nothing with any of
 # these except copy them to the card; stage 16 on the machine is what reads
-# them, and stage 16 does nothing at all when the grove name is empty -- which
-# is every answers.txt written before groves existed, and every standalone
-# build since. See docs/grove-plan.md. Assigned OUTSIDE the answers-file block
+# them, and stage 16 does nothing at all when the fleet name is empty -- which
+# is every answers.txt written before fleets existed, and every standalone
+# build since. See docs/fleet-plan.md. Assigned OUTSIDE the answers-file block
 # above, unconditionally, because the heredoc that writes the card expands all
 # of them and this script runs under 'set -u': an unset one is not an empty
 # line on the card, it is the end of the build.
-CFG_GROVE="${CFG_GROVE:-${COPAL_GROVE:-}}"
-CFG_GROVE_SIZE="${CFG_GROVE_SIZE:-${COPAL_GROVE_SIZE:-}}"
-CFG_GROVE_INDEX="${CFG_GROVE_INDEX:-${COPAL_GROVE_INDEX:-}}"
-CFG_GROVE_ROLE="${CFG_GROVE_ROLE:-${COPAL_GROVE_ROLE:-}}"
-CFG_GROVE_TAGS="${CFG_GROVE_TAGS:-${COPAL_GROVE_TAGS:-}}"
-CFG_GROVE_DISCOVERY="${CFG_GROVE_DISCOVERY:-${COPAL_GROVE_DISCOVERY:-}}"
-CFG_GROVE_PSK="${CFG_GROVE_PSK:-${COPAL_GROVE_PSK:-}}"
-CFG_GROVE_TOKEN="${CFG_GROVE_TOKEN:-${COPAL_GROVE_TOKEN:-}}"
+CFG_FLEET="${CFG_FLEET:-${COPAL_FLEET:-}}"
+CFG_FLEET_SIZE="${CFG_FLEET_SIZE:-${COPAL_FLEET_SIZE:-}}"
+CFG_FLEET_INDEX="${CFG_FLEET_INDEX:-${COPAL_FLEET_INDEX:-}}"
+CFG_FLEET_ROLE="${CFG_FLEET_ROLE:-${COPAL_FLEET_ROLE:-}}"
+CFG_FLEET_TAGS="${CFG_FLEET_TAGS:-${COPAL_FLEET_TAGS:-}}"
+CFG_FLEET_DISCOVERY="${CFG_FLEET_DISCOVERY:-${COPAL_FLEET_DISCOVERY:-}}"
+CFG_FLEET_PSK="${CFG_FLEET_PSK:-${COPAL_FLEET_PSK:-}}"
+CFG_FLEET_TOKEN="${CFG_FLEET_TOKEN:-${COPAL_FLEET_TOKEN:-}}"
 # A PATH on this Mac, not a key. The key itself is copied onto the card beside
 # the login key further down; what lands in the card's answers file is only the
 # basename, because the path this Mac used means nothing on a Raspberry Pi.
-CFG_GROVE_CA="${CFG_GROVE_CA:-${COPAL_GROVE_CA:-}}"
+CFG_FLEET_CA="${CFG_FLEET_CA:-${COPAL_FLEET_CA:-}}"
 
 # --- defaults written into the answer file on the card ----------------------
 # setup-alpine reads these non-interactively, so first boot asks almost nothing.
@@ -1901,31 +1901,31 @@ COPAL_SSH_PASSWORD_LOGIN='${CFG_SSH_PASSWORD_LOGIN}'
 COPAL_AUTO='${CFG_AUTO_ANSWERS}'
 COPAL_USER='${CFG_USER}'
 
-# THE GROVE. An empty name here means a standalone machine and stage 16 skips
-# itself entirely, which is what every build did before groves existed.
+# THE FLEET. An empty name here means a standalone machine and stage 16 skips
+# itself entirely, which is what every build did before fleets existed.
 #
-#   GROVE, SIZE, CA, PSK, DISCOVERY   the same on every card in the fleet
+#   FLEET, SIZE, CA, PSK, DISCOVERY   the same on every card in the fleet
 #   INDEX, TOKEN, ROLE, TAGS          different on every card in the fleet
 #
 # Single quotes, for the reason spelled out above the password hash.
-COPAL_GROVE='${CFG_GROVE}'
-COPAL_GROVE_SIZE='${CFG_GROVE_SIZE}'
-COPAL_GROVE_INDEX='${CFG_GROVE_INDEX}'
-COPAL_GROVE_ROLE='${CFG_GROVE_ROLE}'
-COPAL_GROVE_TAGS='${CFG_GROVE_TAGS}'
-COPAL_GROVE_DISCOVERY='${CFG_GROVE_DISCOVERY}'
+COPAL_FLEET='${CFG_FLEET}'
+COPAL_FLEET_SIZE='${CFG_FLEET_SIZE}'
+COPAL_FLEET_INDEX='${CFG_FLEET_INDEX}'
+COPAL_FLEET_ROLE='${CFG_FLEET_ROLE}'
+COPAL_FLEET_TAGS='${CFG_FLEET_TAGS}'
+COPAL_FLEET_DISCOVERY='${CFG_FLEET_DISCOVERY}'
 # A filename on THIS card, not the path the Mac knew it by. The public half of
-# the grove certificate authority is copied here as grove_ca.pub, and stage 16
+# the fleet certificate authority is copied here as fleet_ca.pub, and stage 16
 # installs it as the authority sshd trusts for user certificates and the one
 # the console verifies this machine against. Empty means no authority was
-# given and the grove falls back to plain keys.
-COPAL_GROVE_CA='${CFG_GROVE_CA:+grove_ca.pub}'
-# Identifies which grove a discovery beacon claims to belong to. It is on every
+# given and the fleet falls back to plain keys.
+COPAL_FLEET_CA='${CFG_FLEET_CA:+fleet_ca.pub}'
+# Identifies which fleet a discovery beacon claims to belong to. It is on every
 # card, so it authenticates nobody -- it keeps the console list clean, and the
-# certificate above is what actually decides. See docs/grove-plan.md, part 4.
-COPAL_GROVE_PSK='${CFG_GROVE_PSK}'
+# certificate above is what actually decides. See docs/fleet-plan.md, part 4.
+COPAL_FLEET_PSK='${CFG_FLEET_PSK}'
 # Single use, this card only, burned the first time this machine is signed.
-COPAL_GROVE_TOKEN='${CFG_GROVE_TOKEN}'
+COPAL_FLEET_TOKEN='${CFG_FLEET_TOKEN}'
 ANSWERS
 
 # THE BOOT CONFIGURATION, which is the one part of this script that is genuinely
@@ -2202,30 +2202,30 @@ else
     warn "no SSH public key found on this Mac -- ${CFG_USER} will be password-only"
 fi
 
-# The grove certificate authority, PUBLIC half, under a fixed name so the card
+# The fleet certificate authority, PUBLIC half, under a fixed name so the card
 # is identical whatever the file was called on this Mac. This is what lets a
 # node verify the console and the console verify the node without either of
 # them ever having met, which is the thing that makes a self-discovering fleet
 # safe rather than merely convenient.
 #
 # The refusal below is the important line. A private key here would put the
-# whole grove's authority on an SD card in a museum, in a slot anyone can pull,
+# whole fleet's authority on an SD card in a museum, in a slot anyone can pull,
 # and it is an easy mistake to make -- the private key and the public key live
 # side by side and differ by four characters of filename. So the check is not
 # "does this look like a key" but "is this the public half", and failing it
 # stops the build rather than warning about it.
-if [ -n "$CFG_GROVE" ] && [ -n "$CFG_GROVE_CA" ]; then
-    [ -f "$CFG_GROVE_CA" ] || die "grove CA not found: $CFG_GROVE_CA"
-    if grep -q 'PRIVATE KEY' "$CFG_GROVE_CA"; then
-        die "$CFG_GROVE_CA is a PRIVATE key. Only the .pub half may go on a card."
+if [ -n "$CFG_FLEET" ] && [ -n "$CFG_FLEET_CA" ]; then
+    [ -f "$CFG_FLEET_CA" ] || die "fleet CA not found: $CFG_FLEET_CA"
+    if grep -q 'PRIVATE KEY' "$CFG_FLEET_CA"; then
+        die "$CFG_FLEET_CA is a PRIVATE key. Only the .pub half may go on a card."
     fi
-    grep -qE '^(ssh-(ed25519|rsa)|ecdsa-sha2-)' "$CFG_GROVE_CA" \
-        || die "$CFG_GROVE_CA is not an OpenSSH public key"
-    cp "$CFG_GROVE_CA" "$MNT/grove_ca.pub"
-    info "Grove: $CFG_GROVE, card ${CFG_GROVE_INDEX:-?} of ${CFG_GROVE_SIZE:-?}, CA $(awk '{print $1, $NF}' "$CFG_GROVE_CA")"
-elif [ -n "$CFG_GROVE" ]; then
-    warn "grove '$CFG_GROVE' has no certificate authority -- enrolment will fall"
-    warn "back to plain keys, which is weaker. See docs/grove-plan.md section 5."
+    grep -qE '^(ssh-(ed25519|rsa)|ecdsa-sha2-)' "$CFG_FLEET_CA" \
+        || die "$CFG_FLEET_CA is not an OpenSSH public key"
+    cp "$CFG_FLEET_CA" "$MNT/fleet_ca.pub"
+    info "Fleet: $CFG_FLEET, card ${CFG_FLEET_INDEX:-?} of ${CFG_FLEET_SIZE:-?}, CA $(awk '{print $1, $NF}' "$CFG_FLEET_CA")"
+elif [ -n "$CFG_FLEET" ]; then
+    warn "fleet '$CFG_FLEET' has no certificate authority -- enrolment will fall"
+    warn "back to plain keys, which is weaker. See docs/fleet-plan.md section 5."
 fi
 
 # ------------------------------------------------------- Mini vMac, staged ---
@@ -20195,18 +20195,18 @@ stage_lockroot() {
     commit_reminder
 }
 
-# ------------------------------------------------ stage 16: the grove -------
+# ------------------------------------------------ stage 16: the fleet -------
 #
-# A GROVE is a named set of Copal machines on one LAN that trust one
+# A FLEET is a named set of Copal machines on one LAN that trust one
 # certificate authority. This stage turns an ordinary Copal machine into one of
 # them: it announces itself, it accepts a host certificate, and it answers a
-# console. docs/grove-plan.md is the whole design.
+# console. docs/fleet-plan.md is the whole design.
 #
 # THREE PROPERTIES OF THIS STAGE, all deliberate:
 #
-#   IT IS OPT-OUT BY DEFAULT. A card with no COPAL_GROVE in its answers skips
+#   IT IS OPT-OUT BY DEFAULT. A card with no COPAL_FLEET in its answers skips
 #   the lot and the machine is exactly what it has always been. Every build
-#   made before groves existed is that card.
+#   made before fleets existed is that card.
 #
 #   IT RUNS LAST, like stage 13, because it changes who can reach the machine.
 #   Anything that changes the answer to "who may log in" belongs after the
@@ -20217,16 +20217,16 @@ stage_lockroot() {
 #   not exist yet, so it is added by install-cert at the moment the file
 #   appears. And every sshd_config change is validated with `sshd -t` and
 #   rolled back on failure, exactly as stage 6 does it.
-GROVE_DIR=/etc/copal/grove
-GROVE_CA=/etc/ssh/copal_grove_ca.pub
-GROVE_BEGIN='# >>> copal grove >>>'
-GROVE_END='# <<< copal grove <<<'
-GROVE_ACCT=copal-grove
+FLEET_DIR=/etc/copal/fleet
+FLEET_CA=/etc/ssh/copal_fleet_ca.pub
+FLEET_BEGIN='# >>> copal fleet >>>'
+FLEET_END='# <<< copal fleet <<<'
+FLEET_ACCT=copal-fleet
 
 # The same quote-agnostic reader the password uses, generalised. answers.txt is
 # setup-alpine's file: sourcing it here would set thirty of its variables in
 # this shell as a side effect, and one value is wanted.
-answers_grove() {  # <key> -- prints the value, or fails
+answers_fleet() {  # <key> -- prints the value, or fails
     [ -f "$ANSWERS" ] || return 1
     _v=$(sed -n "s/^$1=['\"]\{0,1\}//p" "$ANSWERS" \
             | sed "s/['\"]\{0,1\}[[:space:]]*\$//" | head -1)
@@ -20234,50 +20234,50 @@ answers_grove() {  # <key> -- prints the value, or fails
     printf '%s\n' "$_v"
 }
 
-grove_joined() { [ -s "$GROVE_DIR/name" ]; }
+fleet_joined() { [ -s "$FLEET_DIR/name" ]; }
 
-grove_write_identity() {
-    mkdir -p "$GROVE_DIR"
-    chmod 0755 "$GROVE_DIR"
+fleet_write_identity() {
+    mkdir -p "$FLEET_DIR"
+    chmod 0755 "$FLEET_DIR"
     for _f in name size index role tags discovery; do
-        _k=$(printf 'COPAL_GROVE_%s' "$(echo "$_f" | tr '[:lower:]' '[:upper:]')")
-        [ "$_f" = name ] && _k=COPAL_GROVE
-        answers_grove "$_k" > "$GROVE_DIR/$_f" 2>/dev/null || : > "$GROVE_DIR/$_f"
-        chmod 0644 "$GROVE_DIR/$_f"
+        _k=$(printf 'COPAL_FLEET_%s' "$(echo "$_f" | tr '[:lower:]' '[:upper:]')")
+        [ "$_f" = name ] && _k=COPAL_FLEET
+        answers_fleet "$_k" > "$FLEET_DIR/$_f" 2>/dev/null || : > "$FLEET_DIR/$_f"
+        chmod 0644 "$FLEET_DIR/$_f"
     done
     # The beacon key and the enrolment token are the two files here that are
     # not world readable. Neither is a credential in the sense the certificate
     # is -- see the plan -- but a token is single use and unspent, and a
     # world-readable one is an enrolment anybody with a shell can race.
     for _f in psk token; do
-        _k=$(printf 'COPAL_GROVE_%s' "$(echo "$_f" | tr '[:lower:]' '[:upper:]')")
-        answers_grove "$_k" > "$GROVE_DIR/$_f" 2>/dev/null || : > "$GROVE_DIR/$_f"
-        chmod 0600 "$GROVE_DIR/$_f"
+        _k=$(printf 'COPAL_FLEET_%s' "$(echo "$_f" | tr '[:lower:]' '[:upper:]')")
+        answers_fleet "$_k" > "$FLEET_DIR/$_f" 2>/dev/null || : > "$FLEET_DIR/$_f"
+        chmod 0600 "$FLEET_DIR/$_f"
     done
     # THE SCENE FILE IS THE ONE THING HERE THE OPERATOR OWNS, and it is a
     # deliberate hole in an otherwise root-owned directory. A scene name is a
     # LABEL -- wake, show, rest -- and not a permission: nothing reads it to
-    # decide what is allowed, only to report what the grove is doing. Owning it
+    # decide what is allowed, only to report what the fleet is doing. Owning it
     # is what lets the two scenes a museum applies most often, `show` and
     # `rest`, run without asking anybody for a password at 09:00. Everything
     # else in this directory stays root's, including the CA and the token.
-    [ -f "$GROVE_DIR/scene" ] || printf 'none\n' > "$GROVE_DIR/scene"
-    chmod 0644 "$GROVE_DIR/scene"
-    chown "$PI_USER" "$GROVE_DIR/scene" 2>/dev/null \
-        || warn "could not give $GROVE_DIR/scene to $PI_USER -- scenes will need a password"
-    note "grove $(cat "$GROVE_DIR/name"), card $(cat "$GROVE_DIR/index") of $(cat "$GROVE_DIR/size")"
+    [ -f "$FLEET_DIR/scene" ] || printf 'none\n' > "$FLEET_DIR/scene"
+    chmod 0644 "$FLEET_DIR/scene"
+    chown "$PI_USER" "$FLEET_DIR/scene" 2>/dev/null \
+        || warn "could not give $FLEET_DIR/scene to $PI_USER -- scenes will need a password"
+    note "fleet $(cat "$FLEET_DIR/name"), card $(cat "$FLEET_DIR/index") of $(cat "$FLEET_DIR/size")"
 }
 
-grove_install_ca() {
+fleet_install_ca() {
     _src=""
-    for _c in "$BOOT/grove_ca.pub" /media/*/grove_ca.pub; do
+    for _c in "$BOOT/fleet_ca.pub" /media/*/fleet_ca.pub; do
         [ -f "$_c" ] && { _src="$_c"; break; }
     done
     if [ -z "$_src" ]; then
-        warn "no grove_ca.pub on the boot partition."
+        warn "no fleet_ca.pub on the boot partition."
         note "Without the authority's public half this machine cannot verify a"
         note "certificate, and the console cannot verify this machine. Build the"
-        note "card again with a CA named in answers.txt: copal grove ca --create"
+        note "card again with a CA named in answers.txt: copal fleet ca --create"
         return 1
     fi
     # It must be the PUBLIC half, and this is the last place that can catch a
@@ -20285,36 +20285,36 @@ grove_install_ca() {
     # a hand-assembled card has had no such check.
     if grep -q 'PRIVATE KEY' "$_src"; then
         warn "$_src is a PRIVATE key. Refusing to install it."
-        note "The whole grove's authority does not belong on an SD card."
+        note "The whole fleet's authority does not belong on an SD card."
         return 1
     fi
     grep -qE '^(ssh-(ed25519|rsa)|ecdsa-sha2-)' "$_src" \
         || { warn "$_src is not an OpenSSH public key"; return 1; }
-    install -m 0644 -o root -g root "$_src" "$GROVE_CA"
-    note "authority: $(ssh-keygen -l -f "$GROVE_CA" 2>/dev/null | awk '{print $2}')"
+    install -m 0644 -o root -g root "$_src" "$FLEET_CA"
+    note "authority: $(ssh-keygen -l -f "$FLEET_CA" 2>/dev/null | awk '{print $2}')"
 }
 
-grove_service_account() {
+fleet_service_account() {
     # A service account with no password, no home worth anything, and a shell
     # only because ForceCommand needs one to exec. It is the account the
     # console's automation lands in, and it is NOT the account a person uses:
-    # those are two jobs, and the grove keeps them apart exactly as stages 1
+    # those are two jobs, and the fleet keeps them apart exactly as stages 1
     # and 13 keep root and the user apart.
-    if ! id "$GROVE_ACCT" >/dev/null 2>&1; then
-        adduser -S -D -H -s /bin/sh -h /var/empty "$GROVE_ACCT" >/dev/null 2>&1 \
-            || { warn "could not create the $GROVE_ACCT account"; return 1; }
-        note "created the $GROVE_ACCT service account (no password, no home)"
+    if ! id "$FLEET_ACCT" >/dev/null 2>&1; then
+        adduser -S -D -H -s /bin/sh -h /var/empty "$FLEET_ACCT" >/dev/null 2>&1 \
+            || { warn "could not create the $FLEET_ACCT account"; return 1; }
+        note "created the $FLEET_ACCT service account (no password, no home)"
     fi
-    passwd -l "$GROVE_ACCT" >/dev/null 2>&1 || true
+    passwd -l "$FLEET_ACCT" >/dev/null 2>&1 || true
 
     # Principals. A certificate says which of these it carries; this file says
     # which this machine will accept. Two lists that have to agree, and neither
     # is a key -- that is the whole point of certificates.
     mkdir -p /etc/ssh/principals
     chmod 0755 /etc/ssh/principals
-    printf 'grove-operator\n' > "/etc/ssh/principals/$GROVE_ACCT"
-    printf 'grove-human\n'    > "/etc/ssh/principals/$PI_USER"
-    chmod 0644 "/etc/ssh/principals/$GROVE_ACCT" "/etc/ssh/principals/$PI_USER"
+    printf 'fleet-operator\n' > "/etc/ssh/principals/$FLEET_ACCT"
+    printf 'fleet-human\n'    > "/etc/ssh/principals/$PI_USER"
+    chmod 0644 "/etc/ssh/principals/$FLEET_ACCT" "/etc/ssh/principals/$PI_USER"
 
     # doas, narrowly. The service account may halt the machine and rewrite its
     # own beacon, and may not do anything else. Written to /etc/doas.d/ so an
@@ -20322,75 +20322,75 @@ grove_service_account() {
     # before it is left in place -- a doas.d file doas rejects makes doas
     # refuse EVERY command on the machine, including the one that would fix it.
     mkdir -p /etc/doas.d
-    cat > /etc/doas.d/copal-grove.conf <<'GROVEDOAS'
-# Written by Copal stage 16. The grove service account, and nothing else.
+    cat > /etc/doas.d/copal-fleet.conf <<'FLEETDOAS'
+# Written by Copal stage 16. The fleet service account, and nothing else.
 # Three commands, by full path, with no password. Not a blanket rule: an
 # 8-hour operator certificate must not be a root shell.
-permit nopass copal-grove as root cmd /sbin/poweroff
-permit nopass copal-grove as root cmd /sbin/reboot
-permit nopass copal-grove as root cmd /usr/bin/copal-grove args beacon
-permit nopass copal-grove as root cmd /usr/bin/copal-grove args elect
+permit nopass copal-fleet as root cmd /sbin/poweroff
+permit nopass copal-fleet as root cmd /sbin/reboot
+permit nopass copal-fleet as root cmd /usr/bin/copal-fleet args beacon
+permit nopass copal-fleet as root cmd /usr/bin/copal-fleet args elect
 # The forced command's `snapshot restore` verb runs this, and without a rule
 # naming it doas refused -- so the verb existed, was documented, and could
 # never once have worked. `args restore` and not a bare cmd: restore is the
 # only subcommand automation has any business calling.
-permit nopass copal-grove as root cmd /usr/local/bin/copal-snapshot args restore
+permit nopass copal-fleet as root cmd /usr/local/bin/copal-snapshot args restore
 # Milestone 4. `bus-key` writes this node's own seed once and prints only its
 # public half. `bus-users` rewrites the warden's membership -- which is the
 # console's job, gated by an 8-hour operator certificate, and it still cannot
-# widen an allow-list, because the allow-lists are rendered by copal-grove from
-# this machine's own grove name rather than by anything that arrives over ssh.
-permit nopass copal-grove as root cmd /usr/bin/copal-grove args bus-key
-permit nopass copal-grove as root cmd /usr/bin/copal-grove args bus-users
+# widen an allow-list, because the allow-lists are rendered by copal-fleet from
+# this machine's own fleet name rather than by anything that arrives over ssh.
+permit nopass copal-fleet as root cmd /usr/bin/copal-fleet args bus-key
+permit nopass copal-fleet as root cmd /usr/bin/copal-fleet args bus-users
 # The operator's own account, for one command: rewriting the announcement this
 # machine already broadcasts every four minutes. A scene that changes a node's
 # role or tags should say so immediately rather than at the next tick, and a
 # beacon is public information -- this grants nothing that listening does not.
-permit nopass :wheel cmd /usr/bin/copal-grove args beacon
-permit nopass :wheel cmd /usr/bin/copal-grove args elect
-GROVEDOAS
-    chmod 0640 /etc/doas.d/copal-grove.conf
-    if ! doas -C /etc/doas.d/copal-grove.conf >/dev/null 2>&1; then
-        warn "doas rejected /etc/doas.d/copal-grove.conf -- removing it"
-        warn "$(doas -C /etc/doas.d/copal-grove.conf 2>&1 | head -2)"
-        rm -f /etc/doas.d/copal-grove.conf
+permit nopass :wheel cmd /usr/bin/copal-fleet args beacon
+permit nopass :wheel cmd /usr/bin/copal-fleet args elect
+FLEETDOAS
+    chmod 0640 /etc/doas.d/copal-fleet.conf
+    if ! doas -C /etc/doas.d/copal-fleet.conf >/dev/null 2>&1; then
+        warn "doas rejected /etc/doas.d/copal-fleet.conf -- removing it"
+        warn "$(doas -C /etc/doas.d/copal-fleet.conf 2>&1 | head -2)"
+        rm -f /etc/doas.d/copal-fleet.conf
         return 1
     fi
-    note "doas: $GROVE_ACCT may poweroff, reboot, restore a snapshot and rewrite its beacon"
+    note "doas: $FLEET_ACCT may poweroff, reboot, restore a snapshot and rewrite its beacon"
 }
 
-grove_sshd_policy() {
+fleet_sshd_policy() {
     [ -f "$SSHCFG" ] || { warn "no $SSHCFG"; return 1; }
-    cp "$SSHCFG" "$SSHCFG.copal-grove.bak"
+    cp "$SSHCFG" "$SSHCFG.copal-fleet.bak"
 
-    # AT THE BOTTOM, and this is the one place the grove's block cannot follow
+    # AT THE BOTTOM, and this is the one place the fleet's block cannot follow
     # stage 6's example. Stage 6 puts its policy FIRST because sshd takes the
     # first value it finds for each keyword. But everything after a `Match`
     # belongs to that Match until the next one, so a block containing a Match
     # placed at the top would swallow the entire rest of the file into it.
-    _tmp="$SSHCFG.copal-grove.new"
-    { sed "/$GROVE_BEGIN/,/$GROVE_END/d" "$SSHCFG"
-      printf '%s\n' "$GROVE_BEGIN"
-      echo '# Written by Copal stage 16. Delete this block to leave the grove;'
+    _tmp="$SSHCFG.copal-fleet.new"
+    { sed "/$FLEET_BEGIN/,/$FLEET_END/d" "$SSHCFG"
+      printf '%s\n' "$FLEET_BEGIN"
+      echo '# Written by Copal stage 16. Delete this block to leave the fleet;'
       echo '# nothing outside it was modified. LAST on purpose: a Match block'
       echo '# claims every line after it, so this cannot go at the top.'
-      printf 'TrustedUserCAKeys %s\n' "$GROVE_CA"
+      printf 'TrustedUserCAKeys %s\n' "$FLEET_CA"
       echo 'AuthorizedPrincipalsFile /etc/ssh/principals/%u'
       echo '#'
       echo '# HostCertificate is deliberately NOT here. sshd refuses to start'
       echo '# when it names a file that does not exist, and the certificate does'
-      echo '# not exist until the console signs one. copal-grove install-cert'
+      echo '# not exist until the console signs one. copal-fleet install-cert'
       echo '# adds the line at the moment the file appears.'
       echo '#'
-      printf 'Match User %s\n' "$GROVE_ACCT"
-      echo '    ForceCommand /usr/bin/copal-grove-exec'
+      printf 'Match User %s\n' "$FLEET_ACCT"
+      echo '    ForceCommand /usr/bin/copal-fleet-exec'
       echo '    PermitTTY no'
       echo '    X11Forwarding no'
       echo '    AllowTcpForwarding no'
       echo '    AllowAgentForwarding no'
       echo '    PermitOpen none'
       echo '    PasswordAuthentication no'
-      printf '%s\n' "$GROVE_END"
+      printf '%s\n' "$FLEET_END"
     } > "$_tmp" || { warn "could not write $_tmp"; return 1; }
     mv "$_tmp" "$SSHCFG"
 
@@ -20400,11 +20400,11 @@ grove_sshd_policy() {
     # Done through copal-ssh where it exists, so the block stays owned by the
     # one thing that writes it.
     if have copal-ssh; then
-        copal-ssh users "$PI_USER" "$GROVE_ACCT" >/dev/null 2>&1 \
-            && note "AllowUsers: $PI_USER and $GROVE_ACCT"
+        copal-ssh users "$PI_USER" "$FLEET_ACCT" >/dev/null 2>&1 \
+            && note "AllowUsers: $PI_USER and $FLEET_ACCT"
     elif grep -q '^AllowUsers' "$SSHCFG"; then
-        sed -i "s/^AllowUsers .*/AllowUsers $PI_USER $GROVE_ACCT/" "$SSHCFG"
-        note "AllowUsers: $PI_USER and $GROVE_ACCT"
+        sed -i "s/^AllowUsers .*/AllowUsers $PI_USER $FLEET_ACCT/" "$SSHCFG"
+        note "AllowUsers: $PI_USER and $FLEET_ACCT"
     fi
 
     if sshd -t 2>/dev/null; then
@@ -20412,15 +20412,15 @@ grove_sshd_policy() {
     else
         warn "sshd rejected the new config -- restoring the previous one:"
         sshd -t 2>&1 | sed 's/^/      /'
-        cp "$SSHCFG.copal-grove.bak" "$SSHCFG"
+        cp "$SSHCFG.copal-fleet.bak" "$SSHCFG"
         return 1
     fi
     rc-service sshd status >/dev/null 2>&1 && rc-service sshd reload >/dev/null 2>&1 || true
     return 0
 }
 
-grove_discovery() {
-    _mode=$(cat "$GROVE_DIR/discovery" 2>/dev/null || echo mdns)
+fleet_discovery() {
+    _mode=$(cat "$FLEET_DIR/discovery" 2>/dev/null || echo mdns)
     case "$_mode" in
         mdns)
             say "Installing avahi for mDNS discovery"
@@ -20430,9 +20430,9 @@ grove_discovery() {
             rc-update add avahi-daemon default >/dev/null 2>&1 || true
             rc-service dbus start >/dev/null 2>&1 || true
             rc-service avahi-daemon start >/dev/null 2>&1 || true
-            /usr/bin/copal-grove beacon >/dev/null 2>&1 \
-                && note "announcing as $(hostname) on _copal-grove._tcp" \
-                || warn "the beacon was not written -- try: copal-grove beacon"
+            /usr/bin/copal-fleet beacon >/dev/null 2>&1 \
+                && note "announcing as $(hostname) on _copal-fleet._tcp" \
+                || warn "the beacon was not written -- try: copal-fleet beacon"
             ;;
         static|off)
             note "discovery is '$_mode' -- nothing is announced, and the console"
@@ -20442,21 +20442,21 @@ grove_discovery() {
     # The service exists whatever the mode: it is what keeps the beacon's
     # changing fields -- role, score, uptime -- from being a boot-time snapshot
     # that is wrong by lunchtime.
-    cat > /etc/init.d/copal-grove <<'GROVERC'
+    cat > /etc/init.d/copal-fleet <<'FLEETRC'
 #!/sbin/openrc-run
-# copal-grove -- keep this node's beacon current.
+# copal-fleet -- keep this node's beacon current.
 #
 # Not a daemon and not a listener. It rewrites the announcement every few
 # minutes because three of the fields in it change while the machine runs: the
 # election score (uptime is a term in it), the role, and the rolling key that
 # stamps the beacon with its five-minute window. A beacon written once at boot
 # is a beacon that is wrong by lunchtime.
-name="copal-grove"
-description="Copal grove beacon"
-command="/usr/bin/copal-grove"
+name="copal-fleet"
+description="Copal fleet beacon"
+command="/usr/bin/copal-fleet"
 command_args="watch"
 command_background=true
-pidfile="/run/copal-grove.pid"
+pidfile="/run/copal-fleet.pid"
 
 depend() {
 	need localmount
@@ -20464,56 +20464,56 @@ depend() {
 }
 
 start_pre() {
-	if [ ! -s /etc/copal/grove/name ]; then
-		einfo "This machine is not in a grove -- nothing to announce."
+	if [ ! -s /etc/copal/fleet/name ]; then
+		einfo "This machine is not in a fleet -- nothing to announce."
 		return 1
 	fi
 	return 0
 }
-GROVERC
-    chmod 0755 /etc/init.d/copal-grove
-    rc-update add copal-grove default >/dev/null 2>&1 \
-        && note "copal-grove added to the default runlevel" \
-        || warn "could not add copal-grove to the default runlevel"
-    rc-service copal-grove restart >/dev/null 2>&1 || true
+FLEETRC
+    chmod 0755 /etc/init.d/copal-fleet
+    rc-update add copal-fleet default >/dev/null 2>&1 \
+        && note "copal-fleet added to the default runlevel" \
+        || warn "could not add copal-fleet to the default runlevel"
+    rc-service copal-fleet restart >/dev/null 2>&1 || true
 }
 
 # The node program and the forced command. Both are small on purpose: a node's
 # half of a fleet system should be readable in one sitting by whoever has to
 # fix it at nine in the morning.
-grove_install_tools() {
-    cat > /usr/bin/copal-grove <<'COPALGROVE'
+fleet_install_tools() {
+    cat > /usr/bin/copal-fleet <<'COPALFLEET'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# copal-grove -- this node's half of a Copal grove. Written by stage 16.
+# copal-fleet -- this node's half of a Copal fleet. Written by stage 16.
 #
-#   copal-grove state          one line of facts, for the console
-#   copal-grove beacon         rewrite the mDNS announcement
-#   copal-grove watch          rewrite it every 4 minutes (the service)
-#   copal-grove browse         what this machine can see, in the console's format
-#   copal-grove score          this node's warden election score
-#   copal-grove install-cert   install a host certificate read on stdin (root)
-#   copal-grove bus-key        this node's bus identity; makes one if needed
-#   copal-grove bus-users      render the membership from stdin (warden, root)
-#   copal-grove bus-config     rewrite /etc/nats/nats.conf (warden, root)
-#   copal-grove bus-state      what this node's half of the bus is doing
-#   copal-grove logs ID [DAYS] the collected logs (warden), even for a dead node
-#   copal-grove status         what this machine thinks it is
+#   copal-fleet state          one line of facts, for the console
+#   copal-fleet beacon         rewrite the mDNS announcement
+#   copal-fleet watch          rewrite it every 4 minutes (the service)
+#   copal-fleet browse         what this machine can see, in the console's format
+#   copal-fleet score          this node's warden election score
+#   copal-fleet install-cert   install a host certificate read on stdin (root)
+#   copal-fleet bus-key        this node's bus identity; makes one if needed
+#   copal-fleet bus-users      render the membership from stdin (warden, root)
+#   copal-fleet bus-config     rewrite /etc/nats/nats.conf (warden, root)
+#   copal-fleet bus-state      what this node's half of the bus is doing
+#   copal-fleet logs ID [DAYS] the collected logs (warden), even for a dead node
+#   copal-fleet status         what this machine thinks it is
 set -eu
-# COPAL_GROVE_DIR is the agent's variable and it means the same thing here, so
+# COPAL_FLEET_DIR is the agent's variable and it means the same thing here, so
 # that the election can be driven over a directory of fixtures by a test that
 # is not running on a node. On a node nothing sets it.
-D=${COPAL_GROVE_DIR:-/etc/copal/grove}
-SERVICE=_copal-grove._tcp
+D=${COPAL_FLEET_DIR:-/etc/copal/fleet}
+SERVICE=_copal-fleet._tcp
 PORT=7420
-AVAHI_FILE=/etc/avahi/services/copal-grove.service
-CA=/etc/ssh/copal_grove_ca.pub
+AVAHI_FILE=/etc/avahi/services/copal-fleet.service
+CA=/etc/ssh/copal_fleet_ca.pub
 HOSTKEY=/etc/ssh/ssh_host_ed25519_key.pub
 HOSTCERT=/etc/ssh/ssh_host_ed25519_key-cert.pub
 NKEYS=/usr/lib/copal/copal_nkeys.py
 NATSPY=/usr/lib/copal/copal_nats.py
-ACCT=copal-grove
-COLLECT=/var/log/copal-grove
+ACCT=copal-fleet
+COLLECT=/var/log/copal-fleet
 BUSDIR=/etc/nats
 SEED=$D/nkey.seed
 
@@ -20553,7 +20553,7 @@ score() {
 }
 
 # The rolling beacon key. A SPAM FILTER and not a credential: it is on every
-# card in the grove, so it names a grove and authenticates nobody. It keeps the
+# card in the fleet, so it names a fleet and authenticates nobody. It keeps the
 # console's list from filling with whatever else on the segment fancies calling
 # itself by one of our names. The certificate is what decides.
 beacon_key() {
@@ -20588,21 +20588,21 @@ beacon_key() {
 #   a workstation is kept separate from the half that needs a network.
 ELECT_HOLD=3
 LEASE_SECONDS=600
-UNREACHABLE=${COPAL_GROVE_UNREACHABLE:-/var/lib/copal-grove/unreachable}
+UNREACHABLE=${COPAL_FLEET_UNREACHABLE:-/var/lib/copal-fleet/unreachable}
 TAB=$(printf '\t')
 
-# Every node in this grove that is announcing, best first: highest score, then
+# Every node in this fleet that is announcing, best first: highest score, then
 # lowest id by string compare. That is §7's sort and it is deliberately the
 # same order the agent's find_warden() uses -- two orders would be two answers.
 candidates() {
-    _grove=$(f name)
+    _fleet=$(f name)
     _me=$(hostname)
     _dead=$(cat "$UNREACHABLE" 2>/dev/null || true)
     {
         # This node from its LIVE score rather than from its own beacon, which
         # is up to four minutes old and does not exist at all on a first boot.
         printf '%s\t%s\t%s\n' "$(score)" "$_me" "127.0.0.1"
-        browse 2>/dev/null | awk -F"$TAB" -v grove="$_grove" -v me="$_me" -v dead="$_dead" '
+        browse 2>/dev/null | awk -F"$TAB" -v fleet="$_fleet" -v me="$_me" -v dead="$_dead" '
             BEGIN {
                 n = split(dead, d, "\n")
                 for (i = 1; i <= n; i++) if (d[i] != "") gone[d[i]] = 1
@@ -20612,10 +20612,10 @@ candidates() {
                 k = split($3, kv, ";")
                 for (i = 1; i <= k; i++) {
                     if (kv[i] ~ /^s=/)      sc = substr(kv[i], 3) + 0
-                    else if (kv[i] ~ /^g=/) g  = substr(kv[i], 3)
+                    else if (kv[i] ~ /^f=/) g  = substr(kv[i], 3)
                     else if (kv[i] ~ /^n=/) nm = substr(kv[i], 3)
                 }
-                if (g != grove || nm == me || nm in gone) next
+                if (g != fleet || nm == me || nm in gone) next
                 printf "%d\t%s\t%s\n", sc, nm, addr
             }'
     } | sort -t"$TAB" -k1,1nr -k2,2
@@ -20644,12 +20644,12 @@ set_role() {
     [ "$(f role)" = "$1" ] && return 0
     printf '%s\n' "$1" > "$D/role.new" 2>/dev/null \
         && mv "$D/role.new" "$D/role" 2>/dev/null || return 1
-    printf '%s copal-grove: role %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$1" \
-        >> /var/log/copal-grove.log 2>/dev/null || true
+    printf '%s copal-fleet: role %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$1" \
+        >> /var/log/copal-fleet.log 2>/dev/null || true
 }
 
 # Run the election and write the answer to the card. Prints the role settled
-# on, so that `copal-grove elect` is also how an operator asks.
+# on, so that `copal-fleet elect` is also how an operator asks.
 elect() {
     # An operator can nail a node down, and the sort does not get a vote.
     _pin=$(f role-pin)
@@ -20659,7 +20659,7 @@ elect() {
 
     # A card that SAYS warden but has not held the role recently is a card off
     # a shelf, not a warden that rebooted. Resuming on a stale role field is
-    # one of the ways a grove ends up with two wardens, so an expired lease
+    # one of the ways a fleet ends up with two wardens, so an expired lease
     # demotes first and stands in the queue like anybody else.
     if [ "$_have" = warden ] && ! lease_fresh; then
         set_role node || true
@@ -20705,21 +20705,21 @@ role_now() {
 }
 
 beacon() {
-    [ -s "$D/name" ] || { echo "not in a grove" >&2; return 1; }
+    [ -s "$D/name" ] || { echo "not in a fleet" >&2; return 1; }
     [ "$(f discovery)" = mdns ] || return 0
     mkdir -p /etc/avahi/services
     _t=$AVAHI_FILE.new
     {
         echo '<?xml version="1.0" standalone="no"?>'
         echo '<!DOCTYPE service-group SYSTEM "avahi-service.dtd">'
-        echo '<!-- Written by copal-grove. Edits are overwritten every 4 minutes. -->'
+        echo '<!-- Written by copal-fleet. Edits are overwritten every 4 minutes. -->'
         echo '<service-group>'
         echo '  <name replace-wildcards="yes">%h</name>'
         echo '  <service>'
         printf '    <type>%s</type>\n' "$SERVICE"
         printf '    <port>%s</port>\n' "$PORT"
         printf '    <txt-record>v=1</txt-record>\n'
-        printf '    <txt-record>g=%s</txt-record>\n' "$(f name)"
+        printf '    <txt-record>f=%s</txt-record>\n' "$(f name)"
         printf '    <txt-record>n=%s</txt-record>\n' "$(hostname)"
         printf '    <txt-record>r=%s</txt-record>\n' "$(role_now)"
         printf '    <txt-record>s=%s</txt-record>\n' "$(score)"
@@ -20759,18 +20759,18 @@ watch_loop() {
 }
 
 # What this machine can see. THE FORMAT IS THE CONSOLE'S: id, address, TXT --
-# tab separated -- so that `copal grove ls --via thisnode` on a Mac gets the
+# tab separated -- so that `copal fleet ls --via thisnode` on a Mac gets the
 # same lines it would have browsed for itself. A Mac has no avahi-browse, and
 # scripting dns-sd is worse than asking a machine that already knows.
 browse() {
-    # A FILE OF BEACONS STANDS IN FOR THE NETWORK when COPAL_GROVE_BEACONS is
+    # A FILE OF BEACONS STANDS IN FOR THE NETWORK when COPAL_FLEET_BEACONS is
     # set: the console's variable and the console's format, so that the
-    # election can be run against a grove that is not in the room. W10 found
+    # election can be run against a fleet that is not in the room. W10 found
     # the missing election by READING this file; this is what lets the next
     # one RUN it.
-    if [ -n "${COPAL_GROVE_BEACONS:-}" ]; then
-        [ -f "$COPAL_GROVE_BEACONS" ] || { echo "no such beacon file: $COPAL_GROVE_BEACONS" >&2; return 1; }
-        sort -u "$COPAL_GROVE_BEACONS"; return 0
+    if [ -n "${COPAL_FLEET_BEACONS:-}" ]; then
+        [ -f "$COPAL_FLEET_BEACONS" ] || { echo "no such beacon file: $COPAL_FLEET_BEACONS" >&2; return 1; }
+        sort -u "$COPAL_FLEET_BEACONS"; return 0
     fi
     command -v avahi-browse >/dev/null 2>&1 || { echo "no avahi-browse here" >&2; return 1; }
     avahi-browse -rpt "$SERVICE" 2>/dev/null | awk -F';' '
@@ -20807,15 +20807,15 @@ state() {
 #
 #   it is a HOST certificate                   -- not a user one
 #   its public key is THIS machine's host key  -- not some other machine's
-#   its signing CA is the grove's CA           -- not anybody else's
+#   its signing CA is the fleet's CA           -- not anybody else's
 #
 # A certificate is public, so accepting one is not in itself dangerous; the
 # checks are here because installing the WRONG one makes this machine
 # unreachable, and an unreachable Pi in a museum is a trip with a screwdriver.
 install_cert() {
     [ "$(id -u)" = 0 ] || { echo "install-cert must run as root" >&2; return 1; }
-    [ -f "$CA" ] || { echo "no grove CA at $CA" >&2; return 1; }
-    _t=$(mktemp /tmp/grove-cert.XXXXXX) || return 1
+    [ -f "$CA" ] || { echo "no fleet CA at $CA" >&2; return 1; }
+    _t=$(mktemp /tmp/fleet-cert.XXXXXX) || return 1
     cat > "$_t"
     [ -s "$_t" ] || { echo "nothing on stdin" >&2; rm -f "$_t"; return 1; }
 
@@ -20832,7 +20832,7 @@ install_cert() {
     _signer=$(printf '%s\n' "$_info" | sed -n 's/.*Signing CA: [^ ]* \(SHA256:[^ ]*\).*/\1/p' | head -1)
     _ca=$(ssh-keygen -l -f "$CA" 2>/dev/null | awk '{print $2}')
     [ -n "$_signer" ] && [ "$_signer" = "$_ca" ] \
-        || { echo "signed by another authority, not this grove's" >&2; rm -f "$_t"; return 1; }
+        || { echo "signed by another authority, not this fleet's" >&2; rm -f "$_t"; return 1; }
 
     install -m 0644 -o root -g root "$_t" "$HOSTCERT"
     rm -f "$_t"
@@ -20934,7 +20934,7 @@ apk_pending() {
 
 facts() {
     printf 'id\t%s\n'          "$(hostname)"
-    printf 'grove\t%s\n'       "$(or_unknown "$(f name)")"
+    printf 'fleet\t%s\n'       "$(or_unknown "$(f name)")"
     printf 'alpine\t%s\n'      "$(or_unknown "$(cat /etc/alpine-release 2>/dev/null)")"
     printf 'kernel\t%s\n'      "$(uname -r)"
     printf 'arch\t%s\n'        "$(uname -m)"
@@ -20958,7 +20958,7 @@ facts() {
 }
 
 status() {
-    printf 'grove      %s\n' "$(f name)"
+    printf 'fleet      %s\n' "$(f name)"
     printf 'node       %s (card %s of %s)\n' "$(hostname)" "$(f index)" "$(f size)"
     printf 'role       %s, score %s\n' "$(role_now)" "$(score)"
     printf 'tags       %s\n' "$(f tags)"
@@ -20973,7 +20973,7 @@ status() {
         printf 'enrolled   yes, %s\n' \
             "$(ssh-keygen -L -f "$HOSTCERT" 2>/dev/null | sed -n 's/^ *Valid: //p' | head -1)"
     else
-        printf 'enrolled   no -- run "copal grove enrol" from the console\n'
+        printf 'enrolled   no -- run "copal fleet enrol" from the console\n'
     fi
 }
 
@@ -20983,9 +20983,9 @@ status() {
 # LEAVES. `bus-key` makes one here and reads out only its public half, which
 # is invariant 2 applied to a second key type.
 
-# The address the grove is on. NEVER 0.0.0.0: a bus that listens on every
+# The address the fleet is on. NEVER 0.0.0.0: a bus that listens on every
 # interface of a machine that might also have wifi up is a bus on a network the
-# grove does not control. Wired is preferred because plan §9.1 says the grove
+# fleet does not control. Wired is preferred because plan §9.1 says the fleet
 # is one switch, and the election already scores a wired link at 1000.
 lan_address() {
     for _i in /sys/class/net/e* /sys/class/net/w*; do
@@ -21008,7 +21008,7 @@ bus_config() {
     _a=$(lan_address) || { echo "no address to listen on" >&2; return 1; }
     mkdir -p "$BUSDIR"
     cat > "$BUSDIR/nats.conf.new" <<NATSCONF
-# /etc/nats/nats.conf -- written by \`copal-grove bus-config\` on every start.
+# /etc/nats/nats.conf -- written by \`copal-fleet bus-config\` on every start.
 # Do not edit: the next start overwrites it. The membership is the other file.
 server_name: $(hostname)
 host: $_a
@@ -21031,9 +21031,9 @@ jetstream {
     sync_interval: "2m"
 }
 
-# The membership. Rendered by \`copal-grove bus-users\` from the list the
+# The membership. Rendered by \`copal-fleet bus-users\` from the list the
 # console sends at enrolment; never written by the console directly.
-include "grove-users.conf"
+include "fleet-users.conf"
 NATSCONF
     mv "$BUSDIR/nats.conf.new" "$BUSDIR/nats.conf"
     chmod 0644 "$BUSDIR/nats.conf"
@@ -21057,14 +21057,14 @@ bus_key() {
 }
 
 # The membership, rendered here from a list of ids and public nkeys. The
-# console cannot send configuration text -- see the note above grove_bus_tools
+# console cannot send configuration text -- see the note above fleet_bus_tools
 # in copal-prep.sh for why that is the whole point of this verb existing.
 bus_users() {
     [ "$(id -u)" = 0 ] || { echo "bus-users must run as root" >&2; return 1; }
     [ "$(role_now)" = warden ] || { echo "this node is not the warden" >&2; return 1; }
-    _g=$(f name); [ -n "$_g" ] || { echo "not in a grove" >&2; return 1; }
+    _g=$(f name); [ -n "$_g" ] || { echo "not in a fleet" >&2; return 1; }
     [ -f "$NATSPY" ] || { echo "no bus module on this node" >&2; return 1; }
-    _in=$(mktemp /tmp/grove-users.XXXXXX) || return 1
+    _in=$(mktemp /tmp/fleet-users.XXXXXX) || return 1
     cat > "$_in"
     [ -s "$_in" ] || { echo "nothing on stdin" >&2; rm -f "$_in"; return 1; }
 
@@ -21073,10 +21073,10 @@ bus_users() {
     # tools/copal-bus-test.py renders with before it watches a real server
     # refuse them. Two copies of those subject patterns would mean the test
     # could pass while the fleet was wrong, which is worse than no test.
-    if ! python3 "$NATSPY" render "$_g" "$_in" > "$BUSDIR/grove-users.conf.new" 2>"$_in.err"
+    if ! python3 "$NATSPY" render "$_g" "$_in" > "$BUSDIR/fleet-users.conf.new" 2>"$_in.err"
     then
         echo "refused: $(head -1 "$_in.err" 2>/dev/null)" >&2
-        rm -f "$_in" "$_in.err" "$BUSDIR/grove-users.conf.new"
+        rm -f "$_in" "$_in.err" "$BUSDIR/fleet-users.conf.new"
         return 1
     fi
     rm -f "$_in" "$_in.err"
@@ -21085,27 +21085,27 @@ bus_users() {
     # not parse must never become the config the server is asked to load: on a
     # warden that is the bus down, and on a reboot it is the bus down with
     # nobody watching. Tested against a copy, and only then moved into place.
-    _t=$(mktemp -d /tmp/grove-natscheck.XXXXXX) || return 1
-    sed 's|include "grove-users.conf"|include "grove-users.conf"|' "$BUSDIR/nats.conf" > "$_t/nats.conf"
-    cp "$BUSDIR/grove-users.conf.new" "$_t/grove-users.conf"
+    _t=$(mktemp -d /tmp/fleet-natscheck.XXXXXX) || return 1
+    sed 's|include "fleet-users.conf"|include "fleet-users.conf"|' "$BUSDIR/nats.conf" > "$_t/nats.conf"
+    cp "$BUSDIR/fleet-users.conf.new" "$_t/fleet-users.conf"
     if ! nats-server -t -c "$_t/nats.conf" >/dev/null 2>&1; then
         echo "refused: nats-server rejected the rendered configuration" >&2
         nats-server -t -c "$_t/nats.conf" 2>&1 | head -3 >&2
-        rm -rf "$_t"; rm -f "$BUSDIR/grove-users.conf.new"
+        rm -rf "$_t"; rm -f "$BUSDIR/fleet-users.conf.new"
         return 1
     fi
     rm -rf "$_t"
 
-    mv "$BUSDIR/grove-users.conf.new" "$BUSDIR/grove-users.conf"
-    chmod 0644 "$BUSDIR/grove-users.conf"
+    mv "$BUSDIR/fleet-users.conf.new" "$BUSDIR/fleet-users.conf"
+    chmod 0644 "$BUSDIR/fleet-users.conf"
 
     # Reload rather than restart: a restart drops every connection in the
-    # grove to add one member, and the nodes would all reconnect at once.
+    # fleet to add one member, and the nodes would all reconnect at once.
     if [ -s /run/nats.pid ]; then
         nats-server --signal reload="$(cat /run/nats.pid)" >/dev/null 2>&1 \
             || rc-service nats restart >/dev/null 2>&1 || true
     fi
-    grep -c '{ nkey:' "$BUSDIR/grove-users.conf" | sed 's/$/ members on the bus/'
+    grep -c '{ nkey:' "$BUSDIR/fleet-users.conf" | sed 's/$/ members on the bus/'
 }
 
 # THE COLLECTED LOGS, on the warden. Read-only, and it deliberately does not
@@ -21142,7 +21142,7 @@ bus_state() {
         printf 'listening  %s:4222\n' "$(bus_address 2>/dev/null || echo '-')"
         if rc-service nats status >/dev/null 2>&1; then printf 'server     up\n'
         else printf 'server     down\n'; fi
-        printf 'members    %s\n' "$(grep -c '{ nkey:' "$BUSDIR/grove-users.conf" 2>/dev/null || echo 0)"
+        printf 'members    %s\n' "$(grep -c '{ nkey:' "$BUSDIR/fleet-users.conf" 2>/dev/null || echo 0)"
         printf 'store      %s\n' "$(du -sh /var/lib/nats 2>/dev/null | awk '{print $1}' || echo '-')"
     else
         printf 'role       %s -- no server on this node\n' "$(role_now)"
@@ -21175,26 +21175,26 @@ case "${1:-status}" in
     help|-h|--help) sed -n '4,16p' "$0" | sed 's/^# \{0,1\}//' ;;
     *) echo "no such verb: $1" >&2; exit 2 ;;
 esac
-COPALGROVE
-    chmod 0755 /usr/bin/copal-grove
+COPALFLEET
+    chmod 0755 /usr/bin/copal-fleet
 
-    cat > /usr/bin/copal-grove-exec <<'COPALGROVEEXEC'
+    cat > /usr/bin/copal-fleet-exec <<'COPALFLEETEXEC'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# copal-grove-exec -- the forced command the console's automation lands in.
+# copal-fleet-exec -- the forced command the console's automation lands in.
 #
 # THIS FILE IS THE SECURITY BOUNDARY, and it is the difference between "the
 # console can run commands on eight Pis" and "anything holding an 8-hour
 # certificate can run anything on eight Pis". sshd_config sends every login as
-# the copal-grove account here with no shell, no tty and no forwarding, and
+# the copal-fleet account here with no shell, no tty and no forwarding, and
 # what arrives is parsed as A VERB LIST rather than executed as a command.
 #
 # Adding a verb means adding a case below. There is deliberately no escape
 # hatch, no "raw", and no pass-through: a verb this file does not know is a
 # refusal and a line in the log, not an attempt.
 set -eu
-LOG=/var/log/copal-grove.log
-D=/etc/copal/grove
+LOG=/var/log/copal-fleet.log
+D=/etc/copal/fleet
 
 logline() { printf '%s %s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "${SSH_CLIENT%% *}" "$*" >> "$LOG" 2>/dev/null || true; }
 refuse()  { logline "REFUSED ${SSH_ORIGINAL_COMMAND:-<empty>}"; echo "refused: $*" >&2; exit 3; }
@@ -21208,13 +21208,13 @@ set -- ${SSH_ORIGINAL_COMMAND:-}
 logline "$*"
 
 case "$1" in
-    state)    exec /usr/bin/copal-grove state ;;
-    status)   exec /usr/bin/copal-grove status ;;
+    state)    exec /usr/bin/copal-fleet state ;;
+    status)   exec /usr/bin/copal-fleet status ;;
     id)       exec hostname ;;
-    score)    exec /usr/bin/copal-grove score ;;
-    facts)    exec /usr/bin/copal-grove facts ;;
+    score)    exec /usr/bin/copal-fleet score ;;
+    facts)    exec /usr/bin/copal-fleet facts ;;
     uptime)   exec uptime ;;
-    beacon)   exec doas /usr/bin/copal-grove beacon ;;
+    beacon)   exec doas /usr/bin/copal-fleet beacon ;;
     power)
         case "${2:-}" in
             off)    logline "POWEROFF"; exec doas /sbin/poweroff ;;
@@ -21250,15 +21250,15 @@ case "$1" in
         # node -- it prints a public key and nothing else. `users` refuses on
         # anything that is not the warden. NEITHER CARRIES CONFIGURATION TEXT:
         # `users` takes a list of ids and nkeys, and the rendering of invariant
-        # 5 happens in copal-grove on the node, not in whatever arrived here.
+        # 5 happens in copal-fleet on the node, not in whatever arrived here.
         case "${2:-}" in
-            key)   exec doas /usr/bin/copal-grove bus-key ;;
-            users) exec doas /usr/bin/copal-grove bus-users ;;
-            state) exec /usr/bin/copal-grove bus-state ;;
+            key)   exec doas /usr/bin/copal-fleet bus-key ;;
+            users) exec doas /usr/bin/copal-fleet bus-users ;;
+            state) exec /usr/bin/copal-fleet bus-state ;;
             *) refuse "bus takes key, users or state" ;;
         esac ;;
     logs)
-        # THE GROVE'S logs, from the warden's collector -- not this machine's
+        # THE FLEET'S logs, from the warden's collector -- not this machine's
         # own forced-command log, which is `log tail` below. Read-only, and it
         # answers for nodes that are no longer here, which is its whole point.
         case "${2:-all}" in
@@ -21267,24 +21267,24 @@ case "$1" in
         case "${3:-1}" in
             ''|*[!0-9]*) refuse "logs takes a number of days" ;;
         esac
-        exec /usr/bin/copal-grove logs "${2:-all}" "${3:-1}" ;;
+        exec /usr/bin/copal-fleet logs "${2:-all}" "${3:-1}" ;;
     log)
         [ "${2:-}" = tail ] || refuse "log takes tail [N]"
         exec tail -n "${3:-20}" "$LOG" ;;
     *) refuse "no verb called '$1'" ;;
 esac
-COPALGROVEEXEC
-    chmod 0755 /usr/bin/copal-grove-exec
-    : > /var/log/copal-grove.log 2>/dev/null || true
-    chown "$GROVE_ACCT" /var/log/copal-grove.log 2>/dev/null || true
-    chmod 0644 /var/log/copal-grove.log 2>/dev/null || true
-    note "installed copal-grove and copal-grove-exec"
+COPALFLEETEXEC
+    chmod 0755 /usr/bin/copal-fleet-exec
+    : > /var/log/copal-fleet.log 2>/dev/null || true
+    chown "$FLEET_ACCT" /var/log/copal-fleet.log 2>/dev/null || true
+    chmod 0644 /var/log/copal-fleet.log 2>/dev/null || true
+    note "installed copal-fleet and copal-fleet-exec"
 }
 
 # ---------------------------------------------------------------- the bus ---
 #
 # NATS on the warden, and only on the warden. This is the first thing in the
-# grove that the ELECTION decides rather than merely reports: until now `role`
+# fleet that the ELECTION decides rather than merely reports: until now `role`
 # was a field in a beacon that nothing acted on.
 #
 # THREE FILES, and the split between them is the architecture:
@@ -21292,7 +21292,7 @@ COPALGROVEEXEC
 #   /usr/lib/copal/copal_nkeys.py   the key format. Byte-identical to the
 #                                   console's copy; `make lint` fails on drift
 #   /etc/nats/nats.conf             THE SERVER'S SHAPE -- written by this stage
-#   /etc/nats/grove-users.conf      THE MEMBERSHIP -- rendered on this machine
+#   /etc/nats/fleet-users.conf      THE MEMBERSHIP -- rendered on this machine
 #                                   from a list the console sends at enrolment
 #
 # A stage that owned the membership would have to be re-run to add a node. A
@@ -21302,17 +21302,17 @@ COPALGROVEEXEC
 #
 # THE CONSOLE NEVER SENDS CONFIGURATION TEXT. It sends a list of ids and public
 # nkeys; the permission strings of plan §6 are rendered here, on the node, from
-# the node's own idea of the grove's name. Invariant 5 is therefore generated
+# the node's own idea of the fleet's name. Invariant 5 is therefore generated
 # in exactly one place, and a console that has been tampered with cannot widen
-# an allow-list by sending a cleverer file. See grove-m4-backlog.md §3 D1.
-grove_bus_tools() {
+# an allow-list by sending a cleverer file. See fleet-m4-backlog.md §3 D1.
+fleet_bus_tools() {
     mkdir -p /usr/lib/copal
     chmod 0755 /usr/lib/copal
     cat > /usr/lib/copal/copal_nkeys.py <<'COPALNKEYS'
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson
-"""copal_nkeys -- the grove's bus key format, and nothing else.
+"""copal_nkeys -- the fleet's bus key format, and nothing else.
 
 An NKEY is how NATS names a principal: an ed25519 keypair in a base32 encoding
 with a one-byte role prefix and a CRC.  A node proves itself to the bus by
@@ -21323,14 +21323,14 @@ mechanism, and this module is the whole of our implementation of it.
 WHY THIS EXISTS AT ALL, rather than `pip install nkeys`:
 
   The console's home is the operator's Mac.  `apk` cannot help there and
-  `pip install` at 08:45 is a console that is down -- see grove-m4-backlog.md
-  §3 D3.  So: standard library only, on both halves of the grove.
+  `pip install` at 08:45 is a console that is down -- see fleet-m4-backlog.md
+  §3 D3.  So: standard library only, on both halves of the fleet.
 
 WHAT IT DELIBERATELY DOES NOT DO:
 
   No JWTs.  Permissions live in the warden's nats.conf, in plain text a person
-  can read against invariant 5.  See grove-plan.md §6 "How the bus is
-  authenticated" and grove-m4-backlog.md §3 D1.
+  can read against invariant 5.  See fleet-plan.md §6 "How the bus is
+  authenticated" and fleet-m4-backlog.md §3 D1.
 
   No X.509.  The SSH CA remains the only thing that decides membership; an
   nkey is a capability issued as a consequence of membership, never a second
@@ -21638,7 +21638,7 @@ def self_test():
 
 # -------------------------------------------------------------------- cli ---
 
-USAGE = """copal_nkeys -- the grove's bus key format
+USAGE = """copal_nkeys -- the fleet's bus key format
 
   copal_nkeys.py new-seed [ROLE]     a fresh seed (default: user)
   copal_nkeys.py public SEED         the public nkey for a seed
@@ -21686,10 +21686,10 @@ COPALNKEYS
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson
-"""copal_nats -- the grove's half of NATS: the permission list, and the wire.
+"""copal_nats -- the fleet's half of NATS: the permission list, and the wire.
 
 Two things live here because they are two halves of one subject, and keeping
-them together means there is ONE place that knows what a grove's subjects are
+them together means there is ONE place that knows what a fleet's subjects are
 called:
 
   render_users()   the warden's authorization block -- invariant 5, rendered
@@ -21698,7 +21698,7 @@ called:
 WHY NOT `nats-py`:  the console's home is the operator's Mac, where `apk` does
 not exist and the fallback is `pip install` into whatever environment happens
 to be current.  A museum console that needs pip at 08:45 is a console that is
-down.  See grove-m4-backlog.md §3 D3.
+down.  See fleet-m4-backlog.md §3 D3.
 
 WHY THE RENDERER IS HERE AND NOT IN THE SHELL:  because the test that proves
 invariant 5 has to render exactly what the warden renders.  Two copies of those
@@ -21711,10 +21711,10 @@ first INFO knows everything it needs:
     S: INFO {"nonce":"...","auth_required":true}
     C: CONNECT {"nkey":"U...","sig":"...","name":"...","verbose":false}
     C: PING                                 S: PONG
-    C: SUB grove.museum.cmd.> 1
-    C: PUB grove.museum.hello 0
-    S: MSG grove.museum.cmd.all 1 17
-    S: -ERR 'Permissions Violation for Publish to "grove.museum.node.x.state"'
+    C: SUB fleet.museum.cmd.> 1
+    C: PUB fleet.museum.hello 0
+    S: MSG fleet.museum.cmd.all 1 17
+    S: -ERR 'Permissions Violation for Publish to "fleet.museum.node.x.state"'
 
 A permission violation is an -ERR that does NOT close the connection.  An
 authorization failure is an -ERR that does.  The difference is the whole of
@@ -21734,33 +21734,33 @@ ID_OK = set("abcdefghijklmnopqrstuvwxyz0123456789-")
 
 # ------------------------------------------------------- the permissions ---
 #
-# INVARIANT 5 OF docs/grove-plan.md, and this function is the only place in the
+# INVARIANT 5 OF docs/fleet-plan.md, and this function is the only place in the
 # system where these strings are built.  Both arguments are checked by the
-# caller before they arrive: `grove` against ID_OK by render_users, and `nid`
+# caller before they arrive: `fleet` against ID_OK by render_users, and `nid`
 # the same.  Nothing here interpolates anything a network could choose.
 
 ROLES = ("node", "warden", "console")
 
 
-def perms_for(grove, nid, role):
+def perms_for(fleet, nid, role):
     """(publish allow-list, subscribe allow-list) for one member."""
     if role == "console":
         # The console is the one member that may command, and the one member
         # that may listen to everything.  It is not a node and does not get a
         # node's shape.
-        return (["grove.%s.cmd.>" % grove],
-                ["grove.%s.>" % grove])
+        return (["fleet.%s.cmd.>" % fleet],
+                ["fleet.%s.>" % fleet])
     if role not in ("node", "warden"):
         raise ValueError("role is one of %s, not %r" % (", ".join(ROLES), role))
 
     # A node publishes under its own id and nowhere else.  This is invariant 5.
-    publish = ["grove.%s.node.%s.>" % (grove, nid),
-               "grove.%s.log.%s" % (grove, nid),
-               "grove.%s.ack.%s.>" % (grove, nid),
-               "grove.%s.gem.>" % grove,
-               "grove.%s.hello" % grove]
-    subscribe = ["grove.%s.cmd.>" % grove,
-                 "grove.%s.work.>" % grove]
+    publish = ["fleet.%s.node.%s.>" % (fleet, nid),
+               "fleet.%s.log.%s" % (fleet, nid),
+               "fleet.%s.ack.%s.>" % (fleet, nid),
+               "fleet.%s.gem.>" % fleet,
+               "fleet.%s.hello" % fleet]
+    subscribe = ["fleet.%s.cmd.>" % fleet,
+                 "fleet.%s.work.>" % fleet]
 
     # THE WARDEN IS A NODE THAT ALSO COLLECTS LOGS, and this is the whole of
     # the difference.  W4 has it subscribe to every node's log subject and
@@ -21768,12 +21768,12 @@ def perms_for(grove, nid, role):
     # correctly, since a node has no business reading another node's log.
     #
     # It is a SUBSCRIBE grant and never a publish one: the warden may read what
-    # the grove says and still cannot say anything in another node's name. A
-    # compromised warden costs the grove its log sink and its queue. It does
+    # the fleet says and still cannot say anything in another node's name. A
+    # compromised warden costs the fleet its log sink and its queue. It does
     # not let the warden forge telemetry, which is what invariant 5 is for and
     # why §7 can call the warden a convenience rather than an authority.
     if role == "warden":
-        subscribe = subscribe + ["grove.%s.log.>" % grove]
+        subscribe = subscribe + ["fleet.%s.log.>" % fleet]
     return (publish, subscribe)
 
 
@@ -21814,22 +21814,22 @@ def parse_members(text):
     return rows
 
 
-def render_users(grove, rows):
-    """The warden's /etc/nats/grove-users.conf, as text."""
-    if not grove or set(grove) - ID_OK:
-        raise ValueError("refusing to render a grove name that is not [a-z0-9-]: %r" % grove)
+def render_users(fleet, rows):
+    """The warden's /etc/nats/fleet-users.conf, as text."""
+    if not fleet or set(fleet) - ID_OK:
+        raise ValueError("refusing to render a fleet name that is not [a-z0-9-]: %r" % fleet)
     out = [
-        "# /etc/nats/grove-users.conf -- rendered by `copal-grove bus-users`.",
+        "# /etc/nats/fleet-users.conf -- rendered by `copal-fleet bus-users`.",
         "# Do not edit: the next enrolment overwrites it. %d members." % len(rows),
         "#",
-        "# THIS FILE IS INVARIANT 5 of docs/grove-plan.md, in the form the server",
+        "# THIS FILE IS INVARIANT 5 of docs/fleet-plan.md, in the form the server",
         "# enforces it. A node publishes under its own id and nowhere else. Read",
         "# it against the plan -- that is what it is here for.",
         "authorization {",
         "    users = [",
     ]
     for nid, nkey, role in rows:
-        pub, sub = perms_for(grove, nid, role)
+        pub, sub = perms_for(fleet, nid, role)
         quoted = lambda xs: ", ".join('"%s"' % x for x in xs)  # noqa: E731
         out.append("        # %s (%s)" % (nid, role))
         out.append("        { nkey: %s, permissions: {" % nkey)
@@ -21849,7 +21849,7 @@ class NatsError(Exception):
 
 class Nats:
     """One connection.  Not thread-safe, and deliberately not a reconnector --
-    W3's agent owns the backoff policy, because only it knows that a grove with
+    W3's agent owns the backoff policy, because only it knows that a fleet with
     no warden is the ordinary state during a handover rather than a fault."""
 
     def __init__(self, host, port=4222, seed=None, name="copal", timeout=5.0):
@@ -22018,9 +22018,9 @@ class Nats:
 
 # -------------------------------------------------------------------- cli ---
 
-USAGE = """copal_nats -- the grove's permission list, and a client for the bus
+USAGE = """copal_nats -- the fleet's permission list, and a client for the bus
 
-  copal_nats.py render GROVE FILE    the warden's authorization block
+  copal_nats.py render FLEET FILE    the warden's authorization block
   copal_nats.py ping HOST[:PORT]     is there a bus there, and does it want a key
   copal_nats.py self-test            the renderer, and the wire against a stub
 """
@@ -22032,8 +22032,8 @@ def main(argv):
         return 0
     try:
         if argv[1] == "render":
-            grove, path = argv[2], argv[3]
-            sys.stdout.write(render_users(grove, parse_members(open(path).read())))
+            fleet, path = argv[2], argv[3]
+            sys.stdout.write(render_users(fleet, parse_members(open(path).read())))
         elif argv[1] == "ping":
             where = argv[2]
             host, _, port = where.partition(":")
@@ -22144,11 +22144,11 @@ def self_test():
     checks += 1
 
     # A node's own subjects are there; another node's are not, anywhere.
-    assert '"grove.museum.node.museum-01.>"' in conf
-    assert '"grove.museum.log.museum-01"' in conf
-    assert conf.count('"grove.museum.cmd.>"') == 3   # two nodes subscribe, console publishes
-    assert '"grove.museum.>"' in conf                # the console, and only the console
-    assert conf.count('"grove.museum.>"') == 1
+    assert '"fleet.museum.node.museum-01.>"' in conf
+    assert '"fleet.museum.log.museum-01"' in conf
+    assert conf.count('"fleet.museum.cmd.>"') == 3   # two nodes subscribe, console publishes
+    assert '"fleet.museum.>"' in conf                # the console, and only the console
+    assert conf.count('"fleet.museum.>"') == 1
     checks += 5
 
     # The publish allow-list of a node must not mention any other node's id.
@@ -22156,7 +22156,7 @@ def self_test():
         pub, sub = perms_for("museum", nid, "node")
         other = "museum-02" if nid == "museum-01" else "museum-01"
         assert not any(other in s for s in pub + sub), "a node's list names another node"
-        assert not any(s == "grove.museum.>" for s in pub + sub), "a node got the console's wildcard"
+        assert not any(s == "fleet.museum.>" for s in pub + sub), "a node got the console's wildcard"
         checks += 2
 
     # The warden gets exactly one thing a node does not, and it is a
@@ -22164,8 +22164,8 @@ def self_test():
     npub, nsub = perms_for("museum", "museum-06", "node")
     wpub, wsub = perms_for("museum", "museum-06", "warden")
     assert wpub == npub, "the warden was given a publish grant a node lacks"
-    assert set(wsub) - set(nsub) == {"grove.museum.log.>"}, wsub
-    assert "grove.museum.log.>" not in nsub, "a plain node may read every log"
+    assert set(wsub) - set(nsub) == {"fleet.museum.log.>"}, wsub
+    assert "fleet.museum.log.>" not in nsub, "a plain node may read every log"
     checks += 3
 
     for bad, why in [
@@ -22190,7 +22190,7 @@ def self_test():
         except ValueError:
             checks += 1
         else:
-            raise AssertionError("rendered a grove name it should have refused: %r" % bad)
+            raise AssertionError("rendered a fleet name it should have refused: %r" % bad)
 
     # -- the wire, against the stub -------------------------------------
     srv = socket.socket()
@@ -22209,16 +22209,16 @@ def self_test():
     client = Nats("127.0.0.1", port, seed=seeds["museum-01"], name="museum-01")
     client.connect()                                    # handshake + signature
     checks += 1
-    sid = client.subscribe("grove.museum.cmd.>")
+    sid = client.subscribe("fleet.museum.cmd.>")
     assert sid == 1
-    client.publish("grove.museum.node.museum-01.state", b"temp=41")
+    client.publish("fleet.museum.node.museum-01.state", b"temp=41")
     assert client.flush() == [], "an allowed publish drew an error"
     checks += 2
-    client.publish("grove.museum.node.forbidden.state", b"nope")
+    client.publish("fleet.museum.node.forbidden.state", b"nope")
     errs = client.flush()
     assert len(errs) == 1 and "Permissions Violation" in errs[0], errs
     checks += 1
-    client.publish("grove.museum.echo", b"hello")
+    client.publish("fleet.museum.echo", b"hello")
     got = client.messages(0.5)
     assert got and got[0][3] == b"hello", got
     checks += 1
@@ -22228,7 +22228,7 @@ def self_test():
     # This used to raise AttributeError on a lazily-created buffer, and it was
     # found by deliberately breaking a permission to check that the invariant
     # test could fail -- the console heard itself and the client fell over.
-    client.publish("grove.museum.echo", b"during-flush")
+    client.publish("fleet.museum.echo", b"during-flush")
     assert client.flush() == [], "the echo drew an error"
     heard = client.messages(0.2)
     assert any(m[3] == b"during-flush" for m in heard), heard
@@ -22237,7 +22237,7 @@ def self_test():
     client.close()
     thread.join(timeout=5)
     srv.close()
-    assert observed.get("sub") == ["SUB grove.museum.cmd.> 1"], observed.get("sub")
+    assert observed.get("sub") == ["SUB fleet.museum.cmd.> 1"], observed.get("sub")
     checks += 1
 
     # A client with no seed must refuse to talk to a server that wants one,
@@ -22265,13 +22265,13 @@ if __name__ == "__main__":
     sys.exit(main(sys.argv))
 COPALNATS
     chmod 0644 /usr/lib/copal/copal_nats.py
-    cat > /usr/bin/copal-grove-agent <<'COPALAGENT'
+    cat > /usr/bin/copal-fleet-agent <<'COPALAGENT'
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson
-"""copal-grove-agent -- this node's standing presence on the grove's bus.
+"""copal-fleet-agent -- this node's standing presence on the fleet's bus.
 
-Runs on every node, supervised by OpenRC, as the `copal-grove` service account
+Runs on every node, supervised by OpenRC, as the `copal-fleet` service account
 and NOT as root.  That is the same account the forced command lands in over
 ssh, and it matters: this program's whole job is to be a second doorway to the
 same small list of verbs, so it must not be a wider doorway.
@@ -22280,20 +22280,20 @@ WHAT IT DOES
 
   publishes  hello                every 10 s -- presence
              node.<id>.state      on change, at most every 5 s -- telemetry
-             log.<id>             lines appended to /var/log/copal-grove.log
+             log.<id>             lines appended to /var/log/copal-fleet.log
              ack.<id>.<corr>      the result of every command it ran
   subscribes cmd.>                commands, filtered to this node
              log.>                ONLY when this node is the warden (W4)
 
 THE ONE RULE.  A command that arrives over NATS is executed by handing it to
-/usr/bin/copal-grove-exec, exactly as sshd hands it one, through the same
+/usr/bin/copal-fleet-exec, exactly as sshd hands it one, through the same
 SSH_ORIGINAL_COMMAND variable.  This program parses no verbs of its own and
 has no list of its own to fall out of date.  A verb that is not allowed over
 ssh cannot become allowed by arriving over the bus, and adding a verb still
 means editing one file.
 
 RUNNING WITH NO WARDEN IS NORMAL, not an error.  During a handover there is no
-bus at all for twenty seconds, and `copal grove run` over ssh keeps working
+bus at all for twenty seconds, and `copal fleet run` over ssh keeps working
 throughout -- that is the layering rule and this program is the layer that is
 allowed to be absent.  So: no warden means wait and look again, quietly, and
 never means exit.
@@ -22318,15 +22318,15 @@ import copal_nats  # noqa: E402
 # Paths, with test seams. The defaults are the only values a node ever uses;
 # the overrides exist so that tools/copal-degrade-test.py can run this exact
 # program against a real nats-server without being root and without a card.
-# The repository already reads COPAL_GROVE_BEACONS, COPAL_ANSWERS and
+# The repository already reads COPAL_FLEET_BEACONS, COPAL_ANSWERS and
 # COPAL_HOME the same way, for the same reason.
-D = os.environ.get("COPAL_GROVE_DIR", "/etc/copal/grove")
+D = os.environ.get("COPAL_FLEET_DIR", "/etc/copal/fleet")
 SEED = os.path.join(D, "nkey.seed")
-EXEC = os.environ.get("COPAL_GROVE_EXEC", "/usr/bin/copal-grove-exec")
-GROVE_TOOL = os.environ.get("COPAL_GROVE_TOOL", "/usr/bin/copal-grove")
-NODE_LOG = os.environ.get("COPAL_GROVE_NODE_LOG", "/var/log/copal-grove.log")
-SEEN = os.environ.get("COPAL_GROVE_SEEN", "/var/lib/copal-grove/seen")
-COLLECT = os.environ.get("COPAL_GROVE_COLLECT", "/var/log/copal-grove")
+EXEC = os.environ.get("COPAL_FLEET_EXEC", "/usr/bin/copal-fleet-exec")
+FLEET_TOOL = os.environ.get("COPAL_FLEET_TOOL", "/usr/bin/copal-fleet")
+NODE_LOG = os.environ.get("COPAL_FLEET_NODE_LOG", "/var/log/copal-fleet.log")
+SEEN = os.environ.get("COPAL_FLEET_SEEN", "/var/lib/copal-fleet/seen")
+COLLECT = os.environ.get("COPAL_FLEET_COLLECT", "/var/log/copal-fleet")
 COLLECT_CAP = 64 * 1024 * 1024              # bytes, across every node
 
 HELLO_EVERY = 10.0
@@ -22346,13 +22346,13 @@ def field(name):
 
 
 def log(msg):
-    sys.stderr.write("copal-grove-agent: %s\n" % msg)
+    sys.stderr.write("copal-fleet-agent: %s\n" % msg)
     sys.stderr.flush()
 
 
 def run_tool(*args):
     try:
-        out = subprocess.run([GROVE_TOOL] + list(args), capture_output=True,
+        out = subprocess.run([FLEET_TOOL] + list(args), capture_output=True,
                              text=True, timeout=20)
         return out.stdout.strip()
     except (OSError, subprocess.SubprocessError):
@@ -22363,9 +22363,9 @@ def run_tool(*args):
 
 # ------------------------------------------------------------- the sort ---
 
-UNREACHABLE = os.environ.get("COPAL_GROVE_UNREACHABLE",
-                             "/var/lib/copal-grove/unreachable")
-DOAS = os.environ.get("COPAL_GROVE_DOAS", "/usr/bin/doas")
+UNREACHABLE = os.environ.get("COPAL_FLEET_UNREACHABLE",
+                             "/var/lib/copal-fleet/unreachable")
+DOAS = os.environ.get("COPAL_FLEET_DOAS", "/usr/bin/doas")
 
 
 def unreachable(ids):
@@ -22376,7 +22376,7 @@ def unreachable(ids):
     an election reading beacons alone would follow a machine that is off until
     mDNS forgot it -- minutes, where §7 promises twenty seconds. This process
     is the one holding the connection, so it is the one that knows, and this
-    file is how it tells `copal-grove elect`.
+    file is how it tells `copal-fleet elect`.
     """
     try:
         os.makedirs(os.path.dirname(UNREACHABLE), exist_ok=True)
@@ -22394,8 +22394,8 @@ def elect():
     Through the node tool rather than in here, so that there is ONE election
     and it is the one a person can run by hand.
     """
-    argv = ([DOAS, GROVE_TOOL, "elect"] if os.access(DOAS, os.X_OK)
-            else [GROVE_TOOL, "elect"])
+    argv = ([DOAS, FLEET_TOOL, "elect"] if os.access(DOAS, os.X_OK)
+            else [FLEET_TOOL, "elect"])
     try:
         out = subprocess.run(argv, capture_output=True, text=True, timeout=20)
     except (OSError, subprocess.SubprocessError):
@@ -22410,7 +22410,7 @@ def find_warden(skip=()):
     without this the agent would go on dialling a dead machine and never reach
     the one that has since been elected.
 
-    Read out of the same beacons `copal grove ls` reads, through the node
+    Read out of the same beacons `copal fleet ls` reads, through the node
     tool's own `browse`, so there is one parser for that format and it is not
     this file.  DISCOVERY ANNOUNCES, IT NEVER AUTHORIZES: a wrong answer here
     costs a failed connection, because the bus still demands a signature the
@@ -22423,7 +22423,7 @@ def find_warden(skip=()):
             continue
         nid, addr, txt = parts[0], parts[1], parts[2]
         kv = dict(p.split("=", 1) for p in txt.split(";") if "=" in p)
-        if kv.get("g") != field("name") or kv.get("r") != "warden":
+        if kv.get("f") != field("name") or kv.get("r") != "warden":
             continue
         score = int(kv.get("s") or 0)
         name = kv.get("n") or nid
@@ -22531,7 +22531,7 @@ def collect(node_id, payload):
 
 def enforce_cap():
     """A ceiling, because the warden's /var/log is on the card and a chatty
-    node should cost the grove its oldest logs rather than its root filesystem.
+    node should cost the fleet its oldest logs rather than its root filesystem.
     Oldest whole files go first; today's is never the one deleted."""
     files = []
     for root, _dirs, names in os.walk(COLLECT):
@@ -22562,11 +22562,11 @@ def enforce_cap():
 
 # ---------------------------------------------------------- the commands ---
 
-def wanted_by_me(subject, grove, node_id, tags):
+def wanted_by_me(subject, fleet, node_id, tags):
     """Is this command addressed to this node?  cmd.> is one subscription and
     the filtering is here, because a node may not subscribe more narrowly than
     its credential allows and there is no reason it should have to."""
-    base = "grove.%s.cmd." % grove
+    base = "fleet.%s.cmd." % fleet
     if not subject.startswith(base):
         return False
     rest = subject[len(base):]
@@ -22629,9 +22629,9 @@ def validate(envelope, seen, now):
 
 # ---------------------------------------------------------------- session ---
 
-def session(conn, grove, node_id, tags, is_warden, seen, tail):
+def session(conn, fleet, node_id, tags, is_warden, seen, tail):
     """One connection's life.  Returns when it ends; the caller reconnects."""
-    subj = lambda s: "grove.%s.%s" % (grove, s)   # noqa: E731
+    subj = lambda s: "fleet.%s.%s" % (fleet, s)   # noqa: E731
     conn.subscribe(subj("cmd.>"))
     if is_warden:
         conn.subscribe(subj("log.>"))
@@ -22676,10 +22676,10 @@ def session(conn, grove, node_id, tags, is_warden, seen, tail):
         conn.flush()
 
         for subject, _sid, _reply, payload in conn.messages(TICK):
-            if is_warden and subject.startswith("grove.%s.log." % grove):
+            if is_warden and subject.startswith("fleet.%s.log." % fleet):
                 collect(subject.rsplit(".", 1)[-1], payload)
                 continue
-            if not wanted_by_me(subject, grove, node_id, tags):
+            if not wanted_by_me(subject, fleet, node_id, tags):
                 continue
             try:
                 envelope = json.loads(payload.decode("utf-8", "replace"))
@@ -22700,13 +22700,13 @@ def session(conn, grove, node_id, tags, is_warden, seen, tail):
 
 
 def main():
-    grove = field("name")
-    if not grove:
-        log("this machine is not in a grove -- nothing to do")
+    fleet = field("name")
+    if not fleet:
+        log("this machine is not in a fleet -- nothing to do")
         return 0
     if not os.path.exists(SEED):
         log("no bus identity yet. The console has not enrolled this node onto")
-        log("the bus. From the console:  copal grove bus")
+        log("the bus. From the console:  copal fleet bus")
         return 0
     try:
         with open(SEED) as fh:
@@ -22721,7 +22721,7 @@ def main():
     tail = Tail(NODE_LOG)
     attempt = 0
 
-    log("agent for %s in grove %s, tags %s" % (node_id, grove, tags or "none"))
+    log("agent for %s in fleet %s, tags %s" % (node_id, fleet, tags or "none"))
 
     dead = set()
 
@@ -22739,7 +22739,7 @@ def main():
 
         # After the election, not before: elect() may just have changed it.
         is_warden = field("role") == "warden"
-        conn = copal_nats.Nats(addr, int(os.environ.get("COPAL_GROVE_PORT", "4222")),
+        conn = copal_nats.Nats(addr, int(os.environ.get("COPAL_FLEET_PORT", "4222")),
                                seed=seed, name=node_id, timeout=10)
         try:
             conn.connect()
@@ -22750,7 +22750,7 @@ def main():
                 dead = set()
                 unreachable(dead)
             attempt = 0
-            session(conn, grove, node_id, tags, is_warden, seen, tail)
+            session(conn, fleet, node_id, tags, is_warden, seen, tail)
         except copal_nats.NatsError as exc:
             # THE WARDEN IS THERE AND SAID NO. An auth or protocol refusal is
             # not absence, and treating it as absence would elect a new warden
@@ -22790,15 +22790,15 @@ def self_test():
         # -- addressing: cmd.> is one subscription, filtered here ---------
         tags = ["wall", "north"]
         for subject, want in [
-            ("grove.museum.cmd.all", True),
-            ("grove.museum.cmd.node.museum-03", True),
-            ("grove.museum.cmd.node.museum-04", False),
-            ("grove.museum.cmd.tag.wall", True),
-            ("grove.museum.cmd.tag.sdr", False),
-            ("grove.museum.cmd.tag.north", True),
-            ("grove.othergrove.cmd.all", False),
-            ("grove.museum.log.museum-03", False),
-            ("grove.museum.cmd.", False),
+            ("fleet.museum.cmd.all", True),
+            ("fleet.museum.cmd.node.museum-03", True),
+            ("fleet.museum.cmd.node.museum-04", False),
+            ("fleet.museum.cmd.tag.wall", True),
+            ("fleet.museum.cmd.tag.sdr", False),
+            ("fleet.museum.cmd.tag.north", True),
+            ("fleet.otherfleet.cmd.all", False),
+            ("fleet.museum.log.museum-03", False),
+            ("fleet.museum.cmd.", False),
         ]:
             got = wanted_by_me(subject, "museum", "museum-03", tags)
             assert got == want, "%s -> %s, wanted %s" % (subject, got, want)
@@ -22808,7 +22808,7 @@ def self_test():
         seen = Seen(os.path.join(tmp, "seen"))
         now = 1789042000.0
         good = {"v": 1, "corr": "a3f1", "verb": "scene",
-                "args": ["apply", "rest"], "iss": "grove-operator",
+                "args": ["apply", "rest"], "iss": "fleet-operator",
                 "exp": now + 60, "once": "2026-09-08T09:14:22Z"}
         assert validate(good, seen, now) is None, validate(good, seen, now)
         checks += 1
@@ -22894,13 +22894,13 @@ def self_test():
 if __name__ == "__main__":
     try:
         if "--self-test" in sys.argv or "self-test" in sys.argv[1:2]:
-            print("copal-grove-agent: %d checks passed" % self_test())
+            print("copal-fleet-agent: %d checks passed" % self_test())
             sys.exit(0)
         sys.exit(main())
     except KeyboardInterrupt:
         sys.exit(0)
 COPALAGENT
-    chmod 0755 /usr/bin/copal-grove-agent
+    chmod 0755 /usr/bin/copal-fleet-agent
     if ! command -v python3 >/dev/null 2>&1; then
         warn "no python3 here -- the bus needs it and will stay off"
         return 1
@@ -22923,53 +22923,53 @@ COPALAGENT
 
     # THE AGENT RUNS AS THE SERVICE ACCOUNT AND NOT AS ROOT. It is a second
     # doorway to the same verb list the forced command already guards, so it
-    # must not be a wider doorway. /var/lib/copal-grove is where it remembers
+    # must not be a wider doorway. /var/lib/copal-fleet is where it remembers
     # which commands it has already run, so that redelivery is safe across a
     # restart and not only within one.
-    install -d -m 0750 -o "$GROVE_ACCT" -g "$GROVE_ACCT" /var/lib/copal-grove 2>/dev/null \
-        || install -d -m 0750 /var/lib/copal-grove
-    cat > /etc/init.d/copal-grove-agent <<'AGENTRC'
+    install -d -m 0750 -o "$FLEET_ACCT" -g "$FLEET_ACCT" /var/lib/copal-fleet 2>/dev/null \
+        || install -d -m 0750 /var/lib/copal-fleet
+    cat > /etc/init.d/copal-fleet-agent <<'AGENTRC'
 #!/sbin/openrc-run
-# copal-grove-agent -- this node's presence on the bus. Written by stage 16.
+# copal-fleet-agent -- this node's presence on the bus. Written by stage 16.
 #
-# Runs as copal-grove, not root: it is the same doorway sshd's forced command
+# Runs as copal-fleet, not root: it is the same doorway sshd's forced command
 # is, reached a different way, and it hands every command it receives to
-# /usr/bin/copal-grove-exec rather than acting on one itself.
+# /usr/bin/copal-fleet-exec rather than acting on one itself.
 #
 # It starts whether or not there is a warden, and whether or not this node has
 # been put on the bus yet, because both of those are ordinary states and a
 # service that refuses to start in them is a service somebody has to remember
 # to start later.
-name="copal-grove-agent"
-description="Copal grove bus agent"
-command="/usr/bin/copal-grove-agent"
-command_user="copal-grove:copal-grove"
+name="copal-fleet-agent"
+description="Copal fleet bus agent"
+command="/usr/bin/copal-fleet-agent"
+command_user="copal-fleet:copal-fleet"
 command_background=true
-pidfile="/run/copal-grove-agent.pid"
-output_log="/var/log/copal-grove-agent.log"
-error_log="/var/log/copal-grove-agent.log"
+pidfile="/run/copal-fleet-agent.pid"
+output_log="/var/log/copal-fleet-agent.log"
+error_log="/var/log/copal-fleet-agent.log"
 respawn_delay=5
 respawn_max=0
 
 depend() {
 	need localmount net
-	after copal-grove nats sshd avahi-daemon
+	after copal-fleet nats sshd avahi-daemon
 }
 
 start_pre() {
-	if [ ! -s /etc/copal/grove/name ]; then
-		einfo "This machine is not in a grove -- nothing to announce."
+	if [ ! -s /etc/copal/fleet/name ]; then
+		einfo "This machine is not in a fleet -- nothing to announce."
 		return 1
 	fi
-	checkpath -d -m 0750 -o copal-grove:copal-grove /var/lib/copal-grove
-	checkpath -f -m 0644 -o copal-grove:copal-grove /var/log/copal-grove-agent.log
+	checkpath -d -m 0750 -o copal-fleet:copal-fleet /var/lib/copal-fleet
+	checkpath -f -m 0644 -o copal-fleet:copal-fleet /var/log/copal-fleet-agent.log
 	return 0
 }
 AGENTRC
-    chmod 0755 /etc/init.d/copal-grove-agent
-    rc-update add copal-grove-agent default >/dev/null 2>&1 \
-        && note "copal-grove-agent added to the default runlevel" \
-        || warn "could not add copal-grove-agent to the default runlevel"
+    chmod 0755 /etc/init.d/copal-fleet-agent
+    rc-update add copal-fleet-agent default >/dev/null 2>&1 \
+        && note "copal-fleet-agent added to the default runlevel" \
+        || warn "could not add copal-fleet-agent to the default runlevel"
 }
 
 # THE DEFAULT MEMBERSHIP IS A LOCK WITH NO KEY.
@@ -22983,8 +22983,8 @@ AGENTRC
 # is thrown away in the same breath. The config parses, the server demands a
 # credential from its first second of listening, and no such credential exists
 # anywhere in the world.
-grove_bus_users_default() {
-    [ -s /etc/nats/grove-users.conf ] && return 0
+fleet_bus_users_default() {
+    [ -s /etc/nats/fleet-users.conf ] && return 0
     _lock=$(python3 - <<'PY' 2>/dev/null
 import sys
 sys.path.insert(0, "/usr/lib/copal")
@@ -22996,27 +22996,27 @@ PY
         warn "could not generate the placeholder credential"
         return 1
     fi
-    cat > /etc/nats/grove-users.conf <<LOCKED
-# Written by Copal stage 16. Replaced wholesale by \`copal grove bus\` the
+    cat > /etc/nats/fleet-users.conf <<LOCKED
+# Written by Copal stage 16. Replaced wholesale by \`copal fleet bus\` the
 # first time a node is enrolled onto the bus.
 #
 # THIS IS A LOCK WITH NO KEY. The nkey below is real and was generated on this
 # machine; its seed was never written to disk and no longer exists. It is here
 # so that this file is a valid, CLOSED authorization block rather than an empty
 # one -- an empty block means "no authentication" to NATS, and that is not what
-# an unenrolled grove should mean.
+# an unenrolled fleet should mean.
 authorization {
     users = [
         { nkey: $_lock }
     ]
 }
 LOCKED
-    chmod 0644 /etc/nats/grove-users.conf
+    chmod 0644 /etc/nats/fleet-users.conf
     note "bus membership: closed, pending enrolment"
 }
 
-grove_warden_bus() {
-    _role=$(cat "$GROVE_DIR/role" 2>/dev/null || echo node)
+fleet_warden_bus() {
+    _role=$(cat "$FLEET_DIR/role" 2>/dev/null || echo node)
 
     # DEMOTION IS THE CASE THAT GETS FORGOTTEN, and stopping the service is not
     # enough: a reboot would start it again, and two wardens holding two
@@ -23033,12 +23033,12 @@ grove_warden_bus() {
         return 0
     fi
 
-    say "This card is the grove's warden: installing the message bus"
+    say "This card is the fleet's warden: installing the message bus"
 
     # D2: it is in Alpine v3.24 community for aarch64, so there is no download,
     # no SHA256 to pin and no argument with the no-binaries policy.
     if ! apk add nats-server >/dev/null 2>&1; then
-        warn "could not install nats-server -- the grove works without it"
+        warn "could not install nats-server -- the fleet works without it"
         note "Everything through milestone 3 runs over SSH and is unaffected:"
         note "ls, enrol, run, scene and power all keep working. The bus is what"
         note "the wall and the gems need. Try by hand: apk add nats-server"
@@ -23047,27 +23047,27 @@ grove_warden_bus() {
     note "$(nats-server --version 2>/dev/null | head -1 || echo 'nats-server installed')"
 
     install -d -m 0755 /etc/nats
-    # JetStream's store. Root-owned and 0700 because it will hold the grove's
+    # JetStream's store. Root-owned and 0700 because it will hold the fleet's
     # log stream, and /var/log on a node is tmpfs (stage 3) while this is not.
     install -d -m 0700 /var/lib/nats
 
     # THE COLLECTOR'S DIRECTORY, and it has to be made here because the agent
-    # runs as copal-grove and /var/log is root's. It is on the card and not in
+    # runs as copal-fleet and /var/log is root's. It is on the card and not in
     # tmpfs on purpose: the failure the museum will actually hit is a Pi that
     # died at 11:00 and is asked about at 16:00, and a collector that lost its
     # files at the last reboot answers the wrong question.
-    install -d -m 0755 -o "$GROVE_ACCT" -g "$GROVE_ACCT" /var/log/copal-grove 2>/dev/null \
-        || install -d -m 0755 /var/log/copal-grove
+    install -d -m 0755 -o "$FLEET_ACCT" -g "$FLEET_ACCT" /var/log/copal-fleet 2>/dev/null \
+        || install -d -m 0755 /var/log/copal-fleet
 
     [ -f /usr/lib/copal/copal_nkeys.py ] \
         || { warn "no key format on this node -- not starting the bus"; return 1; }
-    grove_bus_users_default || return 1
-    /usr/bin/copal-grove bus-config \
+    fleet_bus_users_default || return 1
+    /usr/bin/copal-fleet bus-config \
         || { warn "could not write /etc/nats/nats.conf -- is there an address yet?"; return 1; }
 
     cat > /etc/init.d/nats <<'NATSRC'
 #!/sbin/openrc-run
-# nats -- the grove's message bus. Written by Copal stage 16, on the warden.
+# nats -- the fleet's message bus. Written by Copal stage 16, on the warden.
 #
 # start_pre REWRITES THE CONFIG EVERY TIME, and that is deliberate rather than
 # wasteful: the one thing in it that cannot be decided when the card is written
@@ -23076,7 +23076,7 @@ grove_warden_bus() {
 # the failure would look like the bus being broken rather than the config being
 # stale.
 name="nats"
-description="Copal grove message bus"
+description="Copal fleet message bus"
 command="/usr/bin/nats-server"
 command_args="-c /etc/nats/nats.conf"
 command_background=true
@@ -23090,11 +23090,11 @@ depend() {
 }
 
 start_pre() {
-	if [ "$(cat /etc/copal/grove/role 2>/dev/null)" != warden ]; then
+	if [ "$(cat /etc/copal/fleet/role 2>/dev/null)" != warden ]; then
 		eerror "This node is not the warden. Refusing to start a second bus."
 		return 1
 	fi
-	/usr/bin/copal-grove bus-config || {
+	/usr/bin/copal-fleet bus-config || {
 		eerror "no address to listen on -- the network is not up yet"
 		return 1
 	}
@@ -23106,24 +23106,24 @@ NATSRC
         && note "nats added to the default runlevel" \
         || warn "could not add nats to the default runlevel"
     if rc-service nats restart >/dev/null 2>&1; then
-        note "the bus is up on $(/usr/bin/copal-grove bus-address 2>/dev/null || echo '?'):4222"
-        note "It has no members yet. From the console:  copal grove bus"
+        note "the bus is up on $(/usr/bin/copal-fleet bus-address 2>/dev/null || echo '?'):4222"
+        note "It has no members yet. From the console:  copal fleet bus"
     else
         warn "nats did not start -- see: rc-service nats status; tail /var/log/nats.log"
     fi
 }
 
 
-stage_grove() {
-    say "Stage 16: the grove -- this machine as one of several"
+stage_fleet() {
+    say "Stage 16: the fleet -- this machine as one of several"
 
-    _g=$(answers_grove COPAL_GROVE || true)
+    _g=$(answers_fleet COPAL_FLEET || true)
     if [ -z "$_g" ]; then
         cat <<'MSG'
 
-    THIS CARD IS NOT PART OF A GROVE, and that is the ordinary case.
+    THIS CARD IS NOT PART OF A FLEET, and that is the ordinary case.
 
-    A grove is a named set of Copal machines on one LAN that trust one
+    A fleet is a named set of Copal machines on one LAN that trust one
     certificate authority: they find each other, prove themselves, and answer
     one console. Eight Raspberry Pis in a museum, switched on together each
     morning, is what it was built for.
@@ -23131,11 +23131,11 @@ stage_grove() {
     Nothing about it can be turned on from here, because the parts that matter
     are decided on the machine that WRITES the card:
 
-        make answers            name a grove; it offers to make the authority
+        make answers            name a fleet; it offers to make the authority
         make answers-node N=2   card 2, card 3, ... without another interview
 
     Both write into answers.txt, copal-prep.sh puts them on the card, and this
-    stage picks them up at the next install. See docs/grove-plan.md.
+    stage picks them up at the next install. See docs/fleet-plan.md.
 
 MSG
         return 0
@@ -23143,16 +23143,16 @@ MSG
 
     cat <<MSG
 
-    GROVE: $_g
+    FLEET: $_g
 
-    This machine is card $(answers_grove COPAL_GROVE_INDEX || echo '?') of $(answers_grove COPAL_GROVE_SIZE || echo '?').
+    This machine is card $(answers_fleet COPAL_FLEET_INDEX || echo '?') of $(answers_fleet COPAL_FLEET_SIZE || echo '?').
 
     What this stage does:
 
-      - records the grove's name, this card's index, role and tags
-      - installs the grove's certificate authority, PUBLIC half, so that
+      - records the fleet's name, this card's index, role and tags
+      - installs the fleet's certificate authority, PUBLIC half, so that
         nothing on this network is ever trusted on first sight
-      - creates the '$GROVE_ACCT' service account, which the console's
+      - creates the '$FLEET_ACCT' service account, which the console's
         automation lands in and which cannot get a shell
       - points sshd at the authority, and binds that account to one forced
         command that accepts a list of verbs and refuses everything else
@@ -23168,35 +23168,35 @@ MSG
       - put a private key anywhere
       - change how you log in. Your own account is untouched
 
-    Afterwards, from the console:   copal grove ls   then   copal grove enrol
+    Afterwards, from the console:   copal fleet ls   then   copal fleet enrol
 
 MSG
-    confirm_yes "Join grove '$_g'?" || { note "Nothing changed."; return 0; }
+    confirm_yes "Join fleet '$_g'?" || { note "Nothing changed."; return 0; }
 
-    grove_write_identity
-    grove_install_ca      || warn "continuing without an authority -- enrolment will not work"
-    grove_install_tools
-    grove_service_account || warn "the service account is incomplete"
-    grove_sshd_policy     || warn "sshd was left as it was"
-    grove_discovery       || true
+    fleet_write_identity
+    fleet_install_ca      || warn "continuing without an authority -- enrolment will not work"
+    fleet_install_tools
+    fleet_service_account || warn "the service account is incomplete"
+    fleet_sshd_policy     || warn "sshd was left as it was"
+    fleet_discovery       || true
     # Every node gets the key format, because every node needs a bus identity.
-    # Only the warden gets a server, and grove_warden_bus is what decides that
+    # Only the warden gets a server, and fleet_warden_bus is what decides that
     # -- including taking one away from a node that has just been demoted.
-    grove_bus_tools       || warn "the bus key format is not installed here"
-    grove_warden_bus      || true
+    fleet_bus_tools       || warn "the bus key format is not installed here"
+    fleet_warden_bus      || true
 
     say "Stage 16 complete."
     note ""
-    note "This machine is $(hostname), card $(cat "$GROVE_DIR/index" 2>/dev/null) of grove $_g."
+    note "This machine is $(hostname), card $(cat "$FLEET_DIR/index" 2>/dev/null) of fleet $_g."
     note "It is announcing itself. It has NOT been enrolled: no certificate has"
     note "been signed for it yet, and until one is, the console will show it as a"
     note "candidate rather than a node. From the machine that holds the authority:"
     note ""
-    note "    copal grove ls        -- it should appear with a '?'"
-    note "    copal grove enrol     -- checks its token, signs, installs"
-    note "    copal grove ls        -- a '✓'"
+    note "    copal fleet ls        -- it should appear with a '?'"
+    note "    copal fleet enrol     -- checks its token, signs, installs"
+    note "    copal fleet ls        -- a '✓'"
     note ""
-    note "On this machine: copal-grove status, and copal-grove bus-state"
+    note "On this machine: copal-fleet status, and copal-fleet bus-state"
 }
 
 stage_verify() {
@@ -23321,7 +23321,7 @@ auto_manifest() {
 12|Software|The application catalogue|4
 14|Workshop|CAD, 3D printing, EDA, LaTeX, trackers|6
 9|Emulators|Mini vMac and VICE (compiles from source)|6
-16|Grove|Join the named fleet, and announce it|4
+16|Fleet|Join the named fleet, and announce it|4
 13|Handover|Hand root over to the admin user|4
 MANIFEST
 }
@@ -24051,11 +24051,11 @@ auto_run() {
     (SD card care) is skipped too: it is a menu of things to read, and it
     changes nothing unless you choose one.
 
-    Stage 16 (the grove) runs, and answers its one question with yes. A card
-    written for a grove joins it, announces itself on the LAN, and waits to be
+    Stage 16 (the fleet) runs, and answers its one question with yes. A card
+    written for a fleet joins it, announces itself on the LAN, and waits to be
     enrolled from the console -- which is the whole point of writing eight
-    cards unattended. A card with no grove named in answers.txt prints what a
-    grove is and changes nothing, which is every card built before today.
+    cards unattended. A card with no fleet named in answers.txt prints what a
+    fleet is and changes nothing, which is every card built before today.
 
 MSG
     auto_state_load || { AUTO_DONE=""; auto_state_save; }
@@ -24118,7 +24118,7 @@ MSG
             12) AUTO_DEFAULT=a; stage_apps ;;        # the whole catalogue
             13) stage_lockroot ;;
             14) AUTO_DEFAULT=a; stage_workshop ;;    # every bundle
-            16) stage_grove ;;                       # a no-op with no grove named
+            16) stage_fleet ;;                       # a no-op with no fleet named
         esac
         _rc=$?
         set -e
@@ -25394,9 +25394,9 @@ while :; do
                                and SID. Each bundle says what this port lacks
    15) SD card and logs       what actually wears a card and what does not;
                                log policy, and a genuinely read-only root
-   16) The grove              join a named fleet: announce on the LAN, trust
+   16) The fleet              join a named fleet: announce on the LAN, trust
                                one certificate authority, answer one console.
-                               Skipped entirely on a card with no grove on it
+                               Skipped entirely on a card with no fleet on it
     r) Reboot
     v) Verify and show state
     q) Quit
@@ -25428,7 +25428,7 @@ MSG
         13) stage_lockroot ;;
         14) stage_workshop ;;
         15) stage_sdcard ;;
-        16) stage_grove ;;
+        16) stage_fleet ;;
         a|A) auto_run ;;
         v|V) stage_verify ;;
         q|Q|"") say "Nothing further changed. Transcript: $LOG"; exit 0 ;;

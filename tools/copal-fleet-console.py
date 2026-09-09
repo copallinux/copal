@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson
-"""copal-grove-console -- the wall.  Milestone 4, W7.
+"""copal-fleet-console -- the wall.  Milestone 4, W7.
 
 THE ACCEPTANCE TEST FOR THE WHOLE MILESTONE IS AN ARCHITECTURAL ONE, and it is
-this: the TUI calls `copal grove`, never the network.  §12 of the plan says the
+this: the TUI calls `copal fleet`, never the network.  §12 of the plan says the
 console is three faces on one read model and that anything the wall can do,
-`copal grove` can do, because the wall calls it.  So this program opens no
+`copal fleet` can do, because the wall calls it.  So this program opens no
 socket, holds no credential and knows no subject names.  It runs
 
-    copal grove state --json
+    copal fleet state --json
 
-for its picture, and `copal grove scene|run|power|logs|notify` for its verbs.
+for its picture, and `copal fleet scene|run|power|logs|notify` for its verbs.
 Every screen here is a rendering of a command a person could have typed, and if
-that ever stops being true the console has become the thing the grove depends
+that ever stops being true the console has become the thing the fleet depends
 on -- which is the failure this milestone was most likely to produce.
 
 RENDERING IS A PURE FUNCTION.  `frame()` turns a state document into a list of
@@ -23,7 +23,7 @@ why the layout code has no curses calls in it.
 
 Thumbnails are W5 and are not here.  Per D4 the default tier is half-block
 Unicode with 256 colour, so where a thumbnail will go each tile draws the one
-continuous quantity the grove already publishes -- temperature -- as a bar.
+continuous quantity the fleet already publishes -- temperature -- as a bar.
 That is a real reading rather than a placeholder pretending to be a picture.
 """
 
@@ -137,11 +137,11 @@ def notices_for(verb, targets, code, text, nodes, at=None):
 ESCAPES = re.compile(r"\x1b\[[0-9;]*m")
 
 
-def read_state(grove_cmd, grove, timeout=45):
-    """`copal grove state --json`, and nothing else.  Never the network."""
-    argv = list(grove_cmd) + ["state", "--json"]
-    if grove:
-        argv += ["--grove", grove]
+def read_state(fleet_cmd, fleet, timeout=45):
+    """`copal fleet state --json`, and nothing else.  Never the network."""
+    argv = list(fleet_cmd) + ["state", "--json"]
+    if fleet:
+        argv += ["--fleet", fleet]
     try:
         out = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
     except (OSError, subprocess.SubprocessError) as exc:
@@ -153,7 +153,7 @@ def read_state(grove_cmd, grove, timeout=45):
         first = (out.stderr or out.stdout).strip().splitlines()
         if not first:
             return None, "state failed with no message (exit %d)" % out.returncode
-        # copal-grove.sh colours unconditionally -- it has no tty test -- so its
+        # copal-fleet.sh colours unconditionally -- it has no tty test -- so its
         # message arrives with escapes in it.  They are not text: they survive
         # the width slice below as a half-written sequence that colours the rest
         # of the wall, and the row already has its own "!" and its own red.
@@ -164,10 +164,10 @@ def read_state(grove_cmd, grove, timeout=45):
         return None, "state did not return JSON"
 
 
-def run_verb(grove_cmd, grove, args, timeout=180):
-    argv = list(grove_cmd) + list(args)
-    if grove:
-        argv += ["--grove", grove]
+def run_verb(fleet_cmd, fleet, args, timeout=180):
+    argv = list(fleet_cmd) + list(args)
+    if fleet:
+        argv += ["--fleet", fleet]
     try:
         out = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
     except (OSError, subprocess.SubprocessError) as exc:
@@ -176,7 +176,7 @@ def run_verb(grove_cmd, grove, args, timeout=180):
 
 
 def parse_facts(text):
-    """`copal grove run facts` -- key, tab, value, one reading per line.
+    """`copal fleet run facts` -- key, tab, value, one reading per line.
 
     A key this console does not know is kept and ignored, which is the same
     contract the beacon has: a node that learned a field must not break a
@@ -282,7 +282,7 @@ def frame(doc, sel, cursor, width, height, overlay=None, err=None,
     lines = []
     nodes = doc["nodes"] if doc else []
     counts = doc["counts"] if doc else {}
-    grove = doc["grove"] if doc else "?"
+    fleet = doc["fleet"] if doc else "?"
 
     up = counts.get("announced", 0)
     declared = max(counts.get("declared", 0), up)
@@ -299,10 +299,10 @@ def frame(doc, sel, cursor, width, height, overlay=None, err=None,
                           ("E", KEY), (" for the event log", DIM)])
 
     header = [
-        ("  COPAL GROVE · ", HEAD), (grove, KEY),
+        ("  COPAL FLEET · ", HEAD), (fleet, KEY),
         ("   %d of %d up" % (up, declared), HEAD),
         ("   ", FG),
-        # See the note in copal-grove-view: "bus off" does not tell an operator
+        # See the note in copal-fleet-view: "bus off" does not tell an operator
         # that the tiles are beacons now rather than agents. This does.
         ("bus on" if bus.get("reachable")
          else "bus off -- polled, not live (%s)" % (bus.get("why") or "?"),
@@ -433,7 +433,7 @@ def help_overlay():
                      (note, DIM)])
     body += [[("", FG)],
              [("Every screen here is a rendering of a command you could", DIM)],
-             [("have typed. The wall calls `copal grove`, never the network.", DIM)]]
+             [("have typed. The wall calls `copal fleet`, never the network.", DIM)]]
     return {"title": "keys", "body": body}
 
 
@@ -645,8 +645,8 @@ def result_overlay(title, text, limit=16):
 class Wall:
     """State, and the one place a key becomes an action."""
 
-    def __init__(self, grove_cmd, grove, every=4.0):
-        self.grove_cmd, self.grove, self.every = grove_cmd, grove, every
+    def __init__(self, fleet_cmd, fleet, every=4.0):
+        self.fleet_cmd, self.fleet, self.every = fleet_cmd, fleet, every
         self.doc, self.err = None, None
         self.sel, self.cursor = set(), 0
         self.overlay = None
@@ -671,7 +671,7 @@ class Wall:
 
     def load_facts(self):
         nid = self.seat["node"]["id"]
-        code, text = run_verb(self.grove_cmd, self.grove,
+        code, text = run_verb(self.fleet_cmd, self.fleet,
                               ["run", "facts", "--node", nid], timeout=60)
         if code == 0 and "\t" in (text or ""):
             self.seat["facts"], self.seat["facts_err"] = parse_facts(text), None
@@ -683,7 +683,7 @@ class Wall:
 
     def load_logs(self):
         nid = self.seat["node"]["id"]
-        code, text = run_verb(self.grove_cmd, self.grove, ["logs", nid], timeout=90)
+        code, text = run_verb(self.fleet_cmd, self.fleet, ["logs", nid], timeout=90)
         self.seat["logs"] = text if code == 0 else ""
         self.seat["logs_err"] = None if code == 0 else (
             (text or "the collector did not answer").splitlines()[0][:60])
@@ -701,7 +701,7 @@ class Wall:
     def refresh(self, force=False):
         if not force and time.time() - self.last < self.every:
             return
-        doc, err = read_state(self.grove_cmd, self.grove)
+        doc, err = read_state(self.fleet_cmd, self.fleet)
         self.last = time.time()
         if doc:
             self.doc, self.err = doc, None
@@ -812,32 +812,32 @@ class Wall:
                                           "Select a node with space, or a for all.")
             return
         if ch == "S":
-            code, text = run_verb(self.grove_cmd, self.grove, ["scene"])
+            code, text = run_verb(self.fleet_cmd, self.fleet, ["scene"])
             self.overlay = result_overlay("scenes -- press S again on a name", text)
             self.note("scene", who, code, text)
         elif ch == "r":
-            code, text = run_verb(self.grove_cmd, self.grove,
+            code, text = run_verb(self.fleet_cmd, self.fleet,
                                   ["run", "state"] + sum([["--node", w] for w in who], []))
             self.overlay = result_overlay("run state on %d node(s)" % len(who), text)
             self.note("run state", who, code, text)
         elif ch == "p":
             self.overlay = result_overlay(
                 "Power on %d node(s)" % len(who),
-                "This would run:\n  copal grove run power off\n\n"
+                "This would run:\n  copal fleet run power off\n\n"
                 "Confirmation is deliberately not a keystroke away in M4.\n"
                 "Type it, and the room turns off with a result per node.")
         elif ch == "k":
             self.overlay = result_overlay(
                 "Snapshot restore on %d node(s)" % len(who),
-                "This would run:\n  copal grove run snapshot restore\n\n"
+                "This would run:\n  copal fleet run snapshot restore\n\n"
                 "Seconds rather than the minutes a reimage costs.")
         elif ch == "n":
-            code, text = run_verb(self.grove_cmd, self.grove,
+            code, text = run_verb(self.fleet_cmd, self.fleet,
                                   ["notify", "--all-up", "--timeout", "20"])
             self.overlay = result_overlay("notify --all-up", text or
                                           ("all up" if code == 0 else "timed out"))
         elif ch == "L":
-            code, text = run_verb(self.grove_cmd, self.grove, ["logs", who[0]])
+            code, text = run_verb(self.fleet_cmd, self.fleet, ["logs", who[0]])
             self.overlay = result_overlay("logs %s" % who[0], text)
             self.note("logs", who[:1], code, text)
 
@@ -907,9 +907,9 @@ def curses_main(stdscr, wall):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="the Copal grove wall")
-    ap.add_argument("--grove", default="")
-    ap.add_argument("--grove-cmd", default="copal grove")
+    ap = argparse.ArgumentParser(description="the Copal fleet wall")
+    ap.add_argument("--fleet", default="")
+    ap.add_argument("--fleet-cmd", default="copal fleet")
     ap.add_argument("--every", type=float, default=4.0)
     ap.add_argument("--once", action="store_true",
                     help="render one frame to stdout and exit")
@@ -921,11 +921,11 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if args.self_test:
-        print("copal-grove-console: %d checks passed" % self_test())
+        print("copal-fleet-console: %d checks passed" % self_test())
         return 0
 
-    cmd = args.grove_cmd.split()
-    wall = Wall(cmd, args.grove, args.every)
+    cmd = args.fleet_cmd.split()
+    wall = Wall(cmd, args.fleet, args.every)
 
     if args.once:
         size = shutil.get_terminal_size((100, 34))
@@ -960,11 +960,11 @@ def fake_doc():
     nodes.append(node(6, scene="wake", temp=39, role="warden"))
     nodes.append(node(7, status="missing", scene="", temp=None, agent="absent"))
     nodes.append(node(8, scene="rest", temp=48, agent="silent"))
-    return {"grove": "museum", "at": "2026-09-08T15:00:00", "warden": "museum-06",
+    return {"fleet": "museum", "at": "2026-09-08T15:00:00", "warden": "museum-06",
             "bus": {"reachable": True, "why": None},
             "counts": {"declared": 8, "announced": 7, "on_bus": 6, "missing": 1},
             "scenes": {"show": ["museum-01"], "wake": ["museum-06"], "rest": ["museum-08"]},
-            "strangers": [{"id": "epson-XY10", "address": "10.0.0.44", "grove": None}],
+            "strangers": [{"id": "epson-XY10", "address": "10.0.0.44", "fleet": None}],
             "nodes": nodes}
 
 
@@ -979,7 +979,7 @@ def self_test():
     # -- the frame ------------------------------------------------------
     lines = frame(doc, set(), 0, 104, 40)
     txt = text_of(lines)
-    assert "COPAL GROVE · museum" in txt
+    assert "COPAL FLEET · museum" in txt
     assert "7 of 8 up" in txt
     assert "bus on" in txt
     for i in range(1, 9):
@@ -1081,7 +1081,7 @@ def self_test():
     over = frame(doc, set(), 0, 104, 40, overlay=help_overlay())
     otxt = text_of(over)
     assert "Esc" in otxt and "back to the wall" in otxt
-    assert "COPAL GROVE" in otxt, "the header stays; you can see where you are"
+    assert "COPAL FLEET" in otxt, "the header stays; you can see where you are"
     checks += 2
 
     # EVERY TILE ROW IS EXACTLY TILE_W WIDE, whatever the node is missing.
@@ -1128,7 +1128,7 @@ def self_test():
 
     # ================================================================== W8
     # THE SEAT. One node, full size, and the two things it must do: show the
-    # facts the grove already knows, and read a log that is not on the node.
+    # facts the fleet already knows, and read a log that is not on the node.
 
     seat_node = dict(doc["nodes"][2])
     full = {"id": "museum-03", "alpine": "3.24.1", "arch": "aarch64",
@@ -1316,7 +1316,7 @@ def self_test():
 
     # -- and with no state at all, it still draws ------------------------
     empty = text_of(frame(None, set(), 0, 104, 40, err="state did not return JSON"))
-    assert "COPAL GROVE" in empty and "state did not return JSON" in empty
+    assert "COPAL FLEET" in empty and "state did not return JSON" in empty
     checks += 1
 
     return checks

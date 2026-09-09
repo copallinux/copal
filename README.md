@@ -267,24 +267,24 @@ copal vm start --target aarch64 # also stop, status, delete, refresh, ip
 copal all                       # cache, build every board, register both VMs
 copal targets | copal check | copal flow | copal help
 
-copal grove ls                  # what is on the network, and what it has proved
-copal grove ca --create         # this grove's certificate authority, once
-copal grove enrol               # sign every candidate that carries a token
-copal grove login               # an 8-hour operator certificate
-copal grove run power off       # one verb, every node, a result each
+copal fleet ls                  # what is on the network, and what it has proved
+copal fleet ca --create         # this fleet's certificate authority, once
+copal fleet enrol               # sign every candidate that carries a token
+copal fleet login               # an 8-hour operator certificate
+copal fleet run power off       # one verb, every node, a result each
 
-copal grove init                # groves/<name>/ -- the grove file and its scenes
-copal grove scene               # which scenes this grove has
-copal grove scene wake          # the museum's morning, on every node at once
-copal grove scene sleep         # flush the logs, halt, confirm each one went
+copal fleet init                # fleets/<name>/ -- the fleet file and its scenes
+copal fleet scene               # which scenes this fleet has
+copal fleet scene wake          # the museum's morning, on every node at once
+copal fleet scene sleep         # flush the logs, halt, confirm each one went
 
-copal grove bus                 # put every enrolled node on the message bus
-copal grove bus --check         # what the warden says the bus is doing
-copal grove logs museum-06      # the logs of a node that is not here any more
-copal grove watch               # the wall, as a table, without the TUI
-copal grove notify --all-up     # exits 0 when every declared node is up
-copal grove state --json        # the whole grove as one document
-copal grove console             # the wall: every node at once, in a terminal
+copal fleet bus                 # put every enrolled node on the message bus
+copal fleet bus --check         # what the warden says the bus is doing
+copal fleet logs museum-06      # the logs of a node that is not here any more
+copal fleet watch               # the wall, as a table, without the TUI
+copal fleet notify --all-up     # exits 0 when every declared node is up
+copal fleet state --json        # the whole fleet as one document
+copal fleet console             # the wall: every node at once, in a terminal
 ```
 
 **The images are raw MBR disks — dd them straight to a card:**
@@ -307,8 +307,8 @@ at once — `copal-prep.sh` refuses rather than writing into the other build's
 disk. `make -j` cannot help here, and `make all` disables it rather than letting
 you find out the hard way.
 
-**`copal grove` is the odd one out: it acts on machines that already exist.**
-Every other verb writes a card. The grove verbs talk to Copal machines already
+**`copal fleet` is the odd one out: it acts on machines that already exist.**
+Every other verb writes a card. The fleet verbs talk to Copal machines already
 running on the LAN. `ls` browses for beacons and prints a row per machine —
 `✓` proved by certificate, `?` found but not yet enrolled, `✗` signed by
 somebody else's authority. `enrol` checks each candidate's single-use token
@@ -322,19 +322,19 @@ and anything on the segment can answer any query, so discovery only ever fills
 a *candidate* list; a certificate is what decides. The pre-shared key in the
 beacon is a spam filter, and the first person to promote it to a credential
 will have broken the design without noticing. The whole architecture is
-[`docs/grove-plan.md`](docs/grove-plan.md); stage 16 is the target's half of it.
+[`docs/fleet-plan.md`](docs/fleet-plan.md); stage 16 is the target's half of it.
 Every verb above, and what to do when one of them goes wrong, is
-[`docs/grove-console.md`](docs/grove-console.md).
+[`docs/fleet-console.md`](docs/fleet-console.md).
 
 **A scene is a day, written down.** `wake`, `show`, `reset`, `rest`, `sleep` —
-each one a named, declarative, idempotent state of the whole grove, applied to
+each one a named, declarative, idempotent state of the whole fleet, applied to
 every node at once and reporting per node. Applying one twice does nothing the
 second time, and "today's task is different" is one file changed rather than
 eight machines touched. They are Ansible playbooks in
-[`groves/<name>/`](groves/), committed to git, because the grove executes what
+[`fleets/<name>/`](fleets/), committed to git, because the fleet executes what
 the repository says and not what the network says. The console does the three
 things a playbook cannot — switch the power on, wait for the beacons, and
-record what the grove is now doing — and Ansible does everything that happens
+record what the fleet is now doing — and Ansible does everything that happens
 on a node.
 
 **A Raspberry Pi cannot be woken by Wake-on-LAN.** There is no standby rail
@@ -1293,7 +1293,7 @@ Everything on the Mac. None of it runs on the target.
 | `copal-vm.sh` | Mac | Boots an image under plain QEMU. `--check` boots headless, greps the serial log for a login prompt, exits non-zero if it never came up — the thing to run after changing the installer. |
 | `utm/utm-vm.sh` | Mac | Wraps an image in a registered UTM machine: NAT, SSH, a serial console, and the shared folder. |
 | `fetch-minivmac.sh` | Mac | Assembles the Mini vMac working set on demand, so no binaries are vendored. |
-| `tools/copal-grove.sh` | Mac, or a node | The console for a fleet. Discovers the grove, holds its certificate authority, enrols nodes and fans one verb out over all of them. Reached as `copal grove`. |
+| `tools/copal-fleet.sh` | Mac, or a node | The console for a fleet. Discovers it, holds its certificate authority, enrols nodes and fans one verb out over all of them. Reached as `copal fleet`. |
 | `Makefile` · `bin/*.sh` | Mac | One command per intention. `bin/` shortcuts are two lines each and hand straight to `make`, so they cannot disagree with it. |
 
 And the one that crosses:
@@ -1328,7 +1328,7 @@ Roughly: 1–3 make it a computer, 4–6 make it usable, 7–15 make it yours, a
 | 13 | hand over root | lock root, log in as yourself with `doas`. **Checks first, run it last** |
 | 14 | the workshop | CAD, KiCad, ngspice, LaTeX, trackers |
 | 15 | SD card care | what actually wears a card; log policy; a genuinely read-only root |
-| 16 | the grove | join a named fleet: one certificate authority, an mDNS beacon, one console. **Skipped entirely on a card with no grove named** |
+| 16 | the fleet | join a named fleet: one certificate authority, an mDNS beacon, one console. **Skipped entirely on a card with no fleet named** |
 
 ### What the machine gains
 
@@ -1346,7 +1346,7 @@ these stay.
 | `copal-install` · `copal-guide` | Fetch one catalogue entry; read the plain-text guides |
 | `copal-logs` · `copal-debug` | The log collection, and the switch that is off by default |
 | `copal-ssh` · `copal-logflush` · `copal-splash` | SSH policy; RAM logs down to the card; the key bindings on the wallpaper |
-| `copal-grove` | Written by stage 16, on a card that named a grove: the beacon, this node's facts, and the half of enrolment that runs here |
+| `copal-fleet` | Written by stage 16, on a card that named a fleet: the beacon, this node's facts, and the half of enrolment that runs here |
 | `snapshot` · `mountdsk` | rsync snapshots; mount a disk image |
 
 ### Why one file, and not packages
@@ -1671,7 +1671,7 @@ it becomes editable, `shellcheck`-able and testable — but it is a refactor of
 working code, so it happens *after* the two VMs can prove a refactor did not
 break anything.
 
-The grove is three of its five milestones in, and the fourth has started. Eight
+The fleet is three of its five milestones in, and the fourth has started. Eight
 cards can be written, they announce themselves, the authority signs them, one
 verb reaches all of them, and a day is five scene files that can be applied to
 the whole room and reported per node. Of milestone 4, six of ten work items are
@@ -1681,23 +1681,23 @@ collects every node's log to its card so that a Pi which died at 11:00 can be
 asked about at 16:00, and the permission list the server enforces is rendered
 on the warden from invariant 5 — which a real `nats-server` has been watched
 enforcing, since `make bus-test` starts one and checks that a node cannot
-publish as another node. `copal grove watch` renders the grove as a live table
-from the bus and degrades to beacons when the bus is off, and `copal grove
+publish as another node. `copal fleet watch` renders the fleet as a live table
+from the bus and degrades to beacons when the bus is off, and `copal fleet
 console` is the wall itself — a tile per node in a terminal, which calls
-`copal grove` and never the network. `make degrade-test` runs the console with
+`copal fleet` and never the network. `make degrade-test` runs the console with
 each layer taken away in turn, and it found that the **warden election is not
 implemented**: a node never changes its role, so unplugging the warden leaves
-the grove without one until a card is rewritten. Every verb over ssh is
+the fleet without one until a card is rewritten. Every verb over ssh is
 unaffected by that, which is the layering rule doing its job. None of it has
 run on a Pi yet. **The seat,
-thumbnails and notifications are still only a design**, in [`docs/grove-plan.md`](docs/grove-plan.md) and
-[`docs/grove-m4-backlog.md`](docs/grove-m4-backlog.md) — as is Nix, which would
+thumbnails and notifications are still only a design**, in [`docs/fleet-plan.md`](docs/fleet-plan.md) and
+[`docs/fleet-m4-backlog.md`](docs/fleet-m4-backlog.md) — as is Nix, which would
 give a fleet bit-identical closures instead of eight afternoons of `apk` drift,
 at the price of every 32-bit board in the table. None of this has run on eight real Pis: it has run on one machine
 and a fixture, and the playbooks have never met an Ansible.
 
 The next milestone is planned rather than started:
-[`docs/grove-m4-backlog.md`](docs/grove-m4-backlog.md) is the bus and the wall
+[`docs/fleet-m4-backlog.md`](docs/fleet-m4-backlog.md) is the bus and the wall
 in ten work items, each with an acceptance test, and it opens with the three
 decisions that block code — one of which is a hole in the plan rather than a
 preference. It is written to be picked up cold.
@@ -1739,15 +1739,15 @@ bindings, the account model, the SD-card wear analysis — is in
 | `build/cache/` | The download cache: checksum-verified Alpine payloads and GRUB ISOs. Survives `make clean`, removed by `make distclean` |
 | `fetch-minivmac.sh` | Assembles the Mini vMac working set on demand — nothing binary is tracked here |
 | `tools/minivmac/` | Mini vMac launcher scripts |
-| `tools/copal-grove.sh` | The console for a grove, reached as `copal grove`. Discovery, the certificate authority, enrolment, and one verb over every node |
-| `groves/` | One directory per grove: the grove file, the scenes, the roles and the dynamic inventory. Committed on purpose — a scene runs on eight machines at once, so it has to be reviewable |
-| `tools/copal-answers.sh` | Writes `answers.txt`. `make answers` interviews once; `make answers-node N=` writes card *N* of a grove without asking again |
+| `tools/copal-fleet.sh` | The console for a fleet, reached as `copal fleet`. Discovery, the certificate authority, enrolment, and one verb over every node |
+| `fleets/` | One directory per fleet: the fleet file, the scenes, the roles and the dynamic inventory. Committed on purpose — a scene runs on eight machines at once, so it has to be reviewable |
+| `tools/copal-answers.sh` | Writes `answers.txt`. `make answers` interviews once; `make answers-node N=` writes card *N* of a fleet without asking again |
 | `docs/copal-handbook.md` | The original Copal handbook. Alpine, the card, the stages, the desktop, reference |
 | `docs/lab-report.md` | Bring-up record for the Pi Zero 1 and Zero 2 W, IEEE format |
 | `docs/development-report.md` | Architecture, verification method and results, known defects |
-| `docs/grove-plan.md` | **Copal Grove** — a fleet of Copal machines on one LAN: discovery, certificates, the message bus, scenes, and the build order |
-| `docs/grove-lab-report.md` | What Timbuktu, Veyon and Xen Orchestra each got right, and the console a grove should have. IEEE format |
-| `docs/grove-m4-backlog.md` | **The next milestone, ready to resume.** The bus and the wall, broken into ten work items with acceptance tests, three blocking decisions, and the demo that closes it |
+| `docs/fleet-plan.md` | **Copal Fleet** — Copal machines on one LAN, run as one: discovery, certificates, the message bus, scenes, and the build order |
+| `docs/fleet-lab-report.md` | What Timbuktu, Veyon and Xen Orchestra each got right, and the console a fleet should have. IEEE format |
+| `docs/fleet-m4-backlog.md` | **The next milestone, ready to resume.** The bus and the wall, broken into ten work items with acceptance tests, three blocking decisions, and the demo that closes it |
 
 ## Repository policy
 

@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson
-"""copal-grove-view -- the grove as one document, and as a table that redraws.
+"""copal-fleet-view -- the fleet as one document, and as a table that redraws.
 
 This is milestone 4's W6, and W6 comes BEFORE the TUI on purpose.  §12 of the
-plan says anything the wall can do, `copal grove` can do, because the wall
+plan says anything the wall can do, `copal fleet` can do, because the wall
 calls it.  The test of that rule is that the demo which closes M4 can be
 performed with these commands and no TUI at all -- so they are built first, and
 the wall becomes a rendering of them rather than a second way of knowing things.
 
-    copal grove state [--json]     the whole grove, once
-    copal grove watch [--every N]  the same thing, redrawn
+    copal fleet state [--json]     the whole fleet, once
+    copal fleet watch [--every N]  the same thing, redrawn
 
 TWO SOURCES, AND THE SECOND ONE IS ALLOWED TO BE MISSING.
 
-  beacons   always.  Written by every node's own `copal-grove beacon`, refreshed
+  beacons   always.  Written by every node's own `copal-fleet beacon`, refreshed
             every four minutes.  Carries role, tags, arch, ram, uptime, scene.
             It is a claim a node makes about itself and nothing here treats it
             as more than that.
@@ -27,7 +27,7 @@ is requirement 5 of the milestone -- "do all of the above with the bus switched
 off, degraded but working" -- and it is the reason the beacon path is not
 treated as a fallback that can be allowed to rot.
 
-Called by tools/copal-grove.sh, which owns discovery, the grove name and the
+Called by tools/copal-fleet.sh, which owns discovery, the fleet name and the
 credential.  This program is handed a beacon file and an address; it does not
 browse, and it does not decide who is a member.
 """
@@ -53,12 +53,12 @@ def plain():
 
 # ------------------------------------------------------------- the beacon ---
 
-def read_beacons(path, grove):
-    """(members, strangers) from the tab-separated lines copal-grove.sh produces.
+def read_beacons(path, fleet):
+    """(members, strangers) from the tab-separated lines copal-fleet.sh produces.
 
-    A BEACON THAT DOES NOT NAME THIS GROVE IS A STRANGER, and the check is
-    strict on purpose: an omitted `g=` used to fall through as a member, which
-    put a networked printer in the grove's table and its count. The plan's rule
+    A BEACON THAT DOES NOT NAME THIS FLEET IS A STRANGER, and the check is
+    strict on purpose: an omitted `f=` used to fall through as a member, which
+    put a networked printer in the fleet's table and its count. The plan's rule
     is that a stranger is shown and never contacted, so it has to be somewhere
     in this document -- but never among the nodes.
     """
@@ -74,9 +74,9 @@ def read_beacons(path, grove):
             continue
         nid, addr, txt = parts[0], parts[1], parts[2]
         kv = dict(p.split("=", 1) for p in txt.split(";") if "=" in p)
-        if kv.get("g") != grove:
+        if kv.get("f") != fleet:
             strangers.append({"id": kv.get("n") or nid, "address": addr,
-                              "grove": kv.get("g") or None})
+                              "fleet": kv.get("f") or None})
             continue
         nid = kv.get("n") or nid
         out[nid] = {
@@ -102,7 +102,7 @@ def intish(v):
 
 
 def minutes(v):
-    """A count of minutes, from either shape the grove writes it in.
+    """A count of minutes, from either shape the fleet writes it in.
 
     The beacon says `u=372m` and strips the suffix on the way in; the agent's
     state line says `up=372m` and parse_state leaves it alone, because coercing
@@ -119,22 +119,22 @@ def minutes(v):
 
 # ---------------------------------------------------------------- the bus ---
 
-def read_bus(addr, seed, grove, seconds=2.0):
+def read_bus(addr, seed, fleet, seconds=2.0):
     """What the agents are saying right now.  ({} , reason) when there is none.
 
     A short listen rather than a subscription that stays open: `state` is a
     question with an answer, and a console that held a connection open to
-    answer it would be the thing the grove depends on.  `watch` calls this once
+    answer it would be the thing the fleet depends on.  `watch` calls this once
     a cycle, which is the same shape and keeps one code path.
     """
     if not addr or not seed:
         return {}, "no warden announcing" if not addr else "no console identity"
-    conn = copal_nats.Nats(addr, 4222, seed=seed, name="copal-grove-view", timeout=6)
+    conn = copal_nats.Nats(addr, 4222, seed=seed, name="copal-fleet-view", timeout=6)
     seen = {}
     try:
         conn.connect()
-        conn.subscribe("grove.%s.node.*.state" % grove)
-        conn.subscribe("grove.%s.hello" % grove)
+        conn.subscribe("fleet.%s.node.*.state" % fleet)
+        conn.subscribe("fleet.%s.hello" % fleet)
         conn.flush()
         deadline = time.time() + seconds
         while time.time() < deadline:
@@ -156,7 +156,7 @@ def read_bus(addr, seed, grove, seconds=2.0):
 
 
 def parse_state(text):
-    """The line `copal-grove state` prints, which is the only telemetry
+    """The line `copal-fleet state` prints, which is the only telemetry
     vocabulary this system has.  Unknown keys are kept: a newer node that
     learned a field must not have it thrown away by an older console."""
     out = {}
@@ -170,7 +170,7 @@ def parse_state(text):
 
 # ------------------------------------------------------------- assembling ---
 
-def assemble(grove, beacons, bus, expected, warden, degraded, strangers=()):
+def assemble(fleet, beacons, bus, expected, warden, degraded, strangers=()):
     nodes = {}
     for nid in sorted(set(beacons) | set(bus) | set(expected)):
         b = beacons.get(nid, {})
@@ -231,7 +231,7 @@ def assemble(grove, beacons, bus, expected, warden, degraded, strangers=()):
         if n["scene"]:
             scenes.setdefault(n["scene"], []).append(n["id"])
     return {
-        "grove": grove,
+        "fleet": fleet,
         "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "warden": warden or None,
         "bus": {"reachable": not degraded, "why": degraded or None},
@@ -276,8 +276,8 @@ def render(doc, width=None):
     bus = ("%son the bus%s" % (G, Z) if doc["bus"]["reachable"]
            else "%sbus off, polled not live: %s%s" % (Y, doc["bus"]["why"], Z))
     lines.append("")
-    lines.append("  %sCOPAL GROVE  %s%s%s   %s%d of %d up%s   %s"
-                 % (B, C, doc["grove"], Z, B, n["announced"], max(n["declared"], n["announced"]), Z, bus))
+    lines.append("  %sCOPAL FLEET  %s%s%s   %s%d of %d up%s   %s"
+                 % (B, C, doc["fleet"], Z, B, n["announced"], max(n["declared"], n["announced"]), Z, bus))
     if doc["scenes"]:
         parts = []
         for scene, ids in sorted(doc["scenes"].items(), key=lambda kv: -len(kv[1])):
@@ -317,7 +317,7 @@ def render(doc, width=None):
         names = ["%s (%s)" % (x["address"], x["id"]) for x in doc["strangers"]]
         lines.append("   %s!%s %d stranger(s) on this network: %s"
                      % (Y, Z, len(names), "  ".join(names)))
-        lines.append("     %sSeen, never contacted. Not in the grove and not"
+        lines.append("     %sSeen, never contacted. Not in the fleet and not"
                      " counted in it.%s" % (D, Z))
     if missing or silent or doc.get("strangers"):
         lines.append("")
@@ -329,7 +329,7 @@ def render(doc, width=None):
 def collect(args):
     # `watch` and `notify` loop, and a beacon file read once would leave them
     # rendering the same four-minute-old picture forever. --refresh names the
-    # command that regenerates it -- `copal grove browse` -- so that discovery
+    # command that regenerates it -- `copal fleet browse` -- so that discovery
     # is still parsed in exactly one place and this program still does not
     # browse for itself.
     if args.refresh:
@@ -342,24 +342,24 @@ def collect(args):
                     fh.write(out.stdout)
         except (OSError, subprocess.SubprocessError):
             pass          # keep the last picture rather than blanking the table
-    beacons, strangers = read_beacons(args.beacons, args.grove)
+    beacons, strangers = read_beacons(args.beacons, args.fleet)
     seed = None
     if args.seed and os.path.exists(args.seed):
         with open(args.seed) as fh:
             seed = fh.read().strip()
-    bus, why = read_bus(args.warden, seed, args.grove, args.listen)
+    bus, why = read_bus(args.warden, seed, args.fleet, args.listen)
     expected = []
     if args.expect and os.path.exists(args.expect):
         with open(args.expect) as fh:
             expected = [ln.strip() for ln in fh if ln.strip()]
-    return assemble(args.grove, beacons, bus, expected, args.warden, why,
+    return assemble(args.fleet, beacons, bus, expected, args.warden, why,
                     strangers)
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(add_help=True)
     ap.add_argument("mode", choices=("state", "watch", "notify", "self-test"))
-    ap.add_argument("--grove", default="")
+    ap.add_argument("--fleet", default="")
     ap.add_argument("--beacons", default="")
     ap.add_argument("--expect", default="")
     ap.add_argument("--warden", default="")
@@ -375,7 +375,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if args.mode == "self-test":
-        print("copal-grove-view: %d checks passed" % self_test())
+        print("copal-fleet-view: %d checks passed" % self_test())
         return 0
     if args.plain or not sys.stdout.isatty():
         plain()
@@ -437,26 +437,26 @@ def self_test():
     tmp = tempfile.mkdtemp(prefix="copal-view-test.")
     bpath = os.path.join(tmp, "beacons")
     with open(bpath, "w") as fh:
-        fh.write("museum-01\t10.0.0.11\tv=1;g=museum;n=museum-01;r=node;s=2048;"
+        fh.write("museum-01\t10.0.0.11\tv=1;f=museum;n=museum-01;r=node;s=2048;"
                  "a=aarch64;m=1024;u=372m;t=wall,north;c=show\n")
-        fh.write("museum-06\t10.0.0.16\tv=1;g=museum;n=museum-06;r=warden;s=3050;"
+        fh.write("museum-06\t10.0.0.16\tv=1;f=museum;n=museum-06;r=warden;s=3050;"
                  "a=aarch64;m=512;u=12m;t=sdr;c=wake\n")
-        fh.write("intruder\t10.0.0.99\tv=1;g=elsewhere;n=intruder;r=node\n")
+        fh.write("intruder\t10.0.0.99\tv=1;f=elsewhere;n=intruder;r=node\n")
 
     b, strangers = read_beacons(bpath, "museum")
-    assert set(b) == {"museum-01", "museum-06"}, "a foreign grove leaked in"
+    assert set(b) == {"museum-01", "museum-06"}, "a foreign fleet leaked in"
     assert [x["id"] for x in strangers] == ["intruder"], strangers
     assert b["museum-01"]["uptime_min"] == 372
     assert b["museum-01"]["tags"] == ["wall", "north"]
     assert b["museum-06"]["role"] == "warden"
     checks += 4
 
-    # A BEACON WITH NO g= IS A STRANGER, not a member. It used to fall through
-    # as one, which put a printer in the grove's table and in its count.
+    # A BEACON WITH NO f= IS A STRANGER, not a member. It used to fall through
+    # as one, which put a printer in the fleet's table and in its count.
     with open(bpath, "a") as fh:
         fh.write("epson-XY10\t10.0.0.44\tv=1;n=epson-XY10\n")
     b2, s2 = read_beacons(bpath, "museum")
-    assert "epson-XY10" not in b2, "a beacon with no grove name was counted as a node"
+    assert "epson-XY10" not in b2, "a beacon with no fleet name was counted as a node"
     assert any(x["id"] == "epson-XY10" for x in s2), s2
     assert len(b2) == 2, b2
     checks += 3
@@ -545,15 +545,15 @@ def self_test():
     plain()
     painted = render(assemble("museum", b, bus, ["museum-01"], "10.0.0.16", None,
                               [{"id": "epson-XY10", "address": "10.0.0.44",
-                                "grove": None}]))
+                                "fleet": None}]))
     assert "\033" not in painted, "--plain still emitted an escape sequence"
     assert "stranger" in painted, "the stranger line is missing"
     checks += 2
 
     # It renders in both, and the JSON is JSON.
-    assert "COPAL GROVE" in render(doc)
+    assert "COPAL FLEET" in render(doc)
     assert "silent" in render(doc)
-    assert json.loads(json.dumps(doc))["grove"] == "museum"
+    assert json.loads(json.dumps(doc))["fleet"] == "museum"
     checks += 3
 
     import shutil

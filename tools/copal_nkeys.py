@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson
-"""copal_nkeys -- the grove's bus key format, and nothing else.
+"""copal_nkeys -- the fleet's bus key format, and nothing else.
 
 An NKEY is how NATS names a principal: an ed25519 keypair in a base32 encoding
 with a one-byte role prefix and a CRC.  A node proves itself to the bus by
@@ -12,14 +12,14 @@ mechanism, and this module is the whole of our implementation of it.
 WHY THIS EXISTS AT ALL, rather than `pip install nkeys`:
 
   The console's home is the operator's Mac.  `apk` cannot help there and
-  `pip install` at 08:45 is a console that is down -- see grove-m4-backlog.md
-  §3 D3.  So: standard library only, on both halves of the grove.
+  `pip install` at 08:45 is a console that is down -- see fleet-m4-backlog.md
+  §3 D3.  So: standard library only, on both halves of the fleet.
 
 WHAT IT DELIBERATELY DOES NOT DO:
 
   No JWTs.  Permissions live in the warden's nats.conf, in plain text a person
-  can read against invariant 5.  See grove-plan.md §6 "How the bus is
-  authenticated" and grove-m4-backlog.md §3 D1.
+  can read against invariant 5.  See fleet-plan.md §6 "How the bus is
+  authenticated" and fleet-m4-backlog.md §3 D1.
 
   No X.509.  The SSH CA remains the only thing that decides membership; an
   nkey is a capability issued as a consequence of membership, never a second
@@ -327,7 +327,7 @@ def self_test():
 
 # -------------------------------------------------------------------- cli ---
 
-USAGE = """copal_nkeys -- the grove's bus key format
+USAGE = """copal_nkeys -- the fleet's bus key format
 
   copal_nkeys.py new-seed [ROLE]     a fresh seed (default: user)
   copal_nkeys.py public SEED         the public nkey for a seed

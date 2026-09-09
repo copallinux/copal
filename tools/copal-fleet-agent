@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson
-"""copal-grove-agent -- this node's standing presence on the grove's bus.
+"""copal-fleet-agent -- this node's standing presence on the fleet's bus.
 
-Runs on every node, supervised by OpenRC, as the `copal-grove` service account
+Runs on every node, supervised by OpenRC, as the `copal-fleet` service account
 and NOT as root.  That is the same account the forced command lands in over
 ssh, and it matters: this program's whole job is to be a second doorway to the
 same small list of verbs, so it must not be a wider doorway.
@@ -12,20 +12,20 @@ WHAT IT DOES
 
   publishes  hello                every 10 s -- presence
              node.<id>.state      on change, at most every 5 s -- telemetry
-             log.<id>             lines appended to /var/log/copal-grove.log
+             log.<id>             lines appended to /var/log/copal-fleet.log
              ack.<id>.<corr>      the result of every command it ran
   subscribes cmd.>                commands, filtered to this node
              log.>                ONLY when this node is the warden (W4)
 
 THE ONE RULE.  A command that arrives over NATS is executed by handing it to
-/usr/bin/copal-grove-exec, exactly as sshd hands it one, through the same
+/usr/bin/copal-fleet-exec, exactly as sshd hands it one, through the same
 SSH_ORIGINAL_COMMAND variable.  This program parses no verbs of its own and
 has no list of its own to fall out of date.  A verb that is not allowed over
 ssh cannot become allowed by arriving over the bus, and adding a verb still
 means editing one file.
 
 RUNNING WITH NO WARDEN IS NORMAL, not an error.  During a handover there is no
-bus at all for twenty seconds, and `copal grove run` over ssh keeps working
+bus at all for twenty seconds, and `copal fleet run` over ssh keeps working
 throughout -- that is the layering rule and this program is the layer that is
 allowed to be absent.  So: no warden means wait and look again, quietly, and
 never means exit.
@@ -50,15 +50,15 @@ import copal_nats  # noqa: E402
 # Paths, with test seams. The defaults are the only values a node ever uses;
 # the overrides exist so that tools/copal-degrade-test.py can run this exact
 # program against a real nats-server without being root and without a card.
-# The repository already reads COPAL_GROVE_BEACONS, COPAL_ANSWERS and
+# The repository already reads COPAL_FLEET_BEACONS, COPAL_ANSWERS and
 # COPAL_HOME the same way, for the same reason.
-D = os.environ.get("COPAL_GROVE_DIR", "/etc/copal/grove")
+D = os.environ.get("COPAL_FLEET_DIR", "/etc/copal/fleet")
 SEED = os.path.join(D, "nkey.seed")
-EXEC = os.environ.get("COPAL_GROVE_EXEC", "/usr/bin/copal-grove-exec")
-GROVE_TOOL = os.environ.get("COPAL_GROVE_TOOL", "/usr/bin/copal-grove")
-NODE_LOG = os.environ.get("COPAL_GROVE_NODE_LOG", "/var/log/copal-grove.log")
-SEEN = os.environ.get("COPAL_GROVE_SEEN", "/var/lib/copal-grove/seen")
-COLLECT = os.environ.get("COPAL_GROVE_COLLECT", "/var/log/copal-grove")
+EXEC = os.environ.get("COPAL_FLEET_EXEC", "/usr/bin/copal-fleet-exec")
+FLEET_TOOL = os.environ.get("COPAL_FLEET_TOOL", "/usr/bin/copal-fleet")
+NODE_LOG = os.environ.get("COPAL_FLEET_NODE_LOG", "/var/log/copal-fleet.log")
+SEEN = os.environ.get("COPAL_FLEET_SEEN", "/var/lib/copal-fleet/seen")
+COLLECT = os.environ.get("COPAL_FLEET_COLLECT", "/var/log/copal-fleet")
 COLLECT_CAP = 64 * 1024 * 1024              # bytes, across every node
 
 HELLO_EVERY = 10.0
@@ -78,13 +78,13 @@ def field(name):
 
 
 def log(msg):
-    sys.stderr.write("copal-grove-agent: %s\n" % msg)
+    sys.stderr.write("copal-fleet-agent: %s\n" % msg)
     sys.stderr.flush()
 
 
 def run_tool(*args):
     try:
-        out = subprocess.run([GROVE_TOOL] + list(args), capture_output=True,
+        out = subprocess.run([FLEET_TOOL] + list(args), capture_output=True,
                              text=True, timeout=20)
         return out.stdout.strip()
     except (OSError, subprocess.SubprocessError):
@@ -95,9 +95,9 @@ def run_tool(*args):
 
 # ------------------------------------------------------------- the sort ---
 
-UNREACHABLE = os.environ.get("COPAL_GROVE_UNREACHABLE",
-                             "/var/lib/copal-grove/unreachable")
-DOAS = os.environ.get("COPAL_GROVE_DOAS", "/usr/bin/doas")
+UNREACHABLE = os.environ.get("COPAL_FLEET_UNREACHABLE",
+                             "/var/lib/copal-fleet/unreachable")
+DOAS = os.environ.get("COPAL_FLEET_DOAS", "/usr/bin/doas")
 
 
 def unreachable(ids):
@@ -108,7 +108,7 @@ def unreachable(ids):
     an election reading beacons alone would follow a machine that is off until
     mDNS forgot it -- minutes, where §7 promises twenty seconds. This process
     is the one holding the connection, so it is the one that knows, and this
-    file is how it tells `copal-grove elect`.
+    file is how it tells `copal-fleet elect`.
     """
     try:
         os.makedirs(os.path.dirname(UNREACHABLE), exist_ok=True)
@@ -126,8 +126,8 @@ def elect():
     Through the node tool rather than in here, so that there is ONE election
     and it is the one a person can run by hand.
     """
-    argv = ([DOAS, GROVE_TOOL, "elect"] if os.access(DOAS, os.X_OK)
-            else [GROVE_TOOL, "elect"])
+    argv = ([DOAS, FLEET_TOOL, "elect"] if os.access(DOAS, os.X_OK)
+            else [FLEET_TOOL, "elect"])
     try:
         out = subprocess.run(argv, capture_output=True, text=True, timeout=20)
     except (OSError, subprocess.SubprocessError):
@@ -142,7 +142,7 @@ def find_warden(skip=()):
     without this the agent would go on dialling a dead machine and never reach
     the one that has since been elected.
 
-    Read out of the same beacons `copal grove ls` reads, through the node
+    Read out of the same beacons `copal fleet ls` reads, through the node
     tool's own `browse`, so there is one parser for that format and it is not
     this file.  DISCOVERY ANNOUNCES, IT NEVER AUTHORIZES: a wrong answer here
     costs a failed connection, because the bus still demands a signature the
@@ -155,7 +155,7 @@ def find_warden(skip=()):
             continue
         nid, addr, txt = parts[0], parts[1], parts[2]
         kv = dict(p.split("=", 1) for p in txt.split(";") if "=" in p)
-        if kv.get("g") != field("name") or kv.get("r") != "warden":
+        if kv.get("f") != field("name") or kv.get("r") != "warden":
             continue
         score = int(kv.get("s") or 0)
         name = kv.get("n") or nid
@@ -263,7 +263,7 @@ def collect(node_id, payload):
 
 def enforce_cap():
     """A ceiling, because the warden's /var/log is on the card and a chatty
-    node should cost the grove its oldest logs rather than its root filesystem.
+    node should cost the fleet its oldest logs rather than its root filesystem.
     Oldest whole files go first; today's is never the one deleted."""
     files = []
     for root, _dirs, names in os.walk(COLLECT):
@@ -294,11 +294,11 @@ def enforce_cap():
 
 # ---------------------------------------------------------- the commands ---
 
-def wanted_by_me(subject, grove, node_id, tags):
+def wanted_by_me(subject, fleet, node_id, tags):
     """Is this command addressed to this node?  cmd.> is one subscription and
     the filtering is here, because a node may not subscribe more narrowly than
     its credential allows and there is no reason it should have to."""
-    base = "grove.%s.cmd." % grove
+    base = "fleet.%s.cmd." % fleet
     if not subject.startswith(base):
         return False
     rest = subject[len(base):]
@@ -361,9 +361,9 @@ def validate(envelope, seen, now):
 
 # ---------------------------------------------------------------- session ---
 
-def session(conn, grove, node_id, tags, is_warden, seen, tail):
+def session(conn, fleet, node_id, tags, is_warden, seen, tail):
     """One connection's life.  Returns when it ends; the caller reconnects."""
-    subj = lambda s: "grove.%s.%s" % (grove, s)   # noqa: E731
+    subj = lambda s: "fleet.%s.%s" % (fleet, s)   # noqa: E731
     conn.subscribe(subj("cmd.>"))
     if is_warden:
         conn.subscribe(subj("log.>"))
@@ -408,10 +408,10 @@ def session(conn, grove, node_id, tags, is_warden, seen, tail):
         conn.flush()
 
         for subject, _sid, _reply, payload in conn.messages(TICK):
-            if is_warden and subject.startswith("grove.%s.log." % grove):
+            if is_warden and subject.startswith("fleet.%s.log." % fleet):
                 collect(subject.rsplit(".", 1)[-1], payload)
                 continue
-            if not wanted_by_me(subject, grove, node_id, tags):
+            if not wanted_by_me(subject, fleet, node_id, tags):
                 continue
             try:
                 envelope = json.loads(payload.decode("utf-8", "replace"))
@@ -432,13 +432,13 @@ def session(conn, grove, node_id, tags, is_warden, seen, tail):
 
 
 def main():
-    grove = field("name")
-    if not grove:
-        log("this machine is not in a grove -- nothing to do")
+    fleet = field("name")
+    if not fleet:
+        log("this machine is not in a fleet -- nothing to do")
         return 0
     if not os.path.exists(SEED):
         log("no bus identity yet. The console has not enrolled this node onto")
-        log("the bus. From the console:  copal grove bus")
+        log("the bus. From the console:  copal fleet bus")
         return 0
     try:
         with open(SEED) as fh:
@@ -453,7 +453,7 @@ def main():
     tail = Tail(NODE_LOG)
     attempt = 0
 
-    log("agent for %s in grove %s, tags %s" % (node_id, grove, tags or "none"))
+    log("agent for %s in fleet %s, tags %s" % (node_id, fleet, tags or "none"))
 
     dead = set()
 
@@ -471,7 +471,7 @@ def main():
 
         # After the election, not before: elect() may just have changed it.
         is_warden = field("role") == "warden"
-        conn = copal_nats.Nats(addr, int(os.environ.get("COPAL_GROVE_PORT", "4222")),
+        conn = copal_nats.Nats(addr, int(os.environ.get("COPAL_FLEET_PORT", "4222")),
                                seed=seed, name=node_id, timeout=10)
         try:
             conn.connect()
@@ -482,7 +482,7 @@ def main():
                 dead = set()
                 unreachable(dead)
             attempt = 0
-            session(conn, grove, node_id, tags, is_warden, seen, tail)
+            session(conn, fleet, node_id, tags, is_warden, seen, tail)
         except copal_nats.NatsError as exc:
             # THE WARDEN IS THERE AND SAID NO. An auth or protocol refusal is
             # not absence, and treating it as absence would elect a new warden
@@ -522,15 +522,15 @@ def self_test():
         # -- addressing: cmd.> is one subscription, filtered here ---------
         tags = ["wall", "north"]
         for subject, want in [
-            ("grove.museum.cmd.all", True),
-            ("grove.museum.cmd.node.museum-03", True),
-            ("grove.museum.cmd.node.museum-04", False),
-            ("grove.museum.cmd.tag.wall", True),
-            ("grove.museum.cmd.tag.sdr", False),
-            ("grove.museum.cmd.tag.north", True),
-            ("grove.othergrove.cmd.all", False),
-            ("grove.museum.log.museum-03", False),
-            ("grove.museum.cmd.", False),
+            ("fleet.museum.cmd.all", True),
+            ("fleet.museum.cmd.node.museum-03", True),
+            ("fleet.museum.cmd.node.museum-04", False),
+            ("fleet.museum.cmd.tag.wall", True),
+            ("fleet.museum.cmd.tag.sdr", False),
+            ("fleet.museum.cmd.tag.north", True),
+            ("fleet.otherfleet.cmd.all", False),
+            ("fleet.museum.log.museum-03", False),
+            ("fleet.museum.cmd.", False),
         ]:
             got = wanted_by_me(subject, "museum", "museum-03", tags)
             assert got == want, "%s -> %s, wanted %s" % (subject, got, want)
@@ -540,7 +540,7 @@ def self_test():
         seen = Seen(os.path.join(tmp, "seen"))
         now = 1789042000.0
         good = {"v": 1, "corr": "a3f1", "verb": "scene",
-                "args": ["apply", "rest"], "iss": "grove-operator",
+                "args": ["apply", "rest"], "iss": "fleet-operator",
                 "exp": now + 60, "once": "2026-09-08T09:14:22Z"}
         assert validate(good, seen, now) is None, validate(good, seen, now)
         checks += 1
@@ -626,7 +626,7 @@ def self_test():
 if __name__ == "__main__":
     try:
         if "--self-test" in sys.argv or "self-test" in sys.argv[1:2]:
-            print("copal-grove-agent: %d checks passed" % self_test())
+            print("copal-fleet-agent: %d checks passed" % self_test())
             sys.exit(0)
         sys.exit(main())
     except KeyboardInterrupt:

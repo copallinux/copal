@@ -24,7 +24,7 @@ counted as a pass.  A line that needs two machines says so rather than being
 quietly reworded into one that needs one.
 
 WHAT THIS RUNS IS THE REAL THING.  Line 4 starts an actual `nats-server`, an
-actual `copal-grove-agent`, and drives them with the actual client.  The agent
+actual `copal-fleet-agent`, and drives them with the actual client.  The agent
 reads its paths from the environment for exactly this reason; the defaults are
 the only values a node ever uses.
 """
@@ -85,7 +85,7 @@ def free_port():
 
 
 def node_tool(root):
-    """Cut `/usr/bin/copal-grove` out of copal-prep.sh and make it runnable.
+    """Cut `/usr/bin/copal-fleet` out of copal-prep.sh and make it runnable.
 
     THE NODE TOOL IS NOT A FILE IN THIS REPOSITORY -- it is a heredoc inside
     the installer, which is why W10's first version of this check read it with
@@ -97,10 +97,10 @@ def node_tool(root):
     try:
         with open(src, encoding="utf-8") as fh:
             for ln in fh:
-                if ln.rstrip("\n").endswith("<<'COPALGROVE'"):
+                if ln.rstrip("\n").endswith("<<'COPALFLEET'"):
                     keep = True
                     continue
-                if keep and ln.rstrip("\n") == "COPALGROVE":
+                if keep and ln.rstrip("\n") == "COPALFLEET":
                     break
                 if keep:
                     out.append(ln)
@@ -108,15 +108,15 @@ def node_tool(root):
         return None
     if not out:
         return None
-    path = os.path.join(root, "copal-grove")
+    path = os.path.join(root, "copal-fleet")
     with open(path, "w", encoding="utf-8") as fh:
         fh.writelines(out)
     os.chmod(path, 0o755)
     return path
 
 
-def grove_sh(*args, env=None, timeout=90):
-    argv = ["sh", os.path.join(HERE, "copal-grove.sh")] + list(args)
+def fleet_sh(*args, env=None, timeout=90):
+    argv = ["sh", os.path.join(HERE, "copal-fleet.sh")] + list(args)
     e = dict(os.environ)
     if env:
         e.update(env)
@@ -156,21 +156,21 @@ def path_without_avahi(root):
 
 
 def write_fixture(root, warden_addr="10.0.0.16"):
-    """A grove of eight on paper: beacons, an answers file, a nodes list."""
+    """A fleet of eight on paper: beacons, an answers file, a nodes list."""
     beacons = os.path.join(root, "beacons.tsv")
     with open(beacons, "w") as fh:
         for i in (1, 2, 3, 4, 5, 6, 8):
             role = "warden" if i == 6 else "node"
             addr = warden_addr if i == 6 else "10.0.0.%d" % (10 + i)
-            fh.write("museum-%02d\t%s\tv=1;g=museum;n=museum-%02d;r=%s;s=%d;"
+            fh.write("museum-%02d\t%s\tv=1;f=museum;n=museum-%02d;r=%s;s=%d;"
                      "a=aarch64;m=1024;u=%dm;t=wall;c=show\n"
                      % (i, addr, i, role, 3000 - i, 300 + i))
         fh.write("epson-XY10\t10.0.0.44\tv=1;n=epson-XY10\n")
     answers = os.path.join(root, "answers.txt")
     with open(answers, "w") as fh:
-        fh.write('COPAL_GROVE="museum"\nCOPAL_GROVE_SIZE="8"\nCOPAL_USER="user"\n')
+        fh.write('COPAL_FLEET="museum"\nCOPAL_FLEET_SIZE="8"\nCOPAL_USER="user"\n')
     home = os.path.join(root, "copalhome")
-    os.makedirs(os.path.join(home, "groves", "museum"), exist_ok=True)
+    os.makedirs(os.path.join(home, "fleets", "museum"), exist_ok=True)
     os.makedirs(os.path.join(home, "ca"), exist_ok=True)
     return beacons, answers, home
 
@@ -179,9 +179,9 @@ def write_fixture(root, warden_addr="10.0.0.16"):
 
 def case_bus_down(root, beacons, answers, home):
     line(1, "Bus down -- the console falls back, and says so")
-    env = {"COPAL_GROVE_BEACONS": beacons, "COPAL_ANSWERS": answers,
+    env = {"COPAL_FLEET_BEACONS": beacons, "COPAL_ANSWERS": answers,
            "COPAL_HOME": home}
-    code, out, err = grove_sh("state", "--json", "--grove", "museum", env=env)
+    code, out, err = fleet_sh("state", "--json", "--fleet", "museum", env=env)
     if code != 0:
         return bad("state still answers with no bus", err)
     try:
@@ -215,7 +215,7 @@ def case_bus_down(root, beacons, answers, home):
     else:
         ok("no agent is called silent -- with no bus that is unknowable")
 
-    code, out, err = grove_sh("console", "--once", "--grove", "museum", env=env)
+    code, out, err = fleet_sh("console", "--once", "--fleet", "museum", env=env)
     if code != 0:
         return bad("the wall would not draw with the bus down", err)
     if "bus off" not in out:
@@ -244,9 +244,9 @@ def case_warden_unplugged(root, beacons, answers, home):
             if "museum-01" in r:
                 r = r.replace("r=node", "r=warden")   # another has taken it
             fh.write(r + "\n")
-    env = {"COPAL_GROVE_BEACONS": moved, "COPAL_ANSWERS": answers,
+    env = {"COPAL_FLEET_BEACONS": moved, "COPAL_ANSWERS": answers,
            "COPAL_HOME": home}
-    code, out, _err = grove_sh("state", "--json", "--grove", "museum", env=env)
+    code, out, _err = fleet_sh("state", "--json", "--fleet", "museum", env=env)
     if code == 0 and json.loads(out).get("warden") == "10.0.0.11":
         ok("the console follows the warden to a new address, no restart")
     else:
@@ -260,7 +260,7 @@ def case_warden_unplugged(root, beacons, answers, home):
     tool = node_tool(root)
     if not tool:
         bad("the node tool could not be extracted from copal-prep.sh",
-            "the `cat > /usr/bin/copal-grove <<COPALGROVE` heredoc moved or "
+            "the `cat > /usr/bin/copal-fleet <<COPALFLEET` heredoc moved or "
             "was renamed")
         return
 
@@ -269,7 +269,7 @@ def case_warden_unplugged(root, beacons, answers, home):
 
     def elect(peers, role="node", pin=None, unreachable=(), lease=None,
               times=1):
-        """Run `copal-grove elect` over a made-up grove; the roles it printed.
+        """Run `copal-fleet elect` over a made-up fleet; the roles it printed.
 
         `peers` is (id, score) -- this node is never in it, because the
         election reads its own score live rather than out of its own beacon.
@@ -291,14 +291,14 @@ def case_warden_unplugged(root, beacons, answers, home):
         bf = os.path.join(root, "elect-beacons.tsv")
         with open(bf, "w") as fh:
             for nid, sc in peers:
-                fh.write("%s\t10.0.0.9\tv=1;g=museum;n=%s;r=node;s=%d;m=1024\n"
+                fh.write("%s\t10.0.0.9\tv=1;f=museum;n=%s;r=node;s=%d;m=1024\n"
                          % (nid, nid, sc))
         uf = os.path.join(root, "elect-unreachable")
         with open(uf, "w") as fh:
             fh.write("".join(i + "\n" for i in unreachable))
         env = dict(os.environ)
-        env.update({"COPAL_GROVE_DIR": d, "COPAL_GROVE_BEACONS": bf,
-                    "COPAL_GROVE_UNREACHABLE": uf})
+        env.update({"COPAL_FLEET_DIR": d, "COPAL_FLEET_BEACONS": bf,
+                    "COPAL_FLEET_UNREACHABLE": uf})
         out = []
         for _ in range(times):
             r = subprocess.run([tool, "elect"], capture_output=True,
@@ -309,7 +309,7 @@ def case_warden_unplugged(root, beacons, answers, home):
     # This node's own score decides who wins, so the fixtures are written
     # around it rather than assuming a number.
     mine = int(subprocess.run([tool, "score"], capture_output=True, text=True,
-                              env=dict(os.environ, COPAL_GROVE_DIR=root)
+                              env=dict(os.environ, COPAL_FLEET_DIR=root)
                               ).stdout.strip() or 0)
     low = [("museum-01", mine - 100), ("museum-02", mine - 200)]
     high = [("museum-01", mine + 100)]
@@ -367,7 +367,7 @@ def case_warden_unplugged(root, beacons, answers, home):
             "got %s, wanted warden" % " ".join(got))
 
     if me:                       # only meaningful if `hostname` answered
-        # The grove is this node and a four-minute-old beacon of itself
+        # The fleet is this node and a four-minute-old beacon of itself
         # claiming a better score. Counting that beacon would make a node lose
         # an election to its own past, so the only candidate is this node and
         # it takes the role on the usual hold.
@@ -389,7 +389,7 @@ def case_warden_unplugged(root, beacons, answers, home):
 
 def case_avahi_off(root, beacons, answers, home):
     line(3, "Avahi off -- addresses from a written list")
-    nodes_file = os.path.join(home, "groves", "museum", "nodes")
+    nodes_file = os.path.join(home, "fleets", "museum", "nodes")
     with open(nodes_file, "w") as fh:
         fh.write("# id            address\n")
         for i in (1, 2, 3, 6):
@@ -399,8 +399,8 @@ def case_avahi_off(root, beacons, answers, home):
     # the question is whether the console still works when discovery does not.
     env = {"COPAL_ANSWERS": answers, "COPAL_HOME": home,
            "PATH": path_without_avahi(root)}
-    # No COPAL_GROVE_BEACONS either: the static path is the only one left.
-    code, out, err = grove_sh("browse", "--grove", "museum", env=env)
+    # No COPAL_FLEET_BEACONS either: the static path is the only one left.
+    code, out, err = fleet_sh("browse", "--fleet", "museum", env=env)
     if code != 0:
         return bad("browse failed with no avahi and a written list", err)
     if out.count("museum-") >= 4:
@@ -408,7 +408,7 @@ def case_avahi_off(root, beacons, answers, home):
     else:
         return bad("the written list was not used", out[:200])
 
-    code, out, err = grove_sh("state", "--json", "--grove", "museum", env=env)
+    code, out, err = fleet_sh("state", "--json", "--fleet", "museum", env=env)
     if code != 0:
         return bad("state failed with no discovery", err)
     doc = json.loads(out)
@@ -424,20 +424,20 @@ def case_avahi_off(root, beacons, answers, home):
         bad("nodes absent from the list were silently dropped",
             json.dumps(doc["counts"]))
     # AND THE DOCUMENT HAS TO MATCH THE MECHANISM. The backlog said addresses
-    # come from `nodes` in grove.toml; they are not there and could not be,
+    # come from `nodes` in fleet.toml; they are not there and could not be,
     # because that key is a list of ids for `wait` and carries no addresses. A
     # checklist that names a different file from the one that runs is a
     # checklist somebody follows into a wall at nine in the morning.
-    backlog = os.path.join(os.path.dirname(HERE), "docs", "grove-m4-backlog.md")
+    backlog = os.path.join(os.path.dirname(HERE), "docs", "fleet-m4-backlog.md")
     try:
         text = open(backlog).read()
     except OSError:
         return skip("the backlog names the file the static path reads",
-                    "no docs/grove-m4-backlog.md here")
-    if "`nodes` in `grove.toml`" in text:
-        bad("the backlog says addresses come from `nodes` in grove.toml. That "
+                    "no docs/fleet-m4-backlog.md here")
+    if "`nodes` in `fleet.toml`" in text:
+        bad("the backlog says addresses come from `nodes` in fleet.toml. That "
             "key is a list of IDS and carries no addresses.",
-            "The static path reads ~/.copal/groves/<grove>/nodes, a different\n"
+            "The static path reads ~/.copal/fleets/<fleet>/nodes, a different\n"
             "file in a different place. The mechanism works; the document\n"
             "describing it does not.")
     else:
@@ -468,25 +468,25 @@ def case_redelivery(root, beacons, answers, home, nats):
     rows = copal_nats.parse_members("\n".join([
         "%s %s node" % (node, copal_nkeys.public_of(seed)),
         "console %s console" % copal_nkeys.public_of(console_seed)]))
-    with open(os.path.join(root, "grove-users.conf"), "w") as fh:
+    with open(os.path.join(root, "fleet-users.conf"), "w") as fh:
         fh.write(copal_nats.render_users("museum", rows))
     conf = os.path.join(root, "nats.conf")
     with open(conf, "w") as fh:
-        fh.write('host: 127.0.0.1\nport: %d\ninclude "grove-users.conf"\n' % port)
+        fh.write('host: 127.0.0.1\nport: %d\ninclude "fleet-users.conf"\n' % port)
 
     # A stand-in for the node tool and for the forced command. The forced
     # command records every invocation, which is how "exactly once" is counted.
-    tool = os.path.join(root, "copal-grove")
+    tool = os.path.join(root, "copal-fleet")
     with open(tool, "w") as fh:
         fh.write('#!/bin/sh\ncase "$1" in\n'
                  '  id) echo %s ;;\n'
                  '  state) echo "id=%s role=node score=1 temp=44 up=5m ram=1024 '
                  'arch=aarch64 tags=wall scene=show scene_min=1" ;;\n'
-                 '  browse) printf "%s\\t127.0.0.1\\tv=1;g=museum;n=%s;r=warden;s=9\\n" ;;\n'
+                 '  browse) printf "%s\\t127.0.0.1\\tv=1;f=museum;n=%s;r=warden;s=9\\n" ;;\n'
                  '  *) exit 0 ;;\nesac\n' % (node, node, node, node))
     os.chmod(tool, 0o755)
     ran = os.path.join(root, "ran.log")
-    execf = os.path.join(root, "copal-grove-exec")
+    execf = os.path.join(root, "copal-fleet-exec")
     with open(execf, "w") as fh:
         fh.write('#!/bin/sh\nprintf "%%s\\n" "$SSH_ORIGINAL_COMMAND" >> %s\n'
                  'echo done\n' % ran)
@@ -503,12 +503,12 @@ def case_redelivery(root, beacons, answers, home, nats):
             except OSError:
                 time.sleep(0.1)
         env = dict(os.environ)
-        env.update({"COPAL_GROVE_DIR": gdir, "COPAL_GROVE_EXEC": execf,
-                    "COPAL_GROVE_TOOL": tool, "COPAL_GROVE_PORT": str(port),
-                    "COPAL_GROVE_SEEN": os.path.join(root, "seen"),
-                    "COPAL_GROVE_NODE_LOG": os.path.join(root, "node.log"),
-                    "COPAL_GROVE_COLLECT": os.path.join(root, "collect")})
-        agent = subprocess.Popen([sys.executable, os.path.join(HERE, "copal-grove-agent")],
+        env.update({"COPAL_FLEET_DIR": gdir, "COPAL_FLEET_EXEC": execf,
+                    "COPAL_FLEET_TOOL": tool, "COPAL_FLEET_PORT": str(port),
+                    "COPAL_FLEET_SEEN": os.path.join(root, "seen"),
+                    "COPAL_FLEET_NODE_LOG": os.path.join(root, "node.log"),
+                    "COPAL_FLEET_COLLECT": os.path.join(root, "collect")})
+        agent = subprocess.Popen([sys.executable, os.path.join(HERE, "copal-fleet-agent")],
                                  env=env, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
         con = copal_nats.Nats("127.0.0.1", port, seed=console_seed,
@@ -517,12 +517,12 @@ def case_redelivery(root, beacons, answers, home, nats):
         # Everything, because the console's credential allows exactly that and
         # this waits on `hello` as well as on acks. Subscribing to ack.> alone
         # and then waiting for a hello is a test that waits out its own clock.
-        con.subscribe("grove.museum.>")
+        con.subscribe("fleet.museum.>")
         con.flush()
 
         joined = False
         for _ in range(40):
-            if any(m[0] == "grove.museum.hello" for m in con.messages(0.5)):
+            if any(m[0] == "fleet.museum.hello" for m in con.messages(0.5)):
                 joined = True
                 break
         if joined:
@@ -553,10 +553,10 @@ def case_redelivery(root, beacons, answers, home, nats):
 
         def send(corr, once, verb="state", exp=None):
             env_ = {"v": 1, "corr": corr, "verb": verb, "args": [],
-                    "iss": "grove-operator", "once": once}
+                    "iss": "fleet-operator", "once": once}
             if exp is not None:
                 env_["exp"] = exp
-            con.publish("grove.museum.cmd.node.%s" % node, json.dumps(env_))
+            con.publish("fleet.museum.cmd.node.%s" % node, json.dumps(env_))
             con.flush()
 
         # THE SAME COMMAND, TWICE, with the same `once` -- which is what a
@@ -575,12 +575,12 @@ def case_redelivery(root, beacons, answers, home, nats):
         # memory-only seen-list would fail.
         agent.terminate()
         agent.wait(timeout=10)
-        agent = subprocess.Popen([sys.executable, os.path.join(HERE, "copal-grove-agent")],
+        agent = subprocess.Popen([sys.executable, os.path.join(HERE, "copal-fleet-agent")],
                                  env=env, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
         rejoined = False
         for _ in range(40):
-            if any(m[0] == "grove.museum.hello" for m in con.messages(0.5)):
+            if any(m[0] == "fleet.museum.hello" for m in con.messages(0.5)):
                 rejoined = True
                 break
         if not rejoined:
@@ -612,7 +612,7 @@ def case_redelivery(root, beacons, answers, home, nats):
         # And what ran went through the forced command, verb list and all.
         body = open(ran).read() if os.path.exists(ran) else ""
         if body.strip().splitlines() and all(l.strip() == "state" for l in body.strip().splitlines()):
-            ok("every command ran through copal-grove-exec, as a verb")
+            ok("every command ran through copal-fleet-exec, as a verb")
         else:
             bad("something other than the verb reached the exec", body[:200])
         con.close()
@@ -636,7 +636,7 @@ def main():
     VERBOSE = args.verbose
 
     nats = shutil.which("nats-server")
-    print("%sCopal grove -- W10, degradation tested on purpose%s" % (D, Z))
+    print("%sCopal fleet -- W10, degradation tested on purpose%s" % (D, Z))
     print("%s%s%s" % (D, time.strftime("%Y-%m-%d %H:%M:%S"), Z))
 
     root = tempfile.mkdtemp(prefix="copal-degrade.")
