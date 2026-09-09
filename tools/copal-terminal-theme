@@ -148,7 +148,7 @@ fi
 # of scrollback, a block cursor. Blinking is off: a blinking cursor is a
 # redraw twice a second in every idle terminal, and this desktop draws on
 # the CPU. Maple Mono, the theme's font, is not packaged; JetBrains Mono is
-# the substitute stage 16 already made.
+# the substitute stage 17 already made.
 PAD=12; FONT="JetBrains Mono"; SIZE=11; LINES=3000
 STAMP="$LABEL -- written by copal-terminal-theme; re-run it (with a theme name) rather than edit"
 

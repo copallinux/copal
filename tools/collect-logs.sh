@@ -139,7 +139,7 @@ SUM="$OUT/SUMMARY.txt"
 
     printf '\n--- did the stages run ---\n'
     for _s in 'Stage 1:' 'Stage 2:' 'Stage 3:' 'Stage 4:' 'Stage 5:' \
-              'Stage 7:' 'Stage 16:' ; do
+              'Stage 7:' 'Stage 17:' ; do
         if grep -rqF "$_s" "$OUT" 2>/dev/null; then
             printf '  %-12s reached\n' "$_s"
         else
@@ -147,7 +147,7 @@ SUM="$OUT/SUMMARY.txt"
         fi
     done
 
-    printf '\n--- the Wayland desktop (stage 16) ---\n'
+    printf '\n--- the Wayland desktop (stage 17) ---\n'
     for _k in 'Installing Hyprland' 'seatd running' 'quickshell is not packaged' \
               'session = wayland' 'setuid server disarmed' \
               'Linux Antiquity configs' 'JetBrains Mono substituted' \

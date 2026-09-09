@@ -204,7 +204,7 @@ fi
 
 step "A finished desktop, when you want one"
 say "The frames above come from whatever state the image is in. A ${B}complete${N}"
-say "install -- the one that reaches stage 16 and a compositor -- takes hours"
+say "install -- the one that reaches stage 17 and a compositor -- takes hours"
 say "and is a separate job from this release:"
 blank
 say "  ${D}make utm${N}         start it in UTM"

@@ -441,7 +441,7 @@ in `copal-prep.sh`.
    configs`, `JetBrains Mono substituted`, `GTK 3 and 4`, `fonts installed
    system-wide`.
 
-A bounded capture stops during stages 1–3, so expect stage 16 to read
+A bounded capture stops during stages 1–3, so expect stage 17 to read
 `not seen` and all nine to read `absent` unless a **complete** install has
 run. That is the capture behaving as documented, not a failure.
 

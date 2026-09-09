@@ -143,7 +143,7 @@ binary exited without a window, both catalogue rows now corrected (Freedoom
 installed with the two Doom engines, the OpenMW launcher named instead of
 the engine); LBreakout2 and Pingus crash on the EGL path like the GPU
 terminals. Xwayland's font path, found through xboard, is a change on the
-antiquity-desktop branch (stage 16), where the Hyprland session is written.
+antiquity-desktop branch (stage 17), where the Hyprland session is written.
 
 **Resolved in the installer:** mail accounts for Thunderbird and Claws Mail
 seeded from four optional questions in `make answers` (Claws verified here

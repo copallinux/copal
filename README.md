@@ -1371,8 +1371,8 @@ a package manager.
 The one path that runs the other way is for developing the installer, not for
 using it: on a Copal machine with a checkout (stage 7 puts one at
 `~/code/copal`), `copal -U --from ~/code/copal` installs *that tree's*
-`copal-init.sh`, and `copal --stage 16 --auto` re-runs a stage with no menu.
-`make redeploy STAGES=16` in the checkout is both, with `make lint` first. It
+`copal-init.sh`, and `copal --stage 17 --auto` re-runs a stage with no menu.
+`make redeploy STAGES=17` in the checkout is both, with `make lint` first. It
 only runs in the guest — on the Mac it says so and stops.
 
 ### What each script is for
@@ -1533,8 +1533,8 @@ theme is adding a directory with a `neovim.lua` in it.
 The two shipped themes are the two looks Copal actually has: **tokyo-night**,
 which is stage 4's palette — the same six hex values already in the i3 config,
 the `Xresources` and the status bar — and **antiquity**, which is Linux
-Antiquity's *helios* palette, the light half that stage 16's `kitty.conf` paints
-the terminal with. Stage 16 moves the symlink when it installs that desktop, so
+Antiquity's *helios* palette, the light half that stage 17's `kitty.conf` paints
+the terminal with. Stage 17 moves the symlink when it installs that desktop, so
 the editor changes with the desktop and not separately.
 
 The watcher **polls** — one `stat` every three seconds, only while an editor is
@@ -1558,7 +1558,7 @@ a date on it.
 - **Stage 4** — X.Org and i3. Runs on everything, including a Pi Zero, because
   it renders on the CPU into the framebuffer via `fbdev` and asks nothing of the
   GPU.
-- **Stage 16** — Hyprland and the Linux Antiquity theme, on Wayland. `aarch64`
+- **Stage 17** — Hyprland and the Linux Antiquity theme, on Wayland. `aarch64`
   and `x86_64` only: Alpine packages no Hyprland for `armhf` or `armv7`, and a
   Zero's VideoCore has no GLES driver worth the name regardless.
 

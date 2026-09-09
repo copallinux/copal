@@ -51,7 +51,7 @@ further Copal work.
 | Item | Detail |
 |---|---|
 | Distribution | Copal Linux (an aggregation of Alpine Linux 3.24) |
-| Compositor A | Hyprland (Wayland), stage 16, with the *Linux Antiquity* theme [2] |
+| Compositor A | Hyprland (Wayland), stage 17, with the *Linux Antiquity* theme [2] |
 | Compositor B | i3 (X11), stage 4 |
 | Menu / picker | wofi (Wayland), dmenu and jgmenu (X11) |
 | Shell / bar | waybar; quickshell where obtainable (it is not, on Alpine) |

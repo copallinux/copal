@@ -982,7 +982,7 @@ lint: | $(BUILDDIR)
 #      Makefile and not what you want at a terminal.
 #
 # Nothing here is destructive in a way a rebuild is: the stages are the same
-# re-runnable stages the menu offers, and stage 16 moves any config it
+# re-runnable stages the menu offers, and stage 17 moves any config it
 # replaces into ~/copal-theme-backups/ rather than deleting it.
 #
 # THE GUARD IS THE POINT of the first three lines. Running this on the Mac

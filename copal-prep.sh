@@ -4256,7 +4256,7 @@ install_home_file() {  # <relative path> <source file>
         #
         # Against the record, not against the new content: a file that
         # differs from the new one is the normal case on every run that
-        # changed the stage, and a vendored copy that stage 16 lays down
+        # changed the stage, and a vendored copy that stage 17 lays down
         # before writing its own over it differs too. Only a file that was
         # written here and then changed by somebody else is worth a word. No
         # record yet means nothing is said, which is the honest first run.
@@ -6382,7 +6382,7 @@ MSG
             # which is where a browser that is merely wanted belongs.
             #
             # Brave only where Flathub actually publishes it. 'full' on armv7
-            # lands here too (stage 16 declines itself later), and there is no
+            # lands here too (stage 17 declines itself later), and there is no
             # Brave build for that architecture from any source, so it takes
             # BadWolf alone like the other levels.
             if [ "${AUTO:-0}" = 1 ]; then
@@ -8329,7 +8329,7 @@ out()  { printf '%s\n' "$*" >> "$CSV"; }
 # come up through Xwayland if it happens to be installed and not at all if it
 # is not, so the Wayland session asks for the terminals that session has.
 if wayland; then
-    # foot first, for the reason stage 16 installs it first: it is the one
+    # foot first, for the reason stage 17 installs it first: it is the one
     # that comes up on a compositor drawing in software, which is the case
     # this picker most needs to survive. kitty and alacritty both want GL.
     TERM_EMU="${TERMINAL:-$(have foot && echo foot \
@@ -8395,7 +8395,7 @@ projects() {
 # and it was the hardest to find. Omarchy puts its keybindings under Learn,
 # near the top, for the same reason.
 #
-# WHICH LIST, asked of the session. Stage 4 writes the i3 one and stage 16
+# WHICH LIST, asked of the session. Stage 4 writes the i3 one and stage 17
 # writes the Antiquity one, and offering the wrong one is worse than offering
 # none -- somebody who gets a list they believe and that does not match their
 # desktop is further from working than somebody who got nothing.
@@ -11145,7 +11145,7 @@ MSG
 # ---------------------------------------------------------------------------
 # THE BAR, THE WIDGETS AND THE WINDOW LIST -- what stands in for quickshell.
 #
-# Stage 16 installs Linux Antiquity's configs, and 99 of those files are QML
+# Stage 17 installs Linux Antiquity's configs, and 99 of those files are QML
 # for quickshell: RadialTaskbar.qml, Bar.qml, ClockWidget.qml, SysTray.qml,
 # Workspaces.qml, AppLauncher.qml, PowerMenu.qml. quickshell is not packaged
 # in any Alpine repository -- not community, not testing, not edge -- so on
@@ -11345,7 +11345,7 @@ WAYBARCFG
    rest of the desktop agree; see docs/THEME.md. */
 
 * {
-    /* JetBrains Mono and DejaVu are what stage 16 installs. No Nerd Font:
+    /* JetBrains Mono and DejaVu are what stage 17 installs. No Nerd Font:
        Alpine does not package one, and this bar uses words, not glyphs. */
     font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
     font-size: 12px;
@@ -11623,7 +11623,7 @@ WAYBARDESK
 
     # The type is the theme's, not the bar's. quickshell's ClockWidget.qml
     # draws the time at 104px in Boska, weight 500, in the accent gold with a
-    # soft drop shadow; stage 16 installs Boska system-wide, so the same face
+    # soft drop shadow; stage 17 installs Boska system-wide, so the same face
     # is available to waybar and this is as close as CSS gets. Where the fonts
     # did not install, the fallbacks are the bar's own and it still reads.
     cat > /tmp/waybardeskcss.$$ <<'WAYBARDESKCSS'
@@ -12087,7 +12087,7 @@ stage_hyprland() {
     # The editor follows the desktop. Stage 7 wrote both theme directories and
     # pointed the symlink at tokyo-night, which is stage 4's palette; this
     # desktop is the other one. Written here rather than assumed, because
-    # stage 16 can be run on a machine that never ran stage 7 -- and if it was
+    # stage 17 can be run on a machine that never ran stage 7 -- and if it was
     # run, an editor that is open right now repaints within three seconds
     # without being restarted. See dev_write_nvim_ui() and ~/.config/nvim/theme.lua.
     [ -d "$copal_theme_dir/antiquity" ] || copal_write_themes
@@ -13042,7 +13042,7 @@ bind = $mainMod ALT, SPACE, exec, copal-menu --system
 bind = $mainMod CTRL, SPACE, exec, copal-wallpaper --pick
 
 # ---- yours --------------------------------------------------------------
-# Everything above this line is rewritten whenever stage 16 runs, and the
+# Everything above this line is rewritten whenever stage 17 runs, and the
 # copy it replaces goes to hyprland.conf.bak. local.conf is not: the
 # installer creates it empty once and never opens it again. A binding, a
 # monitor line, a display scale -- anything you would otherwise edit above
@@ -13055,7 +13055,7 @@ ANTIQDOORS
 # ~/.config/hypr/local.conf -- yours.
 #
 # Copal created this file empty, once, and will not write to it again.
-# ~/.config/hypr/hyprland.conf is rewritten every time stage 16 runs and
+# ~/.config/hypr/hyprland.conf is rewritten every time stage 17 runs and
 # sources this file last, so anything here wins over anything there.
 # Hyprland reloads on save. Some starting points:
 #
@@ -13102,7 +13102,7 @@ ANTIQPAPER
     # theme already puts on top of #eaeaea. Everything else is upstream's.
     say "Writing ~/.config/foot/foot.ini (the theme's palette)"
     cat > /tmp/footini.$$ <<'ANTIQFOOT'
-# foot.ini -- written by copal-init.sh (stage 16).
+# foot.ini -- written by copal-init.sh (stage 17).
 #
 # The Linux Antiquity palette, translated from the theme's kitty/hades.conf.
 # foot is the terminal this desktop opens because it renders on the CPU:
@@ -15784,7 +15784,7 @@ GUIDE
    AND RUNNING WHAT YOU JUST EDITED, ON THIS MACHINE, WITHOUT LEAVING IT:
 
       make redeploy               install this checkout's installer here
-      make redeploy STAGES=16     ...and re-run that stage, unattended
+      make redeploy STAGES=17     ...and re-run that stage, unattended
       make redeploy STAGES=4,16   several, in that order
       make redeploy-check         what would change; changes nothing
       make redeploy PULL=1        pull first without being asked
@@ -17159,7 +17159,7 @@ GUIDE
 #
 # foot is absent from THIS list because it is Wayland-only and this is the X11
 # catalogue -- it would install and then never open a window. It is not absent
-# from the system: stage 16 installs it as the Antiquity desktop's terminal,
+# from the system: stage 17 installs it as the Antiquity desktop's terminal,
 # which is the session where it does open one.
 dev_install_terminals() {
     say "Terminal multiplexers"
@@ -17341,7 +17341,7 @@ lsp_present() {
 #
 #   tokyo-night   stage 4's desktop. The same six hex values already in the i3
 #                 config, the Xresources and the i3status bar.
-#   antiquity     stage 16's desktop. Linux Antiquity's *helios* palette, which
+#   antiquity     stage 17's desktop. Linux Antiquity's *helios* palette, which
 #                 is the light half of that theme -- ink on aged paper -- and
 #                 is what its kitty.conf paints the terminal with. An editor in
 #                 that terminal that stayed dark would be the one rectangle on
@@ -17576,13 +17576,13 @@ COPALTHEME
     chmod 0755 /usr/local/bin/copal-theme
 
     # Point both homes at a theme now, so nothing has to run copal-theme
-    # before Neovim has colours. Stage 16 moves it to antiquity when the
+    # before Neovim has colours. Stage 17 moves it to antiquity when the
     # Hyprland desktop is installed.
     copal_set_theme tokyo-night
 }
 
 # Set the current-theme symlink in every home this script writes to. Split
-# out because stage 16 calls it too, with the other name.
+# out because stage 17 calls it too, with the other name.
 copal_set_theme() {  # <theme name>
     for _h in /root "$(user_home)"; do
         [ -n "$_h" ] && [ -d "$_h" ] || continue
@@ -32532,7 +32532,7 @@ not what is already installed. To pick the changes up, re-run the stages they
 touch -- "copal" for the menu, or "copal --stage N,... --auto" for a named few
 without one. Stage 1 is the cheap one to re-run and repairs the admin account,
 doas and the shell files; stage 4 rewrites the desktop, its key bindings and
-the helper programs; stage 16 the Hyprland desktop and its theme.
+the helper programs; stage 17 the Hyprland desktop and its theme.
 AFTER
 }
 

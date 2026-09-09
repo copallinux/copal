@@ -160,8 +160,8 @@ which help on a board whose commonest problem is having no network yet.
 **And the same mechanism runs backwards, from a checkout on the machine
 itself.** `copal -U --from ~/code/copal` extracts `copal-init.sh` out of the
 `copal-prep.sh` in a working tree instead of fetching one over HTTPS — same
-`sh -n` gate, same `copal-init.sh.bak` — and `copal --stage 16 --auto` re-runs
-named stages without the menu. In the checkout, `make redeploy STAGES=16` is
+`sh -n` gate, same `copal-init.sh.bak` — and `copal --stage 17 --auto` re-runs
+named stages without the menu. In the checkout, `make redeploy STAGES=17` is
 those two commands with the lint in front of them. That is the edit-and-see-it
 loop for anyone changing a stage: no image to rebuild, no commit to push, and
 the machine you are testing on is the machine you are typing on. `make
@@ -1679,7 +1679,7 @@ nothing on this system set it — `start-hyprland` died with *XDG_RUNTIME_DIR is
 not set!* before it ever reached Hyprland. Now that the variable is set for the
 session, the launcher works and `copal-session` uses it.
 
-**"Your system does not have hyprland-guiutils installed."** Stage 16 now
+**"Your system does not have hyprland-guiutils installed."** Stage 17 now
 switches this off, and there is still nothing to install. Alpine packages
 neither `hyprland-guiutils` nor its old name `hyprland-qtutils`: it has
 `hyprland-qt-support`, which is the QML style and not the binaries, and
@@ -2064,7 +2064,7 @@ switches between them by moving a symlink at
 `~/.config/copal/current/theme`; a running Neovim notices within about three
 seconds and repaints without being restarted (`:Theme` does it on demand). Two
 are shipped — **tokyo-night**, stage 4's palette, and **antiquity**, the *helios*
-palette stage 16's `kitty.conf` uses — and stage 16 switches to the second when
+palette stage 17's `kitty.conf` uses — and stage 17 switches to the second when
 it installs that desktop. Adding a theme is adding a directory with a
 `neovim.lua` in it under `/usr/local/share/copal/themes/`.
 
