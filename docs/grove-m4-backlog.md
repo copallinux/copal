@@ -18,33 +18,42 @@ Paste this into a fresh session, from the repository root:
 ```
 Read docs/grove-m4-backlog.md and continue Copal Grove milestone 4 from the
 first unchecked work item. The backlog is authoritative for scope and order;
-docs/grove-plan.md is authoritative for design and invariants. Start with the
-DECISIONS REQUIRED section — three of them block code and one of them is a
-genuine hole in the plan (D1, the trust root). Work one item at a time, keep
-`make lint` clean, and do not begin an item whose dependencies are unchecked.
+docs/grove-plan.md is authoritative for design and invariants. Work one item at
+a time, keep `make lint` clean, and do not begin an item whose dependencies are
+unchecked. A checklist item is not evidence: if an item says something already
+works, run it before building on it.
 ```
+
+**All four decisions in §3 are resolved.** Nine of ten work items are written;
+**W5, thumbnails, is the only one left**, and nothing has run on a Pi.
 
 Read in this order before writing anything:
 
 | | Why |
 |---|---|
 | §0–§2 of this file | scope, and what is deliberately not in M4 |
-| **DECISIONS REQUIRED** (§3) | D1 blocks every other item |
+| §3, the decisions | all four resolved 2026-09-08; D1, the trust root, is the one to understand |
 | `docs/grove-plan.md` §6, §7, §12 | the bus, the warden, the console's layering rule |
 | `docs/grove-lab-report.md` §IV | the wall, the seat, the verbs, the notification model |
 | `tools/copal-grove.sh` | the console today: nine verbs and the four scene ones |
 | `copal-prep.sh`, `stage_grove` and the embedded `copal-grove` node tool | the node's half |
 
-The state of the tree at the time of writing:
+Where M4 actually stands, as of 2026-09-08:
 
-```
-ce1018d  Copal Grove: a plan for a fleet, and an answers file that can name one
-959a1b2  Stage 16: a card can join a grove, and a console can drive one    (M1+M2)
-03e70c9  Milestone 3: a day is five files, and the room applies one        (M3)
-```
+| | |
+|---|---|
+| written | W1 W2 W3 W4 W6 W7 W8 W9 W10 — and the election W10 found missing |
+| left | **W5, thumbnails** |
+| not done | **anything on a Pi.** Every item above was built and tested against fixtures, a real `nats-server` and a real agent on a workstation |
+| deferred, honestly | the twenty-second failover timed on hardware, a node powered off at 11:00 read back at 16:00, and two wardens at once — all three need two machines and a power switch |
 
-Everything below is unbuilt. No file named in §5 exists yet unless it is marked
-*(exists)*.
+**The one thing worth reading before anything else** is W10's second line and
+§7 of the plan. W1's checklist asserted that the election already computed the
+role; it did not, and W1, W3 and W7 were all built on that sentence. It was
+found by *performing* a checklist that had until then been *read*. When §7 was
+implemented, two further claims in it turned out to be wrong in the same way —
+the twenty-second handover and the split-brain argument. This is the failure
+mode this milestone actually has.
 
 ---
 
@@ -506,14 +515,64 @@ and a real `nats-server` with seven agents publishing, and again with the bus
 off. No Pi.
 
 
-### W8 · The seat — M — depends on W7
+### W8 · The seat — M — depends on W7 — **written**
 
-- [ ] One node, full size: the facts panel from the lab report §IV-B — uptime,
-      build, Alpine version, RAM and zram, temperature and throttling, card
-      usage, certificate expiry, mounts, scene, job, pending upgrades.
-- [ ] The log view: `tail -f` over that node with a text filter, reading W4's
-      collector so that **a dead node still has a seat**.
-- [ ] No live screen. That is L6.
+`Enter` on the wall opens it; `Esc` leaves it, always.
+
+- [x] One node, full size: the facts panel from the lab report §IV-B. **Nothing
+      on a node produced these readings**, so `copal-grove facts` was written to
+      take them — one `key<TAB>value` per line, the same forward-compatible
+      contract the beacon has, reached through `copal-grove-exec` as a verb like
+      everything else. Delivered: uptime, build, Alpine version and arch, RAM
+      and zram, temperature and throttling, card usage, certificate expiry,
+      scene, pending upgrades.
+- [x] **Two of §IV-B's rows are `not collected (§11)` and `not collected (§10)`
+      and say so on the panel.** Mounts are attachments and jobs are gem work,
+      and neither is wired to a node yet. An absent row would have read as "no
+      mounts" and "no job", which is the W10 lesson: a fallback must not be
+      silent.
+- [x] **THREE KINDS OF ABSENCE, KEPT APART.** `not reported` (we asked, the node
+      said nothing — amber, it is a fault), `n/a` (the node answered that its
+      board has no such interface), `not collected` (nothing in Copal produces
+      it — dim, it is a gap). Collapsing them into a blank tells an operator a
+      value is zero when it is unknown.
+- [x] The log view: `L` toggles it, `/` filters it, and it reads W4's collector
+      on the warden — so **a dead node still has a seat**. Asserted against a
+      node whose status is `missing`: the seat says *not announced*, says the
+      lines are on the warden, and shows them.
+- [x] No live screen. That is L6, and the seat says so where a screen would go.
+      **W7's rule applied a second time:** the tile put a real temperature
+      reading in the thumbnail's place rather than a placeholder pretending to
+      be a picture, so the seat puts the node's own log in the screen's place.
+      Sixty columns of empty box implies a screen is coming in a way a reading
+      does not.
+- [x] **`Esc` still returns to the wall from anywhere** — now including the seat
+      and the filter box, and it clears every mode at once rather than unwinding
+      them one at a time. Asserted, along with the rule that `Esc` can never
+      quit.
+
+### W9 · Notifications — S — depends on W7 — **written**
+
+Three severities, distinguished by *what the operator must do*:
+
+- [x] **toast** — something changed, nothing to do. Corner, five seconds, then
+      the event log. `E` opens the log from the wall or the seat.
+- [x] **chip** — a node needs attention; its tile turns amber and stays. It
+      recolours cells that already exist and adds no character, because a
+      marker that widened a tile would shift every tile to its right — the bug
+      W7's `TILE_W` assertions were written for. Asserted that a chipped tile
+      is the same width as a plain one.
+- [x] **alarm** — a bar across the top, drawn above the header so it is read
+      first, that does not go away until `!` acknowledges it.
+
+**Acceptance: met.** `notices_for("scene rest", [...museum-07...])` with
+`museum-07` unreachable returns an **alarm** that names `museum-07`, and no
+toast. The severity is decided from the **state document**, not by reading a
+verb's prose for the word "failed": a node that never announced cannot have
+taken a scene, and that is a fact the console already holds. Parsing English
+would be a second read model, which is what §12 forbids.
+
+**110 checks in `copal-grove-console.py --self-test`**, up from 58.
 
 ### W9 · Notifications — S — depends on W7
 
@@ -593,7 +652,8 @@ something a workstation can do.
 | `copal-prep.sh` · `copal-grove-exec` | unchanged on purpose — the bus executes through the **same** verb list | W3 |
 | `tools/copal-grove.sh` *(exists)* | `watch`, `notify`, `logs`, `state --json`, `console` | W4 W6 W7 |
 | `tools/copal_nats.py` | new — the stdlib NATS client | D3 |
-| `tools/copal-grove-console.py` | new — the wall and the seat | W7 W8 |
+| `tools/copal-grove-console.py` | new — the wall, the seat, notifications | W7 W8 W9 |
+| `copal-prep.sh` · embedded `copal-grove` | `elect` and `facts` verbs | W8 |
 | `groves/example/grove.toml` *(exists)* | a `[bus]` section: store limits, thumbnail rates | W1 W5 |
 | `docs/grove-plan.md` *(exists)* | **correct §6's mTLS claim** | W2 |
 | `docs/grove-lab-report.md` *(exists)* | the Zero 2 thumbnail measurement; the degradation checklist | W5 W10 |

@@ -182,6 +182,9 @@ def assemble(grove, beacons, bus, expected, warden, degraded, strangers=()):
             "role": s.get("role") or b.get("role") or ("?" if not b else "node"),
             "tags": b.get("tags", []),
             "arch": s.get("arch") or b.get("arch", ""),
+            # Parsed out of the beacon since W6 and dropped here until W8 went
+            # looking for it: the seat's panel names the build a node is on.
+            "build": s.get("build") or b.get("build", ""),
             "ram_mb": intish(s.get("ram")) or b.get("ram_mb"),
             "score": (intish(s.get("score")) if s.get("score") is not None
                       else b.get("score")),

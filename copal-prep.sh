@@ -20862,6 +20862,101 @@ install_cert() {
     echo "installed: $(printf '%s\n' "$_info" | sed -n 's/^ *Valid: //p' | head -1)"
 }
 
+# ---------------------------------------------------------------- the seat ---
+#
+# W8's facts panel, from the lab report §IV-B. ONE READING PER LINE, key then a
+# tab then the value, and a key the console does not know is the console's to
+# ignore -- the same contract parse_state() has with the beacon, so a console
+# older than a node keeps working and a node older than a console does not
+# break it.
+#
+# EVERY READING DEGRADES TO A NAMED UNKNOWN, never to a blank. A blank row does
+# not tell an operator whether the value is zero, missing, or not collected on
+# this board, and W10's rule is that a fallback must not be silent. Two of
+# §IV-B's rows are `not collected` and say so rather than being quietly left
+# out: the panel is the honest list, not the flattering one.
+
+or_unknown() { [ -n "$1" ] && printf '%s' "$1" || printf 'unknown'; }
+
+build_id() {
+    _b=$(sed -n 's/^COPAL_BUILD_ID=//p' /etc/copal/build 2>/dev/null | tr -d '"' | head -1)
+    or_unknown "$_b"
+}
+
+# zram in use, as a percentage of its own capacity. `none` when this board has
+# no zram, which is a reading rather than a failure to take one.
+zram_pct() {
+    awk '$1 ~ /zram/ { u += $4; t += $3 }
+         END { if (t > 0) printf "%d", u * 100 / t; else printf "none" }' \
+        /proc/swaps 2>/dev/null || printf 'unknown'
+}
+
+# The Pi firmware's throttle word. `no` is a reading; `n/a` means this board has
+# no such interface, and the two must not look the same -- "no throttling" and
+# "cannot tell you about throttling" send an operator to different places.
+throttled() {
+    _g=/sys/devices/platform/soc/soc:firmware/get_throttled
+    if [ -r "$_g" ]; then
+        _v=$(cat "$_g" 2>/dev/null)
+    elif command -v vcgencmd >/dev/null 2>&1; then
+        _v=$(vcgencmd get_throttled 2>/dev/null | sed 's/.*=//')
+    else
+        printf 'n/a'; return 0
+    fi
+    case "$_v" in
+        ''|0x0|0) printf 'no' ;;
+        *)        printf 'yes %s' "$_v" ;;
+    esac
+}
+
+card_pct() {   # the root filesystem, which on a node is the card
+    _p=$(df -P / 2>/dev/null | awk 'NR == 2 { gsub(/%/, "", $5); print $5 }')
+    or_unknown "$_p"
+}
+
+# Days until this node's host certificate expires. The console can read the
+# same thing over ssh; having it here is what lets one `facts` call fill the
+# whole panel instead of two round trips.
+cert_days() {
+    [ -f "$HOSTCERT" ] || { printf 'not enrolled'; return 0; }
+    _to=$(ssh-keygen -L -f "$HOSTCERT" 2>/dev/null \
+          | sed -n 's/.*Valid: from .* to //p' | head -1)
+    [ -n "$_to" ] || { printf 'unknown'; return 0; }
+    _e=$(date -d "$_to" +%s 2>/dev/null) || { printf '%s' "$_to"; return 0; }
+    [ -n "$_e" ] || { printf '%s' "$_to"; return 0; }
+    printf '%d' $(( ( _e - $(date +%s) ) / 86400 ))
+}
+
+apk_pending() {
+    command -v apk >/dev/null 2>&1 || { printf 'n/a'; return 0; }
+    apk version -l '<' 2>/dev/null | sed '1d' | wc -l | tr -d ' \n'
+}
+
+facts() {
+    printf 'id\t%s\n'          "$(hostname)"
+    printf 'grove\t%s\n'       "$(or_unknown "$(f name)")"
+    printf 'alpine\t%s\n'      "$(or_unknown "$(cat /etc/alpine-release 2>/dev/null)")"
+    printf 'kernel\t%s\n'      "$(uname -r)"
+    printf 'arch\t%s\n'        "$(uname -m)"
+    printf 'build\t%s\n'       "$(build_id)"
+    printf 'uptime_min\t%s\n'  "$(uptime_min)"
+    printf 'ram_mb\t%s\n'      "$(ram_mb)"
+    printf 'zram_pct\t%s\n'    "$(zram_pct)"
+    printf 'temp_c\t%s\n'      "$(temp_c)"
+    printf 'throttled\t%s\n'   "$(throttled)"
+    printf 'card_pct\t%s\n'    "$(card_pct)"
+    printf 'cert_days\t%s\n'   "$(cert_days)"
+    printf 'role\t%s\n'        "$(role_now)"
+    printf 'score\t%s\n'       "$(score)"
+    printf 'scene\t%s\n'       "$(or_unknown "$(scene_now)")"
+    printf 'scene_min\t%s\n'   "$(scene_min)"
+    printf 'apk_pending\t%s\n' "$(apk_pending)"
+    # §IV-B asks for these two and nothing on a node produces them yet. Saying
+    # so is the point: an absent row would read as "no mounts" and "no job".
+    printf 'mounts\tnot collected (§11)\n'
+    printf 'job\tnot collected (§10)\n'
+}
+
 status() {
     printf 'grove      %s\n' "$(f name)"
     printf 'node       %s (card %s of %s)\n' "$(hostname)" "$(f index)" "$(f size)"
@@ -21068,6 +21163,7 @@ case "${1:-status}" in
     id)           hostname ;;
     role)         role_now ;;
     elect)        elect ;;
+    facts)        facts ;;
     install-cert) install_cert ;;
     bus-config)   bus_config ;;
     bus-key)      bus_key ;;
@@ -21116,6 +21212,7 @@ case "$1" in
     status)   exec /usr/bin/copal-grove status ;;
     id)       exec hostname ;;
     score)    exec /usr/bin/copal-grove score ;;
+    facts)    exec /usr/bin/copal-grove facts ;;
     uptime)   exec uptime ;;
     beacon)   exec doas /usr/bin/copal-grove beacon ;;
     power)

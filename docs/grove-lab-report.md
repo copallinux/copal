@@ -316,6 +316,15 @@ losing what the console knows about it.
 one rule the interface must not break is that **the operator cannot get stuck
 inside a machine**.
 
+**Both are built** — M4 W7 and W8, `tools/copal-grove-console.py`. Two
+departures from the sketches above, and both are the same decision. The wall's
+thumbnail is a temperature bar and the seat's screen is the node's log, because
+neither a thumbnail (W5) nor a live screen (L6) exists yet, and a real reading
+in the space is honest where a placeholder shaped like the missing thing is
+not. The seat's panel also carries three rows the sketch does not: `not
+reported`, `n/a` and `not collected` are three different absences and the panel
+keeps them apart.
+
 ### C. The verbs
 
 Timbuktu's, adopted by name where the meaning is unchanged, and extended where
