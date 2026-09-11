@@ -7180,6 +7180,7 @@ write_copal_clip() {
 #   copal-clip copy|cut|paste   the Super+C / Super+X / Super+V actions
 #   copal-clip history          pick from the clipboard history
 #   copal-clip watch            record the history (started by the session)
+#   copal-clip bridge           share the clipboard with the VM host
 #   copal-clip store            put stdin on the clipboard
 #   copal-clip show             print the clipboard to stdout
 #
@@ -7360,12 +7361,73 @@ hist_show() {
     clip_set < "$HIST/$_n"
 }
 
+# --- the host's clipboard ---------------------------------------------------
+#
+# ON THE WAYLAND DESKTOP THERE ARE TWO CLIPBOARDS AND THE HOST SEES ONE.
+# spice-vdagent is an X11 program -- "Spice session guest agent: X11" is its
+# own version banner -- so what it trades with the host is the Xwayland
+# selection. Hyprland 0.54 does not copy that to or from the Wayland one.
+# Measured rather than assumed: wl-copy a marker and xclip answers "target
+# STRING not available", with no TARGETS advertised at all. So foot, wofi and
+# every other Wayland program were sitting on a clipboard the host could not
+# reach, while the agent ran and the channel stood open -- which is exactly
+# what "Super+C does nothing" looks like from the outside.
+#
+# This is the missing wire, and it is only needed under Wayland; the i3
+# session has one clipboard and vdagent is already on it.
+#
+# ONE DIRECTION IS FREE. wl-paste --watch fires on every Wayland clipboard
+# change, so Wayland -> X costs nothing at idle. The other has to be polled:
+# X has no equivalent without clipnotify and Alpine does not package it. One
+# xclip call a second, the same price hist_record already pays.
+#
+# THE TWO HALVES MUST NOT CHASE EACH OTHER. Pushing X to Wayland changes the
+# Wayland clipboard, which fires the watcher, which pushes back to X, for
+# ever. Comparing before writing stops it after one round: when the value is
+# already there nothing is written, so no second event is generated.
+bridge_to_x() {  # stdin -> the X clipboard, only when it differs
+    _new=$(cat)
+    if [ "$_new" != "$(xclip -selection clipboard -out 2>/dev/null || true)" ]; then
+        printf '%s' "$_new" | xclip -selection clipboard -in
+    fi
+}
+
+clip_bridge() {
+    have wl-paste || die "the host bridge needs wl-clipboard"
+    have xclip    || die "the host bridge needs xclip: apk add xclip"
+    # No Xwayland means no agent to hand the selection to, and nothing this
+    # loop could usefully do. Say so rather than spin.
+    [ -n "${DISPLAY:-}" ] || die "no DISPLAY: Xwayland is where the host agent reads"
+
+    # Wayland -> X, event driven. Killed with this script rather than left
+    # behind, because a second copy would fight the first.
+    wl-paste --watch "$0" __to-x &
+    _watcher=$!
+    trap 'kill $_watcher 2>/dev/null || true' INT TERM EXIT
+
+    # X -> Wayland, polled. Seeded with what is already there so the first
+    # tick does not replay an old host selection over the guest's.
+    _prev=$(xclip -selection clipboard -out 2>/dev/null || true)
+    while :; do
+        sleep 1
+        _x=$(xclip -selection clipboard -out 2>/dev/null || true)
+        if [ "$_x" = "$_prev" ]; then continue; fi
+        _prev=$_x
+        if [ -z "$_x" ]; then continue; fi
+        if [ "$_x" = "$(wl-paste --no-newline 2>/dev/null || true)" ]; then continue; fi
+        printf '%s' "$_x" | wl-copy
+    done
+}
+
 case "${1:-}" in
     copy)    send copy ;;
     cut)     send cut ;;
     paste)   send paste ;;
     history) hist_show ;;
     watch)   hist_watch ;;
+    bridge)  clip_bridge ;;
+    # Not for people: the hook wl-paste --watch calls above.
+    __to-x)  bridge_to_x ;;
     store)   clip_set ;;
     show)    clip_get ;;
     clear)   rm -rf "$HIST"; echo "clipboard history cleared" ;;
@@ -7589,10 +7651,17 @@ XORGKMS
     # TWO PROCESSES, and both are needed. spice-vdagentd is the system daemon
     # that owns the virtio port; spice-vdagent is a per-session program that
     # runs inside X and is what actually syncs the selection. The daemon is
-    # started here; the session half is launched from ~/.xinitrc, because a
-    # clipboard agent with no X session to read a selection from has nothing to
-    # do. That is also why this cannot help a machine whose desktop will not
-    # start -- there is no selection to share until there is an X server.
+    # started here; the session half is launched by whichever desktop comes
+    # up -- ~/.xinitrc for i3, an exec-once in hyprland.conf for Hyprland --
+    # because a clipboard agent with no session to read a selection from has
+    # nothing to do. That is also why this cannot help a machine whose desktop
+    # will not start: there is no selection to share until there is one.
+    #
+    # BOTH ENDS ARE X11, including the Wayland one. vdagent is an X11 program
+    # and Hyprland keeps the Xwayland selection in step with the Wayland one,
+    # so the agent talks to Xwayland and the whole desktop sees the result.
+    # Do not assume the Wayland session covers itself: it went a full release
+    # with the daemon running, the channel open and no agent to answer it.
     #
     # It brings dynamic resolution with it, which on a VM window that gets
     # dragged around is worth as much as the clipboard.
@@ -7610,7 +7679,7 @@ XORGKMS
             rc-service spice-vdagentd restart >/dev/null 2>&1 \
                 || rc-service spice-vdagentd start >/dev/null 2>&1 || true
             if rc-service spice-vdagentd status >/dev/null 2>&1; then
-                note "spice-vdagentd running -- copy and paste both ways once X is up"
+                note "spice-vdagentd running -- copy and paste both ways once the desktop is up"
             else
                 warn "spice-vdagentd did not start -- 'rc-service spice-vdagentd start' to see why"
             fi
@@ -12361,7 +12430,9 @@ stage_hyprland() {
     add_optional wofi
     add_optional grim slurp
     add_optional swaybg
-    add_optional wl-clipboard
+    # xclip alongside wl-clipboard: the Wayland desktop has two selections and
+    # 'copal-clip bridge' needs a tool for each to join them to the host's.
+    add_optional wl-clipboard xclip
     add_optional jq socat
     add_optional font-dejavu
     add_optional font-jetbrains-mono
@@ -12906,6 +12977,34 @@ exec-once = sh -c '[ -x /usr/libexec/hyprpolkitagent ] && exec /usr/libexec/hypr
 # -misc-fixed-*. Found by the application sweep (docs/app-integration-plan.md
 # on gfx-lab); adding the directories fixed both.
 exec-once = sh -c 'xset +fp /usr/share/fonts/misc,/usr/share/fonts/75dpi,/usr/share/fonts/100dpi; xset fp rehash'
+
+# THE SHARED CLIPBOARD, WAYLAND HALF. spice-vdagentd owns the virtio port and
+# stage 7 starts it; this is the per-session agent that actually syncs the
+# selection, and nothing here was starting it. /etc/xdg/autostart carries a
+# spice-vdagent.desktop and Hyprland does not read it -- there is no XDG
+# autostart implementation in this session -- so the file sat there being
+# correct and inert, and UTM's "Enable Clipboard Sharing" stayed a switch
+# wired to nothing. The i3 session has launched the agent from ~/.xinitrc
+# since the beginning; the Wayland session never did.
+#
+# IT WAITS FOR XWAYLAND. vdagent 0.23 is an X11 program -- "Spice session
+# guest agent: X11" is its own version banner -- and it reads the selection
+# off an X server, so it needs DISPLAY and a socket to connect to. Hyprland
+# keeps the Xwayland and Wayland clipboards in step, so the X11 agent covers
+# both and no wlr-data-control build is needed. But exec-once fires before
+# Xwayland has bound its socket, and an agent started that early gives up
+# with "Screen count is zero, are we on wayland?" and never retries. Thirty
+# seconds of looking, then it gives up quietly.
+#
+# Guarded on the port as well as the binary, so this costs a Pi one failed
+# test at login and nothing else.
+exec-once = sh -c '[ -x /usr/bin/spice-vdagent ] && [ -e /dev/virtio-ports/com.redhat.spice.0 ] || exit 0; _i=0; while [ $_i -lt 30 ]; do for _s in /tmp/.X11-unix/X*; do [ -S "$_s" ] || continue; [ -n "${DISPLAY:-}" ] || DISPLAY=":${_s##*/X}"; export DISPLAY; exec /usr/bin/spice-vdagent -x; done; _i=$((_i+1)); sleep 1; done'
+# ...and the wire between the two clipboards, which the agent above does not
+# provide on its own. vdagent shares the XWAYLAND selection; Hyprland does not
+# mirror that to the Wayland one, so without this the host's clipboard reaches
+# xterm and nothing else. Same guard, same wait for Xwayland -- copal-clip
+# refuses without a DISPLAY, and correctly.
+exec-once = sh -c '[ -x /usr/bin/spice-vdagent ] && [ -e /dev/virtio-ports/com.redhat.spice.0 ] || exit 0; _i=0; while [ $_i -lt 30 ]; do for _s in /tmp/.X11-unix/X*; do [ -S "$_s" ] || continue; [ -n "${DISPLAY:-}" ] || DISPLAY=":${_s##*/X}"; export DISPLAY; exec copal-clip bridge; done; _i=$((_i+1)); sleep 1; done'
 
 # COLOUR MANAGEMENT, OFF WHERE THE RENDERER IS SOFTWARE. Hyprland's cm render
 # pass returns zero RGB for every alpha-carrying layer-shell surface once Mesa
