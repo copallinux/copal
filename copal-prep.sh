@@ -10910,10 +10910,11 @@ GUIDE
    nothing. Change the 5 if you want more.
 
    THE MENU BUTTON. Left-click opens copal-menu, right-click shuts down.
-   The glyph is the "exec" line -- it is echoed, not typed, so that the
-   file stays plain ASCII:
+   The glyph is the "format" line, written as an escape so the file stays
+   plain ASCII. It is static on purpose -- an "exec" here costs a whole CPU,
+   see docs/visual-debugging-lab-report.md IV.C:
 
-       "exec": "echo '\u2261'"
+       "format": "\u2261"
 
  ADDING ONE OF YOUR OWN
 
@@ -11376,8 +11377,8 @@ XRES
     # Nothing blinks: no idle redraws. The script writes each terminal's own
     # format and can be re-run by hand any time, with a theme name to switch
     # and --alpha 1 to go opaque.
-    install -m 0755 "$(cd "$(dirname "$0")" && pwd)/tools/copal-terminal-theme" /usr/local/bin/copal-terminal-theme 2>/dev/null \
-        || warn "tools/copal-terminal-theme not found beside copal-prep.sh; the terminal palette is not applied"
+    install -m 0755 "$(copal_src_dir)/tools/copal-terminal-theme" /usr/local/bin/copal-terminal-theme 2>/dev/null \
+        || warn "tools/copal-terminal-theme not found in $(copal_src_dir); the terminal palette is not applied"
     # The terminal is one layer of the look. copal-theme switches all of
     # them -- terminals, bar, launcher, notifications, borders, wallpaper,
     # GTK, the prompt, mc, the editor -- from a theme directory, and it is
@@ -11560,10 +11561,13 @@ hypr_write_waybar() {
   // The Omarchy menu, in a corner. Left-click opens it; right-click goes
   // straight to the power entries, because "shut down" is the one thing
   // people hunt for in a menu and it is two levels in.
+  // STATIC, NO exec. "exec" with "interval": "once" re-arms the module on
+  // every Hyprland IPC event the bar receives, and a terminal whose title
+  // changes several times a second supplies those without pause -- the bar
+  // then spins at 100 % of a CPU for a glyph that never changes. Measured
+  // and bisected in docs/visual-debugging-lab-report.md IV.C.
   "custom/menu": {
-    "format": "{}",
-    "exec": "echo '\u2261'",
-    "interval": "once",
+    "format": "\u2261",
     "tooltip": true,
     "tooltip-format": "Menu -- programs (Super+Space); settings, install, session (Super+Z). Right-click: shut down",
     "on-click": "copal-menu",
@@ -11610,10 +11614,17 @@ hypr_write_waybar() {
 
   // The machine's name, beside its address: the two things you need to reach
   // it from somewhere else. Once, because it does not change while logged in.
+  // NOT "interval": "once" -- the same trap custom/menu fell into. A custom
+  // module holding "exec" with "interval": "once" re-arms on every Hyprland
+  // IPC event the bar receives, and one terminal retitling itself a few times
+  // a second keeps the bar at 100 % of a CPU forever. An hour is a real
+  // interval, costs one hostname call an hour, and idles at 0 %. The machine
+  // name does change -- copal-config renames it -- so this is not static.
+  // Bisected in docs/visual-debugging-lab-report.md IV.C.
   "custom/hostname": {
     "format": "{}",
     "exec": "hostname",
-    "interval": "once",
+    "interval": 3600,
     "tooltip": false
   },
 
@@ -11836,8 +11847,11 @@ WAYBARCSS
    wofi is both the launcher (Super+D) and the menu copal-menu draws, so this
    one file styles both. Edit freely; nothing regenerates it. */
 
+/* @menu-bg, not @base: the menu and the launcher float over the wallpaper
+   rather than sitting in a bar, so a theme is allowed to give them their own
+   ground. A theme that does not set MENU_BG gets @base here, unchanged. */
 window {
-    background-color: @base;
+    background-color: @menu-bg;
     border: 1px solid @accent-dark;      /* accentDark */
     border-radius: 2px;
     font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
@@ -11855,7 +11869,7 @@ window {
 }
 #input image { color: @accent-dark; }
 
-#inner-box, #outer-box, #scroll { background-color: @base; border: none; }
+#inner-box, #outer-box, #scroll { background-color: @menu-bg; border: none; }
 
 #entry {
     padding: 5px 10px;
@@ -12892,6 +12906,17 @@ exec-once = sh -c '[ -x /usr/libexec/hyprpolkitagent ] && exec /usr/libexec/hypr
 # -misc-fixed-*. Found by the application sweep (docs/app-integration-plan.md
 # on gfx-lab); adding the directories fixed both.
 exec-once = sh -c 'xset +fp /usr/share/fonts/misc,/usr/share/fonts/75dpi,/usr/share/fonts/100dpi; xset fp rehash'
+
+# COLOUR MANAGEMENT, OFF WHERE THE RENDERER IS SOFTWARE. Hyprland's cm render
+# pass returns zero RGB for every alpha-carrying layer-shell surface once Mesa
+# has fallen back to llvmpipe: the bar, the desktop widgets and every overlay
+# come out as solid black rectangles, which is what a first login on a UTM
+# guest looked like. Alpine's mesa is built without the virgl driver on every
+# architecture, so every VM target lands in software whatever the host offers.
+# Detected, never assumed -- a machine with a real GL driver keeps the pass and
+# the colour accuracy that comes with it. aquamarine names the renderer in its
+# log, one line, which is the whole test. See docs/visual-debugging-lab-report.md.
+exec-once = sh -c 'for _i in 1 2 3 4 5; do _l=$(ls -t "${XDG_RUNTIME_DIR:-/tmp}"/hypr/*/hyprland.log /run/user/*/hypr/*/hyprland.log 2>/dev/null | head -1); case "$(sed -n "s/.*Renderer: //p" "$_l" 2>/dev/null | tail -1)" in *llvmpipe*|*softpipe*|*swrast*) exec hyprctl keyword render:cm_enabled 0;; ?*) exit 0;; esac; sleep 1; done'
 
 env = XCURSOR_SIZE,24
 env = HYPRCURSOR_SIZE,24
@@ -17758,9 +17783,40 @@ lsp_present() {
 # whole desktop, one key. docs/THEME.md, "The toggle".
 copal_theme_dir=/usr/local/share/copal/themes
 
+# WHERE THE STAGED tools/ AND themes/ ACTUALLY ARE.
+#
+# $(dirname "$0") was the obvious answer and the wrong one twice over. $0 is
+# relative whenever the script is started as ./copal-init.sh, and several
+# stages cd into a build tree (SRCDIR) and never come back -- so by the time
+# the theme stage runs, a relative $0 resolves against whatever directory the
+# last compile left behind. The guest bench shipped with no themes and no
+# theme switch for exactly this: "themes/ not found beside copal-prep.sh",
+# three times in one install log, with both directories sitting on /boot the
+# whole time and nothing but a warning to say so.
+#
+# So: look for the payload rather than trust a path. The first candidate that
+# actually holds tools/ or themes/ wins, and the answer is cached because the
+# three callers each want it and the directory cannot move mid-install.
+COPAL_SRC=""
+copal_src_dir() {
+    if [ -z "$COPAL_SRC" ]; then
+        for _c in "$(cd "$(dirname "$0")" 2>/dev/null && pwd)" /boot /media/*; do
+            [ -n "$_c" ] && [ -d "$_c" ] || continue
+            if [ -d "$_c/themes" ] || [ -f "$_c/tools/copal-theme" ]; then
+                COPAL_SRC="$_c"; break
+            fi
+        done
+        # Nothing found: fall back to the old answer so the callers' own
+        # warnings still name a real directory.
+        [ -n "$COPAL_SRC" ] || COPAL_SRC="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+    fi
+    printf '%s' "$COPAL_SRC"
+}
+
 copal_write_themes() {
     say "Writing the Copal themes"
-    _src="$(cd "$(dirname "$0")" && pwd)"
+    _src="$(copal_src_dir)"
+    note "staged material: $_src"
     if [ -d "$_src/themes" ]; then
         mkdir -p "$copal_theme_dir"
         for _t in "$_src"/themes/*/; do
@@ -17771,12 +17827,12 @@ copal_write_themes() {
             note "theme: $_n  ($(sed -n 's/^NAME="\(.*\)"/\1/p' "$_t/theme.conf" 2>/dev/null))"
         done
     else
-        warn "themes/ not found beside copal-prep.sh; the Copal themes are not installed"
+        warn "no themes/ in $_src; the Copal themes are not installed"
     fi
     # copal-theme: the whole of switching. Omarchy spends omarchy-theme-set on
     # this; the job is the same one -- a symlink, then each program's file.
     install -m 0755 "$_src/tools/copal-theme" /usr/local/bin/copal-theme 2>/dev/null \
-        || warn "tools/copal-theme not found beside copal-prep.sh; there is no theme switch"
+        || warn "no tools/copal-theme in $_src; there is no theme switch"
 
     # Point each home that has no theme yet at one, so nothing has to run
     # copal-theme before Neovim has colours. A home that already has one

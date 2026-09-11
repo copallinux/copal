@@ -72,8 +72,13 @@ load() {  # NAME: source its theme.conf into the environment
     TEXT=1a1b26; TEXT_LIGHT=c0caf5; WHITE=c0caf5; URGENT=f7768e; DANGER=f7768e; WARNING=e0af68
     BORDER_ACTIVE=7aa2f7; BORDER_INACTIVE=1a1b26; GTK_THEME=""; COLOR_SCHEME=""; MC_SKIN=""; HELIX_THEME=""
     PROMPT_USER_SGR="1;32"; PROMPT_PATH_SGR="1;34"
+    # The menu's own ground. Empty means "whatever BASE is", which is what
+    # every theme written before this token existed means, so leaving it out
+    # of a theme.conf changes nothing.
+    MENU_BG=""
     # shellcheck disable=SC1090
     [ -f "$DIR/theme.conf" ] && . "$DIR/theme.conf"
+    [ -n "$MENU_BG" ] || MENU_BG=$BASE
 }
 list() {
     _c=$(current)
@@ -120,16 +125,32 @@ step_css() {
     mkdir -p "$CUR"
     {
         printf '/* written by copal-theme: %s. The bar and launcher stylesheets import this. */\n' "$NAME"
-        for _p in "base $BASE" "shadow $SHADOW" "highlight $HIGHLIGHT" "accent $ACCENT" "accent-dark $ACCENT_DARK" \
+        for _p in "base $BASE" "menu-bg $MENU_BG" "shadow $SHADOW" "highlight $HIGHLIGHT" "accent $ACCENT" "accent-dark $ACCENT_DARK" \
                   "text $TEXT" "text-light $TEXT_LIGHT" "white $WHITE" "urgent $URGENT" "danger $DANGER" "warning $WARNING"; do
             printf '@define-color %s #%s;\n' "${_p% *}" "${_p#* }"
         done
     } > "$CUR/colors.css"
+    # THE IMPORT IS ABSOLUTE, and rewritten every time even when a line is
+    # already there. A relative url() only resolves for a program that hands
+    # GTK the file (waybar: gtk_css_provider_load_from_file, base URL known).
+    # wofi reads the stylesheet itself and parses it as anonymous <data>, so
+    # GTK has no base URL and resolves "../copal/..." against wofi's *working
+    # directory* -- whatever the launcher happened to be in. It never resolved,
+    # so the menu and the launcher have been falling back to the raw GTK theme
+    # ever since: every @token undefined, every rule holding one dropped.
+    _imp="@import url(\"$CUR/colors.css\");  /* the theme; copal-theme rewrites it */"
     for _f in "$CFG/waybar/style.css" "$CFG/waybar/desktop.css" "$CFG/wofi/style.css"; do
         [ -f "$_f" ] || continue
-        if ! grep -q 'copal/current/colors.css' "$_f"; then
+        if grep -q 'copal/current/colors\.css' "$_f"; then
+            # An import is there -- drop it, wherever it sits, and put the
+            # absolute one on top. Idempotent: running twice is running once.
+            { printf '%s\n' "$_imp"; grep -v 'copal/current/colors\.css' "$_f"; } \
+                > "$_f.tmp" && mv "$_f.tmp" "$_f"
+        else
+            # A stylesheet from before the tokens existed: literals to @names,
+            # then the import on top.
             for _t in $CSS_TOKENS; do sed -i "s/#${_t%%:*}\([^0-9a-fA-F]\)/@${_t#*:}\1/g; s/#${_t%%:*}\$/@${_t#*:}/" "$_f"; done
-            { printf '@import url("../copal/current/colors.css");  /* the theme; copal-theme rewrites it */\n'; cat "$_f"; } > "$_f.tmp" && mv "$_f.tmp" "$_f"
+            { printf '%s\n' "$_imp"; cat "$_f"; } > "$_f.tmp" && mv "$_f.tmp" "$_f"
         fi
     done
     # waybar is restarted, not signalled: SIGUSR2 (its reload) trips a GLib
