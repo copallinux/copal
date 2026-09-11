@@ -89,7 +89,7 @@ model_of = $(patsubst pizero%,zero%,$(1))
 	help menu flow targets boards configure require-tools vm graphical check \
         fresh auto image refresh utm utm-x86 layout layout-auto answers answers-show lint space clean distclean \
         all cache build-all release capture video screens verify gallery chain walkthrough release-cast logs utm-export install \
-        redeploy redeploy-check answers-node
+        redeploy redeploy-check answers-node fleet-console fleet-web
 
 help:
 	@printf '\nCopal Linux -- make targets\n\n'
@@ -113,6 +113,8 @@ help:
 	@printf '  make answers    identity and root password for an unattended install\n'
 	@printf '  make answers-node N=2   card N of a fleet -- asks nothing; see docs/fleet-plan.md\n'
 	@printf '                  Creates the VM only if there is not one already. Never replaces one.\n'
+	@printf '  make fleet-console      the curses wall over this checkout\n'
+	@printf '  make fleet-web          the web wall -- orrery, from %s\n' '$(ORRERY_SRC)'
 	@printf '\n'
 	@printf '\033[1m  Building the VM image\033[0m\n'
 	@printf '  make fresh      delete the image and build it from nothing.\n'
@@ -728,6 +730,31 @@ fresh-img-%: | require-tools $(BUILDDIR)
 # compares the two whenever this path exists, and says nothing when it does not.
 RADBEEPER_SRC ?= $(HOME)/code/radbeeper/radbeeper
 
+# The fleet's web console -- §12's third face -- lives in its own checkout
+# because it is a Rust crate the node compiles for itself, not a file this
+# repository embeds. https://github.com/vonglurt/orrery
+ORRERY_SRC ?= $(HOME)/code/orrery
+
+## fleet-console: the curses wall. §12's second face, over this checkout.
+.PHONY: fleet-console
+fleet-console:
+	@python3 tools/copal-fleet-console.py $(if $(FLEET),--fleet $(FLEET),)
+
+## fleet-web: the web wall -- §12's third face, and the only one a phone can
+## open. Built from its own checkout because it is a Rust crate; DEMO=1 serves
+## the lab report's museum so it can be looked at with no fleet at all.
+.PHONY: fleet-web
+fleet-web:
+	@test -f $(ORRERY_SRC)/Cargo.toml \
+	  || { printf '\033[31merror:\033[0m no orrery checkout at $(ORRERY_SRC)\n'; \
+	       printf '        git clone https://github.com/vonglurt/orrery $(ORRERY_SRC)\n'; exit 1; }
+	@cd $(ORRERY_SRC) && cargo build --release --quiet
+	@$(ORRERY_SRC)/target/release/orrery \
+	    $(if $(DEMO),--demo,--fleet-cmd "sh $(CURDIR)/tools/copal-fleet.sh") \
+	    $(if $(FLEET),--fleet $(FLEET),) \
+	    $(if $(OPERATOR),--operator $(OPERATOR),) \
+	    --listen $(if $(LISTEN),$(LISTEN),127.0.0.1:8080)
+
 ## sync-radbeeper: copy $(RADBEEPER_SRC) into the heredoc in copal-prep.sh.
 ## This is the fix when lint says the embedded copy has drifted -- edit
 ## radbeeper in its own checkout, run this, commit both.
@@ -934,6 +961,15 @@ lint: | $(BUILDDIR)
 	           diff -u $(RADBEEPER_SRC) $(BUILDDIR)/.radbeeper.lint.py | head -20; exit 1; }; \
 	  else printf '  --      radbeeper source checkout absent, drift not checked\n'; fi
 	@rm -f $(BUILDDIR)/.radbeeper.lint.py
+	@if [ -f $(ORRERY_SRC)/Cargo.toml ]; then \
+	    if command -v cargo >/dev/null 2>&1; then \
+	        ( cd $(ORRERY_SRC) && cargo test --quiet 2>&1 ) > $(BUILDDIR)/.orrery.lint 2>&1 \
+	          && printf '  ok      orrery: %s\n' "$$(sed -n 's/^test result: ok\. \([0-9]*\) passed.*/\1 tests passed/p' $(BUILDDIR)/.orrery.lint | head -1)" \
+	          || { printf '\033[31merror:\033[0m orrery does not pass its own tests ($(ORRERY_SRC))\n'; \
+	               tail -20 $(BUILDDIR)/.orrery.lint; rm -f $(BUILDDIR)/.orrery.lint; exit 1; }; \
+	        rm -f $(BUILDDIR)/.orrery.lint; \
+	    else printf '  --      orrery checkout present, but no cargo on this Mac\n'; fi; \
+	  else printf '  --      orrery source checkout absent, the web console not checked\n'; fi
 	@_names=$$(grep -E '^[A-Za-z0-9_%.-][A-Za-z0-9_%. -]*:' Makefile \
 	           | sed 's/:.*//' | tr ' ' '\n' | sort -u); \
 	_bad=''; \
