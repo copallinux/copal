@@ -193,6 +193,14 @@ def assemble(fleet, beacons, bus, expected, warden, degraded, strangers=()):
             "temp_c": intish(s.get("temp")),
             "scene": s.get("scene") or b.get("scene") or "",
             "scene_min": intish(s.get("scene_min")),
+            # WHICH DESKTOP, AND WHAT IT IS SHOWING. The console reads these
+            # rather than probing ports: `session` decides which protocol
+            # Control would speak to this node, and `remote` says whether
+            # there is anything listening to speak it to. Both degrade to a
+            # named unknown rather than to a blank, because an absent reading
+            # and "off" are different claims.
+            "session": s.get("session") or b.get("session") or "",
+            "remote": s.get("remote") or b.get("remote") or "",
             "announced": bool(b),
             "on_bus": bool(s),
             "agent_s": intish(s.get("agent")),
@@ -460,6 +468,19 @@ def self_test():
     assert any(x["id"] == "epson-XY10" for x in s2), s2
     assert len(b2) == 2, b2
     checks += 3
+
+    # The two readings the console reads instead of probing a port. A node
+    # that has not said anything about its screen must come back as an empty
+    # string rather than as a claim: "" and "off" are different facts and the
+    # tile draws them differently.
+    live = assemble("museum", b, {"museum-01": {"session": "wayland", "remote": "rdp:3389"}},
+                    ["museum-01", "museum-06"], "10.0.0.16", None)
+    seen = {n["id"]: n for n in live["nodes"]}
+    assert seen["museum-01"]["session"] == "wayland", seen["museum-01"]
+    assert seen["museum-01"]["remote"] == "rdp:3389", seen["museum-01"]
+    assert seen["museum-06"]["session"] == "", "a node that said nothing claimed a session"
+    assert seen["museum-06"]["remote"] == "", "a node that said nothing claimed a screen"
+    checks += 4
 
     st = parse_state("id=museum-01 role=node score=2048 temp=47 up=372m ram=1024 "
                      "arch=aarch64 tags=wall scene=show scene_min=14 agent=61")

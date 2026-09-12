@@ -354,3 +354,55 @@ window instead of the terminal:
 
 Step 6 is the one that can fail for a reason nothing here controls — H2, above.
 Every other step is built out of things that exist.
+
+---
+
+## 9 · What was built, and the one decision that changed
+
+Written after the fact, because a design document that never records what
+happened when the work was done is a document that stops being true quietly.
+
+| §  | promised | built |
+|---|---|---|
+| 3 | `session` and `remote` readings | `facts()` prints both; `remote_state()` reports what is **running**, not what is installed |
+| 3 | `assemble()` passes them through | done, with four new checks in `copal-fleet-view self-test` |
+| 4 | `remote start\|stop\|status` | done, with the four bounds in `copal-remote` |
+| 4 | `message TEXT…` | done — and the charset is six marks of punctuation rather than the ten in §4, because `(` inside a `case` pattern does not parse under dash and a banner does not need a bracket |
+| 4 | `copal-notify` | done: `hyprctl notify`, then `notify-send`, then the console |
+| 4 | doas rule for `copal-remote` | done, `args start` and `args stop` — `status` needs no privilege and is deliberately not listed |
+| 5 | `fleet_remote_rdp()` | done, and it **installs nothing**: H1 is still open, so it looks, reports and writes down what it found |
+| 6 | two answers keys | `COPAL_FLEET_REMOTE` and `COPAL_FLEET_REMOTE_MINUTES`, through all three files and asked for by `copal-answers.sh` |
+| 7 | `tools/copal-media.sh` | done, with a self-test that proves the token does not survive into its own fingerprint |
+| 7 | `Makefile img-%` writes `.sha256` | done, and records a manifest row while it is there |
+| 7 | `make fleet-gui`, `bin/gui.sh` | done, and `make lint` checks the shortcut names a real target |
+
+### The crypto profile, which was not in this plan and should have been
+
+`orrery --profile-sshd` prints the whitelist in its `src/profile.rs`, and
+`fleet_sshd_policy()` now writes exactly that into the node's `sshd_config`
+before the `Match` block. `make lint` fails when the two have drifted and
+`make sync-profile` is the fix — the same arrangement `copal_nkeys.py` and
+`radbeeper` already have, for the same reason: **a whitelist that exists in a
+Rust file and again in a shell heredoc is two whitelists.**
+
+It costs something and the cost is written where the block is: after this, a
+plain public key no longer opens a fleet node. Only a certificate the fleet CA
+signed does. That is what "locked down to public keys" means when it is true
+rather than aspirational, and deleting the block between the fleet's two
+markers puts the node back the way it was.
+
+### Observe, and why there is still no thumbnail
+
+`console.md` §5 says Observe enlarges tiles and draws the read model's `thumb`
+field. **Nothing anywhere produces a thumbnail, and this phase decided not to
+add one.** A node that captured its screen every few seconds would be a
+screen-capture daemon on every machine in the museum, running whether or not
+anybody is looking — a larger standing authority than any verb in §4, and one
+that cannot be bounded by a deadline the way `remote start` is.
+
+So Observe stays absent, and the honest description of what the console can do
+is: **one live screen at a time, through Control, with the node's own consent
+and a deadline on it.** If Observe is ever wanted, the shape that fits this
+design is a `remote thumb` verb that captures **once, on request** and returns
+a small image over the same authenticated channel — no daemon, no cache, and
+nothing running when nobody is asking.

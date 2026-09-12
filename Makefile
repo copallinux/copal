@@ -708,6 +708,21 @@ sd-%: | require-tools
 # -- copal-zero2.img beside copal-pc.img -- rather than all colliding on IMG.
 img-%: | require-tools $(BUILDDIR)
 	MODEL=$(call model_of,$*) $(PREP) --image $(BUILDDIR)/copal-$(call model_of,$*).img
+	@# A digest beside the image, so that a card written from it later is
+	@# PROVABLY that image -- which is the question the media manifest exists to
+	@# answer, and it cannot be answered after the fact.
+	@_i=$(BUILDDIR)/copal-$(call model_of,$*).img; \
+	 if [ -f "$$_i" ]; then \
+	     if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$$_i" > "$$_i.sha256"; \
+	     elif command -v sha256sum >/dev/null 2>&1; then sha256sum "$$_i" > "$$_i.sha256"; \
+	     else printf '  --      no sha256 program on this machine\n'; fi; \
+	     [ -f "$$_i.sha256" ] && printf '  ok      %s\n' "$$(basename "$$_i.sha256")"; \
+	     _f=$${FLEET:-$$(sed -n "s/^COPAL_FLEET='\(.*\)'$$/\1/p" answers.txt 2>/dev/null | head -1)}; \
+	     [ -n "$$_f" ] && sh tools/copal-media.sh record --fleet "$$_f" \
+	         --host "$${HOST:-$(call model_of,$*)}" --board "$(call model_of,$*)" \
+	         --target img --sha256 "$$(cut -c1-16 < "$$_i.sha256" 2>/dev/null || echo -)" \
+	         >/dev/null 2>&1 || true; \
+	 fi
 
 fresh-img-%: | require-tools $(BUILDDIR)
 	MODEL=$(call model_of,$*) $(PREP) --fresh --image copal-$(call model_of,$*).img
@@ -754,6 +769,40 @@ fleet-web:
 	    $(if $(FLEET),--fleet $(FLEET),) \
 	    $(if $(OPERATOR),--operator $(OPERATOR),) \
 	    --listen $(if $(LISTEN),$(LISTEN),127.0.0.1:8080)
+
+## fleet-gui: the native console -- the window an operator stands in front of.
+## Same checkout as fleet-web and the same read model; this one opens a window
+## instead of a port, so it needs a display and cannot be run over ssh.
+.PHONY: fleet-gui
+fleet-gui:
+	@test -f $(ORRERY_SRC)/Cargo.toml \
+	  || { printf '\033[31merror:\033[0m no orrery checkout at $(ORRERY_SRC)\n'; \
+	       printf '        git clone https://github.com/vonglurt/orrery $(ORRERY_SRC)\n'; exit 1; }
+	@cd $(ORRERY_SRC) && cargo build --release --quiet
+	@$(ORRERY_SRC)/target/release/orrery --gui \
+	    $(if $(DEMO),--demo,--fleet-cmd "sh $(CURDIR)/tools/copal-fleet.sh") \
+	    $(if $(FLEET),--fleet $(FLEET),) \
+	    $(if $(OPERATOR),--operator $(OPERATOR),) \
+	    $(if $(NODEUSER),--user $(NODEUSER),) \
+	    --copal $(CURDIR)
+
+## sync-profile: copy orrery's crypto whitelist into copal-prep.sh.
+## `orrery --profile-sshd` prints src/profile.rs's P1 and this pastes it into
+## fleet_crypto_profile(). THE FIX WHEN LINT SAYS THE PROFILE HAS DRIFTED --
+## edit profile.rs, run this, commit both repositories.
+.PHONY: sync-profile
+sync-profile: | $(BUILDDIR)
+	@test -f $(ORRERY_SRC)/Cargo.toml \
+	  || { printf '\033[31merror:\033[0m no orrery checkout at $(ORRERY_SRC)\n'; exit 1; }
+	@cd $(ORRERY_SRC) && cargo run --quiet -- --profile-sshd > $(CURDIR)/$(BUILDDIR)/.profile.conf
+	@python3 -c 'import sys;\
+	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
+	m="    cat <<\x27FLEETPROFILE\x27\n";\
+	i=s.index(m)+len(m);j=s.index("\nFLEETPROFILE\n",i);\
+	open(p,"w").write(s[:i]+prog.rstrip("\n")+s[j:])' $(PREP) $(BUILDDIR)/.profile.conf
+	@rm -f $(BUILDDIR)/.profile.conf
+	@printf '  ok      orrery --profile-sshd -> $(PREP)\n'
+	@$(MAKE) --no-print-directory lint
 
 ## sync-radbeeper: copy $(RADBEEPER_SRC) into the heredoc in copal-prep.sh.
 ## This is the fix when lint says the embedded copy has drifted -- edit
@@ -910,6 +959,7 @@ lint: | $(BUILDDIR)
 	@python3 tools/copal_nkeys.py self-test | sed 's/^/  ok      /'
 	@python3 tools/copal_nats.py self-test | sed 's/^/  ok      /'
 	@python3 tools/copal-fleet-agent --self-test 2>/dev/null | sed 's/^/  ok      /'
+	@sh tools/copal-media.sh self-test | sed 's/^/  ok      /'
 	@python3 tools/copal-fleet-view self-test | sed 's/^/  ok      /'
 	@python3 tools/copal-fleet-console.py --self-test | sed 's/^/  ok      /'
 	@sed -n "/^    cat > \/usr\/lib\/copal\/copal_nkeys.py <<'COPALNKEYS'$$/,/^COPALNKEYS$$/p" $(PREP) \
@@ -961,6 +1011,22 @@ lint: | $(BUILDDIR)
 	           diff -u $(RADBEEPER_SRC) $(BUILDDIR)/.radbeeper.lint.py | head -20; exit 1; }; \
 	  else printf '  --      radbeeper source checkout absent, drift not checked\n'; fi
 	@rm -f $(BUILDDIR)/.radbeeper.lint.py
+	@sed -n "/^    cat <<'FLEETPROFILE'$$/,/^FLEETPROFILE$$/p" $(PREP) \
+	    | sed '1d;$$d' > $(BUILDDIR)/.profile.lint.conf
+	@test -s $(BUILDDIR)/.profile.lint.conf \
+	    || { printf '\033[31merror:\033[0m could not extract the crypto profile from $(PREP)\n'; exit 1; }
+	@grep -q '^AuthenticationMethods publickey$$' $(BUILDDIR)/.profile.lint.conf \
+	    && printf '  ok      the fleet sshd block forces publickey and nothing else\n' \
+	    || { printf '\033[31merror:\033[0m the fleet sshd block does not force publickey\n'; exit 1; }
+	@if [ -f $(ORRERY_SRC)/Cargo.toml ] && command -v cargo >/dev/null 2>&1; then \
+	    ( cd $(ORRERY_SRC) && cargo run --quiet -- --profile-sshd ) \
+	        > $(BUILDDIR)/.profile.orrery.conf 2>/dev/null; \
+	    cmp -s $(BUILDDIR)/.profile.lint.conf $(BUILDDIR)/.profile.orrery.conf \
+	      && printf '  ok      the crypto profile matches orrery src/profile.rs\n' \
+	      || { printf '\033[31merror:\033[0m the crypto profile has drifted -- run: make sync-profile\n'; \
+	           diff -u $(BUILDDIR)/.profile.orrery.conf $(BUILDDIR)/.profile.lint.conf | head -20; exit 1; }; \
+	  else printf '  --      orrery absent, the crypto profile drift not checked\n'; fi
+	@rm -f $(BUILDDIR)/.profile.lint.conf $(BUILDDIR)/.profile.orrery.conf
 	@if [ -f $(ORRERY_SRC)/Cargo.toml ]; then \
 	    if command -v cargo >/dev/null 2>&1; then \
 	        ( cd $(ORRERY_SRC) && cargo test --quiet 2>&1 ) > $(BUILDDIR)/.orrery.lint 2>&1 \

@@ -158,6 +158,8 @@ if [ -f "$ANSWERS" ]; then
     COPAL_FLEET_INDEX=$(get_answer COPAL_FLEET_INDEX)
     COPAL_FLEET_ROLE=$(get_answer COPAL_FLEET_ROLE)
     COPAL_FLEET_DISCOVERY=$(get_answer COPAL_FLEET_DISCOVERY)
+    COPAL_FLEET_REMOTE=$(get_answer COPAL_FLEET_REMOTE)
+    COPAL_FLEET_REMOTE_MINUTES=$(get_answer COPAL_FLEET_REMOTE_MINUTES)
     COPAL_FLEET_CA=$(get_answer COPAL_FLEET_CA)
     COPAL_FLEET_PSK=$(get_answer COPAL_FLEET_PSK)
     COPAL_FLEET_TAGS=$(get_answer COPAL_FLEET_TAGS)
@@ -244,6 +246,10 @@ COPAL_FLEET_ROLE=$(sq "${COPAL_FLEET_ROLE:-}")
 COPAL_FLEET_TAGS=$(sq "${COPAL_FLEET_TAGS:-}")
 # mdns | static | off
 COPAL_FLEET_DISCOVERY=$(sq "${COPAL_FLEET_DISCOVERY:-}")
+# off | auto -- whether this node may ever put its screen on the network, and
+# for how long once it does.
+COPAL_FLEET_REMOTE=$(sq "${COPAL_FLEET_REMOTE:-}")
+COPAL_FLEET_REMOTE_MINUTES=$(sq "${COPAL_FLEET_REMOTE_MINUTES:-}")
 # The PUBLIC half of the fleet certificate authority. Every card carries it so
 # that no machine is ever trusted on first sight. The private half stays in
 # ~/.copal/ca on the machine that ran this script and must never be on a card.
@@ -300,6 +306,7 @@ if [ -n "${COPAL_FLEET:-}" ]; then
 note "  fleet          ${COPAL_FLEET} -- card ${COPAL_FLEET_INDEX} of ${COPAL_FLEET_SIZE}, role ${COPAL_FLEET_ROLE}"
 note "  fleet tags     ${COPAL_FLEET_TAGS:-(none)}"
 note "  fleet discovery ${COPAL_FLEET_DISCOVERY}"
+note "  fleet screen    ${COPAL_FLEET_REMOTE:-auto}, ${COPAL_FLEET_REMOTE_MINUTES:-30} minutes"
 note "  fleet CA       ${COPAL_FLEET_CA:-(none -- weaker; see docs/fleet-plan.md)}"
 note "  enrolment      a fresh single-use token for this card"
 fi
@@ -457,6 +464,24 @@ if [ -n "$COPAL_FLEET" ]; then
     case "$COPAL_FLEET_DISCOVERY" in
         mdns|static|off) ;;
         *) die "discovery must be mdns, static or off" ;;
+    esac
+
+    # THE SCREEN. This is the one answer that decides whether a certificate
+    # holder can ever put this machine's display on the network, so it is asked
+    # rather than defaulted quietly, and 'off' is a real answer for a node in a
+    # public space.
+    note ""
+    note "  auto  the console may ask this node for its screen, briefly"
+    note "  off   this node is never viewable, and refuses on the node itself"
+    ask "  Screen (auto | off)" "${COPAL_FLEET_REMOTE:-auto}" COPAL_FLEET_REMOTE
+    case "$COPAL_FLEET_REMOTE" in
+        auto|off) ;;
+        *) die "the screen setting must be auto or off" ;;
+    esac
+    ask "  Minutes before the screen stops itself (0 = until stopped)" \
+        "${COPAL_FLEET_REMOTE_MINUTES:-30}" COPAL_FLEET_REMOTE_MINUTES
+    case "$COPAL_FLEET_REMOTE_MINUTES" in
+        ''|*[!0-9]*) die "the screen deadline is a number of minutes" ;;
     esac
 
     # THE CERTIFICATE AUTHORITY, and the only part of this that is a secret
