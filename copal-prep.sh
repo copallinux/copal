@@ -7870,6 +7870,10 @@ bindsym $mod+Ctrl+t exec $term -title copal-panel -e sh -c 'command -v btop >/de
 bindsym $mod+Shift+m exec $term -title copal-panel -e sh -c 'command -v cmus >/dev/null && exec cmus; exec mpv --no-video ~/Music'
 # The editor, on Omarchy's key.
 bindsym $mod+Shift+n exec $term -title nvim -e sh -c 'command -v nvim >/dev/null && exec nvim; exec vi'
+# The download queue: the URL on the clipboard is queued ('ytq clip'). It
+# downloads by itself once ~/.config/ytq/auto exists; otherwise 'ytq run'.
+# Stage 10 installs ytq; until then the key does nothing.
+bindsym $mod+Shift+y exec --no-startup-id sh -c 'command -v ytq >/dev/null && exec ytq clip'
 for_window [title="copal-panel"] floating enable, resize set 760 520, move position center
 # The key list, in a floating window. Shown once at login and on Super+/,
 # because a tiling WM with no menus is unusable until you know the bindings.
@@ -10586,6 +10590,9 @@ COPALGPU
                         moment for its own key menu.
    Super + Shift + M    music -- cmus, or mpv on ~/Music if cmus is not
                         installed
+   Super + Shift + Y    queue the video URL on the clipboard (ytq).
+                        'ytq run' downloads; touch ~/.config/ytq/auto
+                        and it starts by itself.
    Super + Shift + B    the camera -- birdshot, which stage 7 built from
                         ~/code, or whatever CAMERA= names in ~/.profile.
                         Also the Camera entry at the top of the menu.
@@ -13255,6 +13262,9 @@ bind = $mainMod SHIFT, M, exec, $terminal -e sh -c 'command -v cmus >/dev/null &
 # same resolver, so the two desktops cannot disagree about what it opens.
 bind = $mainMod SHIFT, B, exec, copal-camera
 bind = $mainMod SHIFT, N, exec, $terminal -e sh -c 'command -v nvim >/dev/null && exec nvim; exec vi'
+# The download queue, on the same chord as stage 4's i3 config: queue the URL
+# on the clipboard. It downloads by itself once ~/.config/ytq/auto exists.
+bind = $mainMod SHIFT, Y, exec, sh -c 'command -v ytq >/dev/null && exec ytq clip'
 # The wallpaper picker, with thumbnails. Also in the menu under Style, and on
 # the same chord as stage 4's i3 config so the two desktops agree.
 bind = $mainMod SHIFT, W, exec, copal-wallpaper --pick
@@ -13397,6 +13407,7 @@ ANTIQHYPR
    Super + Z            the same menu, opened on the right-hand side
    Super + Shift + N    the editor (nvim)
    Super + Shift + M    music (cmus, or mpv on ~/Music)
+   Super + Shift + Y    queue the clipboard's video URL (ytq)
    Super + Shift + B    the camera (birdshot, built from ~/code; or $CAMERA)
    Super + Shift + W    the wallpaper picker, with thumbnails
    Super + Shift + T    the theme picker
@@ -19794,16 +19805,31 @@ Brave: use yt-brave, not --cookies-from-browser brave
 
 The queue: ytq
 
+    Super+Shift+Y       queue the URL on the clipboard
+    ytq clip
+    ytq add URL...      the same, for URLs typed in a shell
+    ytq run             download what is queued, one at a time, as MP4
+                        into ~/Videos
+    ytq status          what is downloading, what is left
     ytq                 a window. While it is focused, every URL you copy is
-                        checked and queued; downloads run one at a time as
-                        MP4 into ~/Videos. Keys are on the bottom line.
-    ytq add URL...      queue from a shell; 'ytq clip' queues whatever URL is
-                        on the clipboard; 'ytq run' works the queue with no
-                        window, 'ytq list' shows it.
+                        checked and queued, and it downloads them too. Keys
+                        are on the bottom line.
+    ytq list, ytq clear every entry; forget the finished ones
+    ytq --help          all of it, and which config and auto file it found
+
+    To have Super+Shift+Y and 'ytq add' start downloading by themselves:
+
+        touch ~/.config/ytq/auto
+
+    Then a background runner starts whenever nothing is downloading, sends a
+    notification as each file finishes, and leaves when the queue is empty.
+    --run and --no-run override the file for one command. However many ways
+    you queue things, only one process ever downloads.
 
     When a download fails on a login, age gate or bot check, ytq opens Brave
-    on the URL; sign in or pass the check there, press 'c' in ytq, and it
-    retries once through yt-brave. Settings, if you want any, go in
+    on the URL and the entry waits. Sign in or pass the check there, then
+    'ytq cookies' (or 'c' in the window) retries once through yt-brave.
+    Settings, if you want any, go in
     ~/.config/ytq/config: DIR, FORMAT, PROFILE and KEYRING (the last two
     are handed to yt-brave as --profile and --keyring).
 
@@ -19980,23 +20006,30 @@ YTBRAVE
 # ytq: a queue in front of yt-dlp, fed by the clipboard.
 #
 # The habit it replaces is the terminal with twelve yt-dlp commands pasted into
-# it, each waiting on the last. Copy a link while the ytq window is focused and
-# it is checked (can yt-dlp get it as an MP4, and at what resolution?) and
-# queued; downloads run one at a time, best video plus best audio, merged to
+# it, each waiting on the last. Copy a link and press Super+Shift+Y ('ytq
+# clip'), or copy it while the ytq window is focused, and it is checked (can
+# yt-dlp get it as an MP4, and at what resolution?) and queued. 'ytq run' or
+# the window downloads; once ~/.config/ytq/auto exists, a background runner
+# starts by itself and leaves again when the queue is empty. Autostart is the
+# user's to switch on, so this installer does not create that file. Downloads
+# run one at a time -- queue.json is shared under a lock and
+# run.lock admits one downloader -- best video plus best audio, merged to
 # MP4 by ffmpeg. A failure goes to the back of the queue for one more try; a
 # failure that reads as a login, an age gate or a bot check opens Brave on the
-# URL and, once you have signed in there and pressed 'c', retries once through
-# yt-brave. The Brave profile path and the keyring are yt-brave's business
-# alone, so there is one place that knows where Brave keeps its cookies.
+# URL and, once you have signed in there and run 'ytq cookies' (or pressed 'c'),
+# retries once through yt-brave. The Brave profile path and the keyring are
+# yt-brave's business alone, so there is one place that knows where Brave keeps
+# its cookies.
 #
 # The clipboard is read with wl-paste on Wayland and xclip on X11, so both are
 # installed; focus is asked of hyprctl or xdotool, and where neither answers
-# the watcher simply stays on. Python and curses only -- nothing beyond what
-# yt-dlp itself needs.
+# the watcher simply stays on. A runner with no terminal reports through
+# notify-send, which is libnotify's, and says nothing when it is absent. Python
+# and curses only -- nothing beyond what yt-dlp itself needs.
 install_ytq() {
     command -v yt-dlp >/dev/null 2>&1 || return 0
     [ -x /usr/local/bin/yt-brave ] || install_ytbrave
-    add_optional wl-clipboard xclip xdotool
+    add_optional wl-clipboard xclip xdotool libnotify
     cat > /usr/local/bin/ytq <<'YTQ'
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
@@ -20007,33 +20040,53 @@ install_ytq() {
 #   ytq                the queue window. The URL on the clipboard right now is
 #                      queued at once; while the window has focus, every URL
 #                      copied afterwards is checked and queued too.
-#   ytq add URL...     queue from a shell instead
-#   ytq clip           queue the URL on the clipboard, no window
-#   ytq run            work the queue without the window (one at a time)
-#   ytq list           what is queued, done, waiting, failed
+#   ytq clip           queue the URL on the clipboard. This is Super+Shift+Y.
+#   ytq add URL...     the same, for URLs typed in a shell
+#   ytq run            download what is queued, in this terminal
+#   ytq status         is anything downloading, and what is left
+#   ytq cookies        retry what was waiting on a Brave sign-in
+#   ytq list           every entry: queued, done, waiting, failed
 #   ytq clear          forget finished, rejected and failed entries
 #
-# HOW IT WORKS. One file, ~/.local/share/ytq/queue.json, is the queue. Three
-# threads share it: the watcher reads the clipboard once a second and adds
-# anything that looks like a URL; the checker asks yt-dlp (--simulate) whether
-# it can fetch that URL as an MP4 and what resolution it would get, and either
-# queues or rejects it; the worker downloads one entry at a time, best video
-# plus best audio merged into MP4 by ffmpeg.
+# AUTOSTART is off until you ask for it:  touch ~/.config/ytq/auto
+# With that file there, clip, add and cookies also start downloading in the
+# background whenever nothing is downloading already. Without it they only
+# queue, and 'ytq run' or the window does the downloading. --run starts a
+# runner this once whatever the file says; --no-run never does.
+#
+# HOW IT WORKS. One file, ~/.local/share/ytq/queue.json, is the queue, and any
+# number of ytq processes use it at once. Every change takes queue.lock, reads
+# the file afresh, changes what it came to change, writes it back and lets go.
+# (Each process used to keep its own copy, and a 'ytq add' made while 'ytq
+# run' was downloading vanished at the runner's next save.)
+#
+# Exactly one process downloads: whichever holds run.lock, with its pid
+# written inside. That is 'ytq run', or the window, or the background runner
+# that autostart starts when nobody holds the lock. The runner checks
+# each new URL (can yt-dlp get it as an MP4, and at what height?) and
+# downloads one at a time, best video plus best audio merged by ffmpeg. A
+# background runner leaves when the queue is empty, and the next 'ytq clip'
+# starts another. It lets go of run.lock while holding queue.lock, and 'ytq
+# clip' adds its URL and looks for a runner under that same lock -- so a URL
+# cannot land in the gap between "nothing left" and "gone" and sit there.
 #
 # WHEN IT FAILS. A failed download goes to the back of the queue for one more
 # try. If yt-dlp's complaint is about a login, an age gate, a "confirm you are
 # not a bot" page or cookies, the retry is the cookie retry, and there is only
 # ever one of those per entry: Brave is opened on the URL so you can sign in
-# or pass the check, and when you press 'c' the download runs again through
-# yt-brave, which finds Brave's profile (Flatpak or native) and hands yt-dlp
-# its cookies. A second failure after that is final.
+# or pass the check, and the entry waits, marked 'cookies'. 'ytq cookies' (or
+# 'c' in the window) then runs it again through yt-brave, which finds Brave's
+# profile (Flatpak or native) and hands yt-dlp its cookies. A second failure
+# after that is final. A runner with a terminal asks for Enter instead, once
+# the rest of the queue is done; one in the background sends a notification.
 #
 # WHY "WHILE IT HAS FOCUS". The clipboard is a shared thing, and a queue that
 # grabbed every link you copied for any reason would be a nuisance. So the
-# watcher only acts while this window is the focused one: copy a link, click
-# here, and it is queued; copy a link for a note and nothing happens. Focus is
-# asked of the compositor (hyprctl on Hyprland, xdotool on X11); where neither
-# answers, the watcher stays on.
+# window's watcher only acts while the window is the focused one: copy a link,
+# click here, and it is queued; copy a link for a note and nothing happens.
+# Focus is asked of the compositor (hyprctl on Hyprland, xdotool on X11);
+# where neither answers, the watcher stays on. 'ytq clip' is the other way in:
+# it takes the clipboard once, when you ask.
 #
 # Settings, if you want them, in ~/.config/ytq/config as KEY=VALUE:
 #   DIR       where files go            (default ~/Videos, or XDG_VIDEOS_DIR)
@@ -20041,12 +20094,16 @@ install_ytq() {
 #   PROFILE   Brave profile, passed to yt-brave --profile   (default: Default)
 #   KEYRING   passed to yt-brave --keyring, e.g. basictext, for a desktop with no keyring
 #   POLL      clipboard poll, seconds   (default 1)
-import curses, json, os, re, shlex, signal, subprocess, sys, threading, time
+# and next to it the empty file ~/.config/ytq/auto, which switches autostart on.
+import contextlib, curses, fcntl, json, os, re, shlex, signal, subprocess, sys, threading, time
 
 HOME = os.path.expanduser("~")
 CONF = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config"), "ytq", "config")
+AUTO = os.path.join(os.path.dirname(CONF), "auto")
 DATA = os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.join(HOME, ".local", "share"), "ytq")
 QUEUE = os.path.join(DATA, "queue.json")
+QLOCK = os.path.join(DATA, "queue.lock")
+RUNLOCK = os.path.join(DATA, "run.lock")
 LOG = os.path.join(DATA, "ytq.log")
 DEFAULT_FORMAT = ("bv*[ext=mp4][vcodec^=avc1]+ba[ext=m4a]/bv*[ext=mp4]+ba[ext=m4a]"
                   "/b[ext=mp4]/bv*+ba/b")
@@ -20055,7 +20112,10 @@ COOKIE_WORDS = ("sign in", "log in", "login", "cookies", "age", "bot", "private 
 # A URL, strictly enough that a pasted sentence or a path never qualifies:
 # scheme, a host with at least one dot or a port, then anything without spaces.
 URL_RE = re.compile(r"^https?://(?:[A-Za-z0-9-]+\.)+[A-Za-z0-9-]+(?::\d+)?(?:/\S*)?$|^https?://localhost(?::\d+)?(?:/\S*)?$")
-ORDER = ["downloading", "cookies", "checking", "queued", "retry", "done", "failed", "rejected"]
+ORDER = ["downloading", "cookies", "retry-cookies", "checking", "queued", "retry", "done", "failed", "rejected"]
+# Work a runner has still to do. 'cookies' is not in it: that waits on a person.
+PENDING = ("checking", "queued", "retry", "retry-cookies", "downloading")
+DOWNLOADABLE = ("retry-cookies", "queued", "retry")
 
 
 def videos_dir():
@@ -20090,65 +20150,208 @@ def log(msg):
         f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + msg + "\n")
 
 
-# --- the queue file ---------------------------------------------------------
-class Queue:
-    def __init__(self):
-        self.lock = threading.RLock()
-        self.items = []
-        self.load()
+# Who hears about things. A terminal gets them printed; Super+Shift+Y and the
+# background runner have no terminal, so they get a notification; the window
+# shows everything itself and only logs.
+MODE = {"say": "print" if sys.stdout.isatty() else "notify"}
 
-    def load(self):
+
+def say(msg, urgent=False):
+    log(msg)
+    if MODE["say"] == "print":
+        print(msg, flush=True)
+    elif MODE["say"] == "notify":
+        try:
+            subprocess.Popen(["notify-send", "-a", "ytq", "-u", "critical" if urgent else "normal", "ytq", msg],
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except OSError:
+            pass
+
+
+# --- the queue file ---------------------------------------------------------
+def new_entry(url):
+    return {"url": url, "title": "", "status": "checking", "quality": "", "attempts": 0,
+            "cookie_tried": False, "error": "", "added": int(time.time()), "file": "", "progress": ""}
+
+
+def find(items, url):
+    return next((i for i in items if i["url"] == url), None)
+
+
+class Queue:
+    """queue.json, shared by every ytq process: lock, read, change, write."""
+
+    def __init__(self):
+        self.guard = threading.RLock()
+        self.depth = 0
+        self.fd = None
+        self.items = []
+
+    @staticmethod
+    def _read():
         try:
             with open(QUEUE) as f:
-                self.items = json.load(f)
+                items = json.load(f)
+            return items if isinstance(items, list) else []
         except (OSError, ValueError):
-            self.items = []
-        # Whatever was mid-flight when the last run ended is simply queued again.
-        for it in self.items:
-            if it["status"] in ("downloading", "checking"):
-                it["status"] = "queued" if it.get("title") else "checking"
-            it.setdefault("progress", "")
+            return []
 
-    def save(self):
-        os.makedirs(DATA, exist_ok=True)
-        tmp = QUEUE + ".tmp"
-        with self.lock, open(tmp, "w") as f:
-            json.dump(self.items, f, indent=1)
-        os.replace(tmp, QUEUE)
+    @contextlib.contextmanager
+    def edit(self):
+        """The live list, to change in place; written back when the block ends."""
+        with self.guard:
+            if self.depth == 0:
+                os.makedirs(DATA, exist_ok=True)
+                # A signal can land between open and flock and leave the old
+                # handle behind; flock between two handles in one process
+                # would then wait on itself forever. Closing it lets go.
+                if self.fd:
+                    self.fd.close()
+                self.fd = open(QLOCK, "a")
+                fcntl.flock(self.fd, fcntl.LOCK_EX)
+                self.items = self._read()
+                self.before = json.dumps(self.items)
+            self.depth += 1
+            try:
+                yield self.items
+            finally:
+                self.depth -= 1
+                if self.depth == 0:
+                    try:
+                        if json.dumps(self.items) != self.before:
+                            tmp = QUEUE + ".tmp"
+                            with open(tmp, "w") as f:
+                                json.dump(self.items, f, indent=1)
+                            os.replace(tmp, QUEUE)
+                    finally:
+                        fcntl.flock(self.fd, fcntl.LOCK_UN)
+                        self.fd.close()
+                        self.fd = None
 
-    def has(self, url):
-        with self.lock:
-            return any(i["url"] == url for i in self.items)
-
-    def add(self, url):
-        with self.lock:
-            if self.has(url):
-                return None
-            it = {"url": url, "title": "", "status": "checking", "quality": "", "attempts": 0,
-                  "cookie_tried": False, "error": "", "added": int(time.time()), "file": "", "progress": ""}
-            self.items.append(it)
-            self.save()
-            log("added " + url)
-            return it
-
-    def first(self, *statuses):
-        with self.lock:
-            for st in statuses:
-                for it in self.items:
-                    if it["status"] == st:
-                        return it
-        return None
-
-    def set(self, it, **kw):
-        with self.lock:
-            it.update(kw)
-            self.save()
+    def snapshot(self):
+        """The queue as it stands, for looking at. Writes are renames, so no lock."""
+        return self._read()
 
 
 Q = Queue()
+
+
+def update(url, **kw):
+    """Change one entry. Its new state, or None if it was deleted meanwhile."""
+    with Q.edit() as items:
+        it = find(items, url)
+        if it is None:
+            return None
+        it.update(kw)
+        return dict(it)
+
+
+class RunLock:
+    """run.lock: held by the one process that downloads."""
+
+    def __init__(self):
+        self.fd = None
+
+    def take(self, tries=10):
+        os.makedirs(DATA, exist_ok=True)
+        fd = open(RUNLOCK, "a+")
+        # A few tries, because 'ytq status' looking at the lock holds it for a
+        # moment, and a runner that gave up on that would leave its URL sitting.
+        for n in range(tries):
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if n == tries - 1:
+                    fd.close()
+                    return False
+                time.sleep(0.1)
+        fd.seek(0)
+        fd.truncate()
+        fd.write("%d\n" % os.getpid())
+        fd.flush()
+        self.fd = fd
+        # Nobody else can be downloading now, so an entry still marked so was
+        # left behind by a runner that died.
+        with Q.edit() as items:
+            for it in items:
+                if it["status"] == "downloading":
+                    it.update(status="queued", progress="")
+        return True
+
+    def release(self):
+        if self.fd:
+            fcntl.flock(self.fd, fcntl.LOCK_UN)
+            self.fd.close()
+            self.fd = None
+
+    def holder(self):
+        """The pid holding run.lock, or None."""
+        if self.fd:
+            return os.getpid()
+        try:
+            fd = open(RUNLOCK, "a+")
+        except OSError:
+            return None
+        with fd:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            except OSError:
+                fd.seek(0)
+                return fd.read().strip() or "?"
+            fcntl.flock(fd, fcntl.LOCK_UN)
+            return None
+
+
+RUN = RunLock()
+
+
+def start_runner():
+    """(pid, started): a background 'ytq run --quiet', unless run.lock is held.
+
+    Call it inside Q.edit() -- see HOW IT WORKS for why that matters."""
+    pid = RUN.holder()
+    if pid:
+        return pid, False
+    os.makedirs(DATA, exist_ok=True)
+    with open(LOG, "a") as logf:
+        p = subprocess.Popen([sys.executable, os.path.realpath(__file__), "run", "--quiet"],
+                             stdin=subprocess.DEVNULL, stdout=logf, stderr=logf, start_new_session=True)
+    log("started a runner, pid %d" % p.pid)
+    return p.pid, True
+
+
+def autostart(flags=()):
+    """Do clip, add and cookies start a runner? The auto file says, unless --run or --no-run does."""
+    if "--no-run" in flags:
+        return False
+    return "--run" in flags or os.path.exists(AUTO)
+
+
+def current_runner():
+    """(pid, False) for a runner already downloading, else None."""
+    pid = RUN.holder()
+    return (pid, False) if pid else None
+
+
+def enqueue(urls, run=False):
+    """Queue whatever is new. (added, runner): runner is (pid, started) when one
+    is downloading or was started for this, None when nothing is."""
+    added, runner = [], None
+    with Q.edit() as items:
+        for u in urls:
+            if find(items, u) is None:
+                items.append(new_entry(u))
+                added.append(u)
+                log("added " + u)
+        if any(i["status"] in PENDING for i in items):
+            runner = start_runner() if run else current_runner()
+    return added, runner
+
+
 STOP = threading.Event()
 PAUSED = threading.Event()
-CURRENT = {"proc": None}
+CURRENT = {"proc": None, "url": None, "cookies": False, "attempts": 0}
 
 
 # --- yt-dlp -------------------------------------------------------------------
@@ -20179,7 +20382,8 @@ def brave_ready():
 def open_browser(url):
     for cmd in (["brave", url], ["flatpak", "run", "com.brave.Browser", url], ["xdg-open", url]):
         try:
-            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, start_new_session=True)
             log("opened browser: " + " ".join(cmd[:2]))
             return True
         except OSError:
@@ -20187,36 +20391,59 @@ def open_browser(url):
     return False
 
 
-def check(it):
+def kill(proc):
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except OSError:
+        pass
+
+
+def check(url):
     """Can yt-dlp fetch this as an MP4, and at what height? --simulate costs one request."""
     cmd = ["yt-dlp", "--simulate", "--no-playlist", "--no-warnings", "-f", S["FORMAT"],
-           "--print", "%(title)s\t%(height)s\t%(ext)s", it["url"]]
+           "--print", "%(title)s\t%(height)s\t%(ext)s", url]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
     except subprocess.TimeoutExpired:
-        Q.set(it, status="rejected", error="timed out asking yt-dlp about it")
+        update(url, status="rejected", error="timed out asking yt-dlp about it")
+        say("not downloadable (timed out): " + url)
         return
     except OSError as e:
-        Q.set(it, status="rejected", error="yt-dlp: %s" % e)
+        update(url, status="rejected", error="yt-dlp: %s" % e)
+        say("cannot run yt-dlp: %s" % e, urgent=True)
         return
     if r.returncode == 0 and r.stdout.strip():
         title, height, ext = (r.stdout.strip().splitlines()[0].split("\t") + ["", ""])[:3]
         q = ("%sp" % height if height not in ("NA", "", "None") else "?") + " " + ext
-        Q.set(it, status="queued", title=title[:200], quality=q, error="")
-        log("queued %s [%s] %s" % (title, q, it["url"]))
+        update(url, status="queued", title=title[:200], quality=q, error="")
+        log("queued %s [%s] %s" % (title, q, url))
     else:
         err = (r.stderr.strip().splitlines() or ["no output"])[-1][:300]
         if cookie_problem(err):
             # Not rejected: queue it anyway. The first real attempt is what
             # opens Brave if the complaint holds -- the check is only a look.
-            Q.set(it, status="queued", title=it["url"], quality="?", error=err)
-            log("queued despite a cookie complaint at check: " + it["url"])
+            update(url, status="queued", title=url, quality="?", error=err)
+            log("queued despite a cookie complaint at check: " + url)
         else:
-            Q.set(it, status="rejected", error=err)
-            log("rejected %s: %s" % (it["url"], err))
+            update(url, status="rejected", error=err)
+            say("not downloadable: %s -- %s" % (url, err))
+
+
+def claim():
+    """(entry, with_cookies) for the next download, marked as downloading in one locked step."""
+    with Q.edit() as items:
+        for st in DOWNLOADABLE:
+            it = next((i for i in items if i["status"] == st), None)
+            if it:
+                cookies = st == "retry-cookies"
+                it.update(status="downloading", attempts=it["attempts"] + 1, progress="starting",
+                          cookie_tried=it["cookie_tried"] or cookies)
+                return dict(it), cookies
+    return None, False
 
 
 def download(it, with_cookies):
+    url, title = it["url"], it["title"] or it["url"]
     os.makedirs(S["DIR"], exist_ok=True)
     # With cookies it is yt-brave rather than yt-dlp -- the same arguments,
     # with the Brave profile and keyring put in front by the wrapper.
@@ -20226,67 +20453,125 @@ def download(it, with_cookies):
            "--progress-template", "download:PROGRESS %(progress._percent_str)s %(progress._speed_str)s %(progress._eta_str)s",
            "--print", "after_move:FILE %(filepath)s",
            "-o", os.path.join(S["DIR"], "%(title).120s [%(id)s].%(ext)s")]
-    cmd.append(it["url"])
+    cmd.append(url)
     log("run: " + " ".join(shlex.quote(c) for c in cmd))
-    Q.set(it, status="downloading", attempts=it["attempts"] + 1, progress="starting",
-          cookie_tried=it["cookie_tried"] or with_cookies)
     try:
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                             start_new_session=True)
+        p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                             text=True, start_new_session=True)
     except OSError as e:
-        Q.set(it, status="failed", error="cannot run yt-dlp: %s" % e)
+        update(url, status="failed", error="cannot run %s: %s" % (cmd[0], e), progress="")
+        say("failed: cannot run %s: %s" % (cmd[0], e), urgent=True)
         return
-    CURRENT["proc"] = p
-    tail, fname = [], ""
+    # attempts as it was before claim() counted this one, so a stop from
+    # either side -- here, or stop_current() -- hands back the same number.
+    CURRENT.update(proc=p, url=url, cookies=with_cookies, attempts=it["attempts"] - 1)
+    tail, fname, last = [], "", 0.0
     for line in p.stdout:
         line = line.rstrip()
         if line.startswith("PROGRESS "):
-            it["progress"] = line[9:].strip()
+            # Once a second is plenty for a progress figure, and every write
+            # is a turn at queue.lock that a 'ytq clip' might be waiting for.
+            if time.time() - last >= 1:
+                last = time.time()
+                if update(url, progress=line[9:].strip()) is None:
+                    log("deleted while downloading: " + url)
+                    kill(p)
         elif line.startswith("FILE "):
             fname = line[5:]
         elif line:
             tail = (tail + [line])[-6:]
     p.wait()
-    CURRENT["proc"] = None
+    CURRENT.update(proc=None, url=None, cookies=False)
     if STOP.is_set():
-        Q.set(it, status="queued", progress="")
+        update(url, status="retry-cookies" if with_cookies else "queued", attempts=it["attempts"] - 1, progress="")
         return
+    CURRENT.update(attempts=0)
     if p.returncode == 0:
-        Q.set(it, status="done", file=fname, progress="", error="")
-        log("done: " + (fname or it["url"]))
+        if update(url, status="done", file=fname, progress="", error="") is not None:
+            say("done: " + (os.path.basename(fname) if fname else title))
         return
     err = (tail or ["yt-dlp exited %d" % p.returncode])[-1][:300]
     if cookie_problem(err) and not it["cookie_tried"]:
-        Q.set(it, status="cookies", error=err, progress="")
-        open_browser(it["url"])
-        log("needs cookies: %s: %s" % (it["url"], err))
+        if update(url, status="cookies", error=err, progress="") is not None:
+            open_browser(url)
+            say("needs a Brave sign-in: %s -- Brave is open on it; sign in, then 'ytq cookies'" % title, urgent=True)
     elif it["attempts"] < 2 and not it["cookie_tried"]:
-        Q.set(it, status="retry", error=err, progress="")
-        log("retry later: %s: %s" % (it["url"], err))
-    else:
-        Q.set(it, status="failed", error=err, progress="")
-        log("failed: %s: %s" % (it["url"], err))
+        update(url, status="retry", error=err, progress="")
+        log("retry later: %s: %s" % (url, err))
+    elif update(url, status="failed", error=err, progress="") is not None:
+        say("failed: %s -- %s" % (title, err), urgent=True)
 
 
-def worker():
-    while not STOP.is_set():
-        if PAUSED.is_set():
-            time.sleep(0.5)
-            continue
-        it = Q.first("queued", "retry-cookies", "retry")
-        if not it:
-            time.sleep(1)
-            continue
-        download(it, with_cookies=(it["status"] == "retry-cookies"))
+def stop_current():
+    """Kill the download under way and put its entry back as it was."""
+    p, url = CURRENT["proc"], CURRENT["url"]
+    if p:
+        kill(p)
+        update(url, status="retry-cookies" if CURRENT["cookies"] else "queued",
+               attempts=CURRENT["attempts"], progress="")
 
 
 def checker():
     while not STOP.is_set():
-        it = Q.first("checking")
-        if not it:
+        # Looking needs no lock; only this thread moves an entry out of 'checking'.
+        it = next((i for i in Q.snapshot() if i["status"] == "checking"), None)
+        if it:
+            check(it["url"])
+        else:
             time.sleep(0.5)
+
+
+def mark_cookie_retries():
+    with Q.edit() as items:
+        n = 0
+        for i in items:
+            if i["status"] == "cookies":
+                i["status"] = "retry-cookies"
+                n += 1
+        return n
+
+
+def serve(stay=False, interactive=False):
+    """Work the queue. Call holding run.lock; returns having let go of it, once
+    nothing is left -- or never, when told to stay (the window)."""
+    threading.Thread(target=checker, daemon=True).start()
+    while not STOP.is_set():
+        items = Q.snapshot()
+        if not PAUSED.is_set() and any(i["status"] in DOWNLOADABLE for i in items):
+            it, cookies = claim()
+            if it:
+                if interactive:
+                    print("%s  %s" % ("with Brave's cookies" if cookies else "fetching", it["title"] or it["url"]), flush=True)
+                download(it, cookies)
+                continue
+        if stay or PAUSED.is_set() or any(i["status"] in PENDING for i in items):
+            time.sleep(1)
             continue
-        check(it)
+        if interactive and any(i["status"] == "cookies" for i in items):
+            for i in items:
+                if i["status"] == "cookies":
+                    print("needs a Brave sign-in: %s\n  %s" % (i["url"], i["error"]))
+            print("  Brave has been opened on it. Sign in or pass the check there, then press Enter here.")
+            try:
+                input()
+            except EOFError:
+                interactive = False
+                continue
+            why = brave_ready()
+            if why:
+                print(why + " -- start Brave once, or set PROFILE in ~/.config/ytq/config")
+                interactive = False
+            else:
+                mark_cookie_retries()
+            continue
+        # Nothing left. Let go of run.lock under queue.lock, so that a 'ytq
+        # clip' either got its URL in before this look or finds the lock free.
+        with Q.edit() as items:
+            if any(i["status"] in PENDING for i in items):
+                continue
+            RUN.release()
+            log("runner %d: the queue is empty, leaving" % os.getpid())
+            return
 
 
 # --- the clipboard and focus ---------------------------------------------------
@@ -20342,10 +20627,12 @@ def clipboard_url():
 
 def watcher():
     # What is on the clipboard at start counts: launching ytq with a link
-    # already copied is the common case, so it is queued straight away.
+    # already copied is the common case, so it is queued straight away. No
+    # runner is started from here -- the window's own worker takes run.lock
+    # as soon as nobody else has it.
     WATCH["last"] = read_clipboard()
-    if URL_RE.match(WATCH["last"]) and not Q.has(WATCH["last"]):
-        Q.add(WATCH["last"])
+    if URL_RE.match(WATCH["last"]):
+        enqueue([WATCH["last"]], run=False)
     while not STOP.is_set():
         time.sleep(float(S["POLL"]))
         WATCH["focused"] = focused()
@@ -20355,8 +20642,8 @@ def watcher():
         if text == WATCH["last"]:
             continue
         WATCH["last"] = text
-        if URL_RE.match(text) and not Q.has(text):
-            Q.add(text)
+        if URL_RE.match(text):
+            enqueue([text], run=False)
 
 
 # --- the window ------------------------------------------------------------------
@@ -20377,7 +20664,17 @@ def prompt(win, label):
     return s
 
 
+def window_worker():
+    """Download from the window whenever nobody else is: take run.lock and keep it."""
+    while not STOP.is_set():
+        if RUN.take(tries=1):
+            serve(stay=True)
+            return
+        time.sleep(1)
+
+
 def tui(win):
+    MODE["say"] = "quiet"
     curses.curs_set(0)
     win.nodelay(True)
     win.timeout(500)
@@ -20386,16 +20683,18 @@ def tui(win):
         curses.init_pair(1, curses.COLOR_GREEN, -1); curses.init_pair(2, curses.COLOR_RED, -1)
         curses.init_pair(3, curses.COLOR_YELLOW, -1); curses.init_pair(4, curses.COLOR_CYAN, -1)
     sel, message = 0, ""
-    for t in (watcher, checker, worker):
+    for t in (watcher, window_worker):
         threading.Thread(target=t, daemon=True).start()
     while True:
-        with Q.lock:
-            items = sorted(Q.items, key=lambda i: (ORDER.index(i["status"]) if i["status"] in ORDER else 2, i["added"]))
+        items = sorted(Q.snapshot(), key=lambda i: (ORDER.index(i["status"]) if i["status"] in ORDER else 3, i["added"]))
+        holder = RUN.holder()
         h, w = win.getmaxyx()
         win.erase()
         state = ("watching the clipboard" if WATCH["on"] and WATCH["focused"] else
                  "clipboard: paused (window not focused)" if WATCH["on"] else "clipboard: off")
-        head = " ytq  %s   -> %s%s" % (state, S["DIR"].replace(HOME, "~"), "   [worker paused]" if PAUSED.is_set() else "")
+        worker = ("[paused]" if PAUSED.is_set() else "") if RUN.fd else \
+                 "[downloading in pid %s]" % holder if holder else "[no worker yet]"
+        head = " ytq  %s   -> %s   %s" % (state, S["DIR"].replace(HOME, "~"), worker)
         win.addstr(0, 0, head[:w - 1], curses.A_REVERSE | curses.A_BOLD)
         sel = max(0, min(sel, len(items) - 1))
         top = max(0, sel - (h - 5))
@@ -20403,11 +20702,10 @@ def tui(win):
             y = row + 1
             st = it["status"]
             col = {"done": 1, "failed": 2, "rejected": 2, "cookies": 3, "retry": 3, "downloading": 4}.get(st, 0)
-            extra = it["progress"] if st == "downloading" else it["quality"] if st in ("queued", "done") else it["error"][:40]
-            line = " %s %-11s %-9s %s" % (MARK.get(st, " "), st, extra[:9] if st not in ("downloading",) else "",
-                                          (it["title"] or it["url"]))
+            extra = it["quality"] if st in ("queued", "done") else it["error"][:40]
+            line = " %s %-13s %-9s %s" % (MARK.get(st, " "), st, extra[:9], it["title"] or it["url"])
             if st == "downloading":
-                line = " %s %-11s %s  %s" % (MARK[st], st, it["progress"][:28], it["title"] or it["url"])
+                line = " %s %-13s %s  %s" % (MARK[st], st, it.get("progress", "")[:28], it["title"] or it["url"])
             attr = curses.color_pair(col) if col else 0
             if top + row == sel:
                 attr |= curses.A_REVERSE
@@ -20441,130 +20739,183 @@ def tui(win):
         elif k == ord("a"):
             url = prompt(win, "URL:")
             if URL_RE.match(url):
-                message = "queued" if Q.add(url) else "already in the queue"
+                message = "queued" if enqueue([url], run=False)[0] else "already in the queue"
             elif url:
                 message = "that is not a URL"
         elif k == ord("w"):
             WATCH["on"] = not WATCH["on"]
         elif k == ord("p"):
-            PAUSED.clear() if PAUSED.is_set() else PAUSED.set()
+            if RUN.fd:
+                PAUSED.clear() if PAUSED.is_set() else PAUSED.set()
+            else:
+                message = "p pauses this window's downloads, and pid %s has the queue" % holder if holder \
+                    else "nothing to pause yet"
         elif k == ord("x"):
-            with Q.lock:
-                Q.items = [i for i in Q.items if i["status"] not in ("done", "failed", "rejected")]
-                Q.save()
+            with Q.edit() as live:
+                live[:] = [i for i in live if i["status"] not in ("done", "failed", "rejected")]
         elif items and k in (ord("d"), curses.KEY_DC):
-            it = items[sel]
-            if it["status"] == "downloading" and CURRENT["proc"]:
-                os.killpg(CURRENT["proc"].pid, signal.SIGTERM)
-            with Q.lock:
-                Q.items = [i for i in Q.items if i is not it]
-                Q.save()
+            url = items[sel]["url"]
+            # Whoever is downloading it notices at its next progress line.
+            with Q.edit() as live:
+                live[:] = [i for i in live if i["url"] != url]
+            if CURRENT["url"] == url and CURRENT["proc"]:
+                kill(CURRENT["proc"])
         elif items and k == ord("r"):
             it = items[sel]
             if it["status"] != "downloading":
-                Q.set(it, status="checking" if not it["title"] else "queued", error="")
+                update(it["url"], status="checking" if not it["title"] else "queued", error="")
         elif items and k == ord("c"):
-            it = items[sel]
-            if it["status"] == "cookies":
+            if items[sel]["status"] == "cookies":
                 why = brave_ready()
                 if why is None:
-                    Q.set(it, status="retry-cookies", title=it["title"] or it["url"])
-                    message = "retrying with Brave's cookies"
+                    n = mark_cookie_retries()
+                    message = "retrying %d with Brave's cookies" % n
                 else:
                     message = why + " -- start Brave once, or set PROFILE in ~/.config/ytq/config"
             else:
                 message = "c is for entries marked 'cookies'"
         elif items and k == ord("o"):
             open_browser(items[sel]["url"])
+    # Quitting stops this window's downloads; 'ytq run', or the next 'ytq
+    # clip', carries on from where it was.
     STOP.set()
-    if CURRENT["proc"]:
-        try:
-            os.killpg(CURRENT["proc"].pid, signal.SIGTERM)
-        except OSError:
-            pass
+    if RUN.fd:
+        stop_current()
+        RUN.release()
 
 
 # --- the command line ------------------------------------------------------------
-def cmd_run():
-    """Work the queue with no window. A cookie stop waits for Enter."""
-    threading.Thread(target=checker, daemon=True).start()
+def interrupted(*_):
+    raise KeyboardInterrupt
+
+
+def cmd_run(quiet):
+    if quiet:
+        MODE["say"] = "notify"
+    if not RUN.take():
+        if not quiet:
+            print("already downloading in pid %s -- 'ytq status' to follow it" % RUN.holder())
+        return
+    signal.signal(signal.SIGTERM, interrupted)
+    signal.signal(signal.SIGHUP, interrupted)
     try:
-        while True:
-            it = Q.first("queued", "retry-cookies", "retry")
-            if it:
-                print("%s  %s" % (it["status"], it["title"] or it["url"]))
-                download(it, with_cookies=(it["status"] == "retry-cookies"))
-                print("  -> %s %s" % (it["status"], it.get("file") or it["error"]))
-                continue
-            it = Q.first("cookies")
-            if it:
-                print("needs cookies: %s\n  %s" % (it["url"], it["error"]))
-                print("  Brave has been opened on it. Sign in or pass the check there, then press Enter here.")
-                try:
-                    input()
-                except EOFError:
-                    break
-                Q.set(it, status="retry-cookies", title=it["title"] or it["url"])
-                continue
-            if Q.first("checking"):
-                time.sleep(1)
-                continue
-            break
+        serve(interactive=not quiet and sys.stdin.isatty() and sys.stdout.isatty())
     except KeyboardInterrupt:
         STOP.set()
-        if CURRENT["proc"]:
-            os.killpg(CURRENT["proc"].pid, signal.SIGTERM)
-        print()
+        stop_current()
+        if not quiet:
+            print()
+    finally:
+        RUN.release()
+
+
+def report(urls, added, runner):
+    """One message, so a keypress makes one notification rather than a stack."""
+    lines = [("queued: " if u in added else "already queued: ") + u for u in urls]
+    if runner:
+        pid, started = runner
+        lines.append("downloading: %s pid %s" % ("started," if started else "already, in", pid))
+    elif any(i["status"] in PENDING for i in Q.snapshot()):
+        lines.append("nothing is downloading -- 'ytq run' starts it, or touch %s to have it start by itself"
+                     % AUTO.replace(HOME, "~"))
+    if lines:
+        say("\n".join(lines))
+
+
+def cmd_status():
+    items, pid = Q.snapshot(), RUN.holder()
+    print("runner: " + ("pid %s" % pid if pid else "none -- 'ytq run' or the next 'ytq clip' starts one"))
+    for i in items:
+        if i["status"] == "downloading":
+            print("  fetching   %-28s %s" % (i.get("progress", ""), i["title"] or i["url"]))
+    for i in items:
+        if i["status"] == "cookies":
+            print("  sign-in    %s  -- then 'ytq cookies'" % (i["title"] or i["url"]))
+    counts = [(st, sum(1 for i in items if i["status"] == st)) for st in ORDER]
+    print("  " + (", ".join("%d %s" % (n, st) for st, n in counts if n) or "the queue is empty"))
+
+
+def cmd_cookies(run):
+    if not any(i["status"] == "cookies" for i in Q.snapshot()):
+        print("nothing is waiting on a Brave sign-in")
+        return
+    why = brave_ready()
+    if why:
+        say(why + " -- start Brave once, or set PROFILE in ~/.config/ytq/config", urgent=True)
+        sys.exit(1)
+    with Q.edit():
+        n = mark_cookie_retries()
+        runner = start_runner() if run else current_runner()
+    log("retrying %d with Brave's cookies" % n)
+    report([], [], runner)
 
 
 def main(argv):
-    cmd = argv[0] if argv else "tui"
-    if cmd == "add" and argv[1:]:
-        for u in argv[1:]:
-            if not URL_RE.match(u):
-                print("not a URL: " + u); continue
-            print(("queued: " if Q.add(u) else "already queued: ") + u)
-        # check them now, so 'ytq add' alone leaves a titled queue behind
-        while Q.first("checking"):
-            check(Q.first("checking"))
-        for it in Q.items:
-            if it["url"] in argv[1:]:
-                print("  %-9s %-10s %s" % (it["status"], it["quality"], it["title"] or it["error"]))
-    elif cmd == "list":
-        for it in Q.items:
-            print("%-12s %-10s %s" % (it["status"], it["quality"], it["title"] or it["url"]))
-            if it["error"]:
-                print("             %s" % it["error"][:100])
-        if not Q.items:
-            print("the queue is empty")
-    elif cmd == "run":
-        cmd_run()
-    elif cmd == "clear":
-        n = len(Q.items)
-        Q.items = [i for i in Q.items if i["status"] not in ("done", "failed", "rejected")]
-        Q.save()
-        print("removed %d" % (n - len(Q.items)))
+    flags = [a for a in argv if a in ("--run", "--no-run", "--quiet")]
+    args = [a for a in argv if a not in flags]
+    cmd = args[0] if args else "tui"
+    run = autostart(flags)
+    if cmd == "add" and args[1:]:
+        urls = []
+        for u in args[1:]:
+            if URL_RE.match(u):
+                urls.append(u)
+            else:
+                say("not a URL: " + u)
+        if urls:
+            report(urls, *enqueue(urls, run))
     elif cmd == "clip":
-        # Queue whatever URL is on the clipboard now, without the window.
         u = clipboard_url()
         if not u:
-            print("the clipboard does not hold a URL"); sys.exit(1)
-        print(("queued: " if Q.add(u) else "already queued: ") + u)
-        while Q.first("checking"):
-            check(Q.first("checking"))
+            say("the clipboard does not hold a URL")
+            sys.exit(1)
+        report([u], *enqueue([u], run))
+    elif cmd == "run":
+        cmd_run("--quiet" in flags)
+    elif cmd == "status":
+        cmd_status()
+    elif cmd == "cookies":
+        cmd_cookies(run)
+    elif cmd == "list":
+        items = Q.snapshot()
+        for it in items:
+            print("%-13s %-10s %s" % (it["status"], it["quality"], it["title"] or it["url"]))
+            if it["error"]:
+                print("              %s" % it["error"][:100])
+        if not items:
+            print("the queue is empty")
+    elif cmd == "clear":
+        with Q.edit() as items:
+            n = len(items)
+            items[:] = [i for i in items if i["status"] not in ("done", "failed", "rejected")]
+            n -= len(items)
+        print("removed %d" % n)
     elif cmd == "tui":
         curses.wrapper(tui)
     else:
-        print(open(__file__).read().split("\n\n")[0].replace("#!/usr/bin/env python3\n", ""))
-        print("usage: ytq | ytq add URL... | ytq clip | ytq run | ytq list | ytq clear")
-        sys.exit(2)
+        for line in open(__file__).read().splitlines()[1:]:
+            if not line.startswith("#"):
+                break
+            print(line[2:])
+        print("usage: ytq | ytq clip | ytq add URL... | ytq run | ytq status | ytq cookies | ytq list | ytq clear")
+        print()
+        print("config: %s (%s)" % (CONF.replace(HOME, "~"), "found" if os.path.isfile(CONF) else "not there -- the defaults apply"))
+        print("  KEY=VALUE lines, # for comments: DIR, FORMAT, PROFILE, KEYRING, POLL")
+        print("  in effect: DIR=%s  PROFILE=%s%s" % (S["DIR"].replace(HOME, "~"), S["PROFILE"],
+                                                 "  KEYRING=" + S["KEYRING"] if S["KEYRING"] else ""))
+        print("auto:   %s (%s)" % (AUTO.replace(HOME, "~"),
+              "found -- clip, add and cookies start downloading by themselves" if os.path.exists(AUTO)
+              else "not there -- clip and add only queue; touch it to have them start downloading"))
+        print("  --run or --no-run on clip, add or cookies overrides it for that one command")
+        sys.exit(0 if cmd in ("-h", "--help", "help") else 2)
 
 
 if __name__ == "__main__":
     main(sys.argv[1:])
 YTQ
     chmod 0755 /usr/local/bin/ytq
-    note "ytq -- a download queue that watches the clipboard; 'ytq add URL' from a shell"
+    note "ytq -- a download queue: Super+Shift+Y queues the clipboard's URL, 'ytq run' downloads"
+    note "  to have it start downloading by itself:  touch ~/.config/ytq/auto   (ytq --help)"
 }
 
 # ------------------------------------------- stage 10: the Geiger counter ---
