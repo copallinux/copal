@@ -19805,8 +19805,10 @@ Brave: use yt-brave, not --cookies-from-browser brave
 
 The queue: ytq
 
-    Super+Shift+Y       queue the URL on the clipboard
-    ytq clip
+    Super+Shift+Y       queue the URL on the clipboard. Copy more than a URL
+    ytq clip            -- a whole bookmarks.html, a page of notes -- and
+                        every YouTube video in it is queued, each once
+                        (channel and playlist pages are left out)
     ytq add URL...      the same, for URLs typed in a shell
     ytq run             download what is queued, one at a time, as MP4
                         into ~/Videos
@@ -20041,6 +20043,9 @@ install_ytq() {
 #                      queued at once; while the window has focus, every URL
 #                      copied afterwards is checked and queued too.
 #   ytq clip           queue the URL on the clipboard. This is Super+Shift+Y.
+#                      A clipboard holding more than a URL -- a bookmarks
+#                      export, a page of notes -- queues every YouTube video
+#                      in it, each once.
 #   ytq add URL...     the same, for URLs typed in a shell
 #   ytq run            download what is queued, in this terminal
 #   ytq status         is anything downloading, and what is left
@@ -20095,7 +20100,7 @@ install_ytq() {
 #   KEYRING   passed to yt-brave --keyring, e.g. basictext, for a desktop with no keyring
 #   POLL      clipboard poll, seconds   (default 1)
 # and next to it the empty file ~/.config/ytq/auto, which switches autostart on.
-import contextlib, curses, fcntl, json, os, re, shlex, signal, subprocess, sys, threading, time
+import contextlib, curses, fcntl, html, json, os, re, shlex, signal, subprocess, sys, threading, time
 
 HOME = os.path.expanduser("~")
 CONF = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config"), "ytq", "config")
@@ -20112,6 +20117,14 @@ COOKIE_WORDS = ("sign in", "log in", "login", "cookies", "age", "bot", "private 
 # A URL, strictly enough that a pasted sentence or a path never qualifies:
 # scheme, a host with at least one dot or a port, then anything without spaces.
 URL_RE = re.compile(r"^https?://(?:[A-Za-z0-9-]+\.)+[A-Za-z0-9-]+(?::\d+)?(?:/\S*)?$|^https?://localhost(?::\d+)?(?:/\S*)?$")
+# A YouTube video anywhere in a larger text: watch?v= (v need not come first),
+# shorts/, live/, embed/ and youtu.be/, on www., m. or music. The match is the
+# 11-character id and nothing after it, so a mix's &list= or a &t=5330s never
+# makes the same video a second entry. Channel and playlist pages do not match:
+# one bookmark of those would be hundreds of downloads.
+YT_RE = re.compile(r"https?://(?:(?:www|m|music)\.)?"
+                   r"(?:youtube\.com/(?:watch\?(?:[^\s\"'<>#]*?&)?v=|shorts/|live/|embed/)|youtu\.be/)"
+                   r"([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])")
 ORDER = ["downloading", "cookies", "retry-cookies", "checking", "queued", "retry", "done", "failed", "rejected"]
 # Work a runner has still to do. 'cookies' is not in it: that waits on a person.
 PENDING = ("checking", "queued", "retry", "retry-cookies", "downloading")
@@ -20619,10 +20632,22 @@ def focused():
 WATCH = {"on": True, "focused": True, "last": None}
 
 
-def clipboard_url():
-    """The clipboard's current text, if it is a URL; else None."""
+def youtube_urls(text):
+    """Every YouTube video in text, in the order first seen, once each, as a plain watch URL.
+    The text is unescaped first, so an href out of saved HTML matches with its &amp; as &."""
+    seen, urls = set(), []
+    for vid in YT_RE.findall(html.unescape(text)):
+        if vid not in seen:
+            seen.add(vid)
+            urls.append("https://www.youtube.com/watch?v=" + vid)
+    return urls
+
+
+def clipboard_urls():
+    """What 'ytq clip' queues: the YouTube videos in the clipboard, however much
+    text they are buried in; failing those, the clipboard itself if it is one URL."""
     text = read_clipboard()
-    return text if URL_RE.match(text) else None
+    return youtube_urls(text) or ([text] if URL_RE.match(text) else [])
 
 
 def watcher():
@@ -20811,7 +20836,12 @@ def cmd_run(quiet):
 
 def report(urls, added, runner):
     """One message, so a keypress makes one notification rather than a stack."""
-    lines = [("queued: " if u in added else "already queued: ") + u for u in urls]
+    if len(urls) > 5:
+        # A bookmarks file is hundreds of lines; the log has each URL already.
+        lines = ["queued %d of %d links; the other %d were already in the queue"
+                 % (len(added), len(urls), len(urls) - len(added))]
+    else:
+        lines = [("queued: " if u in added else "already queued: ") + u for u in urls]
     if runner:
         pid, started = runner
         lines.append("downloading: %s pid %s" % ("started," if started else "already, in", pid))
@@ -20865,11 +20895,11 @@ def main(argv):
         if urls:
             report(urls, *enqueue(urls, run))
     elif cmd == "clip":
-        u = clipboard_url()
-        if not u:
-            say("the clipboard does not hold a URL")
+        urls = clipboard_urls()
+        if not urls:
+            say("the clipboard holds no URL and no YouTube link")
             sys.exit(1)
-        report([u], *enqueue([u], run))
+        report(urls, *enqueue(urls, run))
     elif cmd == "run":
         cmd_run("--quiet" in flags)
     elif cmd == "status":
