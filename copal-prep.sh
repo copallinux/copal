@@ -19869,7 +19869,9 @@ The queue: ytq
     Super+Shift+Y       queue the URL on the clipboard. Copy more than a URL
     ytq clip            -- a whole bookmarks.html, a page of notes -- and
                         every YouTube video in it is queued, each once
-                        (channel and playlist pages are left out)
+                        (channel and playlist pages are left out). A
+                        YouTube link counts with or without https://,
+                        youtube.com/shorts/ID and youtu.be/ID included
     ytq add URL...      the same, for URLs typed in a shell
     ytq run             download what is queued, one at a time, as MP4
                         into ~/Downloads/SharedVM when the Mac's share is
@@ -20224,7 +20226,8 @@ install_ytq() {
 #   ytq clip           queue the URL on the clipboard. This is Super+Shift+Y.
 #                      A clipboard holding more than a URL -- a bookmarks
 #                      export, a page of notes -- queues every YouTube video
-#                      in it, each once.
+#                      in it, each once. A YouTube link may lack its https://
+#                      (youtube.com/shorts/ID), here and everywhere else.
 #   ytq add URL...     the same, for URLs typed in a shell
 #   ytq run            download what is queued, in this terminal
 #   ytq status         what is downloading, the step it is on, what is left
@@ -20346,8 +20349,11 @@ URL_RE = re.compile(r"^https?://(?:[A-Za-z0-9-]+\.)+[A-Za-z0-9-]+(?::\d+)?(?:/\S
 # shorts/, live/, embed/ and youtu.be/, on www., m. or music. The match is the
 # 11-character id and nothing after it, so a mix's &list= or a &t=5330s never
 # makes the same video a second entry. Channel and playlist pages do not match:
-# one bookmark of those would be hundreds of downloads.
-YT_RE = re.compile(r"https?://(?:(?:www|m|music)\.)?"
+# one bookmark of those would be hundreds of downloads. The https:// may be
+# missing, as in a link copied from an address bar or typed: youtube.com/shorts/ID.
+# Without it the host must not follow a letter, digit, ., @, / or -, so
+# notyoutube.com, foo.youtube.com and evil.com/youtube.com/... do not match.
+YT_RE = re.compile(r"(?:https?://|(?<![\w.@/-]))(?:(?:www|m|music)\.)?"
                    r"(?:youtube\.com/(?:watch\?(?:[^\s\"'<>#]*?&)?v=|shorts/|live/|embed/)|youtu\.be/)"
                    r"([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])")
 ORDER = ["downloading", "cookies", "retry-cookies", "checking", "queued", "retry", "done", "failed", "rejected"]
@@ -21266,11 +21272,26 @@ def youtube_urls(text):
     return urls
 
 
+def as_url(text):
+    """text as one URL to queue, or None. A YouTube video, with or without its
+    https:// -- youtube.com/shorts/ID, www.youtube.com/watch?v=ID&t=5s, youtu.be/ID --
+    is its plain watch URL, as 'ytq clip' queues it, so every form of one video
+    is one entry. It must start the text: a web.archive.org address holding a
+    YouTube URL stays an archive address. Any other URL stays as it is; other
+    text with no scheme is not a URL."""
+    text = text.strip()
+    m = YT_RE.match(text)
+    if m and not re.search(r"\s", text):
+        return "https://www.youtube.com/watch?v=" + m.group(1)
+    return text if URL_RE.match(text) else None
+
+
 def clipboard_urls():
     """What 'ytq clip' queues: the YouTube videos in the clipboard, however much
     text they are buried in; failing those, the clipboard itself if it is one URL."""
     text = read_clipboard()
-    return youtube_urls(text) or ([text] if URL_RE.match(text) else [])
+    url = as_url(text)
+    return youtube_urls(text) or ([url] if url else [])
 
 
 def watcher():
@@ -21279,8 +21300,8 @@ def watcher():
     # runner is started from here -- the window's own worker takes run.lock
     # as soon as nobody else has it.
     WATCH["last"] = read_clipboard()
-    if URL_RE.match(WATCH["last"]):
-        enqueue([WATCH["last"]], run=False)
+    if as_url(WATCH["last"]):
+        enqueue([as_url(WATCH["last"])], run=False)
     while not STOP.is_set():
         time.sleep(float(S["POLL"]))
         WATCH["focused"] = focused()
@@ -21290,8 +21311,8 @@ def watcher():
         if text == WATCH["last"]:
             continue
         WATCH["last"] = text
-        if URL_RE.match(text):
-            enqueue([text], run=False)
+        if as_url(text):
+            enqueue([as_url(text)], run=False)
 
 
 # --- the window ------------------------------------------------------------------
@@ -21404,8 +21425,8 @@ def tui(win):
             sel -= 1
         elif k == ord("a"):
             url = prompt(win, "URL:")
-            if URL_RE.match(url):
-                message = "queued" if enqueue([url], run=False)[0] else "already in the queue"
+            if as_url(url):
+                message = "queued" if enqueue([as_url(url)], run=False)[0] else "already in the queue"
             elif url:
                 message = "that is not a URL"
         elif k == ord("w"):
@@ -21533,8 +21554,8 @@ def main(argv):
     if cmd == "add" and args[1:]:
         urls = []
         for u in args[1:]:
-            if URL_RE.match(u):
-                urls.append(u)
+            if as_url(u):
+                urls.append(as_url(u))
             else:
                 say("not a URL: " + u)
         if urls:
@@ -21554,6 +21575,7 @@ def main(argv):
     elif cmd == "transcript" and args[1:]:
         failed = 0
         for u in args[1:]:
+            u = as_url(u) or u
             if not YT_RE.search(u):
                 print("not a YouTube video: " + u)
                 failed = 1
