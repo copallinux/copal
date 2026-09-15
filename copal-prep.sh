@@ -19690,9 +19690,10 @@ MSG
 # recorded while they are still true. ffmpeg writes those into the file (ytq's
 # META_OPTS) as well as merging the streams, one more reason it is not
 # optional below. The guide's "Citing what you keep" says what each tool here
-# records, and what it cannot. Downloading is format shifting -- the stream
-# becomes a file, ffmpeg copying it rather than re-encoding -- and the notes
-# are what keep the shifted copy traceable to its source.
+# records, and what it cannot. ffmpeg copies the streams rather than
+# re-encoding them, so a quote checked against the file is checked against
+# what was served. Neither that nor the notes decides whether a copy may be
+# kept; the guide's "What the copy is" says what does and does not.
 install_ytdlp() {
     say "yt-dlp"
     require_network || return 1
@@ -19967,19 +19968,27 @@ Citing what you keep
     -- the notes' URL line is always that form -- and keep the id in the
     filename.
 
+    License. The License line is the license the site states, when it
+    states one. On YouTube that is "Creative Commons Attribution license
+    (reuse allowed)": such a video may be copied and passed on, with credit
+    to its author, as far as the uploader had the right to license it. An
+    ordinary upload states none, and the line reads "not stated". That
+    means the usual rules apply, not that reuse is free.
+
     What goes away. A deleted or private video leaves its URL pointing at
     nothing, and your reader cannot check you. While the video is up, save
     the page to the Internet Archive, https://web.archive.org/save/URL, and
     give the archived address beside the original. The Archive usually keeps
-    the page and its text, not always the video. Your own copy is for
-    checking your reference; passing it on is the rights holder's to allow,
-    and YouTube's terms apply.
+    the page and its text, not always the video. Citing a video credits it;
+    it does not license a copy. Passing a copy on is the rights holder's to
+    allow.
 
     Accessibility. The transcript is plain UTF-8 text: a screen reader reads
-    it as it is, and a quotation can be copied from it. WCAG 2.2 asks for
-    captions (1.2.2) and for a text alternative to recorded media (1.2.3,
-    1.2.8); a transcript made from captions is a start on the second, not a
-    guarantee. Automatic captions are speech recognition, not a verbatim
+    it as it is, and a quotation can be copied from it. WCAG 2.2 sets what a
+    publisher owes -- captions (1.2.2) and a text alternative to recorded
+    media (1.2.3, 1.2.8) -- and a transcript made from captions is a start
+    on the second. It is a standard for publishers, not a right to copy.
+    Automatic captions are speech recognition, not a verbatim
     record; the Captions line says which kind a transcript came from,
     "written by the uploader" or "automatic". Either way, check a quotation
     against the audio, and cite it with its time in the video.
@@ -19989,27 +19998,29 @@ Citing what you keep
     URL may not see it. Say so in the reference.
 
     Quoting what was said. A recording of a public figure speaking in
-    public is a primary source for what they said and how. Cite the speaker,
-    the occasion and its date. The Author and Published lines are who
-    uploaded the video and when, not who spoke and when: the uploader may be
-    a news channel posting days later, or someone re-posting a clip. Prefer
-    the full recording, from the speaker's or the event's own channel, to an
-    excerpt, and say when you cite an excerpt. Quote the words exactly, with
-    enough around them that the meaning stays the speaker's, and give the
-    time in the recording. The transcript has no times, and it leaves out a
-    caption line that repeats the one before, so take the words from the
-    video, using the transcript to find them.
+    public is a primary source for what they said and how. Public describes
+    the occasion, not the recording, which belongs to whoever made it. Cite
+    the speaker, the occasion and its date. The Author and Published lines
+    are who uploaded the video and when, not who spoke and when: the
+    uploader may be a news channel posting days later, or someone re-posting
+    a clip. Prefer the full recording, from the speaker's or the event's own
+    channel, to an excerpt, and say when you cite an excerpt. Quote the
+    words exactly, with enough around them that the meaning stays the
+    speaker's, and give the time in the recording. The transcript has no
+    times, and it leaves out a caption line that repeats the one before, so
+    take the words from the video, using the transcript to find them.
 
-    Format shifting. ytq changes the form a recording is in, not what it
-    records: a stream on a website becomes an MP4 on your disk, and speech
-    becomes text. yt-dlp's merge and its metadata step copy the video and
-    audio streams without re-encoding them (ffmpeg -c copy), so the file
-    holds the streams YouTube served -- YouTube's own encoding of the upload,
-    not the uploader's original. The name and the notes sit around the
-    recording and change nothing in it. The transcript is the lossy part,
-    for the reasons above. Whether you may keep a copy depends on where you
-    are and on the site's terms; the notes keep what you do keep traceable
-    to its source.
+    What the copy is. The merge and the tagging copy the streams without
+    re-encoding (ffmpeg -c copy), so a quote checked against the file is
+    checked against what YouTube served; the transcript is the lossy part.
+    That makes the copy good evidence, not a permitted one. "Format shifting"
+    means copying something you own; a stream is a license to watch on the
+    site. A copy is easiest to defend when it does what the stream cannot --
+    quoting, criticism, reporting, checking a reference later -- and hardest
+    when it only replaces watching, or the video was paid for. YouTube's
+    terms forbid downloading without permission. Your own uploads, Creative
+    Commons videos (see License) and US federal government works raise none
+    of this.
 
 Method 2 -- a cookies.txt file
 
@@ -20092,7 +20103,9 @@ install_ytbrave() {
 #
 # A video that needs these cookies -- members-only, age-gated, private -- is
 # one a reader of your citation may not be able to open. Say so in the
-# reference. yt-brave adds only the cookies: the name, and the notes ytq
+# reference. Cookies give yt-dlp only the access your account already has. A
+# members-only video was paid for as a stream, and is the hardest copy to
+# justify. yt-brave adds only the cookies: the name, and the notes ytq
 # writes, are the same as for a public video.
 #
 #   yt-brave URL                    the Default profile
@@ -20243,10 +20256,10 @@ install_ytq() {
 # the extension: 'Café Tour: Part 2/3 [4K]' by Rick Astley is
 # Rick-Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.mp4. A YouTube video also gets
 # Rick-Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.txt beside it: Notes (full title,
-# author, URL, published and downloaded times, the video's filename), the
-# description, then the captions as plain text, fetched once the video is
-# done. The .mp4 carries the same notes in its metadata. See NAME_OPTS,
-# META_OPTS and transcript().
+# author, URL, published and downloaded times, any license the site states,
+# the video's filename), the description, then the captions as plain text,
+# fetched once the video is done. The .mp4 carries the same notes in its
+# metadata. See NAME_OPTS, META_OPTS and transcript().
 #
 # CITATIONS. The notes are the parts of a reference someone else can check --
 # author, full title, when it was published, the watch URL, when you fetched
@@ -20256,9 +20269,11 @@ install_ytq() {
 # recognition, not a verbatim record, and the Captions line says whether a
 # transcript came from them or from the uploader: check a quote against the
 # audio. The Author line is the uploader, not necessarily the speaker, and
-# Published is the upload, not the event recorded. ytq is format shifting:
-# the merge and the tagging copy the streams without re-encoding, and the
-# transcript is the lossy part (no timings, a repeated caption line dropped).
+# Published is the upload, not the event recorded. The merge and the tagging
+# copy the streams without re-encoding, and the transcript is the lossy part
+# (no timings, a repeated caption line dropped). A faithful copy with good
+# notes is still a copy: the guide's "What the copy is" says what that does
+# and does not settle, and the License line shows the Creative Commons cases.
 # The yt-dlp guide ('guide') covers dates, archiving, quoting and
 # accessibility.
 #
@@ -20391,17 +20406,18 @@ NAME = "%(safe_author&{}-|)s%(safe_title&{}_|)s%(safe_id)s.%(ext)s"
 # The notes, in the video file itself. --embed-metadata writes the full title,
 # the uploader's full name (as artist), the upload date and the description;
 # the comment gets the lines a transcript's Notes begin with, the URL and the
-# published and downloaded times among them, in UTC -- the only zone yt-dlp
-# formats times in. A literal : would end --parse-metadata's FROM, so labels
-# and times are written with = and . there and turned back by
+# published and downloaded times and the license among them, in UTC -- the
+# only zone yt-dlp formats times in. A literal : would end --parse-metadata's
+# FROM, so labels and times are written with = and . there and turned back by
 # --replace-in-metadata, whose arguments are separate. It needs ffmpeg, so
 # download() leaves it out on a machine without one.
 META_OPTS = ["--embed-metadata",
              "--parse-metadata", "Title = %(title)s\nAuthor = %(uploader,channel|unknown)s\n"
                                  "URL = %(webpage_url)s\n"
                                  "Published = %(timestamp>%Y-%m-%d %H.%M.%S UTC,upload_date>%Y-%m-%d|unknown)s\n"
-                                 "Downloaded = %(epoch>%Y-%m-%d %H.%M.%S UTC)s:(?s)(?P<meta_comment>.+)",
-             "--replace-in-metadata", "meta_comment", "(?m)^(Title|Author|URL|Published|Downloaded) = ", r"\1: ",
+                                 "Downloaded = %(epoch>%Y-%m-%d %H.%M.%S UTC)s\n"
+                                 "License = %(license|not stated)s:(?s)(?P<meta_comment>.+)",
+             "--replace-in-metadata", "meta_comment", "(?m)^(Title|Author|URL|Published|Downloaded|License) = ", r"\1: ",
              "--replace-in-metadata", "meta_comment", r"(\d\d)\.(\d\d)\.(\d\d) UTC", r"\1:\2:\3 UTC"]
 
 
@@ -20807,8 +20823,9 @@ def vtt_text(path):
 
 def notes(meta, url, lang, video):
     """The top of a transcript: the title; Notes -- full title, author and URL,
-    when it was published and downloaded, in local time, the video file it goes
-    with, and the captions' language and whether the uploader wrote them; the
+    when it was published and downloaded, in local time, the license the site
+    states, the video file it goes with, and the captions' language and whether
+    the uploader wrote them; the
     video's description when it has one; the Transcript heading."""
     def when(t):
         return time.strftime("%Y-%m-%d %H:%M:%S %z", time.localtime(t))
@@ -20828,7 +20845,10 @@ def notes(meta, url, lang, video):
         published = "unknown"
     rows = [("Title", title), ("Author", meta.get("uploader") or meta.get("channel") or "unknown"),
             ("URL", meta.get("webpage_url") or url), ("Published", published),
-            ("Downloaded", when(time.time())), ("Video", video or "none downloaded"),
+            ("Downloaded", when(time.time())),
+            # yt-dlp's license is what the site states: on YouTube, a Creative
+            # Commons license's row on the watch page, and nothing otherwise.
+            ("License", meta.get("license") or "not stated"), ("Video", video or "none downloaded"),
             ("Captions", "%s, %s" % (lang, source))]
     out = "%s\n\nNotes\n%s\n" % (title, "".join("  %-11s %s\n" % (k + ":", v) for k, v in rows))
     desc = (meta.get("description") or "").strip()
@@ -20849,7 +20869,7 @@ def transcript(url, outtmpl, cmd=("yt-dlp",), video=None):
            "--skip-download", "--no-simulate", "--no-playlist", "--no-warnings",
            "--write-subs", "--write-auto-subs", "--sub-langs", S["SUBS"] or DEFAULT_SUBS, "--sub-format", "vtt",
            "--print", "video:STEM %(filename)s",
-           "--print", "video:META %(.{title,uploader,channel,webpage_url,timestamp,upload_date,description,subtitles})j",
+           "--print", "video:META %(.{title,uploader,channel,webpage_url,timestamp,upload_date,license,description,subtitles})j",
            "-o", outtmpl, url]
     tag, t0 = short(url), time.time()
     log("%s: fetching the transcript, captions %s" % (tag, S["SUBS"] or DEFAULT_SUBS))
