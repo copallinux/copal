@@ -18,10 +18,16 @@ making them one project: `staticstream`, a Rust Cargo workspace that builds for
 every architecture Copal runs on and on the Mac. It would have:
 - the format as a library;
 - the `record` / `play` command;
+- ytq itself, moved into Rust piece by piece. It shares the Python ytq's
+  queue until it can replace it, and archives downloads as `.sstr` by
+  default;
 - a terminal *Workspace* named in the manner of NeXTSTEP and Smalltalk:
   a *Browser* of folders, an *Inspector*, a *Transcript*, a *Shelf*, and
-  *Services* sent to the selection;
-- ytq's downloads archived as `.sstr` by default.
+  *Services* sent to the selection.
+
+*Revised after phase 0.* The first version kept ytq in Python beside the
+new project. Its owner decided that ytq, now tied closely to Static Stream,
+belongs in the Rust project too. Sections V-A, V-C, V-G, V-H and VI say how.
 
 Before proposing anything, the report measures what the choice rests on:
 
@@ -289,16 +295,17 @@ staticstream/
    ├─ staticstream-tty/          the armor: lines, offsets, CRCs, erasure maps
    ├─ staticstream-cli/          the command, binary `sstr`: record, play, verify,
    │                             armor, recv, serve
-   ├─ staticstream-queue/        ytq's queue.json and its locks, read and written
-   │                             exactly as ytq does, so both see one queue
+   ├─ staticstream-ytq/          ytq in Rust: queue.json and its locks, settings,
+   │                             downloads; a library until it matches the Python
+   │                             ytq, then the binary `ytq`
    └─ staticstream-workspace/    the terminal Workspace, binary `sstr-workspace` (V-B)
 ```
 
 **Names.** The project, repository and packages are `staticstream`, which
 is free on crates.io (IV-B), so the library can be published under the
 format's own name. The things people type stay short: the binaries are
-`sstr` and `sstr-workspace`, and captures are `.sstr` files. The format
-keeps its name, Static Stream.
+`sstr`, `sstr-workspace` and, once it matches the Python one, `ytq`, and
+captures are `.sstr` files. The format keeps its name, Static Stream.
 
 **Dependencies.** None, following orrery and ascitty, for the reason they
 give: `copal-build` runs on nodes with no internet. The research makes this
@@ -374,7 +381,9 @@ download leaves:
 | `mp4` | `Author-Title_ID.mp4` and `.txt`, as ytq does today |
 | `both` | all three |
 
-**How.** ytq keeps downloading to a file, as now, and then runs:
+**How.** ytq keeps downloading to a file, as now, and then runs the
+following. The Python ytq does this first, and the Rust ytq does the same
+when it takes over.
 
 ```sh
 sstr record OUT.sstr --input FILE --type video/mp4 --key KEY \
@@ -393,9 +402,18 @@ Plain yt-dlp gets the same result with
 proposed: write the `.sstr` beside the file, verify it, then remove the
 original.
 
-**One queue.** `staticstream-queue` reads and writes `queue.json` under the same
-`queue.lock` protocol ytq uses. The Workspace's Queue and ytq's window then
-show one queue, and Super+Shift+Y keeps working unchanged.
+**One queue, and one ytq at a time on PATH.** `staticstream-ytq` reads and
+writes `queue.json` under the same `queue.lock` protocol the Python ytq
+uses. The Rust and Python ytq can therefore run side by side on one queue,
+and the Workspace's Queue is that queue. The crate stays a library, with no
+binary called `ytq`, until it does everything the Python one does:
+- **`copal-build`** copies every executable at the top of `target/release`
+  into `~/.local/bin`.
+- **`make install`** puts binaries there too.
+- **`~/.local/bin` comes before `/usr/local/bin`** on Copal's PATH, so an
+  unfinished `ytq` would hide the working one on every node.
+
+Super+Shift+Y keeps working unchanged throughout.
 
 ### D. One configuration
 
@@ -461,64 +479,54 @@ The Makefile is the front door, and it works with nothing but `cargo`
 installed, because `copal-build` calls `cargo` directly.
 `cargo make` is for the release matrix only:
 
+The Makefile as committed in phase 0, abridged:
+
 ```make
-# staticstream -- Static Stream, the sstr command and its Workspace.   make help
 CARGO ?= cargo
-ROOT  ?= $(HOME)/.local          # cargo install puts binaries in $(ROOT)/bin, on PATH
-ARGS  ?=
+# cargo install writes binaries into $(ROOT)/bin; ~/.local/bin is on Copal's PATH.
+ROOT ?= $(HOME)/.local
+ARGS ?=
 
-.PHONY: help build run workspace test check install tools dist clean
-
-help:        ## this list
-	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | sed 's/:.*## /\t/'
-
-build:       ## release build of every crate
+build: ## release build of every crate; also writes Cargo.lock the first time
 	$(CARGO) build --release --workspace
 
-run:         ## the command: make run ARGS='play cap.sstr --paced'
-	$(CARGO) run --release -p staticstream-cli -- $(ARGS)
+run: ## the sstr command:  make run ARGS='paths'
+	$(CARGO) run --release --quiet -p staticstream-cli -- $(ARGS)
 
-workspace:   ## the terminal Workspace
-	$(CARGO) run --release -p staticstream-workspace -- $(ARGS)
+workspace: ## the terminal Workspace
+	$(CARGO) run --release --quiet -p staticstream-workspace -- $(ARGS)
 
-test:        ## unit tests, and the cross-check against tools/copal-sstr.py
-	$(CARGO) test --workspace
+deps: ## prove Cargo.lock names no crate from outside this repository
+	@if grep -q '^source = ' Cargo.lock; then echo 'error: external crates'; exit 1; fi
 
-check: test  ## what a commit must pass
-	$(CARGO) build --release --workspace
+check: deps ## what a commit must pass: no external crates, the tests, an offline release build
+	$(CARGO) test --workspace --offline --locked --quiet
+	$(CARGO) build --release --workspace --offline --locked
 
-install:     ## sstr and sstr-workspace into ~/.local/bin
-	$(CARGO) install --locked --root $(ROOT) --path crates/staticstream-cli
-	$(CARGO) install --locked --root $(ROOT) --path crates/staticstream-workspace
+# ytq is not installed from here until the Rust ytq does all the Python one
+# does: $(ROOT)/bin comes before /usr/local/bin on Copal's PATH, and would hide it.
+install: ## sstr and sstr-workspace into ~/.local/bin (ROOT=DIR for DIR/bin)
+	$(CARGO) install --locked --offline --root $(ROOT) --path crates/staticstream-cli
+	$(CARGO) install --locked --offline --root $(ROOT) --path crates/staticstream-workspace
 
-tools:       ## cargo-make and cargo-zigbuild: from apk on Alpine, else from crates.io
-	@if command -v apk >/dev/null; then doas apk add cargo-make cargo-zigbuild; \
+tools: ## cargo-make and cargo-zigbuild, for make dist: apk on Alpine, else cargo install
+	@if command -v apk >/dev/null 2>&1; then doas apk add cargo-make cargo-zigbuild; \
 	 else $(CARGO) install --locked cargo-make cargo-zigbuild; fi
 
-dist:        ## every target in Makefile.toml, into dist/
+dist: ## release binaries for each target in Makefile.toml, into dist/
 	$(CARGO) make dist
-
-clean:
-	$(CARGO) clean
 ```
 
-```toml
-# Makefile.toml -- the release matrix. Needs rustup targets and cargo-zigbuild.
-[tasks.dist-aarch64]
-command = "cargo"
-args = ["zigbuild", "--release", "--target", "aarch64-unknown-linux-musl"]
+The comment on `ROOT` is on its own line on purpose. An earlier draft
+here wrote `ROOT ?= $(HOME)/.local   # comment`, and make keeps the spaces
+before a trailing comment as part of the value, so `--root` would have been
+given a path ending in spaces.
 
-[tasks.dist-armv7]
-command = "cargo"
-args = ["zigbuild", "--release", "--target", "armv7-unknown-linux-musleabihf"]
-
-[tasks.dist-x86_64]
-command = "cargo"
-args = ["zigbuild", "--release", "--target", "x86_64-unknown-linux-musl"]
-
-[tasks.dist]
-dependencies = ["dist-aarch64", "dist-armv7", "dist-x86_64"]
-```
+`Makefile.toml` sets `skip_core_tasks = true`, so cargo-make runs only the
+tasks defined there. Its `preflight` task stops with a message when
+cargo-zigbuild or rustup is missing. `dist-aarch64`, `dist-armv7` and
+`dist-x86_64` each run `cargo zigbuild --release --workspace --target …` and
+copy the binaries into `dist/TARGET/`.
 
 `make dist` and `make tools` are the only targets that need anything more
 than `cargo`. None writes inside a tracked file, so a checkout stays
@@ -528,9 +536,9 @@ pullable.
 
 | Phase | Delivers | Done when |
 |---|---|---|
-| 0 | the repository, workspace, Makefile, README | `make check` passes on the guest and on the Mac |
+| 0 | the repository, workspace, Makefile, README, and the constants each crate shares with the Python it replaces | `make check` passes on the guest and on the Mac. Done on the guest, commit `0ee5457` in `~/code/staticstream`; not yet run on the Mac |
 | 1 | the `staticstream` library and `sstr` at parity with `copal-sstr.py` | the cross-check and damage battery of V-F agree byte for byte; `record` refuses empty input |
-| 2 | ytq's `OUTPUT` and `media.conf`, calling `sstr` | a queued video leaves a `.sstr` that `sstr verify` passes and that plays back identical to the MP4 it replaced; `OUTPUT=mp4` leaves today's files |
+| 2 | ytq in Rust: `staticstream-ytq` takes over the queue, settings, `OUTPUT` and `media.conf`, and drives yt-dlp as the Python ytq does | Rust and Python ytq run side by side on one `queue.json`. A queued video leaves a `.sstr` that `sstr verify` passes and that plays back identical to the MP4 it replaced, and `OUTPUT=mp4` leaves today's files. Only then is the binary `ytq` built, and the Python one retired from `copal-prep.sh` |
 | 3 | `sstr-workspace`: Browser, Inspector, Transcript, then Services, then Queue | every Service is a command line shown in the Transcript before it runs |
 | 4 | `make dist` for the targets of V-E, and version 1's stronger outer code | binaries run on the Pi 2B and the x86_64 VM; version 1 rebuilds two lost records per group |
 
@@ -551,17 +559,28 @@ the UNIX file system underneath it, not a replacement for it [4]. Phased as
 V-H, each step is useful alone. After phase 2, ytq archives to `.sstr` with
 no new interface at all.
 
-**Why Rust, and why not all at once.** The measured case is the inner code,
-15× faster in Rust (IV-C). That is the difference between archiving a
-1080p download while the next one starts and waiting for it. A single
-binary per target, and builds on each machine, suit a system that runs on a
-Pi 2B and a Mac. ytq itself is not rewritten:
-- **It works:** its queue, cookie retry and naming carry a week of fixes.
-- **Its engine is Python:** yt-dlp is a Python program, which ytq drives
-  as a subprocess and could embed [18].
+**Why Rust, and why ytq comes too.** The measured case is the inner code,
+15× faster in Rust (IV-C). That is the difference between archiving a 1080p
+download while the next one starts and waiting for it. A single binary per
+target, and builds on each machine, suit a system that runs on a Pi 2B and
+a Mac.
 
-The seam between them is a command line, `sstr record`, and a file that
-both lock the same way, `queue.json`. Either side can change behind that.
+The first version of this report kept ytq in Python. Its owner overruled
+that, and rightly: once ytq archives into Static Stream by default, the two
+are one tool with two faces, and splitting them across two languages and
+two repositories would make every change to the queue, the naming or the
+notes a change in two places.
+
+Moving ytq does not mean rewriting what makes it work. yt-dlp stays a Python
+program, which ytq drives as a subprocess today [18], and a Rust ytq drives
+it the same way. The risk is a working tool with a week of fixes in its
+queue, cookie retry, naming and notes, so the move is made safe three ways:
+- **The Rust ytq shares the Python ytq's queue file and locks,** so the two
+  run side by side.
+- **Phase 0 already checks** that the paths and states copied into Rust are
+  still the Python ytq's.
+- **The binary `ytq` is built only when phase 2's test passes,** so the
+  Python ytq stays the one on PATH until then.
 
 **No dependencies costs work, and buys the fleet.** A ratatui Workspace would
 be quicker to write. It would also fail to build on every Copal node that
@@ -610,7 +629,7 @@ ls /usr/lib/rustlib; apk policy cargo-make cargo-zigbuild; cargo search sstr --l
 
 | File | Change |
 |---|---|
-| `docs/staticstream-project-lab-report.md` | this report; no code changed |
+| `docs/staticstream-project-lab-report.md` | this report; no code changed here. Revised after phase 0, for ytq moving into the Rust project and the Makefile as committed |
 
 ## References
 
