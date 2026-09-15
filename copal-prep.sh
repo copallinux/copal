@@ -19853,12 +19853,18 @@ The queue: ytq
                         captions come too, as text: Title_ID.txt beside
                         Title_ID.mp4 (SUBS= in the config turns that off)
     ytq transcript URL  only the captions, as that .txt
-    ytq status          what is downloading, what is left
+    ytq status          what is downloading -- which part, how far, merging,
+                        the transcript -- and what is left. The window shows
+                        the same above its list. Quitting the window stops
+                        its download, merge included.
     ytq                 a window. While it is focused, every URL you copy is
                         checked and queued, and it downloads them too. Keys
                         are on the bottom line.
     ytq list, ytq clear every entry; forget the finished ones
     ytq --help          all of it, and which config and auto file it found
+    ~/.local/share/ytq/ytq.log
+                        what happened: every line yt-dlp printed, tagged
+                        with the pid and video id, and why a download stopped
 
     To have Super+Shift+Y and 'ytq add' start downloading by themselves:
 
@@ -19875,7 +19881,8 @@ The queue: ytq
     Settings, if you want any, go in
     ~/.config/ytq/config: DIR, FORMAT, PROFILE and KEYRING (the last two
     are handed to yt-brave as --profile and --keyring), and SUBS, the
-    caption languages (default en.*; SUBS=ja,en for a Japanese video).
+    caption languages (default en,en-orig,en-US,en-GB; SUBS=ja,en for a
+    Japanese video).
 
 Filenames
 
@@ -20105,7 +20112,7 @@ install_ytq() {
 #                      in it, each once.
 #   ytq add URL...     the same, for URLs typed in a shell
 #   ytq run            download what is queued, in this terminal
-#   ytq status         is anything downloading, and what is left
+#   ytq status         what is downloading, the step it is on, what is left
 #   ytq cookies        retry what was waiting on a Brave sign-in
 #   ytq transcript URL...  just the captions, as text, for YouTube videos
 #   ytq list           every entry: queued, done, waiting, failed
@@ -20149,6 +20156,19 @@ install_ytq() {
 # after that is final. A runner with a terminal asks for Enter instead, once
 # the rest of the queue is done; one in the background sends a notification.
 #
+# WHAT IT IS DOING. The process that downloads keeps a live record in the
+# entry -- the step (looking it up, downloading part 1 of 2, merging, the
+# transcript), bytes, speed, ETA, yt-dlp's last line -- and the window shows
+# it above the list for whichever process is downloading; 'ytq status' too.
+# Quitting the window stops its download, merge and all.
+#
+# THE LOG, ~/.local/share/ytq/ytq.log, is for finding out what happened. Every
+# line carries the pid of the ytq that wrote it, and a download's lines its
+# video id. It has every line yt-dlp printed, progress every 30 seconds, each
+# part's size and speed, how long each step took, and why a download stopped;
+# a runner begins by naming its ytq, its yt-dlp and its settings. Past 4 MiB
+# it moves to ytq.log.1 and starts again.
+#
 # WHY "WHILE IT HAS FOCUS". The clipboard is a shared thing, and a queue that
 # grabbed every link you copied for any reason would be a nuisance. So the
 # window's watcher only acts while the window is the focused one: copy a link,
@@ -20166,7 +20186,8 @@ install_ytq() {
 #   KEYRING   passed to yt-brave --keyring, e.g. basictext, for a desktop with no keyring
 #   POLL      clipboard poll, seconds   (default 1)
 #   SUBS      caption languages for the transcript, a yt-dlp --sub-langs list
-#             (default en.*); SUBS= with nothing after it turns transcripts off
+#             (default en,en-orig,en-US,en-GB: exact names, since en.* also
+#             takes YouTube's translations into English); SUBS= turns it off
 # and next to it the empty file ~/.config/ytq/auto, which switches autostart on.
 import contextlib, curses, fcntl, glob, html, json, os, re, shlex, signal, subprocess, sys, textwrap, threading, time
 
@@ -20180,6 +20201,9 @@ RUNLOCK = os.path.join(DATA, "run.lock")
 LOG = os.path.join(DATA, "ytq.log")
 DEFAULT_FORMAT = ("bv*[ext=mp4][vcodec^=avc1]+ba[ext=m4a]/bv*[ext=mp4]+ba[ext=m4a]"
                   "/b[ext=mp4]/bv*+ba/b")
+# Exact names, not en.*: that also takes YouTube's machine translations into
+# English (en-de is English from German), each one more caption request.
+DEFAULT_SUBS = "en,en-orig,en-US,en-GB"
 COOKIE_WORDS = ("sign in", "log in", "login", "cookies", "age", "bot", "private video",
                 "members", "premium", "confirm you", "403", "restricted", "subscriber")
 # A URL, strictly enough that a pasted sentence or a path never qualifies:
@@ -20234,7 +20258,7 @@ def videos_dir():
 
 
 def settings():
-    s = {"DIR": videos_dir(), "FORMAT": DEFAULT_FORMAT, "PROFILE": "Default", "KEYRING": "", "POLL": "1", "SUBS": "en.*"}
+    s = {"DIR": videos_dir(), "FORMAT": DEFAULT_FORMAT, "PROFILE": "Default", "KEYRING": "", "POLL": "1", "SUBS": DEFAULT_SUBS}
     try:
         for line in open(CONF):
             line = line.strip()
@@ -20249,10 +20273,67 @@ def settings():
 S = settings()
 
 
+LOG_MAX = 4 * 1024 * 1024
+
+
 def log(msg):
+    """Timestamped lines, each tagged with the pid: several ytq processes write here."""
     os.makedirs(DATA, exist_ok=True)
+    with contextlib.suppress(OSError):
+        if os.path.getsize(LOG) > LOG_MAX:
+            os.replace(LOG, LOG + ".1")
+    stamp = "%s [%d] " % (time.strftime("%Y-%m-%d %H:%M:%S"), os.getpid())
     with open(LOG, "a") as f:
-        f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + msg + "\n")
+        f.write("".join(stamp + line + "\n" for line in (str(msg).splitlines() or [""])))
+
+
+def log_start():
+    """A runner's first line: which ytq and yt-dlp did what follows, with what settings."""
+    try:
+        ver = subprocess.run(["yt-dlp", "--version"], capture_output=True, text=True, timeout=20).stdout.strip()
+    except (OSError, subprocess.SubprocessError) as e:
+        ver = "(cannot run: %s)" % e
+    me = os.path.realpath(__file__)
+    try:
+        mtime = time.strftime("%Y-%m-%d %H:%M", time.localtime(os.path.getmtime(me)))
+    except OSError:
+        mtime = "?"
+    log("runner '%s' took run.lock: ytq %s of %s, yt-dlp %s, python %s; DIR=%s FORMAT=%s SUBS=%s PROFILE=%s; "
+        "/etc/yt-dlp.conf %s" % (" ".join(sys.argv[1:]) or "window", me, mtime, ver or "?", sys.version.split()[0],
+                                 S["DIR"], S["FORMAT"], S["SUBS"] or "(off)", S["PROFILE"],
+                                 "present" if os.path.exists("/etc/yt-dlp.conf") else "absent"))
+
+
+def short(url):
+    """A YouTube URL's video id, else the URL: the tag on a download's log lines."""
+    m = YT_RE.search(url)
+    return m.group(1) if m else url
+
+
+def number(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def na(v):
+    """A value from a yt-dlp template, or '' where yt-dlp had none to give."""
+    v = str(v or "").strip()
+    return "" if v in ("NA", "None", "none") or v.startswith("Unknown") else v
+
+
+def fmt_size(n):
+    n = number(n)
+    for unit in ("B", "KiB", "MiB", "GiB"):
+        if n < 1024 or unit == "GiB":
+            return ("%d %s" if unit == "B" else "%.1f %s") % (n, unit)
+        n /= 1024
+
+
+def fmt_secs(s):
+    s = int(max(0, s))
+    return "%d:%02d:%02d" % (s // 3600, s // 60 % 60, s % 60) if s >= 3600 else "%d:%02d" % (s // 60, s % 60)
 
 
 # Who hears about things. A terminal gets them printed; Super+Shift+Y and the
@@ -20376,12 +20457,15 @@ class RunLock:
         fd.write("%d\n" % os.getpid())
         fd.flush()
         self.fd = fd
+        log_start()
         # Nobody else can be downloading now, so an entry still marked so was
         # left behind by a runner that died.
         with Q.edit() as items:
             for it in items:
                 if it["status"] == "downloading":
-                    it.update(status="queued", progress="")
+                    log("%s: left 'downloading' (%s) by a runner that is gone; back in the queue"
+                        % (short(it["url"]), (it.get("live") or {}).get("phase", "no step recorded")))
+                    it.update(status="queued", progress="", live={})
         return True
 
     def release(self):
@@ -20456,7 +20540,7 @@ def enqueue(urls, run=False):
 
 STOP = threading.Event()
 PAUSED = threading.Event()
-CURRENT = {"proc": None, "url": None, "cookies": False, "attempts": 0}
+CURRENT = {"proc": None, "url": None, "cookies": False, "attempts": 0, "live": None}
 
 
 # --- yt-dlp -------------------------------------------------------------------
@@ -20507,9 +20591,11 @@ def check(url):
     """Can yt-dlp fetch this as an MP4, and at what height? --simulate costs one request."""
     cmd = ["yt-dlp", "--simulate", "--no-playlist", "--no-warnings", "-f", S["FORMAT"],
            "--print", "%(title)s\t%(height)s\t%(ext)s", url]
+    t0 = time.time()
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
     except subprocess.TimeoutExpired:
+        log("%s: check: yt-dlp gave no answer in 180 s" % short(url))
         update(url, status="rejected", error="timed out asking yt-dlp about it")
         say("not downloadable (timed out): " + url)
         return
@@ -20521,8 +20607,11 @@ def check(url):
         title, height, ext = (r.stdout.strip().splitlines()[0].split("\t") + ["", ""])[:3]
         q = ("%sp" % height if height not in ("NA", "", "None") else "?") + " " + ext
         update(url, status="queued", title=title[:200], quality=q, error="")
-        log("queued %s [%s] %s" % (title, q, url))
+        log("queued %s [%s] %s (checked in %.1f s)" % (title, q, url, time.time() - t0))
     else:
+        log("%s: check: yt-dlp exited %d after %.1f s" % (short(url), r.returncode, time.time() - t0))
+        for line in r.stderr.strip().splitlines()[-4:]:
+            log("%s: check: %s" % (short(url), line))
         err = (r.stderr.strip().splitlines() or ["no output"])[-1][:300]
         if cookie_problem(err):
             # Not rejected: queue it anyway. The first real attempt is what
@@ -20560,13 +20649,19 @@ def transcript(url, outtmpl, cmd=("yt-dlp",)):
     run it is part of, -i or not, and would put a finished video back in the queue."""
     cmd = list(cmd) + NAME_OPTS + [
            "--skip-download", "--no-simulate", "--no-playlist", "--no-warnings",
-           "--write-subs", "--write-auto-subs", "--sub-langs", S["SUBS"] or "en.*", "--sub-format", "vtt",
+           "--write-subs", "--write-auto-subs", "--sub-langs", S["SUBS"] or DEFAULT_SUBS, "--sub-format", "vtt",
            "--print", "video:STEM %(filename)s", "--print", "video:TITLE %(title)j", "-o", outtmpl, url]
+    tag, t0 = short(url), time.time()
+    log("%s: fetching the transcript, captions %s" % (tag, S["SUBS"] or DEFAULT_SUBS))
     log("run: " + " ".join(shlex.quote(c) for c in cmd))
     try:
         r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=300)
     except (OSError, subprocess.SubprocessError) as e:
+        log("%s: transcript: %s" % (tag, e))
         return None, "cannot run %s: %s" % (cmd[0], e)
+    log("%s: transcript run exited %d after %s" % (tag, r.returncode, fmt_secs(time.time() - t0)))
+    for line in r.stderr.strip().splitlines()[-8:]:
+        log("%s: transcript: yt-dlp: %s" % (tag, line))
     stem, title = "", ""
     for line in r.stdout.splitlines():
         if line.startswith("STEM "):
@@ -20579,14 +20674,16 @@ def transcript(url, outtmpl, cmd=("yt-dlp",)):
     # shortest name, the plain language, is taken; for a language the uploader
     # captioned, yt-dlp has already chosen those captions over automatic ones.
     vtts = sorted(glob.glob(glob.escape(stem) + ".*.vtt"), key=lambda p: (len(p), p)) if stem else []
+    log("%s: captions written: %s" % (tag, ", ".join(os.path.basename(v) for v in vtts) or "none"))
     if not vtts:
-        return None, (r.stderr.strip().splitlines() or ["no captions matching " + (S["SUBS"] or "en.*")])[-1][:300]
+        return None, (r.stderr.strip().splitlines() or ["no captions matching " + (S["SUBS"] or DEFAULT_SUBS)])[-1][:300]
     lang = vtts[0][len(stem) + 1:-len(".vtt")]
     try:
         text = vtt_text(vtts[0])
         if text:
             with open(stem + ".txt", "w", encoding="utf-8") as f:
                 f.write("%s\n%s\ncaptions: %s\n\n%s\n" % (title or os.path.basename(stem), url, lang, text))
+            log("%s: wrote %s: %d words from the %s captions" % (tag, stem + ".txt", len(text.split()), lang))
     except OSError as e:
         return None, "cannot write the transcript: %s" % e
     finally:
@@ -20609,80 +20706,252 @@ def claim():
     return None, False
 
 
+# What yt-dlp reports as it downloads: one PROGRESS line per update, fields
+# in PROGRESS_KEYS order. Byte counts come raw, so parts can be added up.
+PROGRESS_KEYS = ("pct", "got_b", "total_b", "est_b", "speed", "eta", "elapsed", "frag", "frags",
+                 "format", "vcodec", "acodec", "height", "state")
+PROGRESS_TEMPLATE = "download:PROGRESS " + "|".join(
+    "%(" + f + ")s" for f in ("progress._percent_str", "progress.downloaded_bytes", "progress.total_bytes",
+                             "progress.total_bytes_estimate", "progress._speed_str", "progress._eta_str",
+                             "progress._elapsed_str", "progress.fragment_index", "progress.fragment_count",
+                             "info.format_id", "info.vcodec", "info.acodec", "info.height", "progress.status"))
+
+
+def stage(line, lv):
+    """Read one line of yt-dlp's own output into lv, a download's live record.
+    True when the line begins a new step."""
+    before = (lv.get("phase"), lv.get("part"))
+    m = re.match(r"\[info\] \S+: Downloading \d+ format\(s\): (\S+)", line)
+    if m:
+        lv.update(phase="starting", formats=m.group(1), parts=len(m.group(1).split("+")))
+    elif line.startswith("[download] Destination: "):
+        for k in PROGRESS_KEYS:
+            lv.pop(k, None)
+        lv.update(phase="downloading", part=lv.get("part", 0) + 1, dest=line[len("[download] Destination: "):])
+    elif line.startswith("[download] ") and line.endswith(" has already been downloaded"):
+        lv.update(phase="already on disk", part=lv.get("part", 0) + 1,
+                  dest=line[len("[download] "):-len(" has already been downloaded")])
+    elif line.startswith("[Merger] Merging formats into "):
+        lv.update(phase="merging", dest=line[len("[Merger] Merging formats into "):].strip('"'))
+    elif re.match(r"\[(Fixup\w*|FFmpeg\w*|Embed\w*)\] ", line):
+        lv.update(phase="post-processing (%s)" % line[1:line.index("]")])
+    elif line.startswith("Deleting original file"):
+        lv.update(phase="removing the part files")
+    if (lv.get("phase"), lv.get("part")) == before:
+        return False
+    lv["since"] = time.time()
+    return True
+
+
+def stream_of(lv):
+    """'video f299 avc1.64002a 1080p': the part being fetched, as far as yt-dlp has said."""
+    v, a, fmt = na(lv.get("vcodec")), na(lv.get("acodec")), na(lv.get("format"))
+    if not fmt and lv.get("formats") and lv.get("part"):
+        ids = lv["formats"].split("+")
+        fmt = ids[lv["part"] - 1] if lv["part"] <= len(ids) else ""
+    kind = "video and audio" if v and a else "video" if v else "audio" if a else ""
+    height = "%sp" % na(lv.get("height")) if v and na(lv.get("height")) else ""
+    return " ".join(x for x in (kind, "f" + fmt if fmt else "", v or a, height) if x) or "?"
+
+
+def size_of(lv):
+    """'369.0 MiB of 816.6 MiB', with ~ where the total is yt-dlp's estimate."""
+    got, total, est = number(lv.get("got_b")), number(lv.get("total_b")), number(lv.get("est_b"))
+    if total or est:
+        return "%s of %s%s" % (fmt_size(got), "" if total else "~", fmt_size(total or est))
+    return fmt_size(got) if got else ""
+
+
+def describe(lv):
+    """The step a download is on, in words."""
+    ph = lv.get("phase") or "starting"
+    part = " part %s of %s" % (lv["part"], lv["parts"]) if lv.get("part") and lv.get("parts") else ""
+    if ph in ("downloading", "already on disk"):
+        return "%s%s: %s" % (ph, part, stream_of(lv))
+    if ph == "merging":
+        return "merging the video and audio into one file (ffmpeg)"
+    return ph
+
+
+def compact(lv):
+    """The one-line form, for the list: '1/2 45.2% 12.3MiB/s eta 00:31', or the step."""
+    ph = lv.get("phase") or ""
+    if ph != "downloading" or not na(lv.get("pct")):
+        return ph
+    part = "%s/%s " % (lv["part"], lv["parts"]) if lv.get("part") and lv.get("parts") else ""
+    eta = na(lv.get("eta"))
+    return ("%s%s %s%s" % (part, lv["pct"], na(lv.get("speed")), " eta " + eta if eta else "")).strip()
+
+
+def bar(frac, width):
+    n = int(round(max(0.0, min(1.0, frac)) * width))
+    return "[" + "#" * n + "-" * (width - n) + "]"
+
+
+def live_view(it, width):
+    """Lines on a download under way, for the window and 'ytq status', from the
+    live record its runner keeps in the entry -- often in another process."""
+    lv, now = it.get("live") or {}, time.time()
+    rows = ["now      %s  (for %s)" % (describe(lv), fmt_secs(now - lv.get("since", now)))]
+    ph, bw = lv.get("phase"), max(10, min(40, width - 64))
+    if ph == "downloading" and na(lv.get("pct")):
+        frag = "  fragment %s of %s" % (lv["frag"], lv["frags"]) if na(lv.get("frag")) and na(lv.get("frags")) else ""
+        rows.append("progress %s %s  %s  %s  eta %s%s" % (
+            bar(number(lv["pct"].rstrip("%")) / 100, bw), lv["pct"], size_of(lv),
+            na(lv.get("speed")) or "?", na(lv.get("eta")) or "?", frag))
+    elif ph == "merging" and lv.get("dest"):
+        # ffmpeg writes NAME.temp.mp4 and renames it at the end; its size
+        # against the parts' is as near to a merge percentage as there is.
+        root, ext = os.path.splitext(lv["dest"])
+        try:
+            wrote = os.path.getsize(root + ".temp" + ext)
+        except OSError:
+            wrote = None
+        want = number(lv.get("done_b"))
+        if wrote is not None and want:
+            rows.append("progress %s ~%d%%  %s written of about %s" % (
+                bar(wrote / want, bw), min(100, wrote * 100 // want), fmt_size(wrote), fmt_size(want)))
+        elif wrote is not None:
+            rows.append("progress %s written" % fmt_size(wrote))
+    overall = ["attempt %s" % it.get("attempts", "?"),
+               "with Brave's cookies" if lv.get("cookies") else "plain yt-dlp",
+               "started %s ago" % fmt_secs(now - lv["started"]) if lv.get("started") else "",
+               "%s fetched in %d part%s" % (fmt_size(lv["done_b"]), lv["parts_done"], "" if lv["parts_done"] == 1 else "s")
+               if lv.get("parts_done") else "",
+               "runner pid %s" % lv["pid"] if lv.get("pid") else ""]
+    rows.append("overall  " + ", ".join(o for o in overall if o))
+    if lv.get("dest"):
+        rows.append("file     " + os.path.basename(lv["dest"]))
+    if lv.get("last"):
+        rows.append("yt-dlp   " + lv["last"])
+    return rows
+
+
 def download(it, with_cookies):
-    url, title = it["url"], it["title"] or it["url"]
+    url, title, tag = it["url"], it["title"] or it["url"], short(it["url"])
     os.makedirs(S["DIR"], exist_ok=True)
     # With cookies it is yt-brave rather than yt-dlp -- the same arguments,
-    # with the Brave profile and keyring put in front by the wrapper.
+    # with the Brave profile and keyring put in front by the wrapper. --print
+    # makes yt-dlp quiet, and quiet hides the progress lines and every line
+    # about merging; --progress and --no-quiet bring both back.
     cmd = (brave_cmd() if with_cookies else ["yt-dlp"]) + NAME_OPTS + [
            "--no-playlist", "--newline", "--no-simulate", "-f", S["FORMAT"],
-           "--merge-output-format", "mp4",
-           "--progress-template", "download:PROGRESS %(progress._percent_str)s %(progress._speed_str)s %(progress._eta_str)s",
+           "--merge-output-format", "mp4", "--progress", "--no-quiet",
+           "--progress-template", PROGRESS_TEMPLATE,
            "--print", "after_move:FILE %(filepath)s",
            "-o", os.path.join(S["DIR"].replace("%", "%%"), NAME)]
     cmd.append(url)
+    log("%s: attempt %d at %s%s, into %s" % (tag, it["attempts"], title,
+                                            " with Brave's cookies" if with_cookies else "", S["DIR"]))
     log("run: " + " ".join(shlex.quote(c) for c in cmd))
+    started = time.time()
+    # The live record: what the window and 'ytq status' show, kept in the
+    # entry because the process downloading is often not the one looking.
+    live = {"phase": "looking it up", "since": started, "started": started, "pid": os.getpid(),
+            "cookies": with_cookies, "done_b": 0, "parts_done": 0}
+    update(url, progress=live["phase"], live=dict(live))
     try:
         p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              text=True, start_new_session=True)
     except OSError as e:
-        update(url, status="failed", error="cannot run %s: %s" % (cmd[0], e), progress="")
+        update(url, status="failed", error="cannot run %s: %s" % (cmd[0], e), progress="", live={})
         say("failed: cannot run %s: %s" % (cmd[0], e), urgent=True)
         return
     # attempts as it was before claim() counted this one, so a stop from
     # either side -- here, or stop_current() -- hands back the same number.
-    CURRENT.update(proc=p, url=url, cookies=with_cookies, attempts=it["attempts"] - 1)
-    tail, fname, last = [], "", 0.0
+    CURRENT.update(proc=p, url=url, cookies=with_cookies, attempts=it["attempts"] - 1, live=live)
+    tail, fname, wrote, sampled = [], "", 0.0, started
     for line in p.stdout:
         line = line.rstrip()
+        if not line:
+            continue
+        now, changed = time.time(), False
         if line.startswith("PROGRESS "):
-            # Once a second is plenty for a progress figure, and every write
-            # is a turn at queue.lock that a 'ytq clip' might be waiting for.
-            if time.time() - last >= 1:
-                last = time.time()
-                if update(url, progress=line[9:].strip()) is None:
-                    log("deleted while downloading: " + url)
-                    kill(p)
+            live.update(zip(PROGRESS_KEYS, (v.strip() for v in line[9:].split("|"))))
+            if live.get("state") == "finished":
+                size = number(live.get("total_b")) or number(live.get("got_b"))
+                live["done_b"] += size
+                live["parts_done"] += 1
+                log("%s: part %s done: %s, %s in %s at %s" % (tag, live.get("part", "?"), stream_of(live),
+                    fmt_size(size), na(live.get("elapsed")) or "?", na(live.get("speed")) or "?"))
+                changed = True
+            elif now - sampled >= 30:
+                sampled = now
+                log("%s: %s, %s, %s" % (tag, compact(live), stream_of(live), size_of(live)))
         elif line.startswith("FILE "):
             fname = line[5:]
-        elif line:
+            log("%s: file %s" % (tag, fname))
+        elif line.startswith("[MetadataParser] "):
+            # Seven lines per filename rule, twice over with /etc/yt-dlp.conf
+            # present; the name they make is logged as 'file' at the end.
+            continue
+        else:
             tail = (tail + [line])[-6:]
+            live["last"] = line
+            log("%s: yt-dlp: %s" % (tag, line))
+            took = fmt_secs(now - live.get("since", now))
+            if stage(line, live):
+                changed = True
+                log("%s: now %s (the step before took %s)" % (tag, describe(live), took))
+                if MODE["say"] == "print":
+                    print("  " + describe(live), flush=True)
+        # Once a second is plenty for the queue, and every write is a turn at
+        # queue.lock that a 'ytq clip' might be waiting for. A new step goes
+        # in at once.
+        if changed or now - wrote >= 1:
+            wrote = now
+            if update(url, progress=compact(live), live=dict(live)) is None:
+                log("%s: deleted from the queue while downloading; stopping yt-dlp" % tag)
+                kill(p)
     p.wait()
-    CURRENT.update(proc=None, url=None, cookies=False)
+    took = fmt_secs(time.time() - started)
+    CURRENT.update(proc=None, url=None, cookies=False, live=None)
     if STOP.is_set():
-        update(url, status="retry-cookies" if with_cookies else "queued", attempts=it["attempts"] - 1, progress="")
+        log("%s: stopped while %s, %s in; back in the queue" % (tag, live.get("phase"), took))
+        update(url, status="retry-cookies" if with_cookies else "queued", attempts=it["attempts"] - 1,
+               progress="", live={})
         return
     CURRENT.update(attempts=0)
+    log("%s: yt-dlp exited %d after %s, last step: %s" % (tag, p.returncode, took, live.get("phase")))
     if p.returncode == 0:
+        with contextlib.suppress(OSError):
+            log("%s: %s is %s" % (tag, fname, fmt_size(os.path.getsize(fname))))
         also = ""
         # The transcript takes the video's name with .txt, so the two sort together.
-        if fname and S["SUBS"] and YT_RE.search(url) and update(url, progress="transcript") is not None:
-            txt, why = transcript(url, os.path.splitext(fname)[0].replace("%", "%%") + ".%(ext)s",
-                                  brave_cmd() if with_cookies else ["yt-dlp"])
-            log("transcript: " + (txt or "none -- " + why))
-            also = " + transcript" if txt else " (no transcript)"
-        if update(url, status="done", file=fname, progress="", error="") is not None:
+        if fname and S["SUBS"] and YT_RE.search(url):
+            live.update(phase="fetching the transcript", since=time.time(), last="",
+                        dest=os.path.splitext(fname)[0] + ".txt")
+            if update(url, progress="transcript", live=dict(live)) is not None:
+                txt, why = transcript(url, os.path.splitext(fname)[0].replace("%", "%%") + ".%(ext)s",
+                                      brave_cmd() if with_cookies else ["yt-dlp"])
+                log("%s: transcript: %s" % (tag, txt or "none -- " + why))
+                also = " + transcript" if txt else " (no transcript)"
+        if update(url, status="done", file=fname, progress="", error="", live={}) is not None:
             say("done: " + (os.path.basename(fname) if fname else title) + also)
         return
     err = (tail or ["yt-dlp exited %d" % p.returncode])[-1][:300]
     if cookie_problem(err) and not it["cookie_tried"]:
-        if update(url, status="cookies", error=err, progress="") is not None:
+        log("%s: that reads like a login, age or bot check; waiting on a Brave sign-in" % tag)
+        if update(url, status="cookies", error=err, progress="", live={}) is not None:
             open_browser(url)
             say("needs a Brave sign-in: %s -- Brave is open on it; sign in, then 'ytq cookies'" % title, urgent=True)
     elif it["attempts"] < 2 and not it["cookie_tried"]:
-        update(url, status="retry", error=err, progress="")
+        update(url, status="retry", error=err, progress="", live={})
         log("retry later: %s: %s" % (url, err))
-    elif update(url, status="failed", error=err, progress="") is not None:
+    elif update(url, status="failed", error=err, progress="", live={}) is not None:
         say("failed: %s -- %s" % (title, err), urgent=True)
 
 
-def stop_current():
+def stop_current(why):
     """Kill the download under way and put its entry back as it was."""
-    p, url = CURRENT["proc"], CURRENT["url"]
+    p, url, lv = CURRENT["proc"], CURRENT["url"], CURRENT.get("live") or {}
     if p:
+        log("%s: stopping yt-dlp (pid %d) while %s, %s in, because %s. Back in the queue; finished parts "
+            "and .part files stay, and the next attempt picks them up." % (
+                short(url), p.pid, lv.get("phase", "?"), fmt_secs(time.time() - lv.get("started", time.time())), why))
         kill(p)
         update(url, status="retry-cookies" if CURRENT["cookies"] else "queued",
-               attempts=CURRENT["attempts"], progress="")
+               attempts=CURRENT["attempts"], progress="", live={})
 
 
 def checker():
@@ -20864,7 +21133,8 @@ def tui(win):
     curses.curs_set(0)
     win.nodelay(True)
     win.timeout(500)
-    if curses.has_colors():
+    colors = curses.has_colors()
+    if colors:
         curses.start_color(); curses.use_default_colors()
         curses.init_pair(1, curses.COLOR_GREEN, -1); curses.init_pair(2, curses.COLOR_RED, -1)
         curses.init_pair(3, curses.COLOR_YELLOW, -1); curses.init_pair(4, curses.COLOR_CYAN, -1)
@@ -20880,18 +21150,35 @@ def tui(win):
                  "clipboard: paused (window not focused)" if WATCH["on"] else "clipboard: off")
         worker = ("[paused]" if PAUSED.is_set() else "") if RUN.fd else \
                  "[downloading in pid %s]" % holder if holder else "[no worker yet]"
-        head = " ytq  %s   -> %s   %s" % (state, S["DIR"].replace(HOME, "~"), worker)
-        win.addstr(0, 0, head[:w - 1], curses.A_REVERSE | curses.A_BOLD)
+        counts = "  ".join("%d %s" % (n, st) for st, n in
+                           ((st, sum(1 for i in items if i["status"] == st)) for st in ORDER) if n)
+        head = " ytq  %s   -> %s   %s   %s" % (state, S["DIR"].replace(HOME, "~"), worker, counts)
+        win.addstr(0, 0, head[:w - 1].ljust(w - 1), curses.A_REVERSE | curses.A_BOLD)
+        # Downloads under way go above the list, each with the step it is on,
+        # read from the live record whichever process is downloading keeps.
+        top_y = 1
+        for it in [i for i in items if i["status"] == "downloading"][:2]:
+            rows = live_view(it, w - 4)[:max(0, h - top_y - 10)]
+            if not rows:
+                break
+            win.addstr(top_y, 0, (" > %s   %s" % (it["title"] or it["url"], it["quality"]))[:w - 1],
+                       (curses.color_pair(4) if colors else 0) | curses.A_BOLD)
+            for n, row in enumerate(rows):
+                win.addstr(top_y + 1 + n, 0, ("   " + row)[:w - 1])
+            top_y += len(rows) + 2
+        if top_y > 1:
+            win.addstr(top_y - 1, 0, "-" * (w - 1), curses.A_DIM)
+        room = max(1, h - 3 - top_y)
         sel = max(0, min(sel, len(items) - 1))
-        top = max(0, sel - (h - 5))
-        for row, it in enumerate(items[top:top + h - 4]):
-            y = row + 1
+        top = max(0, sel - (room - 1))
+        for row, it in enumerate(items[top:top + room]):
+            y = top_y + row
             st = it["status"]
             col = {"done": 1, "failed": 2, "rejected": 2, "cookies": 3, "retry": 3, "downloading": 4}.get(st, 0)
             extra = it["quality"] if st in ("queued", "done") else it["error"][:40]
             line = " %s %-13s %-9s %s" % (MARK.get(st, " "), st, extra[:9], it["title"] or it["url"])
             if st == "downloading":
-                line = " %s %-13s %s  %s" % (MARK[st], st, it.get("progress", "")[:28], it["title"] or it["url"])
+                line = " %s %-13s %s  %s" % (MARK[st], st, it.get("progress", "")[:40], it["title"] or it["url"])
             attr = curses.color_pair(col) if col else 0
             if top + row == sel:
                 attr |= curses.A_REVERSE
@@ -20944,6 +21231,7 @@ def tui(win):
             # Whoever is downloading it notices at its next progress line.
             with Q.edit() as live:
                 live[:] = [i for i in live if i["url"] != url]
+            log("%s: deleted from the window (was %s)" % (short(url), items[sel]["status"]))
             if CURRENT["url"] == url and CURRENT["proc"]:
                 kill(CURRENT["proc"])
         elif items and k == ord("r"):
@@ -20965,8 +21253,9 @@ def tui(win):
     # Quitting stops this window's downloads; 'ytq run', or the next 'ytq
     # clip', carries on from where it was.
     STOP.set()
+    log("window closed")
     if RUN.fd:
-        stop_current()
+        stop_current("the window was closed")
         RUN.release()
 
 
@@ -20988,7 +21277,7 @@ def cmd_run(quiet):
         serve(interactive=not quiet and sys.stdin.isatty() and sys.stdout.isatty())
     except KeyboardInterrupt:
         STOP.set()
-        stop_current()
+        stop_current("'ytq run' was interrupted (Ctrl+C, SIGTERM or SIGHUP)")
         if not quiet:
             print()
     finally:
@@ -21018,7 +21307,9 @@ def cmd_status():
     print("runner: " + ("pid %s" % pid if pid else "none -- 'ytq run' or the next 'ytq clip' starts one"))
     for i in items:
         if i["status"] == "downloading":
-            print("  fetching   %-28s %s" % (i.get("progress", ""), i["title"] or i["url"]))
+            print("  downloading  %s   %s" % (i["title"] or i["url"], i["quality"]))
+            for row in live_view(i, 110):
+                print("    " + row)
     for i in items:
         if i["status"] == "cookies":
             print("  sign-in    %s  -- then 'ytq cookies'" % (i["title"] or i["url"]))
