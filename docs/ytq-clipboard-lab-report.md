@@ -757,9 +757,18 @@ queued the watch URL, a clipboard of
 `www.youtube.com/shorts/SWHZolxKdVU?feature=share` was `already queued`, and
 `notyoutube.com/…` was not a URL.
 
-The owner had downloaded the same Short a minute before that install, with
-the build of 09:15, so the link must have carried its scheme and the run does
-not test the fix. It does show the rest of the day's work on a Short: yt-dlp
+The owner's own download of the Short came a minute earlier, under a `ytq`
+installed at 09:23 from the working copy, before the commit at 09:24:00 and
+with the same `as_url()`: the runner named its script "of 2026-09-15 09:23".
+At 09:23:15 the log reads `added https://www.youtube.com/watch?v=SWHZolxKdVU`
+and `started a runner`, since `~/.config/ytq/auto` exists. `ytq add` and
+`ytq clip` log those lines alike, and the log keeps neither the command nor
+the text as given. Through `ytq add`, the watch URL is `as_url()` at work:
+the build of 09:15 refused a bare link and kept an `https://…/shorts/…` link
+in that form. Through `ytq clip`, any build gives the watch URL. The command
+suggested to the owner was `ytq add youtube.com/shorts/SWHZolxKdVU`, so the
+fix was probably exercised, but the log does not show it. The run does show
+the rest of the day's work on a Short: yt-dlp
 exited 0 after 12 s, the file is 22.5 MiB of 1080 × 1920 H.264 with AAC,
 92.07 s long; the `.txt` holds 238 words under Notes naming the `.mp4` in
 `Video:` and the captions as automatic; and the file's `comment` gives
