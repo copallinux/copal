@@ -29,6 +29,15 @@ every architecture Copal runs on and on the Mac. It would have:
 new project. Its owner decided that ytq, now tied closely to Static Stream,
 belongs in the Rust project too. Sections V-A, V-C, V-G, V-H and VI say how.
 
+*Revised again after phase 1, which worked.* The Rust `sstr` now does
+everything the Python prototype does, with no external crates. It passes
+the acceptance test the plan set: 44 comparisons against the prototype in
+both directions, through thirteen kinds of damage and a noisy serial line,
+with the same repairs, losses, exit codes and bytes. On the same files it
+records 5.9× faster, repairs a damaged capture 14.5× faster, and armors
+2.6× faster. Section VII has the numbers, the one place Python still wins
+and why, and what was found on the way.
+
 Before proposing anything, the report measures what the choice rests on:
 
 | Question | Finding |
@@ -536,8 +545,8 @@ pullable.
 
 | Phase | Delivers | Done when |
 |---|---|---|
-| 0 | the repository, workspace, Makefile, README, and the constants each crate shares with the Python it replaces | `make check` passes on the guest and on the Mac. Done on the guest, commit `0ee5457` in `~/code/staticstream`; not yet run on the Mac |
-| 1 | the `staticstream` library and `sstr` at parity with `copal-sstr.py` | the cross-check and damage battery of V-F agree byte for byte; `record` refuses empty input |
+| 0 | the repository, workspace, Makefile, README, and the constants each crate shares with the Python it replaces | `make check` passes on the guest and on the Mac. **Done on the guest**, commit `0ee5457`, on GitHub at `vonglurt/staticstream`; not yet run on the Mac |
+| 1 | the `staticstream` library and `sstr` at parity with `copal-sstr.py` | the cross-check and damage battery of V-F agree byte for byte; `record` refuses empty input. **Done**: commit `d62aa88`, and `26027d7` for armor's speed. `make crosscheck`, 44 of 44 comparisons agree (VII) |
 | 2 | ytq in Rust: `staticstream-ytq` takes over the queue, settings, `OUTPUT` and `media.conf`, and drives yt-dlp as the Python ytq does | Rust and Python ytq run side by side on one `queue.json`. A queued video leaves a `.sstr` that `sstr verify` passes and that plays back identical to the MP4 it replaced, and `OUTPUT=mp4` leaves today's files. Only then is the binary `ytq` built, and the Python one retired from `copal-prep.sh` |
 | 3 | `sstr-workspace`: Browser, Inspector, Transcript, then Services, then Queue | every Service is a command line shown in the Transcript before it runs |
 | 4 | `make dist` for the targets of V-E, and version 1's stronger outer code | binaries run on the Pi 2B and the x86_64 VM; version 1 rebuilds two lost records per group |
@@ -602,7 +611,116 @@ notes, the license line and the `--source` field travel into every capture's
 header, as the ytq report's review asked. The format records provenance; it
 does not grant permission.
 
-## VII. Procedures
+## VII. Phase 1, as built
+
+Phase 1 set the hardest bar in the plan: a second implementation of the
+whole format, in another language and with nothing borrowed from a
+registry, that the first implementation cannot tell apart from itself. It
+cleared it, and came out several times faster.
+
+### A. What was built
+
+In `~/code/staticstream`, commits `d62aa88` and `26027d7`, on GitHub:
+- **The format library** (`staticstream`): the writer and the reader, the
+  record layout, RS(255,223) decoding errors and erasures, the XOR parity,
+  and checkpoints with their SSH signatures (still `ssh-keygen -Y`). It also
+  holds everything the prototype took from Python's library, written here
+  with no crates:
+  - SHA-256, copied from orrery;
+  - CRC-32;
+  - JSON, orrery's parser with a writer added;
+  - zlib, both compressor and decompressor, which reads everything Python's
+    zlib writes and is smaller than it on `copal-prep.sh` (565,485 bytes
+    against 565,895).
+- **The armor** (`staticstream-tty`): lines, offsets, CRCs, and a receiver
+  that turns lost lines into erasures.
+- **The command** (`sstr`): every verb, option and report of the prototype,
+  word for word. The one deliberate difference is that `record` given no
+  bytes exits 1 and leaves no file.
+
+### B. The acceptance test
+
+`make crosscheck` runs the Rust `sstr` and `tools/copal-sstr.py` over the
+same files and compares everything they print, play and return. `make
+check` runs it on every commit.
+
+| Comparison | Count | Result |
+|---|---|---|
+| each writes random (signed), deflated text and MPEG-TS captures; both play and verify all six | 12 | same bytes, same reports, same exits; every payload is the original |
+| thirteen kinds of damage from the Static Stream report, on a capture from each writer | 26 | same repairs, losses, exit codes and played bytes, and the same outcomes the report measured: bursts, one wiped record, two wiped in different groups and a wiped stream header repaired; bit errors at 1e-2, a 200 KiB burst, two wiped in one group, truncation and tampering caught |
+| armor, `recv` through a clean line, 3 % dropped with console noise, bit errors at 1e-4, and 10 % dropped; `unarmor`'s bytes and erasure ranges | 6 | identical lines, payloads, reports and ranges |
+
+All 44 agree. Beside them, the Rust binary alone:
+- **Recording while followed:** a live 10-second ffmpeg capture came back
+  byte-identical to what ffmpeg sent, and the prototype verifies the Rust
+  capture.
+- **Replay:** `--paced` took 9.5 s for a 9.4-second capture. `--serve` gave
+  curl an identical copy, and mpv decoded MPEG-2 video and MP2 audio from it.
+- **Stopping:** SIGTERM mid-capture closed the file cleanly as
+  "writer was interrupted".
+- **Serial:** the armor crossed a socat pty at 115200 baud byte-identical.
+
+### C. The speedup
+
+Same files, same machine, median of three runs each:
+
+| Task | Python prototype | Rust `sstr` | Speedup |
+|---|---|---|---|
+| **repair**: play 20 MB with bit errors at 1e-4 | 24.739 s | 1.706 s | **14.5×** |
+| record 20 MB | 3.290 s | 0.558 s | **5.9×** |
+| record 20 MB, signed | 3.321 s | 0.567 s | **5.9×** |
+| armor a 20 MB capture | 1.274 s | 0.482 s | **2.6×** |
+| record `copal-prep.sh` with `--deflate` | 0.210 s | 0.092 s | **2.3×** |
+| `recv` a 20 MB capture from armor | 1.506 s | 0.927 s | **1.6×** |
+| play 20 MB, undamaged | 0.180 s | 0.292 s | 0.6× |
+| verify 20 MB, undamaged | 0.179 s | 0.300 s | 0.6× |
+
+**Repair: 24.7 seconds to 1.7.** Repair is exactly what the format is for,
+and exactly where the prototype was slowest. Every damaged codeword needs
+syndromes, a Berlekamp–Massey locator, a Chien search and Forney's
+magnitudes, all in GF(2⁸) arithmetic. In Python that is one interpreted
+table lookup at a time; in Rust it is the same algorithm as tight compiled
+loops. On a serial line or an old disk, where damage is the normal case,
+that is the difference between waiting for a capture and watching it.
+
+**Recording: 3.3 seconds to 0.56.** The encoder is the inner loop measured in
+IV-C: 7.0 MB/s in Python even with its integer-register trick, and 105–120
+MB/s in Rust.
+
+**Where Python still wins, and why.** On an undamaged capture the reader does
+little but check. It computes a CRC-32 and two SHA-256 passes, one per
+record and one over the payload. Python hands both to C:
+
+| Primitive | Python (C library) | Rust (portable code) |
+|---|---|---|
+| SHA-256 | 2,385 MB/s, OpenSSL on the CPU's SHA-2 instructions | 169–172 MB/s |
+| CRC-32 | 3,287 MB/s, zlib | 862–982 MB/s |
+| decoding clean codewords (de-interleave and CRC) | 273 MB/s | 298–348 MB/s |
+
+Decoding is already faster in Rust. The 0.29 seconds are the portable
+SHA-256 reading 40 MB. The CPU's own SHA-256 and CRC instructions are
+reachable from Rust through `std::arch`, still with no crate, and that is the
+next optimisation. The same hashing is the only thing between Rust and a
+lead on every row.
+
+### D. Found on the way
+
+- **A capacity check.** A guard added in the port made the decoder refuse
+  18 erasures and 5 errors, well within 2e + f ≤ 32. The prototype's own
+  signed arithmetic was restored, and 2,000 random codewords within the
+  bound are now all corrected.
+- **A harness that agreed with itself.** The first cross-check reported 44
+  agreements while its damage step was failing. A shell function had
+  reused the caller's variable, so later cases compared stale files. The
+  harness now fails when damage fails, and the real run agreed.
+- **armor at 7.0 seconds.** The input pump drained each 45-byte line from
+  the front of a 64 KiB buffer, 1,400 shifts per read. With chunks taken by
+  index, it takes 0.48 seconds, and the output is byte-identical to before.
+- **GitHub's initial commit.** The new repository held a generated LICENSE.
+  It was merged, keeping the LICENSE text Copal and orrery use, and phase 0's
+  commit kept its hash.
+
+## VIII. Procedures
 
 **Repeat the speed comparison:** the scratch crate is in Section III-5. Build
 it with `cargo build --release`, and time Python with:
@@ -625,11 +743,19 @@ tools/copal-sstr.py verify video.sstr && tools/copal-sstr.py play video.sstr -o 
 ls /usr/lib/rustlib; apk policy cargo-make cargo-zigbuild; cargo search sstr --limit 1
 ```
 
-## VIII. Files touched
+**Repeat phase 1's acceptance test and the speed table,** in `~/code/staticstream`:
+
+```sh
+make check                      # the tests, an offline build, and the 44-comparison crosscheck
+make crosscheck                 # the crosscheck alone, comparison by comparison
+python3 ../copal/tools/copal-sstr.py record a.sstr --input big.bin && target/release/sstr verify a.sstr
+```
+
+## IX. Files touched
 
 | File | Change |
 |---|---|
-| `docs/staticstream-project-lab-report.md` | this report; no code changed here. Revised after phase 0, for ytq moving into the Rust project and the Makefile as committed |
+| `docs/staticstream-project-lab-report.md` | this report; no code changed here. Revised after phase 0, for ytq moving into the Rust project and the Makefile as committed. Revised after phase 1: Section VII, and phases 0 and 1 marked done |
 
 ## References
 
