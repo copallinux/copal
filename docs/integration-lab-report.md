@@ -114,6 +114,10 @@ UTM instruction. Until the VM is restarted with the new card, `x64sc
 
 ### D. A queue in front of yt-dlp
 
+*Later work on `ytq` (filenames, transcripts, the status display, and the
+notes each download keeps for a citable reference) is recorded in
+`ytq-clipboard-lab-report.md`.*
+
 `ytq` was written against what copal already knew about Brave's Flatpak
 profile path and the keyring problem (`yt-brave`). It watches the clipboard
 while its window is focused, checks each URL with a simulated run for an

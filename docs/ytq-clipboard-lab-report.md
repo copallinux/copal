@@ -49,6 +49,18 @@ line, the time taken by each step, and why a download stopped. The caption
 default also narrowed to exact names after `en.*` proved to select
 machine translations.
 
+Later the same morning (Sections IV-M to IV-O) the name gained the first word
+of the uploader's name, and each download began to carry what a citation
+needs. The `.txt` now opens with Notes (full title, author, watch URL,
+published and downloaded times, the video's filename, the captions'
+language and whether the uploader wrote them) and the description. The
+`.mp4` holds the same notes in its metadata. Section V sets out why those
+fields, and what they still leave to the person citing: automatic captions
+are not verbatim, and a video can disappear. It also treats
+`ytq` as what it is, a format-shifting tool, and records which of its steps
+leave the recording as it was served and which do not, with what that means
+for quoting recordings of public statements.
+
 ## I. Objective
 
 1. Let one Super+Shift+Y queue every YouTube video in whatever text is on the
@@ -67,6 +79,12 @@ machine translations.
 8. Show, in the window, what a download under way is doing: which part, how
    far, merging, the transcript.
 9. Log enough to tell afterwards what a download did and why it stopped.
+10. Put the uploader in the name, so a folder of downloads reads by who made
+    them.
+11. Record, with every YouTube download, what a checkable reference needs:
+    author, full title, published time, URL and retrieval time, with the
+    name of the video file the transcript belongs to.
+12. Keep those details inside the video file too, so they travel with a copy.
 
 ## II. Materials
 
@@ -84,6 +102,8 @@ machine translations.
 | Stand-in yt-dlp | a Python script first on `PATH` that answers `--version`, `--simulate` and `--skip-download`, and for a download prints real yt-dlp lines slowly: two parts of 7.6 and 1.9 MiB, then a merge that grows `NAME.temp.mp4` by 1 MB every 0.5 s |
 | Terminal capture | tmux, a detached 112 × 30 session, read with `capture-pane -p` |
 | Agent access | an unprivileged shell in the guest with the live Wayland display; no root (the owner ran the `doas install` steps) |
+| Author input | the real info JSON of `mkPc3DCZ-Ec` (`yt-dlp -j`), with `uploader` and `channel` replaced for each case |
+| Tag reader | `ffprobe -v error -show_entries format_tags` (ffmpeg's) |
 
 ## III. Method
 
@@ -148,6 +168,23 @@ prints nothing, and unset display variables, kept the window away from the
 real clipboard. The real 19-second video was then run once more for its log.
 Caption selection was read without fetching captions, from
 `--simulate --print '%(requested_subtitles)j'` for each candidate `SUBS`.
+
+The author rule was tried on the real video with `--simulate --print
+filename`, then offline on its info JSON with nine uploader names, each
+applied once and again through a config file. The `ytq` list and the
+`/etc/yt-dlp.conf` body, both cut from the installer, were compared
+argument by argument after `shlex.split`. The notes were first built as a
+template on the command line and read back from a 19-second download with
+ffprobe. The finished `ytq` then ran end to end under a throwaway `HOME`:
+`ytq add` and `ytq run` on `jNQXAC9IVRw`, `ytq transcript` on
+`mkPc3DCZ-Ec` (never downloaded), and `ytq transcript` on `jNQXAC9IVRw`
+again after deleting its `.txt` with the `.mp4` left in place. Whether the
+merge and the tagging re-encode was read from yt-dlp's source,
+`yt_dlp/postprocessor/ffmpeg.py` inside the zipapp, and how it chooses
+between an uploader's and automatic captions from `process_subtitles()` in
+`yt_dlp/YoutubeDL.py`. The caption source was then checked with
+`ytq transcript` on `Q2pe-7RNJRM`, whose captions Section IV-G found
+automatic, beside the two videos above.
 
 ## IV. Results
 
@@ -489,6 +526,130 @@ The regular expression that should have excluded lower-case suffixes did
 not, so yt-dlp does not match these names as case-sensitive whole-string
 patterns. Exact names avoid the question.
 
+### M. The author in the name
+
+Three options go in front of the title's, in `NAME_OPTS` and
+`/etc/yt-dlp.conf` alike, and the template gains a prefix:
+
+```
+--parse-metadata '%(uploader,channel|)#S:(?s)(?P<safe_author>.+)'
+--replace-in-metadata safe_author '^[^A-Za-z0-9]+' ''
+--replace-in-metadata safe_author '(?s)[^A-Za-z0-9].*' ''
+-o '%(safe_author&{}-|)s%(safe_title&{}_|)s%(safe_id)s.%(ext)s'
+```
+
+`|` gives an empty default when neither field exists; `#S` folds accents as
+for the title; the regexes trim leading punctuation and keep the first run
+of `A-Z a-z 0-9`. `&{}-|` writes the author and a `-` only when one is left.
+On `mkPc3DCZ-Ec`, title "They Stopped Trusting The Dollar":
+
+| `uploader` | Name |
+|---|---|
+| `Minority Mindset` (the real one) | `Minority-They_Stopped_Trusting_The_Dollar_mkPc3DCZ-Ec` |
+| `Café Olé` | `Cafe-They_Stopped_…` |
+| `@#$ Weird Name` | `Weird-They_Stopped_…` |
+| `日本語チャンネル` | `They_Stopped_…` (no author part) |
+| `MKBHD` | `MKBHD-They_Stopped_…` |
+| `Spider-Man Fan` | `Spider-They_Stopped_…` |
+| `  The.Plain.Bagel` | `The-They_Stopped_…` |
+| absent, with no `channel` | `They_Stopped_…` |
+| empty string | `They_Stopped_…` |
+
+All nine gave the same name applied twice. The two lists, `ytq`'s and the
+config's, were equal.
+
+### N. Notes in the transcript
+
+`transcript()` now prints `%(.{title,uploader,channel,webpage_url,timestamp,upload_date,description,subtitles})j`
+in place of the title alone, and `notes()` writes the top of the `.txt`.
+From `ytq run` on the 19-second video:
+
+```
+Me at the zoo
+
+Notes
+  Title:      Me at the zoo
+  Author:     jawed
+  URL:        https://www.youtube.com/watch?v=jNQXAC9IVRw
+  Published:  2005-04-23 20:31:52 -0700
+  Downloaded: 2026-09-15 09:12:45 -0700
+  Video:      jawed-Me_at_the_zoo_jNQXAC9IVRw.mp4
+  Captions:   en, written by the uploader
+
+Description
+Microplastics are accumulating in human brains at an alarming rate
+…
+
+Transcript
+All right, so here we are, in front of the elephants the cool thing about
+```
+
+| Run | `Video:` |
+|---|---|
+| `ytq run` (the download passes its file) | `jawed-Me_at_the_zoo_jNQXAC9IVRw.mp4` |
+| `ytq transcript` on `mkPc3DCZ-Ec`, never downloaded | `none downloaded` |
+| `ytq transcript` on `jNQXAC9IVRw`, `.mp4` already in `DIR` | `jawed-Me_at_the_zoo_jNQXAC9IVRw.mp4` |
+
+`Published` comes from `timestamp` in local time; with no `timestamp` it
+would be `upload_date` as a date alone, and otherwise `unknown`. The real
+video's description, sponsor links and all, went in whole.
+
+The `Captions` line also says where the captions came from. `subtitles` is
+the uploader's captions by language, and yt-dlp's `process_subtitles()`
+fills its choices from those first, adding an automatic caption only for a
+language not already there. The language chosen is therefore the uploader's
+exactly when it is a key of `subtitles`.
+
+| Video | `en` among the uploader's? | `Captions:` |
+|---|---|---|
+| `jNQXAC9IVRw` | yes | `en, written by the uploader` |
+| `mkPc3DCZ-Ec` | no (`subtitles` empty; 157 automatic languages) | `en, automatic: YouTube's speech recognition, not verbatim` |
+| `Q2pe-7RNJRM` | no | `en, automatic: YouTube's speech recognition, not verbatim` |
+
+### O. Notes in the video file
+
+`META_OPTS`, added to the download when `ffmpeg` is on `PATH` (`\n` is a
+newline inside the argument):
+
+```
+--embed-metadata
+--parse-metadata 'Title = %(title)s\nAuthor = %(uploader,channel|unknown)s\nURL = %(webpage_url)s\nPublished = %(timestamp>%Y-%m-%d %H.%M.%S UTC,upload_date>%Y-%m-%d|unknown)s\nDownloaded = %(epoch>%Y-%m-%d %H.%M.%S UTC)s:(?s)(?P<meta_comment>.+)'
+--replace-in-metadata meta_comment '(?m)^(Title|Author|URL|Published|Downloaded) = ' '\1: '
+--replace-in-metadata meta_comment '(\d\d)\.(\d\d)\.(\d\d) UTC' '\1:\2:\3 UTC'
+```
+
+The first try wrote `Title: ` and `%H:%M:%S` straight into the template. The
+download ran and `[Metadata]` added its tags, but `comment` held only
+`https://www.youtube.com/watch?v=jNQXAC9IVRw`, yt-dlp's own value for it.
+The same template with `=` labels and `.` in the times, read back with
+`--print '%(meta_comment)j'`, parsed in full, so the literal colons were
+what stopped it; yt-dlp's source was not read to see where it splits.
+`--replace-in-metadata` takes field, pattern and replacement as separate
+arguments, so it can put the colons back.
+
+The tags that came out, from ffprobe:
+
+```
+title=Me at the zoo
+artist=jawed
+date=20050424
+comment=Title: Me at the zoo
+Author: jawed
+URL: https://www.youtube.com/watch?v=jNQXAC9IVRw
+Published: 2005-04-24 03:31:52 UTC
+Downloaded: 2026-09-15 15:58:48 UTC
+```
+
+The first try, which listed every tag, also showed `genre`, `description`
+and `synopsis` (the description twice) and no `purl`, so the URL in the file
+is the one in `comment`. `date=20050424` is the UTC day; the `.txt` gives
+the same moment as `2005-04-23 20:31:52 -0700`. The log read
+`now post-processing (Metadata)` and `yt-dlp exited 0 after 0:02, last
+step: post-processing (Metadata)`; `stage()` now counts `[Metadata]` as
+post-processing. In the run of Section N's first version, the file's
+`Downloaded` (15:58:48 UTC, yt-dlp's `epoch`) and the `.txt`'s (08:58:50
+-0700, when it was written) were two seconds apart.
+
 ## V. Discussion
 
 **Why the id and nothing else.** A bookmarks file names the same video in
@@ -611,6 +772,92 @@ processes readable.
 exact names; each is fetched only when the video has it. A video captioned
 only in, say, `en-CA` gets no transcript unless `SUBS` names it.
 
+**What a reference needs.** A citation promises that a reader can find what
+was cited and see that it says what was claimed. For an online video the
+styles agree on the parts: who published it, the title, when, where, and,
+for a source that can change, when it was retrieved. APA 7 cites uploader,
+date, title with `[Video]`, site and URL; MLA 9 recommends an access date for
+a web source that may change. Each Notes line is one of those parts, taken
+at download time, because each can change afterwards: an uploader can
+retitle a video, edit its description, rename the channel, or make the video
+private or delete it. The notes say what the video was when it was kept.
+
+**The id is the part that stays.** The author and title in the filename are
+cut short and folded to ASCII; they help a person scan a folder but cannot be
+cited. The id is exact and survives retitling, so it ends every name, and the
+URL line is always `webpage_url`, the plain `watch?v=ID` form, whichever link
+was queued.
+
+**Two zones, on purpose.** yt-dlp formats times only in UTC, so the file's
+`comment` is in UTC; the `.txt` is written by `ytq` in local time with the
+offset. Either way the moment is exact. The day alone is not: the `date` tag
+of a video published at 20:31 Pacific time on 23 April 2005 reads
+`20050424`, and a reference taken from the tag would carry the wrong day.
+
+**Two downloaded times.** The file's is yt-dlp's `epoch`, when it looked the
+video up; the `.txt`'s is when the transcript was written, after the video
+finished. They were two seconds apart on the short video (IV-O); after a
+three-minute merge over the share they would be minutes apart. Either will do
+as a retrieval date.
+
+**Archivability.** The copy and its notes outlive the video; a reader's
+access does not, and a reference to a deleted video cannot be checked from
+its URL. Saving the watch page to the Internet Archive
+(`https://web.archive.org/save/URL`) while it is up gives a second, public
+address, though the Archive usually keeps the page and its text rather than
+the video. The formats stay readable: `DEFAULT_FORMAT` prefers H.264 with
+AAC in MP4, the transcript is plain UTF-8, and the notes are inside the
+`.mp4` so that a copy moved without its `.txt` still says where it came
+from. A local copy is for checking a reference; passing it on is the rights
+holder's to allow, and YouTube's terms apply.
+
+**Accessibility.** The transcript serves anyone who cannot use the audio: a
+screen reader reads plain text as it is, and a quotation can be copied from
+it. WCAG 2.2 treats captions (1.2.2) and a text alternative for prerecorded
+media (1.2.3, 1.2.8) as separate criteria; a transcript made from captions is
+a start on the second. Automatic captions are speech recognition and not
+verbatim, so a quotation should be checked against the audio and cited with
+its time in the video. The `Captions` line says which kind a transcript came
+from (IV-N). Captions the uploader wrote are the uploader's text, which may
+be edited or condensed, so they too are checked against the audio.
+
+**Access a reader does not have.** A video fetched through `yt-brave` needed
+a sign-in and may be members-only, age-gated or private. Its notes look like
+any other's; the reference should say the video is restricted.
+
+**What is not recorded.** No captions means no `.txt`, so such a video has
+its notes only in the `.mp4`. Without `ffmpeg`, `META_OPTS` is left out and
+the file has none, though a machine without ffmpeg can only fetch a stream
+that is already muxed anyway. Plain `yt-dlp` and `yt-brave` get the author
+in the name but not the notes; `--embed-metadata --write-info-json` keeps
+the fields by hand. Files downloaded before this change have neither.
+
+**Format shifting, and what it preserves.** `ytq` changes the form a
+recording takes, not its content: a stream on a web page becomes an MP4
+file, and speech becomes text. In yt-dlp 2026.08.19, `FFmpegMergerPP` runs
+ffmpeg with `-c copy`, and `FFmpegMetadataPP` uses `stream_copy_opts()`, so
+neither the merge nor the tagging re-encodes; the file holds the streams
+YouTube served. Those are YouTube's encoding of the upload, not the
+uploader's original file. The name and the notes are added around the
+recording and change nothing in it. The transcript is the lossy step:
+`vtt_text()` discards the timings, removes a line equal to the one before
+(which would also remove a line a speaker really did say twice in
+succession), and rewraps. It is an index into the recording, not a
+substitute for it. Whether a copy may be kept at all depends on the
+jurisdiction and the site's terms, which this report does not assess.
+
+**Recordings of public statements.** A recording of a public figure speaking
+in public is a primary source for the words and how they were said. A
+correct citation of one separates two things the notes place side by side.
+The speaker, the occasion and its date belong to the statement; `Author` and
+`Published` belong to the upload, which may be a news channel posting days
+later or a third party re-posting an excerpt. A faithful quotation is exact,
+keeps enough context that the meaning is the speaker's, says when it comes
+from an excerpt, and gives its time in the recording. The full recording
+from the speaker's or the event's own channel is better evidence than a
+clip. The transcript helps find the passage; the words, and their time,
+should be taken from the video.
+
 ## VI. Procedures
 
 **Queue a bookmarks export:**
@@ -692,6 +939,23 @@ ls ~/Downloads/SharedVM/*.temp.mp4 ~/Downloads/SharedVM/*.f[0-9]*.*
 current directory is read on every run; `--ignore-config` or another
 directory avoids it.
 
+**Read what a download recorded, for a citation:**
+
+```sh
+sed -n '/^Notes$/,/^$/p' ~/Downloads/SharedVM/NAME.txt
+ffprobe -v error -show_entries format_tags=title,artist,date,comment -of default=nw=1 ~/Downloads/SharedVM/NAME.mp4
+```
+
+**Keep the page where a reader can still find it,** while the video is up:
+open `https://web.archive.org/save/https://www.youtube.com/watch?v=ID` in a
+browser, and cite the archived address beside the original.
+
+**The same fields from plain yt-dlp or yt-brave:**
+
+```sh
+yt-dlp --embed-metadata --write-info-json URL
+```
+
 ## VII. Files touched
 
 | File | Change |
@@ -699,4 +963,6 @@ directory avoids it.
 | `copal-prep.sh` | `install_ytq`: `YT_RE`, `youtube_urls()`, `clipboard_urls()` replacing `clipboard_url()`, `import html`, the count summary in `report()`, the `clip` branch of `main()`; `videos_dir()` prefers a mounted `~/Downloads/SharedVM`; the `ytq` header and the stage-10 guide text. Commits `5aca715`, `41aa7b0` |
 | `copal-prep.sh` | `install_ytq`: `NAME_OPTS` and `NAME` in the download's `-o` (with `%` in `DIR` escaped), `vtt_text()`, `transcript()`, the transcript step in `download()`, `ytq transcript`, the `SUBS` setting, the help text; `write_ytdlp_conf()` writing `/etc/yt-dlp.conf`, called from `install_ytdlp` and `install_ytq`; a "Filenames" section and transcript lines in the guide. Commit `a538e53` |
 | `copal-prep.sh` | `install_ytq`: `--progress --no-quiet` and `PROGRESS_TEMPLATE`; the live record (`stage()`, `stream_of()`, `size_of()`, `describe()`, `compact()`, `live_view()`, `bar()`); `download()` and `stop_current(why)` rewritten to keep and log it; the window's panel and state counts; `ytq status`; `log()` with pid tags and rotation, `log_start()`, `short()`, `fmt_size()`, `fmt_secs()`; timings in `check()` and `transcript()`; `DEFAULT_SUBS`; the header and guide text. Commit `f9635ad` |
+| `copal-prep.sh` | `install_ytq`: `safe_author` in `NAME_OPTS` and `NAME`; `META_OPTS`, used by `download()` when `ffmpeg` is present (`import shutil`); `notes()`, with the captions' source; `transcript()` printing `META` and taking `video`; `[Metadata]` in `stage()`; the header's CITATIONS paragraph. `write_ytdlp_conf()`: the author options and comments. The guide: author filenames and "Citing what you keep". The `yt-brave` header and `install_ytdlp` comment on restricted videos, kept downloads and format shifting. The guide and the `ytq` header on quoting recordings of public statements. Commit `923b673` |
+| `docs/integration-lab-report.md` | a pointer from Section D to this report |
 | `docs/ytq-clipboard-lab-report.md` | this report |
