@@ -19889,7 +19889,8 @@ The queue: ytq
     ytq                 a window. While it is focused, every URL you copy is
                         checked and queued, and it downloads them too. Keys
                         are on the bottom line.
-    ytq list, ytq clear every entry; forget the finished ones
+    ytq list, ytq clear every entry; forget the finished ones (h twice in
+                        the window; the files and the log stay)
     ytq --help          all of it, and which config and auto file it found
     ~/.local/share/ytq/ytq.log
                         what happened: every line yt-dlp printed, tagged
@@ -20234,7 +20235,8 @@ install_ytq() {
 #   ytq cookies        retry what was waiting on a Brave sign-in
 #   ytq transcript URL...  just the captions, as text, for YouTube videos
 #   ytq list           every entry: queued, done, waiting, failed
-#   ytq clear          forget finished, rejected and failed entries
+#   ytq clear          forget finished, rejected and failed entries (h twice in
+#                      the window); the files and the log stay
 #
 # FILENAMES are the first word of the uploader's name, the title and the video
 # id, in the URL-safe base64 alphabet (A-Z a-z 0-9 - _) and nothing else, then
@@ -20357,6 +20359,9 @@ YT_RE = re.compile(r"(?:https?://|(?<![\w.@/-]))(?:(?:www|m|music)\.)?"
                    r"(?:youtube\.com/(?:watch\?(?:[^\s\"'<>#]*?&)?v=|shorts/|live/|embed/)|youtu\.be/)"
                    r"([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])")
 ORDER = ["downloading", "cookies", "retry-cookies", "checking", "queued", "retry", "done", "failed", "rejected"]
+# The history: entries that are over. 'ytq clear', or h twice in the window,
+# forgets them; the files they downloaded and their lines in the log stay.
+HISTORY = ("done", "failed", "rejected")
 # Work a runner has still to do. 'cookies' is not in it: that waits on a person.
 PENDING = ("checking", "queued", "retry", "retry-cookies", "downloading")
 DOWNLOADABLE = ("retry-cookies", "queued", "retry")
@@ -21352,7 +21357,8 @@ def tui(win):
         curses.start_color(); curses.use_default_colors()
         curses.init_pair(1, curses.COLOR_GREEN, -1); curses.init_pair(2, curses.COLOR_RED, -1)
         curses.init_pair(3, curses.COLOR_YELLOW, -1); curses.init_pair(4, curses.COLOR_CYAN, -1)
-    sel, message = 0, ""
+    # armed: when h (or x) was pressed once, so a second press clears the history.
+    sel, message, armed = 0, "", 0.0
     for t in (watcher, window_worker):
         threading.Thread(target=t, daemon=True).start()
     while True:
@@ -21399,7 +21405,7 @@ def tui(win):
             win.addstr(y, 0, line[:w - 1].ljust(w - 1), attr)
         if not items:
             win.addstr(2, 2, "Nothing queued. Copy a video URL while this window is focused, or press a.")
-        keys = " a add  d delete  r retry  c continue with Brave's cookies  o open in Brave  p pause  x clear  q quit"
+        keys = " a add  d delete  r retry  c continue with Brave's cookies  o open in Brave  p pause  h h clear history  q quit"
         win.addstr(h - 2, 0, keys[:w - 1], curses.A_DIM)
         if items and 0 <= sel < len(items):
             it = items[sel]
@@ -21417,6 +21423,8 @@ def tui(win):
         if k == -1:
             continue
         message = ""
+        if k not in (ord("h"), ord("x")):
+            armed = 0.0
         if k in (ord("q"), 27):
             break
         elif k in (curses.KEY_DOWN, ord("j")):
@@ -21437,9 +21445,24 @@ def tui(win):
             else:
                 message = "p pauses this window's downloads, and pid %s has the queue" % holder if holder \
                     else "nothing to pause yet"
-        elif k == ord("x"):
-            with Q.edit() as live:
-                live[:] = [i for i in live if i["status"] not in ("done", "failed", "rejected")]
+        elif k in (ord("h"), ord("x")):
+            # Twice in a row, within 5 s: forgetting a failed entry loses its
+            # error, so one stray key must not do it. x was once a single press
+            # and now asks the same way.
+            if armed and time.time() - armed < 5:
+                with Q.edit() as live:
+                    n = len(live)
+                    live[:] = [i for i in live if i["status"] not in HISTORY]
+                    n -= len(live)
+                armed = 0.0
+                log("history cleared from the window: %d entries" % n)
+                message = "cleared %d from the history; the files and the log stay" % n
+            else:
+                counts = ["%d %s" % (c, s) for s, c in
+                          ((s, sum(1 for i in items if i["status"] == s)) for s in HISTORY) if c]
+                armed = time.time() if counts else 0.0
+                message = ("press %s again to clear the history: %s" % (chr(k), ", ".join(counts))
+                           if counts else "the history is empty")
         elif items and k in (ord("d"), curses.KEY_DC):
             url = items[sel]["url"]
             # Whoever is downloading it notices at its next progress line.
@@ -21596,7 +21619,7 @@ def main(argv):
     elif cmd == "clear":
         with Q.edit() as items:
             n = len(items)
-            items[:] = [i for i in items if i["status"] not in ("done", "failed", "rejected")]
+            items[:] = [i for i in items if i["status"] not in HISTORY]
             n -= len(items)
         print("removed %d" % n)
     elif cmd == "tui":
