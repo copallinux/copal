@@ -19683,6 +19683,16 @@ MSG
 # one. The zipapp updates itself with 'yt-dlp -U'; the packaged copy refuses to,
 # correctly, because a package manager owns that file. Both are offered because
 # the trade is real: the apk is signed and the curl is not.
+#
+# WHAT A KEPT DOWNLOAD NEEDS. A copy of a video is only as useful as what says
+# where it came from: who published it, its full title, when, at which URL,
+# and when it was fetched -- the parts of a reference someone else can check,
+# recorded while they are still true. ffmpeg writes those into the file (ytq's
+# META_OPTS) as well as merging the streams, one more reason it is not
+# optional below. The guide's "Citing what you keep" says what each tool here
+# records, and what it cannot. Downloading is format shifting -- the stream
+# becomes a file, ffmpeg copying it rather than re-encoding -- and the notes
+# are what keep the shifted copy traceable to its source.
 install_ytdlp() {
     say "yt-dlp"
     require_network || return 1
@@ -19739,11 +19749,18 @@ MSG
     write_ytdlp_guide
 }
 
-# yt-dlp's filenames, for every run on the machine: the title and the id in
-# the URL-safe base64 alphabet (A-Z a-z 0-9 - _) and nothing else. ytq passes
+# yt-dlp's filenames, for every run on the machine: the first word of the
+# uploader's name, the title and the id in the URL-safe base64 alphabet
+# (A-Z a-z 0-9 - _) and nothing else. ytq passes
 # the same options itself (NAME_OPTS there says what each step is for), so
 # its names do not depend on this file; change one, change both. Applying them
 # twice, here and there, gives the same name.
+#
+# A filename is a handle, not a reference. The author's first word and the
+# folded, shortened title help a person scan a folder, but they are lossy and
+# titles are edited after upload. The id is the part that stays true --
+# youtube.com/watch?v=ID finds the same video whatever it is renamed to -- so
+# every name ends with it. The full title, author and dates are ytq's notes.
 #
 # /etc/yt-dlp.conf is yt-dlp's system configuration, read on every run after
 # the user's own. A file there that Copal did not write is left alone.
@@ -19756,12 +19773,19 @@ write_ytdlp_conf() {
 # written by Copal: yt-dlp filenames. Stage 10 rewrites this file; settings of
 # your own belong in ~/.config/yt-dlp/config.
 #
-# Title and id in A-Z a-z 0-9 - _ only, then the extension:
-#   'Café Tour: Part 2/3 [4K]'  ->  Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.mp4
+# Author-Title_id in A-Z a-z 0-9 - _ only, then the extension:
+#   'Rick Astley', 'Café Tour: Part 2/3 [4K]'
+#     ->  Rick-Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.mp4
+# The author is the first run of A-Z a-z 0-9 in the uploader's name (or the
+# channel's), after #S; none, and the name starts at the title.
 # %(title)#S is --restrict-filenames for that one field (é to e); the regexes
 # keep only the alphabet, squeeze ' - ' and the like into one _, cut at 120
 # and trim. The id gets only a regex: #S would trim a YouTube id's leading -
 # or _. ytq passes the same options itself (NAME_OPTS in /usr/local/bin/ytq).
+# The name is not a citation: the id at its end is what finds the video again.
+--parse-metadata '%(uploader,channel|)#S:(?s)(?P<safe_author>.+)'
+--replace-in-metadata safe_author '^[^A-Za-z0-9]+' ''
+--replace-in-metadata safe_author '(?s)[^A-Za-z0-9].*' ''
 --parse-metadata '%(title)#S:(?s)(?P<safe_title>.+)'
 --replace-in-metadata safe_title '[^A-Za-z0-9_-]+' _
 --replace-in-metadata safe_title '[-_]*_[-_]*' _
@@ -19769,10 +19793,10 @@ write_ytdlp_conf() {
 --replace-in-metadata safe_title '^[-_]+|[-_]+$' ''
 --parse-metadata 'id:(?s)(?P<safe_id>.+)'
 --replace-in-metadata safe_id '[^A-Za-z0-9_-]+' _
--o '%(safe_title&{}_|)s%(safe_id)s.%(ext)s'
+-o '%(safe_author&{}-|)s%(safe_title&{}_|)s%(safe_id)s.%(ext)s'
 CONF
     chmod 0644 /etc/yt-dlp.conf
-    note "yt-dlp names files Title_ID.ext in A-Z a-z 0-9 - _ only  (/etc/yt-dlp.conf)"
+    note "yt-dlp names files Author-Title_ID.ext in A-Z a-z 0-9 - _ only  (/etc/yt-dlp.conf)"
 }
 
 # The cookies question, written down once so nobody has to find it again.
@@ -19850,8 +19874,11 @@ The queue: ytq
     ytq run             download what is queued, one at a time, as MP4
                         into ~/Downloads/SharedVM when the Mac's share is
                         mounted there, otherwise ~/Videos. A YouTube video's
-                        captions come too, as text: Title_ID.txt beside
-                        Title_ID.mp4 (SUBS= in the config turns that off)
+                        captions come too, as text: Author-Title_ID.txt
+                        beside Author-Title_ID.mp4, headed by Notes -- full
+                        title, author, URL, published and downloaded -- and
+                        the description (SUBS= in the config turns that
+                        off). The .mp4 carries the notes in its metadata.
     ytq transcript URL  only the captions, as that .txt
     ytq status          what is downloading -- which part, how far, merging,
                         the transcript -- and what is left. The window shows
@@ -19886,17 +19913,100 @@ The queue: ytq
 
 Filenames
 
-    Every yt-dlp run here names its file after the title and the video id,
-    in the URL-safe base64 alphabet -- A-Z a-z 0-9 - _ -- and nothing else,
-    then the extension:
+    Every yt-dlp run here names its file after the first word of the
+    uploader's name, the title and the video id, in the URL-safe base64
+    alphabet -- A-Z a-z 0-9 - _ -- and nothing else, then the extension:
 
-        Café Tour: Part 2/3 [4K]   ->   Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.mp4
+        Rick Astley, Café Tour: Part 2/3 [4K]
+            ->   Rick-Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.mp4
 
     Accented letters lose the accent; other scripts and punctuation go, one _
-    between words. A title with no Latin letters at all leaves just the id:
-    dQw4w9WgXcQ.mp4.
+    between words. An uploader with no Latin letters leaves no Author- part,
+    and a title with none leaves just the id: dQw4w9WgXcQ.mp4.
     The rule is in /etc/yt-dlp.conf; an -o of your own overrides the name,
     and --ignore-config drops the rule altogether.
+
+Citing what you keep
+
+    A reference someone else can check needs five things: who published the
+    video, its full title, when it was published, the URL, and when you
+    retrieved it. The last matters because a video can be retitled, edited,
+    made private or deleted after you saw it. APA 7 cites a video by
+    uploader, date, title with [Video], site and URL; MLA 9 recommends an
+    access date for a web source that may change. Check the style you are
+    writing for.
+
+    ytq records all five, twice:
+
+      Author-Title_ID.txt   Notes at the top, in local time with the UTC
+                            offset, then the description and the transcript
+      Author-Title_ID.mp4   the same notes in the comment tag, in UTC, and
+                            the full title, author (as artist) and
+                            description in tags of their own:
+                            ffprobe -v error -show_entries format_tags FILE
+
+    Plain yt-dlp and yt-brave get the name and nothing else. To keep the rest
+    by hand:
+
+        yt-dlp --embed-metadata --write-info-json URL
+
+    --embed-metadata needs ffmpeg; the .info.json holds every field yt-dlp
+    saw, timestamp and upload_date among them.
+
+    Dates. upload_date, and the date tag in a file, is the day in UTC, which
+    can be a day after the one the site showed you: Me at the zoo was
+    published at 20:31 Pacific time on 23 April 2005, and its date tag reads
+    20050424. The Published line gives the time and offset, so the day is
+    not a guess.
+
+    What stays true. Titles and descriptions change; the video id does not.
+    Cite the watch?v=ID URL rather than a youtu.be, Shorts or playlist link
+    -- the notes' URL line is always that form -- and keep the id in the
+    filename.
+
+    What goes away. A deleted or private video leaves its URL pointing at
+    nothing, and your reader cannot check you. While the video is up, save
+    the page to the Internet Archive, https://web.archive.org/save/URL, and
+    give the archived address beside the original. The Archive usually keeps
+    the page and its text, not always the video. Your own copy is for
+    checking your reference; passing it on is the rights holder's to allow,
+    and YouTube's terms apply.
+
+    Accessibility. The transcript is plain UTF-8 text: a screen reader reads
+    it as it is, and a quotation can be copied from it. WCAG 2.2 asks for
+    captions (1.2.2) and for a text alternative to recorded media (1.2.3,
+    1.2.8); a transcript made from captions is a start on the second, not a
+    guarantee. Automatic captions are speech recognition, not a verbatim
+    record; the Captions line says which kind a transcript came from,
+    "written by the uploader" or "automatic". Either way, check a quotation
+    against the audio, and cite it with its time in the video.
+
+    Restricted videos. One that needed a sign-in -- yt-brave, 'ytq cookies'
+    -- may be members-only, age-gated or private, and a reader following the
+    URL may not see it. Say so in the reference.
+
+    Quoting what was said. A recording of a public figure speaking in
+    public is a primary source for what they said and how. Cite the speaker,
+    the occasion and its date. The Author and Published lines are who
+    uploaded the video and when, not who spoke and when: the uploader may be
+    a news channel posting days later, or someone re-posting a clip. Prefer
+    the full recording, from the speaker's or the event's own channel, to an
+    excerpt, and say when you cite an excerpt. Quote the words exactly, with
+    enough around them that the meaning stays the speaker's, and give the
+    time in the recording. The transcript has no times, and it leaves out a
+    caption line that repeats the one before, so take the words from the
+    video, using the transcript to find them.
+
+    Format shifting. ytq changes the form a recording is in, not what it
+    records: a stream on a website becomes an MP4 on your disk, and speech
+    becomes text. yt-dlp's merge and its metadata step copy the video and
+    audio streams without re-encoding them (ffmpeg -c copy), so the file
+    holds the streams YouTube served -- YouTube's own encoding of the upload,
+    not the uploader's original. The name and the notes sit around the
+    recording and change nothing in it. The transcript is the lossy part,
+    for the reasons above. Whether you may keep a copy depends on where you
+    are and on the site's terms; the notes keep what you do keep traceable
+    to its source.
 
 Method 2 -- a cookies.txt file
 
@@ -19976,6 +20086,11 @@ install_ytbrave() {
 #
 # Why this exists: Copal installs Brave as a Flatpak, so its profile is not
 # where yt-dlp looks for it. This supplies the path.
+#
+# A video that needs these cookies -- members-only, age-gated, private -- is
+# one a reader of your citation may not be able to open. Say so in the
+# reference. yt-brave adds only the cookies: the name, and the notes ytq
+# writes, are the same as for a public video.
 #
 #   yt-brave URL                    the Default profile
 #   yt-brave --profile 'Profile 1' URL
@@ -20118,11 +20233,29 @@ install_ytq() {
 #   ytq list           every entry: queued, done, waiting, failed
 #   ytq clear          forget finished, rejected and failed entries
 #
-# FILENAMES are the title and the video id, in the URL-safe base64 alphabet
-# (A-Z a-z 0-9 - _) and nothing else, then the extension:
-# 'Café Tour: Part 2/3 [4K]' is Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.mp4. A YouTube
-# video also gets Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.txt beside it: its captions
-# as plain text, fetched once the video is done. See NAME_OPTS and transcript().
+# FILENAMES are the first word of the uploader's name, the title and the video
+# id, in the URL-safe base64 alphabet (A-Z a-z 0-9 - _) and nothing else, then
+# the extension: 'Café Tour: Part 2/3 [4K]' by Rick Astley is
+# Rick-Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.mp4. A YouTube video also gets
+# Rick-Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.txt beside it: Notes (full title,
+# author, URL, published and downloaded times, the video's filename), the
+# description, then the captions as plain text, fetched once the video is
+# done. The .mp4 carries the same notes in its metadata. See NAME_OPTS,
+# META_OPTS and transcript().
+#
+# CITATIONS. The notes are the parts of a reference someone else can check --
+# author, full title, when it was published, the watch URL, when you fetched
+# it -- taken at download time, because a title or description can be edited
+# and a video made private or deleted after you saw it. The id, in the name
+# and the URL, is what finds it again. Automatic captions are speech
+# recognition, not a verbatim record, and the Captions line says whether a
+# transcript came from them or from the uploader: check a quote against the
+# audio. The Author line is the uploader, not necessarily the speaker, and
+# Published is the upload, not the event recorded. ytq is format shifting:
+# the merge and the tagging copy the streams without re-encoding, and the
+# transcript is the lossy part (no timings, a repeated caption line dropped).
+# The yt-dlp guide ('guide') covers dates, archiving, quoting and
+# accessibility.
 #
 # AUTOSTART is off until you ask for it:  touch ~/.config/ytq/auto
 # With that file there, clip, add and cookies also start downloading in the
@@ -20189,7 +20322,7 @@ install_ytq() {
 #             (default en,en-orig,en-US,en-GB: exact names, since en.* also
 #             takes YouTube's translations into English); SUBS= turns it off
 # and next to it the empty file ~/.config/ytq/auto, which switches autostart on.
-import contextlib, curses, fcntl, glob, html, json, os, re, shlex, signal, subprocess, sys, textwrap, threading, time
+import contextlib, curses, fcntl, glob, html, json, os, re, shlex, shutil, signal, subprocess, sys, textwrap, threading, time
 
 HOME = os.path.expanduser("~")
 CONF = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config"), "ytq", "config")
@@ -20221,8 +20354,11 @@ ORDER = ["downloading", "cookies", "retry-cookies", "checking", "queued", "retry
 # Work a runner has still to do. 'cookies' is not in it: that waits on a person.
 PENDING = ("checking", "queued", "retry", "retry-cookies", "downloading")
 DOWNLOADABLE = ("retry-cookies", "queued", "retry")
-# The filename: title and id in A-Z a-z 0-9 - _ only. /etc/yt-dlp.conf gives
-# plain yt-dlp the same rule; change one, change both. The title starts from
+# The filename: Author-Title_id in A-Z a-z 0-9 - _ only. /etc/yt-dlp.conf gives
+# plain yt-dlp the same rule; change one, change both. The author is the first
+# run of A-Z a-z 0-9 in the uploader's name (the channel's if there is no
+# uploader), after #S, and ends at the -; with none the name starts at the
+# title, as it did before there was an author. The title starts from
 # %(title)#S -- --restrict-filenames for that one field -- which turns é into
 # e and blanks what has no ASCII form. The regexes then keep only the
 # alphabet, squeeze each run of separators holding a _ into one _ (so ' - '
@@ -20230,14 +20366,32 @@ DOWNLOADABLE = ("retry-cookies", "queued", "retry")
 # the first regex, because #S would trim a YouTube id's own leading - or _.
 # Both are copies, so --print %(title)s and yt-dlp's own use of id are
 # untouched; a title with nothing left (all CJK, say) names the file by id alone.
-NAME_OPTS = ["--parse-metadata", "%(title)#S:(?s)(?P<safe_title>.+)",
+NAME_OPTS = ["--parse-metadata", "%(uploader,channel|)#S:(?s)(?P<safe_author>.+)",
+             "--replace-in-metadata", "safe_author", "^[^A-Za-z0-9]+", "",
+             "--replace-in-metadata", "safe_author", "(?s)[^A-Za-z0-9].*", "",
+             "--parse-metadata", "%(title)#S:(?s)(?P<safe_title>.+)",
              "--replace-in-metadata", "safe_title", "[^A-Za-z0-9_-]+", "_",
              "--replace-in-metadata", "safe_title", "[-_]*_[-_]*", "_",
              "--replace-in-metadata", "safe_title", "(?<=^.{120}).+", "",
              "--replace-in-metadata", "safe_title", "^[-_]+|[-_]+$", "",
              "--parse-metadata", "id:(?s)(?P<safe_id>.+)",
              "--replace-in-metadata", "safe_id", "[^A-Za-z0-9_-]+", "_"]
-NAME = "%(safe_title&{}_|)s%(safe_id)s.%(ext)s"
+NAME = "%(safe_author&{}-|)s%(safe_title&{}_|)s%(safe_id)s.%(ext)s"
+# The notes, in the video file itself. --embed-metadata writes the full title,
+# the uploader's full name (as artist), the upload date and the description;
+# the comment gets the lines a transcript's Notes begin with, the URL and the
+# published and downloaded times among them, in UTC -- the only zone yt-dlp
+# formats times in. A literal : would end --parse-metadata's FROM, so labels
+# and times are written with = and . there and turned back by
+# --replace-in-metadata, whose arguments are separate. It needs ffmpeg, so
+# download() leaves it out on a machine without one.
+META_OPTS = ["--embed-metadata",
+             "--parse-metadata", "Title = %(title)s\nAuthor = %(uploader,channel|unknown)s\n"
+                                 "URL = %(webpage_url)s\n"
+                                 "Published = %(timestamp>%Y-%m-%d %H.%M.%S UTC,upload_date>%Y-%m-%d|unknown)s\n"
+                                 "Downloaded = %(epoch>%Y-%m-%d %H.%M.%S UTC)s:(?s)(?P<meta_comment>.+)",
+             "--replace-in-metadata", "meta_comment", "(?m)^(Title|Author|URL|Published|Downloaded) = ", r"\1: ",
+             "--replace-in-metadata", "meta_comment", r"(\d\d)\.(\d\d)\.(\d\d) UTC", r"\1:\2:\3 UTC"]
 
 
 def videos_dir():
@@ -20640,9 +20794,42 @@ def vtt_text(path):
     return textwrap.fill(" ".join(lines), 78)
 
 
-def transcript(url, outtmpl, cmd=("yt-dlp",)):
+def notes(meta, url, lang, video):
+    """The top of a transcript: the title; Notes -- full title, author and URL,
+    when it was published and downloaded, in local time, the video file it goes
+    with, and the captions' language and whether the uploader wrote them; the
+    video's description when it has one; the Transcript heading."""
+    def when(t):
+        return time.strftime("%Y-%m-%d %H:%M:%S %z", time.localtime(t))
+    # yt-dlp takes the uploader's captions over automatic ones in the same
+    # language (process_subtitles), so a language among 'subtitles' -- the
+    # uploader's -- is theirs, and any other came from automatic_captions.
+    subs = meta.get("subtitles")
+    source = ("written by the uploader" if isinstance(subs, dict) and lang in subs
+              else "automatic: YouTube's speech recognition, not verbatim")
+    title = meta.get("title") or url
+    if isinstance(meta.get("timestamp"), (int, float)):
+        published = when(meta["timestamp"])
+    elif re.fullmatch(r"\d{8}", meta.get("upload_date") or ""):
+        d = meta["upload_date"]
+        published = "%s-%s-%s" % (d[:4], d[4:6], d[6:])
+    else:
+        published = "unknown"
+    rows = [("Title", title), ("Author", meta.get("uploader") or meta.get("channel") or "unknown"),
+            ("URL", meta.get("webpage_url") or url), ("Published", published),
+            ("Downloaded", when(time.time())), ("Video", video or "none downloaded"),
+            ("Captions", "%s, %s" % (lang, source))]
+    out = "%s\n\nNotes\n%s\n" % (title, "".join("  %-11s %s\n" % (k + ":", v) for k, v in rows))
+    desc = (meta.get("description") or "").strip()
+    if desc:
+        out += "Description\n%s\n\n" % desc
+    return out + "Transcript\n"
+
+
+def transcript(url, outtmpl, cmd=("yt-dlp",), video=None):
     """(path, None) for a .txt of url's captions, named by the -o template outtmpl
-    as the video is; (None, why) when there is none.
+    as the video is; (None, why) when there is none. video is the filename the
+    notes give; without it, a video already beside the .txt is named, if any.
 
     Its own yt-dlp run, after the video's: a caption fetch that fails -- and
     YouTube answers 429 to captions far sooner than to video -- fails the whole
@@ -20650,7 +20837,9 @@ def transcript(url, outtmpl, cmd=("yt-dlp",)):
     cmd = list(cmd) + NAME_OPTS + [
            "--skip-download", "--no-simulate", "--no-playlist", "--no-warnings",
            "--write-subs", "--write-auto-subs", "--sub-langs", S["SUBS"] or DEFAULT_SUBS, "--sub-format", "vtt",
-           "--print", "video:STEM %(filename)s", "--print", "video:TITLE %(title)j", "-o", outtmpl, url]
+           "--print", "video:STEM %(filename)s",
+           "--print", "video:META %(.{title,uploader,channel,webpage_url,timestamp,upload_date,description,subtitles})j",
+           "-o", outtmpl, url]
     tag, t0 = short(url), time.time()
     log("%s: fetching the transcript, captions %s" % (tag, S["SUBS"] or DEFAULT_SUBS))
     log("run: " + " ".join(shlex.quote(c) for c in cmd))
@@ -20662,14 +20851,14 @@ def transcript(url, outtmpl, cmd=("yt-dlp",)):
     log("%s: transcript run exited %d after %s" % (tag, r.returncode, fmt_secs(time.time() - t0)))
     for line in r.stderr.strip().splitlines()[-8:]:
         log("%s: transcript: yt-dlp: %s" % (tag, line))
-    stem, title = "", ""
+    stem, meta = "", {}
     for line in r.stdout.splitlines():
         if line.startswith("STEM "):
             # The extension is a guess made without choosing a format; the stem is right.
             stem = os.path.splitext(line[5:])[0]
-        elif line.startswith("TITLE "):
+        elif line.startswith("META "):
             with contextlib.suppress(ValueError):
-                title = json.loads(line[6:])
+                meta = json.loads(line[5:])
     # One file per language that matched: stem.en.vtt, stem.en-orig.vtt. The
     # shortest name, the plain language, is taken; for a language the uploader
     # captioned, yt-dlp has already chosen those captions over automatic ones.
@@ -20682,7 +20871,10 @@ def transcript(url, outtmpl, cmd=("yt-dlp",)):
         text = vtt_text(vtts[0])
         if text:
             with open(stem + ".txt", "w", encoding="utf-8") as f:
-                f.write("%s\n%s\ncaptions: %s\n\n%s\n" % (title or os.path.basename(stem), url, lang, text))
+                if not video:
+                    video = next((os.path.basename(p) for p in sorted(glob.glob(glob.escape(stem) + ".*"))
+                                  if os.path.splitext(p)[1].lower() in (".mp4", ".mkv", ".webm", ".m4v", ".mov")), None)
+                f.write("%s%s\n" % (notes(meta, url, lang, video), text))
             log("%s: wrote %s: %d words from the %s captions" % (tag, stem + ".txt", len(text.split()), lang))
     except OSError as e:
         return None, "cannot write the transcript: %s" % e
@@ -20733,7 +20925,7 @@ def stage(line, lv):
                   dest=line[len("[download] "):-len(" has already been downloaded")])
     elif line.startswith("[Merger] Merging formats into "):
         lv.update(phase="merging", dest=line[len("[Merger] Merging formats into "):].strip('"'))
-    elif re.match(r"\[(Fixup\w*|FFmpeg\w*|Embed\w*)\] ", line):
+    elif re.match(r"\[(Fixup\w*|FFmpeg\w*|Embed\w*|Metadata)\] ", line):
         lv.update(phase="post-processing (%s)" % line[1:line.index("]")])
     elif line.startswith("Deleting original file"):
         lv.update(phase="removing the part files")
@@ -20834,7 +21026,7 @@ def download(it, with_cookies):
     # with the Brave profile and keyring put in front by the wrapper. --print
     # makes yt-dlp quiet, and quiet hides the progress lines and every line
     # about merging; --progress and --no-quiet bring both back.
-    cmd = (brave_cmd() if with_cookies else ["yt-dlp"]) + NAME_OPTS + [
+    cmd = (brave_cmd() if with_cookies else ["yt-dlp"]) + NAME_OPTS + (META_OPTS if shutil.which("ffmpeg") else []) + [
            "--no-playlist", "--newline", "--no-simulate", "-f", S["FORMAT"],
            "--merge-output-format", "mp4", "--progress", "--no-quiet",
            "--progress-template", PROGRESS_TEMPLATE,
@@ -20882,8 +21074,9 @@ def download(it, with_cookies):
             fname = line[5:]
             log("%s: file %s" % (tag, fname))
         elif line.startswith("[MetadataParser] "):
-            # Seven lines per filename rule, twice over with /etc/yt-dlp.conf
-            # present; the name they make is logged as 'file' at the end.
+            # A line per step of the filename rule, twice over with
+            # /etc/yt-dlp.conf present, and the notes' steps; the name they
+            # make is logged as 'file' at the end.
             continue
         else:
             tail = (tail + [line])[-6:]
@@ -20923,7 +21116,7 @@ def download(it, with_cookies):
                         dest=os.path.splitext(fname)[0] + ".txt")
             if update(url, progress="transcript", live=dict(live)) is not None:
                 txt, why = transcript(url, os.path.splitext(fname)[0].replace("%", "%%") + ".%(ext)s",
-                                      brave_cmd() if with_cookies else ["yt-dlp"])
+                                      brave_cmd() if with_cookies else ["yt-dlp"], os.path.basename(fname))
                 log("%s: transcript: %s" % (tag, txt or "none -- " + why))
                 also = " + transcript" if txt else " (no transcript)"
         if update(url, status="done", file=fname, progress="", error="", live={}) is not None:
