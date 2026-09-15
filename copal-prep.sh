@@ -19735,7 +19735,44 @@ MSG
     say "ffmpeg -- needed to join separate video and audio streams"
     add_optional ffmpeg
 
+    write_ytdlp_conf
     write_ytdlp_guide
+}
+
+# yt-dlp's filenames, for every run on the machine: the title and the id in
+# the URL-safe base64 alphabet (A-Z a-z 0-9 - _) and nothing else. ytq passes
+# the same options itself (NAME_OPTS there says what each step is for), so
+# its names do not depend on this file; change one, change both. Applying them
+# twice, here and there, gives the same name.
+#
+# /etc/yt-dlp.conf is yt-dlp's system configuration, read on every run after
+# the user's own. A file there that Copal did not write is left alone.
+write_ytdlp_conf() {
+    if [ -f /etc/yt-dlp.conf ] && ! grep -qs 'written by Copal' /etc/yt-dlp.conf; then
+        warn "/etc/yt-dlp.conf is not Copal's -- leaving it, and yt-dlp's filenames with it"
+        return 0
+    fi
+    cat > /etc/yt-dlp.conf <<'CONF'
+# written by Copal: yt-dlp filenames. Stage 10 rewrites this file; settings of
+# your own belong in ~/.config/yt-dlp/config.
+#
+# Title and id in A-Z a-z 0-9 - _ only, then the extension:
+#   'Café Tour: Part 2/3 [4K]'  ->  Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.mp4
+# %(title)#S is --restrict-filenames for that one field (é to e); the regexes
+# keep only the alphabet, squeeze ' - ' and the like into one _, cut at 120
+# and trim. The id gets only a regex: #S would trim a YouTube id's leading -
+# or _. ytq passes the same options itself (NAME_OPTS in /usr/local/bin/ytq).
+--parse-metadata '%(title)#S:(?s)(?P<safe_title>.+)'
+--replace-in-metadata safe_title '[^A-Za-z0-9_-]+' _
+--replace-in-metadata safe_title '[-_]*_[-_]*' _
+--replace-in-metadata safe_title '(?<=^.{120}).+' ''
+--replace-in-metadata safe_title '^[-_]+|[-_]+$' ''
+--parse-metadata 'id:(?s)(?P<safe_id>.+)'
+--replace-in-metadata safe_id '[^A-Za-z0-9_-]+' _
+-o '%(safe_title&{}_|)s%(safe_id)s.%(ext)s'
+CONF
+    chmod 0644 /etc/yt-dlp.conf
+    note "yt-dlp names files Title_ID.ext in A-Z a-z 0-9 - _ only  (/etc/yt-dlp.conf)"
 }
 
 # The cookies question, written down once so nobody has to find it again.
@@ -19812,7 +19849,10 @@ The queue: ytq
     ytq add URL...      the same, for URLs typed in a shell
     ytq run             download what is queued, one at a time, as MP4
                         into ~/Downloads/SharedVM when the Mac's share is
-                        mounted there, otherwise ~/Videos
+                        mounted there, otherwise ~/Videos. A YouTube video's
+                        captions come too, as text: Title_ID.txt beside
+                        Title_ID.mp4 (SUBS= in the config turns that off)
+    ytq transcript URL  only the captions, as that .txt
     ytq status          what is downloading, what is left
     ytq                 a window. While it is focused, every URL you copy is
                         checked and queued, and it downloads them too. Keys
@@ -19834,7 +19874,22 @@ The queue: ytq
     'ytq cookies' (or 'c' in the window) retries once through yt-brave.
     Settings, if you want any, go in
     ~/.config/ytq/config: DIR, FORMAT, PROFILE and KEYRING (the last two
-    are handed to yt-brave as --profile and --keyring).
+    are handed to yt-brave as --profile and --keyring), and SUBS, the
+    caption languages (default en.*; SUBS=ja,en for a Japanese video).
+
+Filenames
+
+    Every yt-dlp run here names its file after the title and the video id,
+    in the URL-safe base64 alphabet -- A-Z a-z 0-9 - _ -- and nothing else,
+    then the extension:
+
+        Café Tour: Part 2/3 [4K]   ->   Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.mp4
+
+    Accented letters lose the accent; other scripts and punctuation go, one _
+    between words. A title with no Latin letters at all leaves just the id:
+    dQw4w9WgXcQ.mp4.
+    The rule is in /etc/yt-dlp.conf; an -o of your own overrides the name,
+    and --ignore-config drops the rule altogether.
 
 Method 2 -- a cookies.txt file
 
@@ -20032,6 +20087,7 @@ YTBRAVE
 install_ytq() {
     command -v yt-dlp >/dev/null 2>&1 || return 0
     [ -x /usr/local/bin/yt-brave ] || install_ytbrave
+    write_ytdlp_conf
     add_optional wl-clipboard xclip xdotool libnotify
     cat > /usr/local/bin/ytq <<'YTQ'
 #!/usr/bin/env python3
@@ -20051,8 +20107,15 @@ install_ytq() {
 #   ytq run            download what is queued, in this terminal
 #   ytq status         is anything downloading, and what is left
 #   ytq cookies        retry what was waiting on a Brave sign-in
+#   ytq transcript URL...  just the captions, as text, for YouTube videos
 #   ytq list           every entry: queued, done, waiting, failed
 #   ytq clear          forget finished, rejected and failed entries
+#
+# FILENAMES are the title and the video id, in the URL-safe base64 alphabet
+# (A-Z a-z 0-9 - _) and nothing else, then the extension:
+# 'Café Tour: Part 2/3 [4K]' is Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.mp4. A YouTube
+# video also gets Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.txt beside it: its captions
+# as plain text, fetched once the video is done. See NAME_OPTS and transcript().
 #
 # AUTOSTART is off until you ask for it:  touch ~/.config/ytq/auto
 # With that file there, clip, add and cookies also start downloading in the
@@ -20102,8 +20165,10 @@ install_ytq() {
 #   PROFILE   Brave profile, passed to yt-brave --profile   (default: Default)
 #   KEYRING   passed to yt-brave --keyring, e.g. basictext, for a desktop with no keyring
 #   POLL      clipboard poll, seconds   (default 1)
+#   SUBS      caption languages for the transcript, a yt-dlp --sub-langs list
+#             (default en.*); SUBS= with nothing after it turns transcripts off
 # and next to it the empty file ~/.config/ytq/auto, which switches autostart on.
-import contextlib, curses, fcntl, html, json, os, re, shlex, signal, subprocess, sys, threading, time
+import contextlib, curses, fcntl, glob, html, json, os, re, shlex, signal, subprocess, sys, textwrap, threading, time
 
 HOME = os.path.expanduser("~")
 CONF = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config"), "ytq", "config")
@@ -20132,6 +20197,23 @@ ORDER = ["downloading", "cookies", "retry-cookies", "checking", "queued", "retry
 # Work a runner has still to do. 'cookies' is not in it: that waits on a person.
 PENDING = ("checking", "queued", "retry", "retry-cookies", "downloading")
 DOWNLOADABLE = ("retry-cookies", "queued", "retry")
+# The filename: title and id in A-Z a-z 0-9 - _ only. /etc/yt-dlp.conf gives
+# plain yt-dlp the same rule; change one, change both. The title starts from
+# %(title)#S -- --restrict-filenames for that one field -- which turns é into
+# e and blanks what has no ASCII form. The regexes then keep only the
+# alphabet, squeeze each run of separators holding a _ into one _ (so ' - '
+# goes and Spider-Man stays), cut at 120 and trim the ends. The id gets only
+# the first regex, because #S would trim a YouTube id's own leading - or _.
+# Both are copies, so --print %(title)s and yt-dlp's own use of id are
+# untouched; a title with nothing left (all CJK, say) names the file by id alone.
+NAME_OPTS = ["--parse-metadata", "%(title)#S:(?s)(?P<safe_title>.+)",
+             "--replace-in-metadata", "safe_title", "[^A-Za-z0-9_-]+", "_",
+             "--replace-in-metadata", "safe_title", "[-_]*_[-_]*", "_",
+             "--replace-in-metadata", "safe_title", "(?<=^.{120}).+", "",
+             "--replace-in-metadata", "safe_title", "^[-_]+|[-_]+$", "",
+             "--parse-metadata", "id:(?s)(?P<safe_id>.+)",
+             "--replace-in-metadata", "safe_id", "[^A-Za-z0-9_-]+", "_"]
+NAME = "%(safe_title&{}_|)s%(safe_id)s.%(ext)s"
 
 
 def videos_dir():
@@ -20152,7 +20234,7 @@ def videos_dir():
 
 
 def settings():
-    s = {"DIR": videos_dir(), "FORMAT": DEFAULT_FORMAT, "PROFILE": "Default", "KEYRING": "", "POLL": "1"}
+    s = {"DIR": videos_dir(), "FORMAT": DEFAULT_FORMAT, "PROFILE": "Default", "KEYRING": "", "POLL": "1", "SUBS": "en.*"}
     try:
         for line in open(CONF):
             line = line.strip()
@@ -20452,6 +20534,68 @@ def check(url):
             say("not downloadable: %s -- %s" % (url, err))
 
 
+def vtt_text(path):
+    """The words of a WebVTT file, as one wrapped paragraph. YouTube's automatic
+    captions show each line again in the next cue, with word timings as inline
+    tags: the tags go, and a line the same as the one before it is dropped."""
+    lines, header = [], True
+    with open(path, encoding="utf-8", errors="replace") as f:
+        for raw in f:
+            line = raw.strip()
+            if header:
+                header = bool(line)
+            elif "-->" not in line:
+                text = html.unescape(re.sub(r"<[^>]*>", "", line)).strip()
+                if text and (not lines or text != lines[-1]):
+                    lines.append(text)
+    return textwrap.fill(" ".join(lines), 78)
+
+
+def transcript(url, outtmpl, cmd=("yt-dlp",)):
+    """(path, None) for a .txt of url's captions, named by the -o template outtmpl
+    as the video is; (None, why) when there is none.
+
+    Its own yt-dlp run, after the video's: a caption fetch that fails -- and
+    YouTube answers 429 to captions far sooner than to video -- fails the whole
+    run it is part of, -i or not, and would put a finished video back in the queue."""
+    cmd = list(cmd) + NAME_OPTS + [
+           "--skip-download", "--no-simulate", "--no-playlist", "--no-warnings",
+           "--write-subs", "--write-auto-subs", "--sub-langs", S["SUBS"] or "en.*", "--sub-format", "vtt",
+           "--print", "video:STEM %(filename)s", "--print", "video:TITLE %(title)j", "-o", outtmpl, url]
+    log("run: " + " ".join(shlex.quote(c) for c in cmd))
+    try:
+        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=300)
+    except (OSError, subprocess.SubprocessError) as e:
+        return None, "cannot run %s: %s" % (cmd[0], e)
+    stem, title = "", ""
+    for line in r.stdout.splitlines():
+        if line.startswith("STEM "):
+            # The extension is a guess made without choosing a format; the stem is right.
+            stem = os.path.splitext(line[5:])[0]
+        elif line.startswith("TITLE "):
+            with contextlib.suppress(ValueError):
+                title = json.loads(line[6:])
+    # One file per language that matched: stem.en.vtt, stem.en-orig.vtt. The
+    # shortest name, the plain language, is taken; for a language the uploader
+    # captioned, yt-dlp has already chosen those captions over automatic ones.
+    vtts = sorted(glob.glob(glob.escape(stem) + ".*.vtt"), key=lambda p: (len(p), p)) if stem else []
+    if not vtts:
+        return None, (r.stderr.strip().splitlines() or ["no captions matching " + (S["SUBS"] or "en.*")])[-1][:300]
+    lang = vtts[0][len(stem) + 1:-len(".vtt")]
+    try:
+        text = vtt_text(vtts[0])
+        if text:
+            with open(stem + ".txt", "w", encoding="utf-8") as f:
+                f.write("%s\n%s\ncaptions: %s\n\n%s\n" % (title or os.path.basename(stem), url, lang, text))
+    except OSError as e:
+        return None, "cannot write the transcript: %s" % e
+    finally:
+        for v in vtts:
+            with contextlib.suppress(OSError):
+                os.remove(v)
+    return (stem + ".txt", None) if text else (None, "the %s captions are empty" % lang)
+
+
 def claim():
     """(entry, with_cookies) for the next download, marked as downloading in one locked step."""
     with Q.edit() as items:
@@ -20470,12 +20614,12 @@ def download(it, with_cookies):
     os.makedirs(S["DIR"], exist_ok=True)
     # With cookies it is yt-brave rather than yt-dlp -- the same arguments,
     # with the Brave profile and keyring put in front by the wrapper.
-    cmd = (brave_cmd() if with_cookies else ["yt-dlp"]) + [
+    cmd = (brave_cmd() if with_cookies else ["yt-dlp"]) + NAME_OPTS + [
            "--no-playlist", "--newline", "--no-simulate", "-f", S["FORMAT"],
            "--merge-output-format", "mp4",
            "--progress-template", "download:PROGRESS %(progress._percent_str)s %(progress._speed_str)s %(progress._eta_str)s",
            "--print", "after_move:FILE %(filepath)s",
-           "-o", os.path.join(S["DIR"], "%(title).120s [%(id)s].%(ext)s")]
+           "-o", os.path.join(S["DIR"].replace("%", "%%"), NAME)]
     cmd.append(url)
     log("run: " + " ".join(shlex.quote(c) for c in cmd))
     try:
@@ -20510,8 +20654,15 @@ def download(it, with_cookies):
         return
     CURRENT.update(attempts=0)
     if p.returncode == 0:
+        also = ""
+        # The transcript takes the video's name with .txt, so the two sort together.
+        if fname and S["SUBS"] and YT_RE.search(url) and update(url, progress="transcript") is not None:
+            txt, why = transcript(url, os.path.splitext(fname)[0].replace("%", "%%") + ".%(ext)s",
+                                  brave_cmd() if with_cookies else ["yt-dlp"])
+            log("transcript: " + (txt or "none -- " + why))
+            also = " + transcript" if txt else " (no transcript)"
         if update(url, status="done", file=fname, progress="", error="") is not None:
-            say("done: " + (os.path.basename(fname) if fname else title))
+            say("done: " + (os.path.basename(fname) if fname else title) + also)
         return
     err = (tail or ["yt-dlp exited %d" % p.returncode])[-1][:300]
     if cookie_problem(err) and not it["cookie_tried"]:
@@ -20916,6 +21067,18 @@ def main(argv):
         cmd_status()
     elif cmd == "cookies":
         cmd_cookies(run)
+    elif cmd == "transcript" and args[1:]:
+        failed = 0
+        for u in args[1:]:
+            if not YT_RE.search(u):
+                print("not a YouTube video: " + u)
+                failed = 1
+                continue
+            os.makedirs(S["DIR"], exist_ok=True)
+            txt, why = transcript(u, os.path.join(S["DIR"].replace("%", "%%"), NAME))
+            print(txt.replace(HOME, "~") if txt else "no transcript for %s -- %s" % (u, why))
+            failed = failed or not txt
+        sys.exit(1 if failed else 0)
     elif cmd == "list":
         items = Q.snapshot()
         for it in items:
@@ -20937,10 +21100,10 @@ def main(argv):
             if not line.startswith("#"):
                 break
             print(line[2:])
-        print("usage: ytq | ytq clip | ytq add URL... | ytq run | ytq status | ytq cookies | ytq list | ytq clear")
+        print("usage: ytq | ytq clip | ytq add URL... | ytq run | ytq status | ytq cookies | ytq transcript URL... | ytq list | ytq clear")
         print()
         print("config: %s (%s)" % (CONF.replace(HOME, "~"), "found" if os.path.isfile(CONF) else "not there -- the defaults apply"))
-        print("  KEY=VALUE lines, # for comments: DIR, FORMAT, PROFILE, KEYRING, POLL")
+        print("  KEY=VALUE lines, # for comments: DIR, FORMAT, PROFILE, KEYRING, POLL, SUBS")
         print("  in effect: DIR=%s  PROFILE=%s%s" % (S["DIR"].replace(HOME, "~"), S["PROFILE"],
                                                  "  KEYRING=" + S["KEYRING"] if S["KEYRING"] else ""))
         print("auto:   %s (%s)" % (AUTO.replace(HOME, "~"),
