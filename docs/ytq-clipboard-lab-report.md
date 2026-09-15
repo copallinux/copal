@@ -56,9 +56,9 @@ published and downloaded times, the video's filename, the captions'
 language and whether the uploader wrote them) and the description. The
 `.mp4` holds the same notes in its metadata. Section V sets out why those
 fields, and what they still leave to the person citing: automatic captions
-are not verbatim, and a video can disappear. It also treats
-`ytq` as what it is, a format-shifting tool, and records which of its steps
-leave the recording as it was served and which do not, with what that means
+are not verbatim, and a video can disappear. It also records which of
+`ytq`'s steps leave the recording as it was served and which do not, keeps
+that apart from whether a copy may be kept at all, and says what it means
 for quoting recordings of public statements.
 
 Section IV-P is the last change: a Shorts link copied without its scheme,
@@ -68,6 +68,10 @@ the scheme to be missing, and every single link to a YouTube video is queued
 as its plain watch URL. That also closed a duplicate the first version of
 the fix created: the same Short queued once by `ytq add` and once by
 `ytq clip`.
+
+Section IV-Q adds the license a site states to the notes, in the `.txt` and
+in the `.mp4`. On YouTube that picks out the Creative Commons videos, the
+ones whose uploader has allowed reuse.
 
 ## I. Objective
 
@@ -96,6 +100,8 @@ the fix created: the same Short queued once by `ytq add` and once by
 13. Take a YouTube link, Shorts included, however it was copied, with or
     without `https://`, by every way into the queue, and queue each video
     once whatever form its links take.
+14. Say in the notes which license, if any, the site states, so a video
+    whose uploader allows reuse can be told from one whose uploader does not.
 
 ## II. Materials
 
@@ -206,6 +212,13 @@ under a throwaway `HOME` with a stub `wl-paste`, one Short was queued with
 counted. After the owner installed the commit, the same run was repeated
 with `/usr/local/bin/ytq` itself, and the owner's own download of the Short
 was read from the log, its `.txt` and ffprobe.
+
+For the license, yt-dlp's source was searched for `license`, and
+`--simulate --print '%(license)j'` was run on three videos. Under a throwaway
+`HOME`, `ytq transcript` ran on a Creative Commons lecture, `M4gD1WSo5mA`,
+and on `jNQXAC9IVRw`; `META_OPTS`, read out of the extracted script with
+`ast`, ran on both with `--simulate --print '%(meta_comment)s'`; and
+`ytq add` and `ytq run` downloaded `jNQXAC9IVRw` for ffprobe.
 
 ## IV. Results
 
@@ -774,6 +787,28 @@ exited 0 after 12 s, the file is 22.5 MiB of 1080 × 1920 H.264 with AAC,
 `Video:` and the captions as automatic; and the file's `comment` gives
 `Published: 2026-09-13 13:44:28 UTC`, the `.txt`'s `06:44:28 -0700`.
 
+### Q. The license a site states
+
+`transcript()` now prints `license` with the rest of `META`, `notes()`
+writes it as a `License` line after `Downloaded`, and `META_OPTS` adds the
+same line to the file's `comment`. Either says `not stated` when the field
+is empty. In yt-dlp 2026.08.19 the YouTube extractor sets `license` only
+from a row titled "License" in the watch page's metadata
+(`yt_dlp/extractor/youtube/_video.py`); its own test for that case is the
+lecture used here.
+
+| Video | `--print '%(license)j'` | `.txt` `License:` | `comment` `License:` |
+|---|---|---|---|
+| `M4gD1WSo5mA`, William Fisher, CopyrightX: Lecture 3.2 | `"Creative Commons Attribution license (reuse allowed)"` | the same | the same |
+| `jNQXAC9IVRw`, Me at the zoo | `NA` | `not stated` | `not stated` |
+| `SWHZolxKdVU`, the Short of IV-P | `NA` | not run | not run |
+
+The lecture's `comment` was read from `--print` without a download. For
+`jNQXAC9IVRw`, `ytq run` wrote a 746 070-byte `.mp4` whose ffprobe
+`comment` ends `License: not stated`, logged `yt-dlp exited 0 after 0:01,
+last step: post-processing (Metadata)` and `done: … + transcript`. The other
+Notes lines, and the other `comment` lines, came out as in IV-N and IV-O.
+
 ## V. Discussion
 
 **Why the id and nothing else.** A bookmarks file names the same video in
@@ -932,14 +967,17 @@ address, though the Archive usually keeps the page and its text rather than
 the video. The formats stay readable: `DEFAULT_FORMAT` prefers H.264 with
 AAC in MP4, the transcript is plain UTF-8, and the notes are inside the
 `.mp4` so that a copy moved without its `.txt` still says where it came
-from. A local copy is for checking a reference; passing it on is the rights
-holder's to allow, and YouTube's terms apply.
+from. Citing a video credits it; it does not license a copy, and passing a
+copy on is the rights holder's to allow.
 
 **Accessibility.** The transcript serves anyone who cannot use the audio: a
 screen reader reads plain text as it is, and a quotation can be copied from
 it. WCAG 2.2 treats captions (1.2.2) and a text alternative for prerecorded
 media (1.2.3, 1.2.8) as separate criteria; a transcript made from captions is
-a start on the second. Automatic captions are speech recognition and not
+a start on the second. WCAG sets what a publisher owes and grants no right to
+copy. The stronger ground for a reader's own transcript is what it is for:
+*Authors Guild v. HathiTrust* (2d Cir. 2014) held copies made for
+print-disabled readers' access to be fair use. Automatic captions are speech recognition and not
 verbatim, so a quotation should be checked against the audio and cited with
 its time in the video. The `Captions` line says which kind a transcript came
 from (IV-N). Captions the uploader wrote are the uploader's text, which may
@@ -956,9 +994,9 @@ that is already muxed anyway. Plain `yt-dlp` and `yt-brave` get the author
 in the name but not the notes; `--embed-metadata --write-info-json` keeps
 the fields by hand. Files downloaded before this change have neither.
 
-**Format shifting, and what it preserves.** `ytq` changes the form a
-recording takes, not its content: a stream on a web page becomes an MP4
-file, and speech becomes text. In yt-dlp 2026.08.19, `FFmpegMergerPP` runs
+**What the copy preserves.** `ytq` changes the form a recording is in: a
+stream on a web page becomes an MP4 file, and speech becomes text. In
+yt-dlp 2026.08.19, `FFmpegMergerPP` runs
 ffmpeg with `-c copy`, and `FFmpegMetadataPP` uses `stream_copy_opts()`, so
 neither the merge nor the tagging re-encodes; the file holds the streams
 YouTube served. Those are YouTube's encoding of the upload, not the
@@ -967,11 +1005,36 @@ recording and change nothing in it. The transcript is the lossy step:
 `vtt_text()` discards the timings, removes a line equal to the one before
 (which would also remove a line a speaker really did say twice in
 succession), and rewraps. It is an index into the recording, not a
-substitute for it. Whether a copy may be kept at all depends on the
-jurisdiction and the site's terms, which this report does not assess.
+substitute for it. All of this matters for evidence: a quotation checked
+against the file is checked against what was published. It says nothing
+about permission. A faithful copy is still a copy, and crediting a source
+does not license copying it.
+
+**Whether a copy may be kept.** This report does not settle it. "Format
+shifting" means copying a work one already owns into another form, a CD
+into MP3s. A streamed video is licensed for watching on the site, so the
+term does not carry over, and in the United States format shifting is not
+itself a recognised fair use: *Sony* (1984) held *time*-shifting of
+broadcast television fair, and the Copyright Office declined to treat
+space-shifting as noninfringing in its 2012 and 2015 §1201 rulemakings. The
+case for a copy is strongest when it serves a purpose the stream cannot:
+quoting, criticising or reporting on a recording, checking a reference after
+the video changes or disappears, or reading a transcript instead of
+listening. It is weakest when the copy only replaces watching on the site,
+as a bookmarks export queued whole (IV-C, a remix among the first ten) mostly
+does, and when the video was behind a paid membership. Apart from copyright,
+YouTube's terms forbid downloading without its permission, and whether
+yt-dlp's handling of YouTube's player circumvents a technical protection
+measure has been disputed in court. Uploads of one's own, Creative Commons
+videos (the License line, IV-Q) and US federal government works raise none
+of this.
 
 **Recordings of public statements.** A recording of a public figure speaking
-in public is a primary source for the words and how they were said. A
+in public is a primary source for the words and how they were said.
+*Public* describes the occasion, not the recording, whose copyright belongs
+to whoever made it unless it is a US federal government work (17 USC 105);
+*Harper & Row v. Nation* (1985) shows that newsworthiness alone does not
+make quoting fair. A
 correct citation of one separates two things the notes place side by side.
 The speaker, the occasion and its date belong to the statement; `Author` and
 `Published` belong to the upload, which may be a news channel posting days
@@ -996,6 +1059,16 @@ URL, so a video must have one spelling there. The watch URL is the one
 passed anyway). Requiring the match to start the text keeps an archive
 address that contains a YouTube URL as the archive address. Entries queued
 before this change in another form are not merged with new ones.
+
+**What the License line says, and does not.** It is the license the site
+states, as yt-dlp reports it. On YouTube that is either YouTube's one
+Creative Commons option, CC BY, which allows copying, sharing and adapting
+with credit, or nothing. `not stated` is neither "all rights reserved" nor
+"free to reuse": the page offered no license, so the ordinary rules apply.
+A Creative Commons license is only as good as the uploader's right to grant
+it, and a re-upload of someone else's work marked CC BY does not make that
+work reusable. Other extractors fill the field from their own pages; only
+YouTube's was read and tried.
 
 ## VI. Procedures
 
@@ -1102,6 +1175,13 @@ ytq add youtube.com/shorts/ID          # or youtu.be/ID, with or without https:/
 ytq list | grep ID                     # one entry, as https://www.youtube.com/watch?v=ID
 ```
 
+**See whether a video states a license:**
+
+```sh
+grep '^  License:' ~/Downloads/SharedVM/NAME.txt
+yt-dlp --simulate --print '%(license)s' URL     # NA: none stated
+```
+
 ## VII. Files touched
 
 | File | Change |
@@ -1111,5 +1191,6 @@ ytq list | grep ID                     # one entry, as https://www.youtube.com/w
 | `copal-prep.sh` | `install_ytq`: `--progress --no-quiet` and `PROGRESS_TEMPLATE`; the live record (`stage()`, `stream_of()`, `size_of()`, `describe()`, `compact()`, `live_view()`, `bar()`); `download()` and `stop_current(why)` rewritten to keep and log it; the window's panel and state counts; `ytq status`; `log()` with pid tags and rotation, `log_start()`, `short()`, `fmt_size()`, `fmt_secs()`; timings in `check()` and `transcript()`; `DEFAULT_SUBS`; the header and guide text. Commit `f9635ad` |
 | `copal-prep.sh` | `install_ytq`: `safe_author` in `NAME_OPTS` and `NAME`; `META_OPTS`, used by `download()` when `ffmpeg` is present (`import shutil`); `notes()`, with the captions' source; `transcript()` printing `META` and taking `video`; `[Metadata]` in `stage()`; the header's CITATIONS paragraph. `write_ytdlp_conf()`: the author options and comments. The guide: author filenames and "Citing what you keep". The `yt-brave` header and `install_ytdlp` comment on restricted videos, kept downloads and format shifting. The guide and the `ytq` header on quoting recordings of public statements. Commit `923b673` |
 | `copal-prep.sh` | `install_ytq`: `YT_RE` with an optional, guarded scheme; `as_url()`, used by `ytq add`, the watcher, the `a` key, `clipboard_urls()` and `ytq transcript`; the header and guide lines on links without `https://`. Commit `28d6e5c` |
+| `copal-prep.sh` | `install_ytq`: `license` in `transcript()`'s `META`, a `License` row in `notes()`, a `License` line in `META_OPTS`; the header's Notes list and CITATIONS paragraph. The guide: a "License" paragraph, "What the copy is" in place of "Format shifting", and the archiving, accessibility and quoting paragraphs. The `install_ytdlp` comment and the `yt-brave` header on what a faithful copy does not settle. Commit `95b0be1` |
 | `docs/integration-lab-report.md` | a pointer from Section D to this report |
 | `docs/ytq-clipboard-lab-report.md` | this report |
