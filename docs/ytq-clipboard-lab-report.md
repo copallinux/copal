@@ -61,6 +61,14 @@ are not verbatim, and a video can disappear. It also treats
 leave the recording as it was served and which do not, with what that means
 for quoting recordings of public statements.
 
+Section IV-P is the last change: a Shorts link copied without its scheme,
+`youtube.com/shorts/SWHZolxKdVU`, was refused by every way into the queue,
+because both URL patterns required `https://`. The YouTube pattern now allows
+the scheme to be missing, and every single link to a YouTube video is queued
+as its plain watch URL. That also closed a duplicate the first version of
+the fix created: the same Short queued once by `ytq add` and once by
+`ytq clip`.
+
 ## I. Objective
 
 1. Let one Super+Shift+Y queue every YouTube video in whatever text is on the
@@ -85,6 +93,9 @@ for quoting recordings of public statements.
     author, full title, published time, URL and retrieval time, with the
     name of the video file the transcript belongs to.
 12. Keep those details inside the video file too, so they travel with a copy.
+13. Take a YouTube link, Shorts included, however it was copied, with or
+    without `https://`, by every way into the queue, and queue each video
+    once whatever form its links take.
 
 ## II. Materials
 
@@ -185,6 +196,16 @@ between an uploader's and automatic captions from `process_subtitles()` in
 `yt_dlp/YoutubeDL.py`. The caption source was then checked with
 `ytq transcript` on `Q2pe-7RNJRM`, whose captions Section IV-G found
 automatic, beside the two videos above.
+
+For Shorts, the installed `YT_RE`, `URL_RE` and `youtube_urls()` were first
+run, loaded from the extracted script, on eight ways a Shorts link is
+copied. The candidate pattern was then tested alone on eleven links it must
+match and ten it must not, and `as_url()` on seventeen inputs. End to end,
+under a throwaway `HOME` with a stub `wl-paste`, one Short was queued with
+`ytq add` in three forms and with `ytq clip` once, and `queue.json` was
+counted. After the owner installed the commit, the same run was repeated
+with `/usr/local/bin/ytq` itself, and the owner's own download of the Short
+was read from the log, its `.txt` and ffprobe.
 
 ## IV. Results
 
@@ -650,6 +671,100 @@ post-processing. In the run of Section N's first version, the file's
 `Downloaded` (15:58:48 UTC, yt-dlp's `epoch`) and the `.txt`'s (08:58:50
 -0700, when it was written) were two seconds apart.
 
+### P. Shorts links without `https://`
+
+A Shorts link with its scheme had always worked: the log holds
+`added https://www.youtube.com/shorts/OORXKq6c7Es` at 07:45:52 and its
+download, and `ytq clip` had queued Shorts from the bookmarks as watch
+URLs. Without the scheme, nothing took it. From the script as installed
+before the fix:
+
+| Text | `URL_RE` | `youtube_urls()` |
+|---|---|---|
+| `https://www.youtube.com/shorts/SWHZolxKdVU` | match | `watch?v=SWHZolxKdVU` |
+| `https://youtube.com/shorts/SWHZolxKdVU?si=AbC123xyz` | match | `watch?v=SWHZolxKdVU` |
+| `https://m.youtube.com/shorts/SWHZolxKdVU?feature=share` | match | `watch?v=SWHZolxKdVU` |
+| `http://youtube.com/shorts/SWHZolxKdVU/` | match | `watch?v=SWHZolxKdVU` |
+| `youtube.com/shorts/SWHZolxKdVU` | no | none |
+| `www.youtube.com/shorts/SWHZolxKdVU` | no | none |
+| `see youtube.com/shorts/SWHZolxKdVU and https://youtu.be/jNQXAC9IVRw` | no | `jNQXAC9IVRw` only |
+
+So `ytq clip` found no video, and `ytq add`, the window's watcher and its
+`a` key, which test the whole text with `URL_RE`, called it "not a URL".
+`ytq transcript` would have handed the bare link to yt-dlp.
+
+The pattern's scheme became optional, guarded where it is missing:
+
+```python
+YT_RE = re.compile(r"(?:https?://|(?<![\w.@/-]))(?:(?:www|m|music)\.)?"
+                   r"(?:youtube\.com/(?:watch\?(?:[^\s\"'<>#]*?&)?v=|shorts/|live/|embed/)|youtu\.be/)"
+                   r"([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])")
+```
+
+Without a scheme the host may not follow a letter, digit, `.`, `@`, `/` or
+`-`. On its own the pattern matched all eleven links it should: bare,
+`www.`, `m.` and `youtu.be` forms, `watch?v=` with `v` not first, a link in
+a sentence, in parentheses and in `HREF="…"`. It matched none of the ten it
+should not: `notyoutube.com`, `foo.youtube.com`, `evil.com/youtube.com/…`,
+`youtube.com.evil.com`, `xyoutu.be`, `user@youtube.com`, 12- and
+8-character ids, a channel and a playlist.
+
+The single-link checks moved into one function, `as_url()`, which `ytq add`,
+the watcher, the `a` key, `ytq clip`'s fallback and `ytq transcript` now
+call. Its first version kept a URL as it was and put `https://` back on a
+bare YouTube link. End to end, `ytq add youtube.com/shorts/SWHZolxKdVU` then
+queued `https://youtube.com/shorts/SWHZolxKdVU`, and `ytq clip` with the
+same text queued `https://www.youtube.com/watch?v=SWHZolxKdVU`: two entries,
+so two downloads, of one video. The version committed turns a YouTube video
+at the start of the text into its watch URL, as `ytq clip` does:
+
+```python
+def as_url(text):
+    text = text.strip()
+    m = YT_RE.match(text)
+    if m and not re.search(r"\s", text):
+        return "https://www.youtube.com/watch?v=" + m.group(1)
+    return text if URL_RE.match(text) else None
+```
+
+| `as_url()` input | Result |
+|---|---|
+| `youtube.com/shorts/…`, `www.…/shorts/…?feature=share`, `youtu.be/…` with spaces and a newline around it, `m.youtube.com/watch?v=…&t=5s` | `https://www.youtube.com/watch?v=SWHZolxKdVU` |
+| `https://www.youtube.com/shorts/…`, `https://youtube.com/shorts/…?si=AbC`, `https://www.youtube.com/watch?v=…&list=RDabc&index=2` | the same |
+| `https://web.archive.org/web/2024/https://www.youtube.com/watch?v=SWHZolxKdVU` | unchanged |
+| `https://vimeo.com/12345`, `https://www.youtube.com/@channel` | unchanged |
+| `notyoutube.com/shorts/…`, `foo.youtube.com/shorts/…`, `example.com/shorts/…`, `youtube.com/shorts/… and more words`, `youtube.com/@channel`, `plain words`, empty | `None` |
+
+All seventeen gave the result in the table. End to end:
+
+| Command, in order | Log |
+|---|---|
+| `ytq add --no-run youtube.com/shorts/SWHZolxKdVU` | `added https://www.youtube.com/watch?v=SWHZolxKdVU` |
+| `ytq add --no-run 'https://www.youtube.com/shorts/SWHZolxKdVU?feature=share'` | `already queued: …watch?v=SWHZolxKdVU` |
+| `ytq add --no-run youtu.be/SWHZolxKdVU` | `already queued: …` |
+| `ytq clip --no-run`, clipboard `youtube.com/shorts/SWHZolxKdVU` | `already queued: …` |
+| `ytq add --no-run notyoutube.com/shorts/SWHZolxKdVU` | `not a URL: notyoutube.com/shorts/SWHZolxKdVU` |
+
+`queue.json` held one entry. `ytq transcript youtube.com/shorts/SWHZolxKdVU`
+wrote `Trader-The_setup_I_trade_more_than_anything_else_trading_daytrading_SWHZolxKdVU.txt`
+in a 12-second caption run, with `Captions: en, automatic: …`. `ytq add`
+still exits 0 after "not a URL", as it did before.
+
+The owner installed commit `28d6e5c` at 09:24:39; `/usr/local/bin/ytq` and
+the guide were byte-identical to the files cut from it. Run under a
+throwaway `HOME`, the installed `ytq add youtube.com/shorts/SWHZolxKdVU`
+queued the watch URL, a clipboard of
+`www.youtube.com/shorts/SWHZolxKdVU?feature=share` was `already queued`, and
+`notyoutube.com/…` was not a URL.
+
+The owner had downloaded the same Short a minute before that install, with
+the build of 09:15, so the link must have carried its scheme and the run does
+not test the fix. It does show the rest of the day's work on a Short: yt-dlp
+exited 0 after 12 s, the file is 22.5 MiB of 1080 × 1920 H.264 with AAC,
+92.07 s long; the `.txt` holds 238 words under Notes naming the `.mp4` in
+`Video:` and the captions as automatic; and the file's `comment` gives
+`Published: 2026-09-13 13:44:28 UTC`, the `.txt`'s `06:44:28 -0700`.
+
 ## V. Discussion
 
 **Why the id and nothing else.** A bookmarks file names the same video in
@@ -858,6 +973,21 @@ from the speaker's or the event's own channel is better evidence than a
 clip. The transcript helps find the passage; the words, and their time,
 should be taken from the video.
 
+**Links without a scheme, and one form per video.** A link copied from an
+address bar, typed, or pasted from a message often has no `https://`, and
+`youtube.com/shorts/ID` is the form a Short is usually shared in. Accepting
+any bare `host/path` as a URL would let a pasted word with a dot in it into
+the queue, so the scheme is optional for YouTube hosts only, and the
+lookbehind keeps longer hosts and paths under other sites out. A YouTube
+link inside another URL's query string, after `=`, still matches in
+`ytq clip`, which is the video the text points at. The queue is keyed on the
+URL, so a video must have one spelling there. The watch URL is the one
+`ytq clip` already used, and yt-dlp takes it for a Short. A `&t=` or
+`&list=` is dropped, which a download never needed (`--no-playlist` is
+passed anyway). Requiring the match to start the text keeps an archive
+address that contains a YouTube URL as the archive address. Entries queued
+before this change in another form are not merged with new ones.
+
 ## VI. Procedures
 
 **Queue a bookmarks export:**
@@ -956,6 +1086,13 @@ browser, and cite the archived address beside the original.
 yt-dlp --embed-metadata --write-info-json URL
 ```
 
+**Queue a Short however it was copied:**
+
+```sh
+ytq add youtube.com/shorts/ID          # or youtu.be/ID, with or without https://
+ytq list | grep ID                     # one entry, as https://www.youtube.com/watch?v=ID
+```
+
 ## VII. Files touched
 
 | File | Change |
@@ -964,5 +1101,6 @@ yt-dlp --embed-metadata --write-info-json URL
 | `copal-prep.sh` | `install_ytq`: `NAME_OPTS` and `NAME` in the download's `-o` (with `%` in `DIR` escaped), `vtt_text()`, `transcript()`, the transcript step in `download()`, `ytq transcript`, the `SUBS` setting, the help text; `write_ytdlp_conf()` writing `/etc/yt-dlp.conf`, called from `install_ytdlp` and `install_ytq`; a "Filenames" section and transcript lines in the guide. Commit `a538e53` |
 | `copal-prep.sh` | `install_ytq`: `--progress --no-quiet` and `PROGRESS_TEMPLATE`; the live record (`stage()`, `stream_of()`, `size_of()`, `describe()`, `compact()`, `live_view()`, `bar()`); `download()` and `stop_current(why)` rewritten to keep and log it; the window's panel and state counts; `ytq status`; `log()` with pid tags and rotation, `log_start()`, `short()`, `fmt_size()`, `fmt_secs()`; timings in `check()` and `transcript()`; `DEFAULT_SUBS`; the header and guide text. Commit `f9635ad` |
 | `copal-prep.sh` | `install_ytq`: `safe_author` in `NAME_OPTS` and `NAME`; `META_OPTS`, used by `download()` when `ffmpeg` is present (`import shutil`); `notes()`, with the captions' source; `transcript()` printing `META` and taking `video`; `[Metadata]` in `stage()`; the header's CITATIONS paragraph. `write_ytdlp_conf()`: the author options and comments. The guide: author filenames and "Citing what you keep". The `yt-brave` header and `install_ytdlp` comment on restricted videos, kept downloads and format shifting. The guide and the `ytq` header on quoting recordings of public statements. Commit `923b673` |
+| `copal-prep.sh` | `install_ytq`: `YT_RE` with an optional, guarded scheme; `as_url()`, used by `ytq add`, the watcher, the `a` key, `clipboard_urls()` and `ytq transcript`; the header and guide lines on links without `https://`. Commit `28d6e5c` |
 | `docs/integration-lab-report.md` | a pointer from Section D to this report |
 | `docs/ytq-clipboard-lab-report.md` | this report |
