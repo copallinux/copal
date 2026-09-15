@@ -19811,7 +19811,8 @@ The queue: ytq
                         (channel and playlist pages are left out)
     ytq add URL...      the same, for URLs typed in a shell
     ytq run             download what is queued, one at a time, as MP4
-                        into ~/Videos
+                        into ~/Downloads/SharedVM when the Mac's share is
+                        mounted there, otherwise ~/Videos
     ytq status          what is downloading, what is left
     ytq                 a window. While it is focused, every URL you copy is
                         checked and queued, and it downloads them too. Keys
@@ -20094,7 +20095,9 @@ install_ytq() {
 # it takes the clipboard once, when you ask.
 #
 # Settings, if you want them, in ~/.config/ytq/config as KEY=VALUE:
-#   DIR       where files go            (default ~/Videos, or XDG_VIDEOS_DIR)
+#   DIR       where files go            (default ~/Downloads/SharedVM if the
+#                                        share is mounted, else XDG_VIDEOS_DIR
+#                                        or ~/Videos)
 #   FORMAT    yt-dlp -f selector        (default: best MP4 video + M4A audio)
 #   PROFILE   Brave profile, passed to yt-brave --profile   (default: Default)
 #   KEYRING   passed to yt-brave --keyring, e.g. basictext, for a desktop with no keyring
@@ -20132,6 +20135,13 @@ DOWNLOADABLE = ("retry-cookies", "queued", "retry")
 
 
 def videos_dir():
+    # The folder shared with the Mac first, when the share is really mounted:
+    # a download there is on both sides at once. The link is made by the
+    # shared-folder stage and points at /mnt/share; a link whose share is not
+    # mounted would fill the empty mount point instead, so that falls through.
+    shared = os.path.join(HOME, "Downloads", "SharedVM")
+    if os.path.ismount(os.path.realpath(shared)):
+        return shared
     try:
         for line in open(os.path.join(HOME, ".config", "user-dirs.dirs")):
             if line.startswith("XDG_VIDEOS_DIR="):
