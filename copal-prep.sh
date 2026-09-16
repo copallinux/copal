@@ -20308,6 +20308,79 @@ install_ytq() {
 # tells you to check the cable. linux-lts and linux-rpi both carry the drivers
 # (verified against the v3.24 aarch64 packages on 4 September 2026), so on real
 # hardware this is a non-issue and in a VM it is a kernel swap.
+#
+# INSTALLING THE KERNEL IS HALF OF THE SWAP. Stage 3 writes grub.cfg by hand
+# (BOOTLOADER=none) naming the flavour that was running then -- virt, in a VM
+# -- and nothing regenerates it, so `apk add linux-lts` put a kernel on the
+# boot partition that no menu entry pointed at. The machine rebooted into
+# linux-virt again and the counter stayed invisible. Found on a UTM guest with
+# linux-lts installed, a GMC-320 Plus in lsusb, and /proc/cmdline still reading
+# BOOT_IMAGE=/vmlinuz-virt.
+#
+# So this makes lts the default and keeps every virt entry below it, renamed:
+# if lts will not boot, virt is one arrow key in a five-second GRUB menu. The
+# old file goes to grub.cfg.virt, not grub.cfg.bak -- .bak is stage 3's way
+# back to the diskless system and must not be overwritten. Idempotent: a
+# default entry that already boots lts is left alone.
+grub_default_lts() {
+    is_pi_boot && return 0
+    _cfg="$BOOT/boot/grub/grub.cfg"
+    if ! sys_installed; then
+        note "diskless boot -- GRUB already has an lts entry; pick it to see a USB counter"
+        return 0
+    fi
+    # The first linux/initrd lines are the default entry's (set default=0).
+    _k=$(sed -n 's/^[[:space:]]*linux[[:space:]]\{1,\}\([^[:space:]]*\).*/\1/p' "$_cfg" | head -n1)
+    _i=$(sed -n 's/^[[:space:]]*initrd[[:space:]]\{1,\}\([^[:space:]]*\).*/\1/p' "$_cfg" | head -n1)
+    case "$_k" in
+        *vmlinuz-lts) note "grub.cfg already boots linux-lts by default"; return 0 ;;
+        *vmlinuz-virt) ;;
+        *) warn "grub.cfg boots '$_k' by default -- not touching it; point it at vmlinuz-lts by hand"
+           return 0 ;;
+    esac
+    _kl=${_k%vmlinuz-virt}vmlinuz-lts
+    _il=${_i%initramfs-virt}initramfs-lts
+    if [ ! -f "$BOOT/${_kl#/}" ] || [ ! -f "$BOOT/${_il#/}" ]; then
+        warn "linux-lts is installed but $BOOT/${_kl#/} or $BOOT/${_il#/} is missing -- grub.cfg left on virt"
+        return 0
+    fi
+
+    cp "$_cfg" "$_cfg.virt"
+    # The header (everything before the first menuentry), then the entries
+    # twice: lts first, so it is entry 0, then the original virt ones.
+    awk '
+        /^menuentry / { body = 1 }
+        !body { head = head $0 "\n"; next }
+        { entries = entries $0 "\n" }
+        END {
+            lts = entries
+            gsub(/vmlinuz-virt/, "vmlinuz-lts", lts)
+            gsub(/initramfs-virt/, "initramfs-lts", lts)
+            gsub(/menuentry "Copal Linux/, "menuentry \"Copal Linux (lts)", lts)
+            virt = entries
+            gsub(/menuentry "Copal Linux/, "menuentry \"Copal Linux (virt, no USB serial)", virt)
+            printf "%s", head
+            print "# linux-lts is the default: linux-virt has no ch341, so a USB counter"
+            print "# passed through to this VM never appears. Rewritten by stage 10; the"
+            print "# virt-only menu it replaced is grub.cfg.virt."
+            print ""
+            printf "%s\n%s", lts, virt
+        }' "$_cfg.virt" > "$_cfg.new"
+
+    # A grub.cfg that lost its root= is a machine at a GRUB prompt, so check
+    # the result has both kernels, each with a root=, before it replaces
+    # anything.
+    if grep -q "linux[[:space:]]*$_kl .*root=" "$_cfg.new" \
+       && grep -q "linux[[:space:]]*$_k .*root=" "$_cfg.new"; then
+        mv "$_cfg.new" "$_cfg"
+        note "grub.cfg now boots linux-lts by default (virt kept as a fallback entry)"
+        warn "reboot into linux-lts before expecting a USB counter to be found"
+    else
+        rm -f "$_cfg.new"
+        warn "could not rewrite grub.cfg for linux-lts -- left on virt; the copy is $_cfg.virt"
+    fi
+}
+
 install_radbeeper() {
     say "radbeeper -- a Geiger counter on USB"
     cat <<'MSG'
@@ -20351,10 +20424,11 @@ MSG
     case "$(uname -r)" in
         *-virt)
             if apk info -e linux-lts >/dev/null 2>&1; then
-                note "linux-lts is installed -- a passed-through counter can be seen"
+                note "linux-lts is installed"
+                grub_default_lts
             elif apk add linux-lts >/dev/null 2>&1; then
                 note "installed linux-lts -- linux-virt has no ch341, so a passed-through counter could never appear"
-                warn "reboot into linux-lts before expecting a USB counter to be found"
+                grub_default_lts
             else
                 warn "could not install linux-lts -- under linux-virt a USB counter cannot be found, however good the pass-through"
             fi ;;
