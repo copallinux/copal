@@ -20330,6 +20330,36 @@ install_radbeeper() {
 
 MSG
 
+    # THE KERNEL, WHICH IS THE THIRD FAILURE AND THE EXPENSIVE ONE. The
+    # comment above this function sets it out: Alpine's linux-virt binds no
+    # USB serial adapter at all, so a counter passed through to a VM running
+    # it can never appear. The device enumerates -- lsusb shows the CH340 --
+    # and there is simply no driver to claim it, so dmesg is silent and every
+    # guide on the internet tells you to check the cable.
+    #
+    # This stage used to only DESCRIBE that. radbeeper's own README said
+    # "Copal installs the linux-lts Alpine package, so a Copal machine has
+    # the driver already", and nothing here installed any kernel at all. The
+    # sentence is true now.
+    #
+    # ONLY IN A VM, AND ONLY WHEN linux-lts IS NOT ALREADY THERE. Real
+    # hardware runs linux-lts or linux-rpi and both carry ch341, so there is
+    # nothing to do -- and a Pi must NOT be handed linux-lts. The test is the
+    # running kernel's own name, which ends in -virt exactly when this
+    # matters. It does not reboot anything: a kernel takes effect when the
+    # machine next starts, and choosing that moment is the operator's.
+    case "$(uname -r)" in
+        *-virt)
+            if apk info -e linux-lts >/dev/null 2>&1; then
+                note "linux-lts is installed -- a passed-through counter can be seen"
+            elif apk add linux-lts >/dev/null 2>&1; then
+                note "installed linux-lts -- linux-virt has no ch341, so a passed-through counter could never appear"
+                warn "reboot into linux-lts before expecting a USB counter to be found"
+            else
+                warn "could not install linux-lts -- under linux-virt a USB counter cannot be found, however good the pass-through"
+            fi ;;
+    esac
+
     # The Python radbeeper this function used to write -- 3,741 lines of it --
     # retired. radbeeper is Rust now, one crate at the root of
     # ~/code/radbeeper, which copal-code clones and copal-build compiles.

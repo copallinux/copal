@@ -2033,6 +2033,15 @@ Every guide on the internet will tell you to check the cable.
 and `cdc-acm`, so on a Pi or a PC this never arises. **In a VM it is a kernel
 swap, not a driver hunt.**
 
+**Stage 10 now does that swap for you**, and only in the case where it is
+needed: when the running kernel's name ends in `-virt` and `linux-lts` is not
+already installed, it installs `linux-lts` and says so. It does not reboot —
+a kernel takes effect when the machine next starts, and choosing that moment
+is yours. Real hardware is left alone, and a Pi is never handed `linux-lts`.
+
+Until this was added the stage only *described* the trap while radbeeper's own
+README said Copal installed the package. It did not; the sentence is true now.
+
 ### No hardware, no problem
 
 Every command runs against a built-in source — in the Python program, which
