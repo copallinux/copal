@@ -38,6 +38,13 @@ records 5.9× faster, repairs a damaged capture 14.5× faster, and armors
 2.6× faster. Section VII has the numbers, the one place Python still wins
 and why, and what was found on the way.
 
+*Revised again after phase 2, and at the release.* ytq is Rust, the Python one
+is retired, and the project is published under its own name. Section V-A's
+five crates are now four modules of one crate: they only ever depended on each
+other, shared one version and would have published together, which is a module
+boundary and not a package boundary. V-A and V-G say what changed; the 293
+comparisons agree across the move.
+
 Before proposing anything, the report measures what the choice rests on:
 
 | Question | Finding |
@@ -51,7 +58,8 @@ Before proposing anything, the report measures what the choice rests on:
 
 The recommendation, set out in Section V:
 - **Structure:** one repository and five crates with no external
-  dependencies.
+  dependencies. *(At the release these became four modules of one crate --
+  see V-A.)*
 - **Configuration:** a shared `~/.config/copal/media.conf` that ytq also
   reads.
 - **Build:** a Makefile as the front door, with cargo-make for the
@@ -284,7 +292,7 @@ The binary is a 438,592-byte dynamically linked musl PIE for aarch64.
 
 ## V. Proposal
 
-### A. One project, five crates, no external dependencies
+### A. One project, one crate, no external dependencies
 
 Start it as a repository beside orrery, `github.com/vonglurt/staticstream`,
 checked out at `~/code/staticstream`. That is where `copal-build` will find it and
@@ -294,27 +302,39 @@ a rewrite. Creating either is a public act, and is left to the owner.
 
 ```
 staticstream/
-├─ Cargo.toml                    workspace: members, shared version, release profile
+├─ Cargo.toml                    one package: three binaries, zero dependencies
 ├─ Makefile                      the front door (Section V-G)
 ├─ Makefile.toml                 cargo-make tasks for multi-target release builds
 ├─ README.md  LICENSE  docs/
-└─ crates/
-   ├─ staticstream/              the .sstr format as a library: records, RS(255,223),
-   │                             parity, checkpoints, SHA-256, CRC-32; no I/O policy
-   ├─ staticstream-tty/          the armor: lines, offsets, CRCs, erasure maps
-   ├─ staticstream-cli/          the command, binary `sstr`: record, play, verify,
-   │                             armor, recv, serve
-   ├─ staticstream-ytq/          ytq in Rust: queue.json and its locks, settings,
-   │                             downloads; a library until it matches the Python
-   │                             ytq, then the binary `ytq`
-   └─ staticstream-workspace/    the terminal Workspace, binary `sstr-workspace` (V-B)
+├─ tests/                        the crosschecks, and the frozen Python ytq
+└─ src/
+   ├─ lib.rs                     the four modules
+   ├─ format/                    the .sstr format: records, RS(255,223), parity,
+   │                             checkpoints, SHA-256, CRC-32, zlib, JSON
+   ├─ tty.rs                     the armor: lines, offsets, CRCs, erasure maps
+   ├─ ytq/                       ytq: queue.json and its locks, settings, the
+   │                             runner, the live record, the window
+   ├─ workspace/                 the terminal Workspace (V-B)
+   └─ bin/
+      ├─ sstr.rs                 record, play, verify, armor, recv, serve
+      ├─ ytq.rs                  the queue people type
+      └─ sstr-workspace.rs       the Workspace
 ```
 
-**Names.** The project, repository and packages are `staticstream`, which
-is free on crates.io (IV-B), so the library can be published under the
-format's own name. The things people type stay short: the binaries are
-`sstr`, `sstr-workspace` and, once it matches the Python one, `ytq`, and
-captures are `.sstr` files. The format keeps its name, Static Stream.
+**One package, not five.** This was proposed as five crates and built that
+way through phases 0 to 2. Preparing the release showed the mistake: they
+depended only on each other, shared one version and would have gone to
+crates.io together, so they were modules carrying a package's overhead -- five
+permanent names for one program. copal-tm was found in that same shape on the
+same day, and collapsed for the same reason. The split into `format`, `tty`,
+`ytq` and `workspace` is kept; only the packaging is gone, and with it
+`--workspace` and `-p` from every make line.
+
+**Names.** The project, repository and crate are `staticstream`, which was
+free on crates.io (IV-B), so the format is published under its own name. The
+things people type stay short: the binaries are `sstr`, `ytq` and
+`sstr-workspace`, and captures are `.sstr` files. The format keeps its name,
+Static Stream.
 
 **Dependencies.** None, following orrery and ascitty, for the reason they
 give: `copal-build` runs on nodes with no internet. The research makes this
@@ -488,7 +508,7 @@ The Makefile is the front door, and it works with nothing but `cargo`
 installed, because `copal-build` calls `cargo` directly.
 `cargo make` is for the release matrix only:
 
-The Makefile as committed in phase 0, abridged:
+The Makefile, abridged, with the release's one-crate lines:
 
 ```make
 CARGO ?= cargo
@@ -496,27 +516,33 @@ CARGO ?= cargo
 ROOT ?= $(HOME)/.local
 ARGS ?=
 
-build: ## release build of every crate; also writes Cargo.lock the first time
-	$(CARGO) build --release --workspace
+build: ## release build of all three binaries; also writes Cargo.lock the first time
+	$(CARGO) build --release
 
 run: ## the sstr command:  make run ARGS='paths'
-	$(CARGO) run --release --quiet -p staticstream-cli -- $(ARGS)
+	$(CARGO) run --release --quiet --bin sstr -- $(ARGS)
 
 workspace: ## the terminal Workspace
-	$(CARGO) run --release --quiet -p staticstream-workspace -- $(ARGS)
+	$(CARGO) run --release --quiet --bin sstr-workspace -- $(ARGS)
 
 deps: ## prove Cargo.lock names no crate from outside this repository
 	@if grep -q '^source = ' Cargo.lock; then echo 'error: external crates'; exit 1; fi
 
 check: deps ## what a commit must pass: no external crates, the tests, an offline release build
-	$(CARGO) test --workspace --offline --locked --quiet
-	$(CARGO) build --release --workspace --offline --locked
+	$(CARGO) test --offline --locked --quiet
+	$(CARGO) build --release --offline --locked
 
-# ytq is not installed from here until the Rust ytq does all the Python one
-# does: $(ROOT)/bin comes before /usr/local/bin on Copal's PATH, and would hide it.
-install: ## sstr and sstr-workspace into ~/.local/bin (ROOT=DIR for DIR/bin)
-	$(CARGO) install --locked --offline --root $(ROOT) --path crates/staticstream-cli
-	$(CARGO) install --locked --offline --root $(ROOT) --path crates/staticstream-workspace
+# One crate, so one install, and it carries all three binaries. ytq is
+# installed from here since step 2e, when it matched the Python one: $(ROOT)/bin
+# comes before /usr/local/bin on Copal's PATH, and would have hidden it before.
+install: ## sstr, ytq and sstr-workspace into ~/.local/bin (ROOT=DIR for DIR/bin)
+	$(CARGO) install --locked --offline --root $(ROOT) --path .
+
+package: check ## the crate tarball, and what is in it -- pushes nothing
+	$(CARGO) package --locked
+
+publish: check ## the one cargo publish call, gated on a clean check here, now
+	$(CARGO) publish --locked
 
 tools: ## cargo-make and cargo-zigbuild, for make dist: apk on Alpine, else cargo install
 	@if command -v apk >/dev/null 2>&1; then doas apk add cargo-make cargo-zigbuild; \
@@ -547,8 +573,9 @@ pullable.
 |---|---|---|
 | 0 | the repository, workspace, Makefile, README, and the constants each crate shares with the Python it replaces | `make check` passes on the guest and on the Mac. **Done on the guest**, commit `0ee5457`, on GitHub at `vonglurt/staticstream`; not yet run on the Mac |
 | 1 | the `staticstream` library and `sstr` at parity with `copal-sstr.py` | the cross-check and damage battery of V-F agree byte for byte; `record` refuses empty input. **Done**: commit `d62aa88`, and `26027d7` for armor's speed. `make crosscheck`, 44 of 44 comparisons agree (VII) |
-| 2 | ytq in Rust: `staticstream-ytq` takes over the queue, settings, `OUTPUT` and `media.conf`, and drives yt-dlp as the Python ytq does | Rust and Python ytq run side by side on one `queue.json`. A queued video leaves a `.sstr` that `sstr verify` passes and that plays back identical to the MP4 it replaced, and `OUTPUT=mp4` leaves today's files. Only then is the binary `ytq` built, and the Python one retired from `copal-prep.sh` |
-| 3 | `sstr-workspace`: Browser, Inspector, Transcript, then Services, then Queue | every Service is a command line shown in the Transcript before it runs |
+| 2 | ytq in Rust: the `ytq` module takes over the queue, settings, `OUTPUT` and `media.conf`, and drives yt-dlp as the Python ytq does | Rust and Python ytq run side by side on one `queue.json`; a queued video leaves a `.sstr` that verifies and plays back identical to the MP4; `OUTPUT=mp4` leaves today's files; only then is the binary `ytq` built. **Done**: `make check` passes with `ytq` in the Python one's place -- 76 unit tests, 44 + 32 + 50 comparisons, 34 checks and 133 comparisons, 293 in all. `copal-prep.sh` is 1,466 lines lighter and writes no ytq |
+| — | the release: one crate, under its own name on crates.io | **Done**: the five packages became four modules of one package named after the repository. The 293 agree unchanged across the move, and `cargo install staticstream` fetches nothing but this crate |
+| 3 | `sstr-workspace`: Browser, Inspector, Transcript, then Services, then Queue | every Service is a command line shown in the Transcript before it runs. **In progress**: `docs/phase-3.md` in staticstream is the plan, and 3a is the frame and the Browser |
 | 4 | `make dist` for the targets of V-E, and version 1's stronger outer code | binaries run on the Pi 2B and the x86_64 VM; version 1 rebuilds two lost records per group |
 
 ## VI. Discussion
