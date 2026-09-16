@@ -51,6 +51,15 @@ Transcript, Services and the Queue. It is the one part of the project with no
 Python prototype to be compared against, so Section VIII sets out what was
 used in place of a crosscheck, and what that cost. `make check` is 356.
 
+*Revised again after phase 4's first three steps.* Version 1's outer code is
+built and measured: two rows, P and Q, where version 0 has one, and two lost
+records of a group rebuilt where version 0 loses them. Version 0 stays the
+default and stays written, because the 44 comparisons are comparisons at
+version 0. `make dist` builds what the machine it is run on can build and
+names what it cannot — and does it without cargo-make, which V-G proposed and
+which Section IX explains the removal of. What is **not** done is the rest of
+that row: no binary has been run on a Pi 2B or an x86_64 VM.
+
 Before proposing anything, the report measures what the choice rests on:
 
 | Question | Finding |
@@ -69,7 +78,8 @@ The recommendation, set out in Section V:
 - **Configuration:** a shared `~/.config/copal/media.conf` that ytq also
   reads.
 - **Build:** a Makefile as the front door, with cargo-make for the
-  multi-target release builds only.
+  multi-target release builds only. *(In phase 4 the matrix turned out to be
+  a shell loop and cargo-make was dropped -- see V-G.)*
 - **Order:** four phases that each end in a test, starting with a Rust
   reader and writer that must agree byte for byte with the Python
   prototype.
@@ -310,7 +320,7 @@ a rewrite. Creating either is a public act, and is left to the owner.
 staticstream/
 ├─ Cargo.toml                    one package: three binaries, zero dependencies
 ├─ Makefile                      the front door (Section V-G)
-├─ Makefile.toml                 cargo-make tasks for multi-target release builds
+├─ tools/dist.sh                 the release matrix (Section V-G, as built)
 ├─ README.md  LICENSE  docs/
 ├─ tests/                        the crosschecks, and the frozen Python ytq
 └─ src/
@@ -533,6 +543,26 @@ its own binary, which is what `copal-build` does already.
 inside cargo. cross is not proposed for the guest, because it needs Docker
 or Podman.
 
+*As built.* `make dist` builds **this machine** with nothing but cargo, then
+names each other target it could not build and the one command that supplies
+what is missing. It writes `dist/MANIFEST`: the crate version, the commit —
+and whether the tree was dirty — and each binary's size and SHA-256, with no
+timestamp, because a manifest that changes when nothing changed cannot be
+compared with the last one.
+
+**THE NATIVE TARGET IS NOT SPELLED THE WAY THIS TABLE SPELLS IT.** The table
+says `aarch64-unknown-linux-musl`; Alpine's rustc calls the same machine
+`aarch64-alpine-linux-musl`. They are one target with two names, and asking
+cargo for the first on a machine that *is* the second sends it looking for a
+standard library that is not installed — to cross-compile to where it already
+is. The native build is therefore plain `cargo build --release`, labelled with
+rustc's own host triple, and the cross set is this table's list less whichever
+row this machine turns out to be.
+
+Alpine packages `rustup` (1.29.0) as well as `zig`; an earlier note in the
+Makefile said it did not, which is the kind of thing worth checking rather
+than asserting.
+
 ### F. What the format library must do first
 
 The Rust `staticstream` library is correct when it and `tools/copal-sstr.py`
@@ -550,11 +580,41 @@ Two changes from the prototype belong in version 0 of the Rust library:
   measured. That changes the format, so it is version 1, and the Python
   prototype stays version 0.
 
+*As built.* Version 1 keeps the parity record's entry table and replaces its
+single XOR row with **two, P and Q**, over the group's bodies read as columns.
+P[j] is the XOR of every body's byte j — *which is exactly version 0's row,
+unchanged* — and Q[j] is the XOR of `g^i · body_i[j]` in GF(256), i being the
+record's place in the group. Two rows, two erasures; with one hole it is the
+arithmetic version 0 already did, which is why a version 1 parity record that
+lost its Q row still rebuilds one.
+
+The field and the tables are `format::rs`'s, the inner RS(255,223)'s, so no
+new mathematics entered the crate: there is one Galois field in it, not two.
+And the number of rows is not a new field — every entry carries its
+`plain_len`, so the padded width is the largest of them and the row count is
+`blob.len() / n`. A parity record says how many rows it has without being
+asked, which matters because after a resync it can be the first record a
+reader meets, before any header and so before any version.
+
+**Version 0 is still what `sstr record` writes.** `--format 1` asks for the
+other. The 44 comparisons are comparisons at version 0 and they are the chain
+back to the prototype; making version 1 the default is a decision for this
+report and not a side effect of the step that first wrote a version 1 byte.
+
 ### G. The Makefile, and where cargo-make fits
 
 The Makefile is the front door, and it works with nothing but `cargo`
 installed, because `copal-build` calls `cargo` directly.
-`cargo make` is for the release matrix only:
+`cargo make` was proposed for the release matrix only:
+
+*As built, there is no cargo-make.* The matrix turned out to be three
+`cargo zigbuild` lines and a loop, and requiring a task runner in order to
+produce the binaries for the machine one is standing on is backwards —
+especially one more thing to install before anything can be built at all. The
+matrix is `tools/dist.sh`, in the shell the rest of the project's checks are
+written in, and `make dist` calls it. The front-door rule did the arguing:
+a Makefile that works with nothing but cargo should not have a target that
+does not.
 
 The Makefile, abridged, with the release's one-crate lines:
 
@@ -592,12 +652,11 @@ package: check ## the crate tarball, and what is in it -- pushes nothing
 publish: check ## the one cargo publish call, gated on a clean check here, now
 	$(CARGO) publish --locked
 
-tools: ## cargo-make and cargo-zigbuild, for make dist: apk on Alpine, else cargo install
-	@if command -v apk >/dev/null 2>&1; then doas apk add cargo-make cargo-zigbuild; \
-	 else $(CARGO) install --locked cargo-make cargo-zigbuild; fi
+tools: ## what `make dist` needs for the targets that are not this machine
+	@printf '...rustup target add ..., and apk add zig && cargo install cargo-zigbuild\n'
 
-dist: ## release binaries for each target in Makefile.toml, into dist/
-	$(CARGO) make dist
+dist: check ## release binaries for this machine and the targets of V-E, into dist/
+	@sh tools/dist.sh
 ```
 
 The comment on `ROOT` is on its own line on purpose. An earlier draft
@@ -605,14 +664,16 @@ here wrote `ROOT ?= $(HOME)/.local   # comment`, and make keeps the spaces
 before a trailing comment as part of the value, so `--root` would have been
 given a path ending in spaces.
 
-`Makefile.toml` sets `skip_core_tasks = true`, so cargo-make runs only the
-tasks defined there. Its `preflight` task stops with a message when
-cargo-zigbuild or rustup is missing. `dist-aarch64`, `dist-armv7` and
-`dist-x86_64` each run `cargo zigbuild --release --workspace --target …` and
-copy the binaries into `dist/TARGET/`.
+`tools/dist.sh` builds this machine's binaries with plain
+`cargo build --release`, then, for each of V-E's other targets, checks for
+rustup, for that target's standard library and for cargo-zigbuild, and either
+runs `cargo zigbuild --release --target …` or prints which of the three is
+missing and the command that supplies it. It writes `dist/TARGET/` and
+`dist/MANIFEST`.
 
-`make dist` and `make tools` are the only targets that need anything more
-than `cargo`. None writes inside a tracked file, so a checkout stays
+`make dist` needs nothing more than `cargo` for the machine it is run on, and
+rustup and cargo-zigbuild only for the targets that are not that machine.
+Neither it nor `make tools` writes inside a tracked file, so a checkout stays
 pullable.
 
 ### H. The order to build it in
@@ -624,7 +685,7 @@ pullable.
 | 2 | ytq in Rust: the `ytq` module takes over the queue, settings, `OUTPUT` and `media.conf`, and drives yt-dlp as the Python ytq does | Rust and Python ytq run side by side on one `queue.json`; a queued video leaves a `.sstr` that verifies and plays back identical to the MP4; `OUTPUT=mp4` leaves today's files; only then is the binary `ytq` built. **Done**: `make check` passes with `ytq` in the Python one's place -- 76 unit tests, 44 + 32 + 50 comparisons, 34 checks and 133 comparisons, 293 in all. `copal-prep.sh` is 1,466 lines lighter and writes no ytq |
 | — | the release: one crate, under its own name on crates.io | **Done**: the five packages became four modules of one package named after the repository. The 293 agree unchanged across the move, and `cargo install staticstream` fetches nothing but this crate |
 | 3 | `sstr-workspace`: Browser, Inspector, Transcript, then Services, then Queue | every Service is a command line shown in the Transcript before it runs. **Done**: five steps, commits `d6826e1`, `55809be`, `fcfdb9a`, `ffd92c5` and `d8b052b`. `make check` is 356 -- the 293 of phase 2 and 63 checks of the Workspace -- with 118 unit tests. Section VIII, and `docs/phase-3.md` in staticstream for the step-by-step record |
-| 4 | `make dist` for the targets of V-E, and version 1's stronger outer code | binaries run on the Pi 2B and the x86_64 VM; version 1 rebuilds two lost records per group |
+| 4 | `make dist` for the targets of V-E, and version 1's stronger outer code | binaries run on the Pi 2B and the x86_64 VM; version 1 rebuilds two lost records per group. **Version 1 done**: commits `0f46afa` and `5cd86f3` — two records of one group rebuilt, byte-identical, where version 0 loses both; the second row measures 1.0643 of version 0 against a designed 1.0588. **`make dist` done as far as one machine can take it**: commit `bf88422`. **Not done**: the two hardware runs. Section IX |
 
 ## VI. Discussion
 
@@ -876,7 +937,86 @@ downloads whatever it is shown -- which is what it is for -- so the queue
 comparison was measuring a retry followed by a finished download until the
 check learnt to hold that lock itself.
 
-## IX. Procedures
+## IX. Phase 4, so far
+
+Two of the row's three pieces are done. The third needs two machines.
+
+### A. Version 1, and what it is worth
+
+| | version 0 | version 1 |
+|---|---|---|
+| parity rows per group | 1 (XOR) | 2 (P and Q) |
+| records rebuildable per group | 1 | 2 |
+| designed redundancy, full group | 1.2150 | 1.2864 |
+
+The thirteen kinds of damage from the Static Stream report, run against a
+capture at each version. **Version 1 recovers two payloads version 0 loses,
+and loses none version 0 keeps**: *two records of one group wiped*, which is
+the row's own done-condition, and *a 4 KiB burst mid-body*, which was not
+expected and is the same cause — a burst that happens to fall across two
+records of one group.
+
+Measured on 4 MiB, where groups are full:
+
+| chunk | records | version 0 | version 1 | ratio |
+|---|---|---|---|---|
+| 4 KiB | 1,108 | 1.3123 | 1.3847 | 1.0552 |
+| 16 KiB | 280 | 1.2439 | 1.3198 | 1.0610 |
+| 64 KiB | 73 | 1.2394 | 1.3287 | 1.0721 |
+
+The ratios bracket the designed 1.0588. The overhead over the payload sits
+above the designed 1.2150 and 1.2864 by the 136-byte record headers and the
+small H, C and E records, which the design figure excludes and which cost
+proportionally more at a small chunk.
+
+**A capture smaller than one group pays the whole outer code**, and the first
+measurement was one. At 400,000 bytes with 64 KiB chunks the ratio came out
+1.1392 — not an error in the arithmetic but a group of six records paying for
+sixteen, because the parity blob is one padded body per row however few bodies
+there are. It is a property of the design and not of this implementation, and
+it is worth knowing before choosing a chunk size for short streams.
+
+### B. What anchors a version the prototype cannot read
+
+Phases 1 and 2 were checked against `tools/copal-sstr.py`. V-F says the
+prototype stays at version 0, so it cannot read a version 1 capture — by
+design, not by omission. What the battery compares instead is version 1
+against version 0 **on the same damage**. That is not self-consistency:
+version 0 is held to the prototype by the 44 comparisons, so the chain is
+prototype ↔ version 0 ↔ version 1, and version 0 is the bridge.
+
+The check requires version 0 to **fail** on the two-in-a-group case, and
+requires version 1 to win on at least two kinds of damage. A battery in which
+the two versions always agree is a battery whose damage no longer reaches the
+outer code, and it would pass in silence.
+
+**And the measure is the recovered payload, not the `lost` counter.** On the
+200 KiB burst version 0 reports *1 data record lost, 40 of unknown type* and
+version 1 reports *14 lost, 26 unknown*. That reads as a regression and is the
+opposite of one: `lost` means *known* to be missing, and a record is known to
+be missing because a surviving parity record's entry table names it — version
+1 could **name** thirteen more. Both recovered the same 248,448 bytes and
+neither matched. The assertion was written on `lost` first, and it would have
+failed the better program.
+
+### C. `make dist`, and what it cannot do here
+
+It builds this machine with nothing but cargo and names every other target it
+could not build, with the command that supplies what is missing. V-E has the
+triple-spelling finding and the manifest; V-G has why cargo-make is gone.
+
+**The row's own done-condition is not met.** *Binaries run on the Pi 2B and
+the x86_64 VM* needs a Pi 2B and an x86_64 VM. This guest has neither, and has
+no rustup and no cargo-zigbuild with which to build for them, so the three
+cross targets were not built and nothing has been run anywhere else. The path
+this machine did exercise is the one every machine without the tooling will
+take, which is the more common case and now the tested one.
+
+One thing to settle before that run happens: the native binary is dynamically
+linked against musl's loader, which is Alpine's default and right within
+Copal. A binary meant to travel wants `+crt-static`.
+
+## X. Procedures
 
 **Repeat the speed comparison:** the scratch crate is in Section III-5. Build
 it with `cargo build --release`, and time Python with:
@@ -907,11 +1047,11 @@ make crosscheck                 # the crosscheck alone, comparison by comparison
 python3 ../copal/tools/copal-sstr.py record a.sstr --input big.bin && target/release/sstr verify a.sstr
 ```
 
-## X. Files touched
+## XI. Files touched
 
 | File | Change |
 |---|---|
-| `docs/staticstream-project-lab-report.md` | this report; no code changed here. Revised after phase 0, for ytq moving into the Rust project and the Makefile as committed. Revised after phase 1: Section VII, and phases 0 and 1 marked done. Revised after phase 2 and the release: V-A and V-G, one crate instead of five. Revised after phase 3: Section VIII, V-B's screen as built, and phase 3 marked done |
+| `docs/staticstream-project-lab-report.md` | this report; no code changed here. Revised after phase 0, for ytq moving into the Rust project and the Makefile as committed. Revised after phase 1: Section VII, and phases 0 and 1 marked done. Revised after phase 2 and the release: V-A and V-G, one crate instead of five. Revised after phase 3: Section VIII, V-B's screen as built, and phase 3 marked done. Revised after phase 4's first three steps: Section IX, V-E's native-triple finding, V-F's outer code as built, and V-G losing cargo-make |
 
 ## References
 
