@@ -45,6 +45,12 @@ other, shared one version and would have published together, which is a module
 boundary and not a package boundary. V-A and V-G say what changed; the 293
 comparisons agree across the move.
 
+*Revised again after phase 3, which is finished.* `sstr-workspace` draws the
+whole of the screen in V-B: the Browser, the Shelf, the Inspector, the
+Transcript, Services and the Queue. It is the one part of the project with no
+Python prototype to be compared against, so Section VIII sets out what was
+used in place of a crosscheck, and what that cost. `make check` is 356.
+
 Before proposing anything, the report measures what the choice rests on:
 
 | Question | Finding |
@@ -362,8 +368,17 @@ the offline build working; birdshot (`vendor-check`) and urfinkel
 | **Shelf** | a row of items picked for later: files to stream, captures to serve, URLs to queue | the File Viewer's Shelf |
 | **Inspector** | the selection's attributes. A capture shows its header (content type, source, license, key), `verify`'s summary and its record times. A video shows its notes, and a queue entry its state and progress. | Tools > Inspector, Cmd-1…4 |
 | **Transcript** | the running log: ytq's `ytq.log` and sstr's events, one pane | Smalltalk-80's Transcript [2] |
-| **Services** | verbs sent to the selection: Record, Play, Play Paced, Serve, Verify, Armor, Export MP4, Open as Text, Queue | NeXTSTEP Services [6] |
-| **Queue** | ytq's queue as one more object: browse it, inspect an entry, send it Retry or Forget | the `status` states ytq already has |
+| **Services** | verbs sent to the selection: Play, Play Paced, Serve, Verify, Armor, Export, Open as Text; Retry and Forget on a queue entry | NeXTSTEP Services [6] |
+| **Queue** | ytq's queue as one more object: browse it, inspect an entry, send it Retry or Forget. Opened with Shift-Q | the `status` states ytq already has |
+
+*As built:* **Record is not a Service.** Recording is what ytq does to a
+download (V-C) and what `sstr record` does to a file; there is nothing in the
+Workspace to send it to, because the object it would make does not exist yet.
+The other verbs are all there. **Retry and Forget became `ytq` commands** in
+the building -- `ytq retry URL` and `ytq forget URL` -- because a Service is a
+command line and those two were keys in ytq's window and nothing else; the
+window now runs the same code. That is an addition to ytq beyond the Python
+one, and the only one.
 
 The vocabulary follows the object–message model underneath it:
 - **An object is a file.** A capture, a video, a transcript, a folder or a
@@ -392,6 +407,39 @@ orrery's console keeps.
 │ Services: p Play  P Paced  s Serve  v Verify  x Export MP4  t Text  a Armor│
 └────────────────────────────────────────────────────────────────────────────┘
 ```
+
+*As built*, at 100 columns, with one capture on the Shelf and another
+selected. The frame is ASCII: a column is compared with `ls` character by
+character, and a glyph of ambiguous or double width would have the check
+measuring the terminal's font rather than the Browser.
+
+```
+ Workspace -- ~/Downloads/SharedVM
+ Shelf: [Berkman-William_Fisher_on_CopyrightX.sstr]
+----------------------------------------------------------------------------------------------------
+Archive                       > |                                 jawed-Me_at_the_zoo_jNQXAC9I..sstr
+Berkman-William_Fisher_..sstr   |
+Trader-The_setup_Im_wat..sstr   |                                 stream       0354fdb769079848c4ce4
+jawed-Me_at_the_zoo_jNQ..sstr   |                                 source       https://www.youtube.c
+jawed-Me_at_the_zoo_jNQX..txt   |                                 license      not stated
+                                |                                 note         Me at the zoo
+                                |                                 key          none: checkpoints det
+                                |                                 records      5 (1 data, 1 parity,
+                                |                                 payload      43 bytes, sha256 fe5d
+                                |                                 repaired     0 header bytes, 0 bod
+                                |                                 lost         0 data records, 0 rec
+                                |                                 checkpoints  1 good, 0 bad, 0 chai
+----------------------------------------------------------------------------------------------------
+ Transcript 10:06:04 Berkman-William_Fisher_on_CopyrightX.sstr on the Shelf
+ Services to the Shelf:  p Play  P Paced  s Serve  v Verify  x Export TXT  t Text  a Armor
+```
+
+**A name too long for its column loses its middle, not its end**, and that is
+visible above: `jawed-Me_at_the_zoo_jNQ..sstr` against
+`jawed-Me_at_the_zoo_jNQX..txt`. Cut at the end they were the same twenty-nine
+characters -- a capture and its transcript drawn identically, on exactly the
+names ytq makes. It is `..` and not an ellipsis for the reason the folder
+marker is `>`: U+2026 is ambiguous-width.
 
 **The text stream opener** is Open as Text:
 - **Text captures:** `text/*` and transcripts are shown in a pager.
@@ -575,7 +623,7 @@ pullable.
 | 1 | the `staticstream` library and `sstr` at parity with `copal-sstr.py` | the cross-check and damage battery of V-F agree byte for byte; `record` refuses empty input. **Done**: commit `d62aa88`, and `26027d7` for armor's speed. `make crosscheck`, 44 of 44 comparisons agree (VII) |
 | 2 | ytq in Rust: the `ytq` module takes over the queue, settings, `OUTPUT` and `media.conf`, and drives yt-dlp as the Python ytq does | Rust and Python ytq run side by side on one `queue.json`; a queued video leaves a `.sstr` that verifies and plays back identical to the MP4; `OUTPUT=mp4` leaves today's files; only then is the binary `ytq` built. **Done**: `make check` passes with `ytq` in the Python one's place -- 76 unit tests, 44 + 32 + 50 comparisons, 34 checks and 133 comparisons, 293 in all. `copal-prep.sh` is 1,466 lines lighter and writes no ytq |
 | — | the release: one crate, under its own name on crates.io | **Done**: the five packages became four modules of one package named after the repository. The 293 agree unchanged across the move, and `cargo install staticstream` fetches nothing but this crate |
-| 3 | `sstr-workspace`: Browser, Inspector, Transcript, then Services, then Queue | every Service is a command line shown in the Transcript before it runs. **In progress**: `docs/phase-3.md` in staticstream is the plan, and 3a is the frame and the Browser |
+| 3 | `sstr-workspace`: Browser, Inspector, Transcript, then Services, then Queue | every Service is a command line shown in the Transcript before it runs. **Done**: five steps, commits `d6826e1`, `55809be`, `fcfdb9a`, `ffd92c5` and `d8b052b`. `make check` is 356 -- the 293 of phase 2 and 63 checks of the Workspace -- with 118 unit tests. Section VIII, and `docs/phase-3.md` in staticstream for the step-by-step record |
 | 4 | `make dist` for the targets of V-E, and version 1's stronger outer code | binaries run on the Pi 2B and the x86_64 VM; version 1 rebuilds two lost records per group |
 
 ## VI. Discussion
@@ -747,7 +795,88 @@ lead on every row.
   It was merged, keeping the LICENSE text Copal and orrery use, and phase 0's
   commit kept its hash.
 
-## VIII. Procedures
+## VIII. Phase 3, as built
+
+Phase 3 is the one part of the project with no prototype. Phases 1 and 2 each
+ended in a crosscheck: run the Rust and the Python over the same input and
+compare what they leave. There is no Python Workspace, so there was nothing to
+put beside it.
+
+### A. What was built
+
+`sstr-workspace`, in five steps, each with its own commit and its own checks:
+
+| Step | What it added |
+|---|---|
+| 3a | the frame and the **Browser**: Miller columns over folders, the keys that move |
+| 3b | the **Inspector**: what `sstr verify` says about a capture, a folder's count, a transcript's first lines |
+| 3c | the **Transcript**: `ytq.log` and sstr's own events in one pane, followed as they are written |
+| 3d | **Services**: a verb sent with one key, printed as a command line before it runs |
+| 3e | the **Shelf** and the **Queue** |
+
+### B. What replaced the crosscheck
+
+One bar for each part, and every one of them is something outside the
+program:
+
+| Part | Held to |
+|---|---|
+| Browser | **a column is exactly what `ls` would have shown**, in the same order, with the same selection after the same keys |
+| Inspector | **what `sstr verify` says**, line for line, over a capture `sstr` itself recorded |
+| Transcript | **the lines a real `ytq` wrote**, in the order `ytq.log` has them, across the rename that rotation is |
+| Services | **the printed line, run in a shell** with a fresh HOME: same output, same bytes written, same exit |
+| Queue | **the queue ytq leaves**, four ways -- the Workspace, `ytq retry` in a shell, `r` in ytq's window, and `r` in the **Python** ytq's window |
+
+The fourth of those ways is the one that matters. The Workspace, the
+command and the Rust window all call one function, so comparing them is
+self-consistent: it would stay green if that function were wrong, because all
+three would be wrong together. The Python ytq, frozen at
+`tests/reference/ytq.py`, is the only one of the four that cannot change when
+this crate does.
+
+**That was tested rather than asserted.** `queue::retry` was altered to stop
+clearing a retried entry's error. The three Rust comparisons stayed green.
+Only the Python one went red.
+
+### C. What was found
+
+**A check being green is not the same as the screen being right.** Three
+defects were found by capturing a pane with tmux and reading it, while every
+check passed:
+
+1. **Names were cut at the end**, so a capture and its transcript drew
+   identically at 100 columns -- on exactly the names ytq makes. The
+   Inspector's heading had it too: a `.sstr` read `.ss`.
+2. **The Transcript's follower was quadratic.** It appended each block read to
+   a buffer and took lines off the front, so every line shifted everything
+   behind it. A rotated 4 MiB log is about 70,000 lines and some 200 GB of
+   copying: on screen the Workspace simply stopped, mid-poll.
+3. **A full timestamp left ten characters for the message** at 50 columns.
+   The proposal's screen writes `10:03:36 done: ...` and was right to; the
+   first attempt drew the log line whole and made the pane a column of clocks.
+
+This is inherent to the shape of the test rather than bad luck. The harness
+re-implements the drawing rules in shell, so the Browser compared against the
+harness is a self-consistent comparison, and self-consistency cannot catch
+both sides being wrong in the same direction. `ls` anchors what a column
+*contains* to something outside the program; nothing outside it anchors how a
+column is *drawn*.
+
+**A check that cannot fail looks exactly like a check that passes.** One of
+them -- "the command line is said before the outcome" -- asked whether the
+first of two matches preceded the second, which is true however they are
+ordered. It passed against a Workspace altered to say the line last. It was
+found by breaking the program on purpose, which is now part of each step.
+
+**Two traps in the harness**, both of which cost a run and neither of which is
+visible in the code. `awk -v` runs escape processing over the value it is
+given, so the `\'` in a quoted filename lost its backslash before the
+comparison and the mark never matched. And ytq's window takes `run.lock` and
+downloads whatever it is shown -- which is what it is for -- so the queue
+comparison was measuring a retry followed by a finished download until the
+check learnt to hold that lock itself.
+
+## IX. Procedures
 
 **Repeat the speed comparison:** the scratch crate is in Section III-5. Build
 it with `cargo build --release`, and time Python with:
@@ -778,11 +907,11 @@ make crosscheck                 # the crosscheck alone, comparison by comparison
 python3 ../copal/tools/copal-sstr.py record a.sstr --input big.bin && target/release/sstr verify a.sstr
 ```
 
-## IX. Files touched
+## X. Files touched
 
 | File | Change |
 |---|---|
-| `docs/staticstream-project-lab-report.md` | this report; no code changed here. Revised after phase 0, for ytq moving into the Rust project and the Makefile as committed. Revised after phase 1: Section VII, and phases 0 and 1 marked done |
+| `docs/staticstream-project-lab-report.md` | this report; no code changed here. Revised after phase 0, for ytq moving into the Rust project and the Makefile as committed. Revised after phase 1: Section VII, and phases 0 and 1 marked done. Revised after phase 2 and the release: V-A and V-G, one crate instead of five. Revised after phase 3: Section VIII, V-B's screen as built, and phase 3 marked done |
 
 ## References
 
