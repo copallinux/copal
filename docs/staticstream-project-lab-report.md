@@ -51,14 +51,16 @@ Transcript, Services and the Queue. It is the one part of the project with no
 Python prototype to be compared against, so Section VIII sets out what was
 used in place of a crosscheck, and what that cost. `make check` is 356.
 
-*Revised again after phase 4's first three steps.* Version 1's outer code is
-built and measured: two rows, P and Q, where version 0 has one, and two lost
-records of a group rebuilt where version 0 loses them. Version 0 stays the
-default and stays written, because the 44 comparisons are comparisons at
-version 0. `make dist` builds what the machine it is run on can build and
-names what it cannot — and does it without cargo-make, which V-G proposed and
-which Section IX explains the removal of. What is **not** done is the rest of
-that row: no binary has been run on a Pi 2B or an x86_64 VM.
+*Revised again after phase 4.* Version 1's outer code is built and measured:
+two rows, P and Q, where version 0 has one, and two lost records of a group
+rebuilt where version 0 loses them. **Version 1 is now what `sstr record`
+writes** — and a version 0 reader can still read one, which was not the plan
+and is what Section IX-C is about. The 44 comparisons go on being made at
+version 0, which is what makes them the chain back to the prototype. `make
+dist` builds what the machine it is run on can build, statically, and names
+what it cannot — without cargo-make, which V-G proposed and which Section IX
+explains the removal of. What is **not** done is the rest of that row: no
+binary has been run on a Pi 2B or an x86_64 VM.
 
 Before proposing anything, the report measures what the choice rests on:
 
@@ -610,10 +612,13 @@ And the number of rows is not a new field — every entry carries its
 asked, which matters because after a resync it can be the first record a
 reader meets, before any header and so before any version.
 
-**Version 0 is still what `sstr record` writes.** `--format 1` asks for the
-other. The 44 comparisons are comparisons at version 0 and they are the chain
-back to the prototype; making version 1 the default is a decision for this
-report and not a side effect of the step that first wrote a version 1 byte.
+**Version 1 is what `sstr record` writes**, and `--format 0` asks for the
+other. That decision was taken after the four steps, deliberately apart from
+the one that first wrote a version 1 byte. `ytq` archives through the same
+defaults, so its captures follow. `tests/crosscheck.sh` records at version 0
+with a comment saying why: those 44 comparisons are comparisons *at version 0*
+and they are the chain back to the prototype, and letting them follow the
+default would have quietly turned them into something else.
 
 ### G. The Makefile, and where cargo-make fits
 
@@ -990,12 +995,13 @@ sixteen, because the parity blob is one padded body per row however few bodies
 there are. It is a property of the design and not of this implementation, and
 it is worth knowing before choosing a chunk size for short streams.
 
-### B. What anchors a version the prototype cannot read
+### B. What anchors a version the prototype is not held to
 
 Phases 1 and 2 were checked against `tools/copal-sstr.py`. V-F says the
-prototype stays at version 0, so it cannot read a version 1 capture — by
-design, not by omission. What the battery compares instead is version 1
-against version 0 **on the same damage**. That is not self-consistency:
+prototype stays at version 0, so it cannot be *held to* a version 1 capture:
+it does not write one, and it cannot use the second row. What the battery
+compares instead is version 1 against version 0 **on the same damage**. That
+is not self-consistency:
 version 0 is held to the prototype by the 44 comparisons, so the chain is
 prototype ↔ version 0 ↔ version 1, and version 0 is the bridge.
 
@@ -1013,7 +1019,32 @@ be missing because a surviving parity record's entry table names it — version
 neither matched. The assertion was written on `lost` first, and it would have
 failed the better program.
 
-### C. `make dist`, and what it cannot do here
+### C. Version 1 is backward compatible, which was not the plan
+
+An earlier draft of this section said the prototype could not read a version 1
+capture. It can, and the claim had been inferred from V-F rather than tried.
+What it falls out of is **P being version 0's row, and first**: a version 0
+reader takes the first padded width of the parity blob as the XOR and
+truncates each rebuilt body to its own length, so the Q row sitting behind it
+is bytes that reader never reaches.
+
+So `tools/copal-sstr.py`, unchanged and frozen at version 0:
+
+| given a version 1 capture | prototype | version 1's reader |
+|---|---|---|
+| undamaged | plays it, payload identical | identical |
+| one record of a group lost | **rebuilds it**, payload identical | identical |
+| two records of one group lost | loses both | rebuilds both |
+
+It fails at exactly the thing version 1 added and nowhere else. That is worth
+more than the tidiness of a clean version break: every reader already written
+goes on working, and the ones that are rebuilt gain the second record.
+
+`tests/outer-check.sh` holds it to this, because it is the kind of property
+that is true by accident until somebody reorders two rows and then quietly is
+not.
+
+### D. `make dist`, and what it cannot do here
 
 It builds this machine with nothing but cargo and names every other target it
 could not build, with the command that supplies what is missing. V-E has the
