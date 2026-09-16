@@ -546,9 +546,23 @@ or Podman.
 *As built.* `make dist` builds **this machine** with nothing but cargo, then
 names each other target it could not build and the one command that supplies
 what is missing. It writes `dist/MANIFEST`: the crate version, the commit —
-and whether the tree was dirty — and each binary's size and SHA-256, with no
-timestamp, because a manifest that changes when nothing changed cannot be
-compared with the last one.
+and whether the tree was dirty — and each binary's size, linkage and SHA-256,
+with no timestamp, because a manifest that changes when nothing changed cannot
+be compared with the last one.
+
+**The dist binaries are static.** Every target in this table is musl, and
+Rust's `*-unknown-linux-musl` targets link statically already — but Alpine
+patches its **own** triple to link musl dynamically, so the binary this
+machine builds by default wants `/lib/ld-musl-aarch64.so.1` at the other end.
+That is right for a machine inside Copal and wrong for the one thing a dist is
+for, so the release builds carry `-C target-feature=+crt-static`. It costs
+about 130 KB a binary, which is musl. `make build`, and what `copal-build`
+installs, are left as Alpine has them.
+
+The linkage is read back rather than assumed: a dynamically linked ELF names
+its interpreter inside itself and a static one has no interpreter to name, so
+`grep -a ld-musl` settles it without `file` or `ldd`, and a musl target that
+came out dynamic is warned about rather than passed over.
 
 **THE NATIVE TARGET IS NOT SPELLED THE WAY THIS TABLE SPELLS IT.** The table
 says `aarch64-unknown-linux-musl`; Alpine's rustc calls the same machine
@@ -1012,9 +1026,9 @@ cross targets were not built and nothing has been run anywhere else. The path
 this machine did exercise is the one every machine without the tooling will
 take, which is the more common case and now the tested one.
 
-One thing to settle before that run happens: the native binary is dynamically
-linked against musl's loader, which is Alpine's default and right within
-Copal. A binary meant to travel wants `+crt-static`.
+The thing that had to be settled before those runs is settled: the binaries
+`make dist` writes are statically linked, so what will be carried to a Pi 2B
+or an x86_64 VM needs no loader when it gets there. V-E has the detail.
 
 ## X. Procedures
 
