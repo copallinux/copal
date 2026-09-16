@@ -740,10 +740,12 @@ fresh-img-%: | require-tools $(BUILDDIR)
 # check reads the target out of each script's `exec make` line and looks for
 # it among the targets defined below, so renaming one here fails the lint
 # rather than leaving a shortcut that only fails when somebody runs it.
-# Where radbeeper is developed. The copy inside copal-prep.sh is what gets
-# installed -- copal-init.sh has to work with nothing checked out -- so lint
-# compares the two whenever this path exists, and says nothing when it does not.
-RADBEEPER_SRC ?= $(HOME)/code/radbeeper/radbeeper
+# radbeeper is NOT embedded any more. It is a Rust crate at the root of its
+# own checkout -- https://github.com/vonglurt/radbeeper -- which copal-code
+# clones and copal-build compiles, so there is no copy here to drift and
+# nothing for lint to compare. Stage 10 writes only a shim onto the path the
+# service, the udev rule and the autostart all have to name. Same reason
+# orrery is not embedded, two paragraphs down.
 
 # The fleet's web console -- §12's third face -- lives in its own checkout
 # because it is a Rust crate the node compiles for itself, not a file this
@@ -804,10 +806,6 @@ sync-profile: | $(BUILDDIR)
 	@printf '  ok      orrery --profile-sshd -> $(PREP)\n'
 	@$(MAKE) --no-print-directory lint
 
-## sync-radbeeper: copy $(RADBEEPER_SRC) into the heredoc in copal-prep.sh.
-## This is the fix when lint says the embedded copy has drifted -- edit
-## radbeeper in its own checkout, run this, commit both.
-.PHONY: sync-radbeeper
 ## sync-agent: copy tools/copal-fleet-agent into the heredoc in copal-prep.sh.
 sync-agent:
 	@python3 -c 'import sys;\
@@ -844,16 +842,6 @@ sync-nkeys:
 	i=s.index(m)+len(m);j=s.index("\nCOPALNKEYS\n",i);\
 	open(p,"w").write(s[:i]+prog.rstrip("\n")+s[j:])' $(PREP) tools/copal_nkeys.py
 	@printf '  ok      tools/copal_nkeys.py -> $(PREP)\n'
-	@$(MAKE) --no-print-directory lint
-
-sync-radbeeper:
-	@test -f $(RADBEEPER_SRC) || { printf '\033[31merror:\033[0m no $(RADBEEPER_SRC)\n'; exit 1; }
-	@python3 -c 'import sys;\
-	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
-	m="    cat > /usr/local/bin/radbeeper <<\x27RADBEEPERPY\x27\n";\
-	i=s.index(m)+len(m);j=s.index("\nRADBEEPERPY\n",i);\
-	open(p,"w").write(s[:i]+prog.rstrip("\n")+s[j:])' $(PREP) $(RADBEEPER_SRC)
-	@printf '  ok      %s -> $(PREP)\n' "$(RADBEEPER_SRC)"
 	@$(MAKE) --no-print-directory lint
 
 # THE HOST'S /bin/sh IS NOT THE TARGET'S. macOS ships bash as /bin/sh, and bash
@@ -998,19 +986,6 @@ lint: | $(BUILDDIR)
 	@test -s $(BUILDDIR)/.fleet-exec.lint.sh && sh -n $(BUILDDIR)/.fleet-exec.lint.sh \
 	    && printf '  ok      copal-fleet-exec (embedded, %s lines)\n' "$$(wc -l < $(BUILDDIR)/.fleet-exec.lint.sh | xargs)"
 	@rm -f $(BUILDDIR)/.copal-fleet.lint.sh $(BUILDDIR)/.fleet-exec.lint.sh
-	@sed -n "/^    cat > \/usr\/local\/bin\/radbeeper <<'RADBEEPERPY'$$/,/^RADBEEPERPY$$/p" $(PREP) \
-	    | sed '1d;$$d' > $(BUILDDIR)/.radbeeper.lint.py
-	@test -s $(BUILDDIR)/.radbeeper.lint.py \
-	    || { printf '\033[31merror:\033[0m could not extract radbeeper from $(PREP)\n'; exit 1; }
-	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read()+chr(10))" $(BUILDDIR)/.radbeeper.lint.py \
-	    && printf '  ok      radbeeper (embedded, %s lines)\n' "$$(wc -l < $(BUILDDIR)/.radbeeper.lint.py | xargs)"
-	@if [ -f $(RADBEEPER_SRC) ]; then \
-	    cmp -s $(BUILDDIR)/.radbeeper.lint.py $(RADBEEPER_SRC) \
-	      && printf '  ok      radbeeper matches %s\n' "$(RADBEEPER_SRC)" \
-	      || { printf '\033[31merror:\033[0m the radbeeper embedded in $(PREP) has drifted from $(RADBEEPER_SRC)\n'; \
-	           diff -u $(RADBEEPER_SRC) $(BUILDDIR)/.radbeeper.lint.py | head -20; exit 1; }; \
-	  else printf '  --      radbeeper source checkout absent, drift not checked\n'; fi
-	@rm -f $(BUILDDIR)/.radbeeper.lint.py
 	@sed -n "/^    cat <<'FLEETPROFILE'$$/,/^FLEETPROFILE$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.profile.lint.conf
 	@test -s $(BUILDDIR)/.profile.lint.conf \
