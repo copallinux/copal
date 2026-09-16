@@ -324,9 +324,9 @@ plus 136 bytes per record header and the small H, C and E records.
 
 **Version 1, in the Rust implementation.** The prototype this report measures
 writes version 0 and knows nothing of any other. `staticstream` added a
-version 1
-that keeps this record layout and this entry table and gives the parity body
-**two rows instead of one**, over the group's bodies read as columns:
+version 1 that keeps this record layout and this entry table, and gives the
+parity body **two rows instead of one**, over the group's bodies read as
+columns:
 
   P[j] = the XOR of every body's byte j — *version 0's row, unchanged*
   Q[j] = the XOR of g^i · body_i[j] in GF(256), i being the record's place
