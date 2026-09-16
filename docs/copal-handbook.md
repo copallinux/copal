@@ -1751,35 +1751,79 @@ Full primer: `copal-guide nvim` and `copal-guide ide`.
 
 ## The Geiger counter — RadBeeper
 
-Stage 10 installs **radbeeper**, which finds a GQ GMC-320 (or 300/500/600) on
-USB and shows what it is counting. It is one stdlib Python file with no
-`pyserial`: a serial port is thirty lines of `termios`, and this has to run on
-a Zero and on a fresh install with no network. The development home is
-`~/code/radbeeper`; `make lint` compares the copy embedded in `copal-prep.sh`
-against that checkout whenever it exists, so the two cannot quietly drift.
+**radbeeper** finds a GQ GMC-320 (or 300/500/600) on USB and shows what it is
+counting. It is a Rust crate at the root of its own repository,
+`~/code/radbeeper`, which `copal-code` clones and `copal-build` compiles. Its
+whole dependency list is `libc`, because a serial port is termios and
+everything else here — the averages, the spectrum, the big digits, the
+terminal drawing — is arithmetic and escape codes.
+
+**Stage 10 no longer ships the program.** It used to: 3,741 lines of Python
+were embedded in `copal-prep.sh` so that `copal-init.sh` worked on a machine
+with no network and nothing checked out. That was a real property, and it is
+what was given up — in exchange for one implementation instead of two, and a
+copy that cannot drift from the checkout because there is no copy. What stage
+10 sets up is everything *around* the program: the `dialout` group, the boot
+service, the udev rule and the autostart line. All of it is useless without
+the program and none of it needs the program present to be installed.
+
+```sh
+copal-build radbeeper        # from ~/code/radbeeper, which copal-code clones
+```
+
+What stage 10 writes to `/usr/local/bin/radbeeper` is a **shim**. The service,
+the udev rule and the autostart line all have to name one path, and the shim
+finds the native build behind it — in `~/.local/bin`, `~/.cargo/bin`, or
+`/usr/local/lib/radbeeper`. Until something is built there the shim says so
+and names the three ways to get one, and the service stays dormant, which is
+the state it was already designed to hold when no counter is plugged in.
 
 ```sh
 radbeeper probe        # find the counter and say what it is
-radbeeper watch        # the monitor: 3s / 30s / 300s averages
+radbeeper watch        # the monitor: 3s / 30s / 5m / 50m / working day
+radbeeper cpm          # the 30-second CPM, once
+radbeeper service      # log to disk, a row every 30 seconds
+radbeeper backfill     # fill the log's gaps from the counter's flash
 radbeeper log pull     # download the stored history to .bin and .csv
+radbeeper random       # 256 bits of hex, out of decay timing
 radbeeper hotplug      # sit in the session, open the monitor on plug-in
 ```
 
-### Three averages, because one is not enough
+**Three verbs are still the Python program's**, in the same repository:
+`export`, `site` and `recompute`, along with `--source sim`. They are being
+ported — the log format is in the Rust already, and
+`tests/test_differential.py` is what says it is the same format and not a
+second dialect of it. Asked for one of them the Rust build says so and names
+the Python one rather than pretending.
+
+`hotplug` was on that list and went first, because it is the one the desktop's
+autostart line runs: a shim resolving to a build without it would have left
+the monitor-on-plug-in quietly not working. The boot service and the udev rule
+were never affected — they call `probe` and `service`.
+
+### Five windows, because one is not enough
 
 The counter's own `<GETCPM>>` is a rolling 60-second count: one number with one
 time constant. radbeeper counts the blips itself, from the per-second
-`<HEARTBEAT1>>` stream, and averages them over three windows at once.
+`<HEARTBEAT1>>` stream, and computes five windows from the samples it kept,
+each ten times the last.
 
 | Window | What it is for |
 |---|---|
-| **3 s** | Watching a source come and go as you move it. Jumpy, and honestly so |
-| **30 s** | Reading the room. Settled enough to compare two places |
-| **300 s** | A number worth writing down |
+| **3 s** | Watching a source come and go under your hand. Jumpy, and honestly so — at background rates three seconds is about two counts. Do not write it down |
+| **30 s** | The shortest window that is a count rather than a flicker. Settled enough to compare two places, quick enough to follow your hands — which is why it is the one in the big digits, and what `radbeeper cpm` reports |
+| **300 s** | Five minutes. A number worth writing down |
+| **3000 s** | Fifty minutes. What the background here actually is, once the day's traffic through the room has averaged out |
+| **30000 s** | Eight hours twenty — a working day. Not a faster answer to the same question but the only window that spans one: a shift's worth of background, against which a day that was different is visible as a difference |
 
-A window shows `--` until it is full. A three-second CPM built from one sample
-is twenty times noisier than it looks, and drawing it as settled is how a
-25 CPM background reads as 60 and somebody goes hunting for a leak.
+`radbeeper cpm` reports the 30-second window and not the device's own
+60-second one, so that every number the program prints has the same time
+constant behind it.
+
+A window shows nothing until it is full, and says how long it still needs. A
+three-second CPM built from one sample is twenty times noisier than it looks,
+and drawing it as settled is how a 25 CPM background reads as 60 and somebody
+goes hunting for a leak.
 
 ### The spectrum, where flat is the good answer
 
@@ -1798,7 +1842,8 @@ exactly like more counts.
 It averages successive windows, which is what makes it readable: one
 periodogram of a Poisson process is flat in expectation and violently noisy in
 fact, and averaging *N* of them divides that scatter by √*N*. The FFT is
-twenty-five lines of `cmath` — the same argument as the absent `pyserial`.
+twenty-five lines of arithmetic — the same argument that keeps the dependency
+list at `libc`: a thing this small is cheaper to write than to depend on.
 
 ### Dormant is the normal state
 
@@ -1941,8 +1986,10 @@ through it.
 
 The radbeeper repository carries a GitHub Actions workflow for it: fork, drop
 your `cpm-*.tsv` into `logs/`, push, and the page is rebuilt and committed
-back. Nothing to install in the workflow — the generator is the same one-file
-stdlib program, which is also why the page cannot drift from the row format.
+back. Nothing to install in the workflow — the generator is `radbeeper
+export`, one of the four verbs the one-file Python program still owns, and it
+reads the same rows the service writes, so the page cannot drift from the row
+format.
 
 ### What it writes down, in detail
 
@@ -1988,7 +2035,9 @@ swap, not a driver hunt.**
 
 ### No hardware, no problem
 
-Every command runs against a built-in source:
+Every command runs against a built-in source — in the Python program, which
+still owns `--source sim` along with the three verbs named at the top of this
+section:
 
 ```sh
 radbeeper --source sim --sim-cpm 400 watch
