@@ -30,7 +30,10 @@ capture, or served over HTTP to VLC or mpv as clients. Payload bytes are
 never decoded, so no codec is involved. Each record is protected by
 RS(255,223), interleaved, and each group of 16 data records by an XOR parity
 record, which is 21.5 % redundancy by design and 22.4 % as measured on full
-records. Checkpoints are signed with the user's SSH key; nothing is
+records. (A version 1 of the format, built afterwards in Rust, gives that
+parity record a second row and rebuilds two records of a group instead of
+one, at about 6 % more; Section D. The prototype measured here writes
+version 0.) Checkpoints are signed with the user's SSH key; nothing is
 encrypted. An armor layer turns any `.sstr` into CRC-checked base64url lines
 of at most 80 columns for a tty, RS-232 line or COM port. Lines lost on the
 wire become erasures, which the Reed–Solomon decoder corrects at twice the
@@ -50,8 +53,12 @@ Measured on an aarch64 Alpine guest:
   with console chatter mixed in; it failed from 8 %.
 
 Section VI sets out the limits:
-- The XOR outer code rebuilds only one record per group.
-- Its cost grows with uneven record sizes.
+- The XOR outer code rebuilds only one record per group. *(Answered by
+  version 1 of the format, in the Rust implementation — Section VI's last
+  subsection. The prototype here stays at version 0.)*
+- Its cost grows with uneven record sizes. *(Not answered: version 1 adds a
+  row to the parity body and the body is still as long as the group's longest
+  record.)*
 - Interleaving within a record is too shallow for a lossy serial line.
 - A capture format settles nothing about whether a stream may be kept.
 
@@ -282,7 +289,7 @@ so nothing about the body needs storing.
 |---|---|---|---|
 | `H` stream header | JSON: stream id, content type, created, chunk and alignment, FEC and checkpoint settings, public key, and optional source, license and note | twice | yes |
 | `D` data | payload bytes, or a deflate stream when flag 1 is set | once | yes |
-| `P` parity | count, then (seq, t_us, flags, length, CRC) for each data record of its group, then the XOR of their bodies | once | no |
+| `P` parity | count, then (seq, t_us, flags, length, CRC) for each data record of its group, then the XOR of their bodies — and in version 1 a second row after it, Q (Section D) | once | no |
 | `C` checkpoint | JSON: previous digest, `[seq, SHA-256]` entries, digest, SSH signature, and the stream header again | twice | chained |
 | `E` end | JSON: data records, payload bytes and payload SHA-256, and whether the writer was interrupted | twice | yes |
 
@@ -314,6 +321,30 @@ records, is
   (1 + 32/223) × (1 + 1/16) = 1.1435 × 1.0625 = **1.215**,
 
 plus 136 bytes per record header and the small H, C and E records.
+
+**Version 1, in the Rust implementation.** The prototype this report measures
+writes version 0 and knows nothing of any other. `staticstream` added a
+version 1
+that keeps this record layout and this entry table and gives the parity body
+**two rows instead of one**, over the group's bodies read as columns:
+
+  P[j] = the XOR of every body's byte j — *version 0's row, unchanged*
+  Q[j] = the XOR of g^i · body_i[j] in GF(256), i being the record's place
+
+Two rows, two erasures. The designed redundancy becomes
+
+  (1 + 32/223) × (1 + 2/16) = 1.1435 × 1.125 = **1.286**,
+
+and measured on 4 MiB with groups full it is 1.24 → 1.32 of the payload at a
+16 KiB chunk, the second row costing 1.064 of version 0 against a designed
+1.059.
+
+**A version 0 reader can still read it**, which was not designed and follows
+from P being version 0's row and first: such a reader takes the first padded
+width as the XOR and truncates each rebuilt body to its own length, so the Q
+row behind it is bytes it never reaches. `tools/copal-sstr.py`, unchanged,
+plays a version 1 capture, and still rebuilds one lost record of a group from
+it; it fails only at two, which is the thing version 1 added.
 
 ### E. Checkpoints and signing
 
@@ -636,7 +667,8 @@ different kinds:
 - **Inner:** RS(255,223) with interleaving corrected every scattered bit
   error up to a rate of 3e-3, and a 4,000-byte burst inside one record.
 - **Outer:** one XOR parity per 16 records rebuilt any single record lost
-  outright, including one whose headers a burst destroyed.
+  outright, including one whose headers a burst destroyed. (Version 1's
+  second row rebuilds two; the cliff below moves by one record, not more.)
 
 The measured cliff is where the design says it is:
 - **Bit errors:** at 1e-2, 8 % of bytes are wrong, about 20 per codeword
@@ -661,6 +693,30 @@ Replacing it with a Reed–Solomon erasure code over fixed-size stripes, as
 PAR2 does over files [25], or with RaptorQ [27], would rebuild several
 records per group at the same cost and make parity independent of record
 sizes.
+
+**What that fix turned out to be, and where this paragraph was wrong.**
+Version 1 of the format, in the Rust implementation, is that replacement: a
+second parity row, Q, over GF(256) beside the XOR row, which rebuilds **two**
+records per group instead of one (Section D). Two of the three things
+predicted above did not hold:
+
+- **Not "at the same cost".** A second row is a second padded body, and it
+  measured 1.064 of version 0 — about 6 %. The cost is only unchanged if the
+  budget is re-split, which would mean giving something back from the inner
+  code; it was not.
+- **Not "independent of record sizes".** The parity body is still as long as
+  the group's longest record, once per row, so the second limit on the
+  abstract's list — cost growing with uneven record sizes — is untouched and
+  is now paid twice. On the live capture that cost 14.2 % of the payload at
+  one row; the same capture would pay about twice that.
+- **"Several" turned out to be two.** Two rows is what P+Q buys, and P+Q was
+  chosen because version 0's row survives inside it unchanged, which is what
+  makes a version 0 reader able to read a version 1 file at all.
+
+A code that made parity independent of record sizes would have to stripe the
+group's bodies at a fixed width rather than pad them to the longest, which
+changes the parity record's entry table and not only its blob. That is a
+version 2, and this report does not claim to have measured one.
 
 **Interleaving depth and the serial cliff.** On the tty test, a record body
 of 4,136 bytes is 19 codewords, so a dropped 45-byte line puts two or three
@@ -825,7 +881,7 @@ tools/copal-sstr.py verify cap.sstr --erasures lost.json
 | File | Change |
 |---|---|
 | `tools/copal-sstr.py` | new: the version-0 format; `record`, `play` (stdout, `-o`, `--paced`, `--speed`, `--start`, `--follow`, `--serve`), `verify`, `armor`, `unarmor`, `recv`. Commit `6fa0b0d` |
-| `docs/static-stream-lab-report.md` | this report |
+| `docs/static-stream-lab-report.md` | this report. Revised after the Rust implementation added version 1 of the format: the outer code in Section D, the limit it answers and the one it does not in the abstract's list, and what Section VI's "the fix is known" paragraph got wrong |
 
 ## References
 
