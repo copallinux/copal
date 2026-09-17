@@ -15651,6 +15651,11 @@ build_one() {  # <dir>
     write_launcher "$_n" "$_d"
     # Record what it made, replacing the previous record for this checkout.
     grep -v "^$_n|" "$PROJECTS" > "$PROJECTS.new" 2>/dev/null || true
+    # Sorted: find(1) hands back directory order, which is whatever the file
+    # system last did, so a checkout that makes several programs listed them in
+    # one order here and another order there. By name, not by a table of
+    # favourites -- copal-build goes on working by shape.
+    sort -o "$MADE" "$MADE"
     while read -r _b; do
         [ -n "$_b" ] || continue
         _e=$(entry_for "$_n" "$_b") || true
@@ -19893,6 +19898,11 @@ Brave: use yt-brave, not --cookies-from-browser brave
 
 The queue: ytq
 
+    If you are looking for one thing to open, it is not this one -- it is
+    the Workspace, further down: Super+Shift+A shows everything ytq has
+    kept AND the queue itself, in one window. What follows is the queue on
+    its own, which is what the keyboard and a shell reach.
+
     ytq is Rust now, built from ~/code/staticstream by copal-build into
     ~/.local/bin, beside sstr, the Static Stream command it keeps its
     downloads with. 'sstr ytq' is the same program under another name.
@@ -19960,6 +19970,10 @@ The queue: ytq
     sstr and ytq together and ytq's own file still wins.
 
 The Workspace: sstr-workspace
+
+    THE WAY IN. Everything below is reachable from here with one key, and
+    every key press here is a command line you could have typed, printed
+    before it runs. Start here; drop to the verbs above when you want them.
 
     Super+Shift+A, or 'sstr-workspace' in a terminal, or the menu. The same
     crate as ytq and sstr, built by the same copal-build, so if the queue

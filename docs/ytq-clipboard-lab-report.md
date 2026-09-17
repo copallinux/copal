@@ -809,6 +809,115 @@ The lecture's `comment` was read from `--print` without a download. For
 last step: post-processing (Metadata)` and `done: … + transcript`. The other
 Notes lines, and the other `comment` lines, came out as in IV-N and IV-O.
 
+### R. Stats, and the discussion
+
+Four changes, in `~/code/staticstream` rather than here: ytq is Rust now and
+this report follows it. The owner's ask was the replies under an x.com post as
+a discussion in the `.txt`, the same for YouTube, and the counts a post carries
+"taken on the date".
+
+**What each site gives.** Measured 2026-09-17, yt-dlp 2026.08.19, on one of the
+owner's own downloads.
+
+| Field | `x.com/TheBTCTherapist/status/1935298536373170512` | `youtube.com/watch?v=jNQXAC9IVRw` |
+|---|---|---|
+| `view_count` | 34776 | yes |
+| `like_count` | 412 | yes |
+| `repost_count` | 68 | *absent — YouTube has no reposts* |
+| `comment_count` | 38 | yes |
+| `timestamp` | 1750246101 | yes |
+| `description` | the tweet's own text | the description |
+| `comments` | **`NA`** | a threaded list |
+
+**X reply text cannot be had, and the hole is named rather than left silent.**
+Three independent checks agree: `yt_dlp/extractor/twitter.py` defines no
+`extract_comments`, no `__post_extractor` and no `comments` key, so
+`comment_count` is a number and nothing more; a live run with
+`--write-comments --print '%(comments)s'` printed `NA`; and
+`cdn.syndication.twimg.com/tweet-result`, the public endpoint, answered HTTP
+200 with `conversation_count` and no replies array. Reaching the text means a
+signed-in GraphQL call, which is a phase of its own if ever. On an X post the
+count is recorded and there is no Discussion section.
+
+**An x.com download used to leave nothing in text at all.** The transcript step
+was gated on `first_id(url).is_some()` — YouTube or nothing — because it was
+one job doing two: fetching captions, and writing the notes. Splitting them
+costs no second yt-dlp run, because the download's own run already prints a
+metadata line that the runner already parses. That line asked for five fields
+and now asks for twelve.
+
+| After a download of | before | after |
+|---|---|---|
+| a YouTube video | `.sstr` + `.txt` (Notes, Description, Transcript) | the same, plus Stats and Discussion |
+| an x.com post | `.sstr` only | `.sstr` + `.txt` (Notes, Stats, Description) |
+
+**The counts are stamped, and that is the point rather than a detail.** Every
+row Notes carried before — title, author, published, licence — is a property of
+the recording and reads the same tomorrow. Views and likes are properties of a
+moment and are different the second after they are read. So they are written
+under their own reading time:
+
+```
+Stats  (read 2026-09-17 15:12:03 -0700)
+  Views:      34,776
+  Likes:      412
+  Reposts:    68
+  Replies:    38
+```
+
+A row appears only where the site gave a number, so YouTube's `.txt` has no
+`Reposts:` line rather than a nought. Numbers are written whole: `12k` cannot be
+un-rounded later, and the width it saves was never scarce.
+
+**The discussion is a tree, built from `parent`.** yt-dlp's YouTube comments
+carry `parent` — `'root'` or the id of the comment being answered — along with
+`author`, `author_id`, `timestamp`, `like_count` and `is_pinned`. Both names are
+kept where they differ: a display name can be changed afterwards and an id
+cannot.
+
+```
+Discussion  (200)
+
+  @SanDiegoZoo  (UCC5NfQ6Mf0dq_eEwv4P_hWA)  2020-09-17  * pinned  4,800,000 likes
+    We're so honored that the first ever YouTube video was filmed here!
+    |  @tacticals.1811  (UCS2FiwDUXi_VJwC7HGJl4sw)  2020-09-17  56,000 likes
+    |    How did I randomly go to this video and see this comment 11 hours
+    |    after it was posted? That's amazing
+```
+
+The header states what was kept against what exists, so what the cap left out is
+visible. `COMMENTS` sets the cap, defaults to 200, and `COMMENTS=` asks for none
+— `SUBS`'s shape exactly, including empty-disables.
+
+**Comments are fetched on a run of their own**, not on the transcript's. A
+comment fetch is the slowest and most rate-limited thing yt-dlp does here, and
+sharing a run would mean a 429 on comments cost captions already in hand —
+which is the very failure the transcript was split off the *download* run to
+avoid in IV-F. Each step that can fail alone fails alone, and only a fetch that
+actually broke says `(no discussion)`; a video that simply has none says nothing.
+
+**The capture carries the same fields.** `archive()`'s header gained `published`
+and a stamped `stats` object, so the `.sstr` is not the poorer record of the
+two. It is the copy most likely to outlive the page the numbers came from, and
+therefore the copy that most needs to say when they were true. Both keys are
+conditional, so a capture whose site gave neither is byte for byte the header it
+always was.
+
+**What checks this.** The frozen Python ytq cannot: it writes neither block, and
+`tests/reference/ytq.py` is a specification, not a thing to be edited until a
+test passes. So the crosschecks go on holding the parts that did not change —
+the runner harness now normalises the two new sections out before comparing, as
+it already normalised the `Downloaded:` line — and the new parts are held by
+fixtures instead, in the manner phase 4 settled on when version 1 had no Python
+either.
+
+One of those comparisons earned its keep immediately. `COMMENTS` was first added
+as a default in `settings::load()`; the settings map is compared to the Python's
+byte for byte, and five of 32 comparisons failed at once. It is resolved by a
+function now, beside `OUTPUT`, `ARCHIVE_DIR` and `SSTR_KEY` — the settings that
+decide what a download becomes, which for this exact reason were already kept
+out of that map.
+
 ## V. Discussion
 
 **Why the id and nothing else.** A bookmarks file names the same video in

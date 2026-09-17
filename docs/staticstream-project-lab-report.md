@@ -62,6 +62,19 @@ what it cannot — without cargo-make, which V-G proposed and which Section IX
 explains the removal of. What is **not** done is the rest of that row: no
 binary has been run on a Pi 2B or an x86_64 VM.
 
+*Revised again after phase 5.* A download now says what it is. Every download
+leaves a `.txt` — an x.com post left none at all before, because one step was
+fetching captions and writing notes at once — and both the `.txt` and the
+`.sstr` carry the counts a site gave under the moment they were read, because a
+count is a fact about a moment and an unstamped one is a rumour. YouTube's
+comments come back as a threaded discussion, on a yt-dlp run of their own so
+that a rate limit on comments cannot cost captions already in hand. X reply
+text is not obtainable at all and the report says so rather than leaving a
+silence. `make check` is **382, unchanged**: the new sections are normalised
+out of the comparisons with the frozen Python, which never wrote them, and are
+held by six new fixtures instead — the answer phase 4 reached when version 1
+had no Python either.
+
 Before proposing anything, the report measures what the choice rests on:
 
 | Question | Finding |
@@ -705,6 +718,7 @@ pullable.
 | — | the release: one crate, under its own name on crates.io | **Done**: the five packages became four modules of one package named after the repository. The 293 agree unchanged across the move, and `cargo install staticstream` fetches nothing but this crate |
 | 3 | `sstr-workspace`: Browser, Inspector, Transcript, then Services, then Queue | every Service is a command line shown in the Transcript before it runs. **Done**: five steps, commits `d6826e1`, `55809be`, `fcfdb9a`, `ffd92c5` and `d8b052b`. `make check` is 356 -- the 293 of phase 2 and 63 checks of the Workspace -- with 118 unit tests. Section VIII, and `docs/phase-3.md` in staticstream for the step-by-step record |
 | 4 | `make dist` for the targets of V-E, and version 1's stronger outer code | binaries run on the Pi 2B and the x86_64 VM; version 1 rebuilds two lost records per group. **Version 1 done**: commits `0f46afa` and `5cd86f3` — two records of one group rebuilt, byte-identical, where version 0 loses both; the second row measures 1.0643 of version 0 against a designed 1.0588. **`make dist` done as far as one machine can take it**: commit `bf88422`. **Not done**: the two hardware runs. Section IX |
+| 5 | what a download says about itself: notes for every download, the counts a site gives under the moment they were read, and YouTube's comments as a threaded discussion | an x.com download leaves a `.txt` where it left none; both `.txt` and `.sstr` carry the counts, stamped; a YouTube `.txt` carries the discussion under a stated cap; the crosschecks still agree on everything they covered before. **The first phase with no row here when it began** — its bar comes from the owner's ask and the citation argument of the ytq report's IV-N and V, not from this table, and `docs/phase-5.md` in staticstream records that and every deviation as it was made |
 
 ## VI. Discussion
 
