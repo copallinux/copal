@@ -7879,6 +7879,12 @@ bindsym $mod+Shift+n exec $term -title nvim -e sh -c 'command -v nvim >/dev/null
 # ytq is built from ~/code/staticstream by copal-build, into ~/.local/bin;
 # until something on PATH is called ytq, the key does nothing.
 bindsym $mod+Shift+y exec --no-startup-id sh -c 'command -v ytq >/dev/null && exec ytq clip'
+# The Workspace: a Browser over the folder the queue archives into, with the
+# queue itself as one more column (Q). Same crate as ytq, same checkout, so
+# the same "until it is on PATH the key does nothing" applies. A terminal
+# program, so it is opened in one -- unlike Super+Shift+Y, which takes the
+# clipboard and needs no window at all.
+bindsym $mod+Shift+a exec --no-startup-id sh -c 'command -v sstr-workspace >/dev/null && exec TERMEMU_PLACEHOLDER -title sstr-workspace -e sstr-workspace'
 for_window [title="copal-panel"] floating enable, resize set 760 520, move position center
 # The key list, in a floating window. Shown once at login and on Super+/,
 # because a tiling WM with no menus is unusable until you know the bindings.
@@ -10598,6 +10604,9 @@ COPALGPU
    Super + Shift + Y    queue the video URL on the clipboard (ytq).
                         'ytq run' downloads; touch ~/.config/ytq/auto
                         and it starts by itself.
+   Super + Shift + A    the Static Stream Workspace: a Browser over the
+                        folder ytq archives into, the queue itself on Q,
+                        and Play, Verify, Export and Text on one key.
    Super + Shift + B    the camera -- birdshot, which stage 7 built from
                         ~/code, or whatever CAMERA= names in ~/.profile.
                         Also the Camera entry at the top of the menu.
@@ -13270,6 +13279,14 @@ bind = $mainMod SHIFT, N, exec, $terminal -e sh -c 'command -v nvim >/dev/null &
 # The download queue, on the same chord as stage 4's i3 config: queue the URL
 # on the clipboard. It downloads by itself once ~/.config/ytq/auto exists.
 bind = $mainMod SHIFT, Y, exec, sh -c 'command -v ytq >/dev/null && exec ytq clip'
+# The Workspace, on the same chord as stage 4's i3 config: a Browser over the
+# folder the queue archives into, with the queue as one more column. It is a
+# terminal program, so unlike the chord above it is given a terminal -- and
+# $terminal is left at the front of the exec, where every other binding here
+# uses it, rather than nested inside the sh -c where stage 4's TERMEMU note
+# says not to trust somebody else's expansion. The cost is that on a machine
+# where copal-build has not run yet the terminal opens and shuts again.
+bind = $mainMod SHIFT, A, exec, $terminal -e sh -c 'command -v sstr-workspace >/dev/null && exec sstr-workspace'
 # The wallpaper picker, with thumbnails. Also in the menu under Style, and on
 # the same chord as stage 4's i3 config so the two desktops agree.
 bind = $mainMod SHIFT, W, exec, copal-wallpaper --pick
@@ -13413,6 +13430,7 @@ ANTIQHYPR
    Super + Shift + N    the editor (nvim)
    Super + Shift + M    music (cmus, or mpv on ~/Music)
    Super + Shift + Y    queue the clipboard's video URL (ytq)
+   Super + Shift + A    the Static Stream Workspace (archive and queue)
    Super + Shift + B    the camera (birdshot, built from ~/code; or $CAMERA)
    Super + Shift + W    the wallpaper picker, with thumbnails
    Super + Shift + T    the theme picker
@@ -15601,6 +15619,9 @@ entry_for() {  # <checkout name> <program> -> label|command|mode, or nothing
         urfinkel)        echo "UR FINKEL (Plus/4; in VICE)|urfinkel|x" ;;
         codexofconquest) echo "Codex of Conquest (web game)|codexofconquest|x" ;;
         gonex)           echo "Gonex (Team Yodacon; reentry trader)|gonex|x" ;;
+        sstr-workspace)  echo "Static Stream Workspace (archive and queue)|sstr-workspace|t" ;;
+        ytq)             echo "ytq (the download queue)|ytq|t" ;;
+        sstr)            echo "Static Stream (record and play back)|sstr|h" ;;
         *)               echo "$1: $2|$2|t" ;;
     esac
 }
@@ -19938,6 +19959,40 @@ The queue: ytq
     ~/.config/copal/media.conf is read first, so a key set there covers
     sstr and ytq together and ytq's own file still wins.
 
+The Workspace: sstr-workspace
+
+    Super+Shift+A, or 'sstr-workspace' in a terminal, or the menu. The same
+    crate as ytq and sstr, built by the same copal-build, so if the queue
+    works this does too.
+
+    It is a Browser over a folder of streams -- ARCHIVE_DIR, or the folder
+    given to it -- in columns, as the NeXT Workspace Manager browsed a file
+    system. It owns nothing and keeps no database: it reads the disk, and a
+    capture's own header and notes are what the Inspector shows.
+
+    up down / k j       move             right / l / Enter   open the folder
+    left / h            back out         q / Esc             leave
+    Space               pick the selection up onto the Shelf, or put it down
+    Q                   ytq's queue, as one more column to browse
+
+    The Inspector shows the selection: for a capture, what 'sstr verify'
+    says about it, in the same words. Services go to the selection with one
+    key, and the foot of the window says which the selection takes:
+
+        p Play    P Paced    s Serve    v Verify
+        x Export  t Text     a Armor
+        r Retry   f Forget                      (on a queue entry)
+
+    With anything on the Shelf a Service goes to everything on it, one
+    command line each. EVERY SERVICE IS A COMMAND LINE, written into the
+    Transcript before it runs and then run exactly as written -- so it can
+    be read, copied and typed again. Nothing here does anything you could
+    not have done yourself in a shell; it only saves the typing and shows
+    its work.
+
+    PLAYER (mpv) and SERVE (127.0.0.1:8080) come from the same two files
+    ARCHIVE_DIR does.
+
 Filenames
 
     Every yt-dlp run here names its file after the first word of the
@@ -20272,6 +20327,8 @@ install_ytq() {
     note "ytq -- a download queue: Super+Shift+Y queues the clipboard's URL, 'ytq run' downloads"
     note "  it is built from ~/code/staticstream:  copal-build staticstream   (into ~/.local/bin)"
     note "  to have it start downloading by itself:  touch ~/.config/ytq/auto   (ytq --help)"
+    note "  the Workspace over what it keeps:  Super+Shift+A, or 'sstr-workspace'  -- the archive"
+    note "  and the queue in one Browser, with Play, Verify, Export and Text on one key"
 }
 
 # ------------------------------------------- stage 10: the Geiger counter ---
