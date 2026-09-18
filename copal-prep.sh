@@ -13020,6 +13020,18 @@ exec-once = copal-clip watch
 # decides, so this line never has to change. Without it there is no bar,
 # no clock, no workspace indicator and no window list.
 exec-once = copal-bar
+# The Geiger monitor, if stage 10 installed radbeeper. 'radbeeper hotplug' sits
+# in the session and opens the monitor when a counter appears -- at login if one
+# is already plugged in, and on plug-in at any point after. It is deliberately
+# silent when there is no counter, because a window that opens at every login to
+# say "nothing is plugged in" gets closed at every login and then gets deleted.
+#
+# THIS LINE WAS WRITTEN FOR i3 AND NOWHERE ELSE FOR TOO LONG. The i3 config has
+# carried it since stage 10 landed; the Hyprland one never did, so on the
+# desktop this distribution actually boots into, the monitor could not open at
+# login however well the logger was working. Both sessions get it or neither
+# means anything.
+exec-once = sh -c 'command -v radbeeper >/dev/null 2>&1 && exec radbeeper hotplug'
 exec-once = sh -c '[ -x /usr/libexec/hyprpolkitagent ] && exec /usr/libexec/hyprpolkitagent'
 # X11 core fonts for Xwayland clients. Xwayland starts with a font path of
 # "built-ins" alone -- X.org's default already lists these directories -- so
