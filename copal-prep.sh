@@ -20919,12 +20919,21 @@ RADBEEPERUDEV
     # nobody reads until the page is rebuilt. So it is checked here, once, on
     # the thing that actually has to be true: the person who runs `radbeeper
     # watch` can append to the file the service writes.
+    #
+    # TWO WAYS THAT IS TRUE, and a backfill alternates between them. Filling
+    # the log's gaps writes a temp file and renames it over the original
+    # (radbeeper src/log.rs), so the file is remade by whoever ran the
+    # backfill, under their umask: root:dialout rw-rw-r-- from the service,
+    # $PI_USER:dialout rw-r--r-- from `radbeeper watch`. Both are writable by
+    # both, because one of the two writers is always root and the other is
+    # always the owner. Testing only the group bit calls the second one broken.
     if [ -d /var/lib/radbeeper ]; then
         _log=$(ls -1t /var/lib/radbeeper/cpm-*.tsv 2>/dev/null | head -1)
         if [ -z "$_log" ]; then
             note "no log written yet -- the first one will be group-writable"
-        elif [ "$(stat -c %G "$_log" 2>/dev/null)" = dialout ] \
-          && [ "$(stat -c %A "$_log" 2>/dev/null | cut -c6)" = w ]; then
+        elif [ "$(stat -c %U "$_log" 2>/dev/null)" = "${PI_USER:-}" ] \
+          || { [ "$(stat -c %G "$_log" 2>/dev/null)" = dialout ] \
+            && [ "$(stat -c %A "$_log" 2>/dev/null | cut -c6)" = w ]; }; then
             note "the log is dialout and group-writable, so the monitor logs"
             note "while it holds the counter:  $(basename "$_log")"
         else
