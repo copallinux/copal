@@ -483,11 +483,21 @@ def self_test():
     assert "fleet.museum.log.>" not in nsub, "a plain node may read every log"
     checks += 3
 
+    # A key with its last character CHANGED, which breaks the CRC16 an NKEY
+    # ends with. It must be a different character: appending a fixed "A" to the
+    # first 55 leaves a key that already ended in "A" exactly as it was, and
+    # then a valid membership is handed to a check that expects a refusal. That
+    # is one generated key in thirty-two, and it failed `make lint` on nothing
+    # but luck. copal_nkeys.py:310 already chooses the character this way.
+    _pub = pubs["museum-01"]
+    _corrupt = _pub[:-1] + ("A" if _pub[-1] != "A" else "B")
+    assert _corrupt != _pub, "the corrupted key must differ from the good one"
+
     for bad, why in [
         ("museum-01 %s admin" % pubs["museum-01"], "role"),
         ("museum-01 %s node\nmuseum-01 %s node" % (pubs["museum-01"], pubs["museum-01"]), "twice"),
         ("../etc %s node" % pubs["museum-01"], "usable node id"),
-        ("museum-01 %sA node" % pubs["museum-01"][:-1], "not usable"),
+        ("museum-01 %s node" % _corrupt, "not usable"),
         ("museum-01 %s" % pubs["museum-01"], "want"),
         ("", "empty membership"),
     ]:
