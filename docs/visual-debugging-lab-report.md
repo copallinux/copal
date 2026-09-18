@@ -432,6 +432,17 @@ the guest: `wl-copy` → `xclip -o` in under a second, and `xclip -i` →
 To check it after a restart: `pgrep -a spice-vdagent copal-vmclip`, then
 `wl-copy hello` and paste on the Mac.
 
+> **Superseded, 2026-09-11.** `copal-vmclip` was folded into `copal-clip`,
+> the unified clipboard (`6a1984e`), whose `bridge` verb is the same relay and
+> whose `copy`, `cut`, `paste` and `history` are the keys around it.
+> `copal-prep.sh` writes `copal-clip` to `/usr/local/bin` and starts
+> `copal-clip bridge` from hyprland.conf's `exec-once`, guarded on the SPICE
+> port and waiting for Xwayland; `tools/copal-vmclip.sh` was installed by
+> nothing after that date and has been deleted. **The measurement above stands
+> and is why the relay exists at all** — Xwayland bridges the two selections
+> only while an X window has focus — so the check is now
+> `pgrep -af 'copal-clip bridge'`. Nothing else in this section changed.
+
 ## X. Files touched in this session
 
 | file | change |
@@ -440,7 +451,7 @@ To check it after a restart: `pgrep -a spice-vdagent copal-vmclip`, then
 | `~/.config/waybar/config` | `custom/menu`: static `"format": "≡"`, `exec` and `interval` removed |
 | `~/.config/foot/foot.ini` | `alpha=0.2` → `alpha=1.0`; new terminals are solid `#eaeaea` |
 | `tools/copal-gfx-probe.sh` | new |
-| `tools/copal-vmclip.sh`, `~/.local/bin/copal-vmclip` | new: host clipboard over SPICE, started by `exec-once` in local.conf |
+| `tools/copal-vmclip.sh`, `~/.local/bin/copal-vmclip` | new: host clipboard over SPICE, started by `exec-once` in local.conf — *superseded 2026-09-11 by `copal-clip bridge`; the file is gone* |
 | `docs/img/gfx-*.png` | before/after evidence for §IV.B |
 | `docs/visual-debugging-lab-report.md` | this report |
 
