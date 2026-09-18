@@ -69,6 +69,25 @@
 #
 set -euo pipefail
 
+# THE DISK LAYER. Every call that finds, partitions, mounts or lets go of a
+# block device goes through this one program, which has a macOS backend and a
+# Linux one -- so this file, which is otherwise portable, stopped being a
+# macOS script. tools/copal-disk.sh says why it is a shim and not an `if` at
+# each of twenty-five call sites.
+#
+# Checked at first use rather than at the top, because copal-prep.sh is also
+# copied onto the card it writes, and a copy that runs on the target has no
+# tools/ directory beside it and never touches a disk.
+DISKSH="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/tools/copal-disk.sh"
+disk() {
+    [ -r "$DISKSH" ] || {
+        printf 'copal-prep.sh: the disk layer is missing: %s\n' "$DISKSH" >&2
+        printf '       Cards are written through tools/copal-disk.sh. This\n' >&2
+        printf '       checkout does not have it.\n' >&2
+        exit 1; }
+    sh "$DISKSH" "$@"
+}
+
 BOOT_LABEL="COPALBOOT"
 # WHY THE LABEL BEING A CONSTANT IS A HAZARD, and what is done about it.
 #
@@ -93,8 +112,11 @@ ROOT_LABEL="COPALROOT"
 # Refuse to write through a mount point that belongs to somebody else's run.
 # df's second line names the device behind a path, which is the only question
 # worth asking here -- the directory existing proves nothing about whose it is.
-assert_mount_is() {  # <mount point> <bare disk name, e.g. disk4>
-    _am_want="/dev/${2}s1"
+assert_mount_is() {  # <mount point> <bare disk name, e.g. disk4 or sda>
+    # NOT "${2}s1". That spelling is macOS's, and on Linux the same partition
+    # is sda1 or mmcblk0p1 -- a comparison that can never match, which would
+    # turn this guard into a die() on every Linux build.
+    _am_want="/dev/$(disk part "$2" 1)"
     _am_got=$(df "$1" 2>/dev/null | awk 'NR==2 {print $1}')
     [ "$_am_got" = "$_am_want" ] && return 0
     die "$1 is mounted from ${_am_got:-nothing}, not $_am_want.
@@ -105,13 +127,14 @@ assert_mount_is() {  # <mount point> <bare disk name, e.g. disk4>
        build's payload on the other build's disk.
 
        Finish or stop that run first, then try again. If nothing else is
-       running, an earlier run left a mount behind:  diskutil unmount '$1'"
+       running, an earlier run left a mount behind. Unmount it:
+           tools/copal-disk.sh unmount $2 1"
 }
 # "R" means the remainder of the card. Earlier versions used a fixed 16G and
 # left the rest unallocated, which stranded most of a large card for no
 # benefit -- the space cannot be reached later without repartitioning.
 ROOT_SIZE="${ROOT_SIZE:-R}"
-# "R" is diskutil's syntax, not something to show a human.
+# "R" is the disk layer's syntax, not something to show a human.
 if [ "$ROOT_SIZE" = "R" ]; then
     ROOT_SIZE_LABEL="rest of card"
 else
@@ -216,7 +239,7 @@ run() {
 
 # The same, with stdout and stderr discarded. For commands that are run for
 # their effect and whose chatter would drown the commands around them --
-# diskutil unmount saying "Volume ... unmounted" forty times, mostly.
+# unmount saying "Volume ... unmounted" forty times, mostly.
 runq() {
     printf '    \033[32m$\033[0m \033[1m%s\033[0m\033[2m  >/dev/null\033[0m\n' "$*" >&2
     _rt0=$(date +%s)
@@ -386,7 +409,7 @@ fi
 IMAGE_BYTES=$(size_to_bytes "$IMAGE_SIZE")
 [ -n "$IMAGE_BYTES" ] || die "IMAGE_SIZE='$IMAGE_SIZE' is not a size. Use e.g. IMAGE_SIZE=64g or 8192m."
 # The image has to hold the boot partition and leave something for the root, or
-# diskutil fails partway through with a complaint about the second partition
+# partitioning fails partway through with a complaint about the second one
 # rather than about the size, which is the confusing way round.
 _boot_bytes=$(size_to_bytes "$BOOT_SIZE")
 if [ -n "$_boot_bytes" ]; then
@@ -994,7 +1017,7 @@ on_interrupt() {
         printf '\033[33mNote: /dev/%s was already repartitioned. It is NOT bootable.\033[0m\n' "$DISK" >&2
         printf '\033[33mRe-run this script to finish, or the card will be unusable.\033[0m\n' >&2
         sync 2>/dev/null || true
-        diskutil unmountDisk "/dev/$DISK" >/dev/null 2>&1 || true
+        disk unmount-all "$DISK"
     fi
     # An image left attached is worse than one left half-written: the next run
     # refuses to attach it twice, and the reason is not obvious from the file.
@@ -1016,9 +1039,8 @@ release_image() {
     # a device that still has a mounted volume on it is what leaves a phantom
     # /dev/diskN for the next run to trip over.
     sync 2>/dev/null || true
-    diskutil unmountDisk "$IMAGE_DEV" >/dev/null 2>&1 || true
-    hdiutil detach "$IMAGE_DEV" >/dev/null 2>&1 \
-        || hdiutil detach -force "$IMAGE_DEV" >/dev/null 2>&1 || true
+    disk unmount-all "${IMAGE_DEV#/dev/}"
+    disk image-detach "$IMAGE_DEV"
     IMAGE_DEV=""
 }
 
@@ -1120,7 +1142,7 @@ fetch_payload() {
 
     if [ -f "$archive" ]; then
         info "Cache hit: $TARBALL ($(du -h "$archive" 2>/dev/null | awk '{print $1}')), verifying before trusting it"
-        if run sh -c "cd '$CACHEDIR' && shasum -a 256 -c '${TARBALL}.sha256'"; then
+        if run sh -c "cd '$CACHEDIR' && '$DISKSH' sha256-check '${TARBALL}.sha256'"; then
             info "Checksum matches -- no download needed."
             hint "This is the fast path: nothing crosses the network but the"
             hint "checksum, and the next phase starts immediately."
@@ -1155,7 +1177,7 @@ fetch_payload() {
     hint "Run again after the download: curl can report success on a transfer"
     hint "the filesystem then truncated. This is the check that decides"
     hint "whether anything is written to the card at all."
-    run sh -c "cd '$CACHEDIR' && shasum -a 256 -c '${TARBALL}.sha256'" \
+    run sh -c "cd '$CACHEDIR' && '$DISKSH' sha256-check '${TARBALL}.sha256'" \
         || die "CHECKSUM MISMATCH -- the download is corrupt or tampered with. Refusing to write it to the card."
 
     phase "Extract"
@@ -1215,7 +1237,7 @@ fetch_bootloader() {  # <payload dir>
     info "Bootloader: GRUB, from $BOOTLOADER_ISO"
     curl -fsSL -o "$_sum" "${BOOTLOADER_URL}.sha256" \
         || die "could not download the bootloader checksum from ${BOOTLOADER_URL}.sha256"
-    if [ -f "$_iso" ] && ! (cd "$CACHEDIR" && shasum -a 256 -c "${BOOTLOADER_ISO}.sha256" >/dev/null 2>&1); then
+    if [ -f "$_iso" ] && ! (cd "$CACHEDIR" && disk sha256-check "${BOOTLOADER_ISO}.sha256" >/dev/null 2>&1); then
         warn "existing $BOOTLOADER_ISO failed verification; re-downloading"
         rm -f "$_iso"
     fi
@@ -1223,11 +1245,11 @@ fetch_bootloader() {  # <payload dir>
         info "Downloading $BOOTLOADER_ISO (~66 MB; one 850 kB file is used from it)..."
         curl -fL -C - -o "$_iso" "$BOOTLOADER_URL" || die "download failed: $BOOTLOADER_URL"
     fi
-    (cd "$CACHEDIR" && shasum -a 256 -c "${BOOTLOADER_ISO}.sha256") \
+    (cd "$CACHEDIR" && disk sha256-check "${BOOTLOADER_ISO}.sha256") \
         || die "CHECKSUM MISMATCH on $BOOTLOADER_ISO -- refusing to take a bootloader from it."
 
     # bsdtar reads ISO9660 directly, so the image never has to be mounted --
-    # which matters because mounting one on macOS needs hdiutil and a detach
+    # which matters because mounting one needs the image attached and detached
     # that can fail and leave the image attached.
     #
     # The ISO stores the path lower-case; UEFI's fallback path is conventionally
@@ -1469,15 +1491,14 @@ fi
 # ------------------------------------------------------------------ image ---
 # Writing to a file instead of a card.
 #
-# hdiutil attaches a raw image as a /dev/diskN that diskutil, fdisk and mount
-# all treat as an ordinary disk, so everything downstream is unchanged: the
-# partitioning, the payload copy and the final verification run exactly as they
-# do on real media, and `diskutil eject` detaches the image at the end without
-# needing a special case.
+# The disk layer attaches a raw image as an ordinary block device -- /dev/diskN
+# on macOS, /dev/loopN on Linux -- that partitioning, mount and the payload
+# copy all treat as real media, so everything downstream is unchanged and
+# `eject` lets go of the image at the end without needing a special case.
 #
-# Two things do differ. macOS reports Virtual: Yes and Protocol: Disk Image,
-# both of which the safety checks below would otherwise refuse -- correctly, so
-# they are relaxed only when this script created the device itself.
+# Two things do differ. Both hosts report the device as virtual, and name its
+# protocol "Disk Image"; the safety checks below would otherwise refuse it --
+# correctly, so they are relaxed only for the device this script attached.
 #
 # The point is a target that cannot destroy anything. There is no identifier to
 # mistype and no card to confuse with a backup drive; the worst case is a
@@ -1498,7 +1519,7 @@ attach_image() {
         *) IMAGE_PATH="${IMAGE_PATH}.img" ;;
     esac
     mkdir -p "$(dirname "$IMAGE_PATH")" || die "cannot create the directory for $IMAGE_PATH"
-    # Absolute from here on. hdiutil reports absolute paths, so the
+    # Absolute from here on. The disk layer reports absolute paths, so the
     # already-attached check below cannot compare against a relative one, and
     # the boot commands printed at the end have to work from any directory.
     IMAGE_PATH="$(cd "$(dirname "$IMAGE_PATH")" && pwd)/$(basename "$IMAGE_PATH")"
@@ -1532,21 +1553,13 @@ attach_image() {
     if [ -e "$IMAGE_PATH" ]; then
         # Already attached from an earlier run? Attaching twice gives two
         # device nodes onto one file, and writes through both corrupt it.
-        #
-        # hdiutil pads the key to a fixed width -- "image-path      : /path" --
-        # so the separator has to be matched as whitespace-colon-whitespace.
-        # Comparing against the literal "image-path : " never matched, which
-        # made this check silently useless.
+        # Each backend has its own way of being asked, and both have a way of
+        # answering wrongly that cost a day once -- the details live with the
+        # backends, in tools/copal-disk.sh.
         local already
-        already=$(hdiutil info 2>/dev/null | awk -v f="$IMAGE_PATH" '
-            /^image-path[[:space:]]*:/ {
-                line = $0
-                sub(/^image-path[[:space:]]*:[[:space:]]*/, "", line)
-                cur = (line == f)
-            }
-            cur && /^\/dev\/disk[0-9]+/ { print $1; exit }') || true
+        already=$(disk image-attached "$IMAGE_PATH") || true
         [ -z "$already" ] || die "$IMAGE_PATH is already attached as $already.
-       Detach it first:  hdiutil detach $already"
+       Detach it first:  tools/copal-disk.sh image-detach $already"
         info "Image   : $IMAGE_PATH (exists, $(du -h "$IMAGE_PATH" | awk '{print $1}') on disk -- will be repartitioned)"
     else
         seek_mb=$(( IMAGE_BYTES / 1024 / 1024 ))
@@ -1562,15 +1575,10 @@ attach_image() {
         info "Image   : $IMAGE_PATH (created sparse, ${IMAGE_SIZE})"
     fi
 
-    # CRawDiskImage: treat the file as a bare sector image with no header, which
-    # is what a card is and what QEMU expects back. Without it hdiutil looks for
-    # a UDIF or DMG structure and declines a file that has neither.
-    IMAGE_DEV=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount "$IMAGE_PATH" \
-                | awk 'NR==1 { print $1 }') \
-        || die "hdiutil could not attach $IMAGE_PATH"
-    # hdiutil pads its columns with tabs, so the field has to be taken by awk
-    # rather than by trimming spaces -- '/dev/disk8\t\t' is not a device path.
-    [ -n "$IMAGE_DEV" ] || die "hdiutil attached $IMAGE_PATH but reported no device"
+    # Attached as a bare sector image -- no header, no UDIF, no partition
+    # scanning skipped. Both backends die rather than return empty, so a
+    # device name that arrives here is a device name.
+    IMAGE_DEV=$(disk image-attach "$IMAGE_PATH")
     DISK="${IMAGE_DEV#/dev/}"
     info "Attached: $IMAGE_DEV"
 }
@@ -1598,14 +1606,25 @@ else
         "" \
         "Nothing is written by this step. Safe to abort."
 
+    # What a whole disk is called, and what a partition of one is called, are
+    # different questions on each host: macOS numbers disks, Linux names them
+    # after the bus. Neither spelling is hardcoded anywhere below -- this is
+    # the only place either is written down.
+    case "$(uname -s)" in
+        Darwin) DISK_EG='disk4'; DISK_EG_PART='disk4s1'
+                DISK_RE='^disk[0-9]+$' ;;
+        *)      DISK_EG='sda';   DISK_EG_PART='sda1'
+                DISK_RE='^(sd[a-z]+|hd[a-z]+|vd[a-z]+|mmcblk[0-9]+|nvme[0-9]+n[0-9]+|loop[0-9]+)$' ;;
+    esac
+
     echo >&2
-    info "External disks currently attached:"
+    info "Removable disks currently attached:"
     echo >&2
-    diskutil list external physical >&2
+    disk list >&2
     echo >&2
 
     DISK=""
-    read -r -p "Disk identifier (e.g. disk4, NOT disk4s1), or 'image' for a file: " DISK < /dev/tty || true
+    read -r -p "Disk identifier (e.g. $DISK_EG, NOT $DISK_EG_PART), or 'image' for a file: " DISK < /dev/tty || true
     DISK="${DISK#/dev/}"
 
     case "$DISK" in
@@ -1613,30 +1632,28 @@ else
             IMAGE_MODE=1
             attach_image ;;
         *)
-            [[ "$DISK" =~ ^disk[0-9]+$ ]] || die "'$DISK' is not a whole-disk identifier (expected e.g. disk4, or 'image')" ;;
+            [[ "$DISK" =~ $DISK_RE ]] || die "'$DISK' is not a whole-disk identifier (expected e.g. $DISK_EG, or 'image')" ;;
     esac
 fi
 
-INFO=$(diskutil info "/dev/$DISK" 2>/dev/null) || die "no such disk: /dev/$DISK"
+INFO=$(disk probe "$DISK") || die "no such disk: /dev/$DISK"
 
-# Not every field exists on every device -- a whole disk may have no
-# "Ejectable" or "Disk / Partition UUID" line at all. grep exits 1 on no
-# match, and under 'set -o pipefail' that failure propagates out of the
-# command substitution and 'set -e' kills the script with no message, right
-# after the disk is entered. The trailing '|| true' is what makes a missing
-# field return empty instead of aborting.
-get() { printf '%s\n' "$INFO" | grep -E "^ *$1:" | head -n1 | sed 's/.*: *//' | xargs || true; }
+# Eleven keys, one per line, the same eleven from either host. The shim is
+# what guarantees that: a fact a host cannot supply comes back as "unknown"
+# and NEVER as an absent line, because an absent line reads as an empty string
+# and an empty string passes every refusal below.
+get() { printf '%s\n' "$INFO" | sed -n "s/^$1=//p" | head -n1; }
 
-INTERNAL=$(get "Device Location")
-REMOVABLE=$(get "Removable Media")
-VIRTUAL=$(get "Virtual")
-DISK_SIZE=$(get "Disk Size" | sed 's/ (.*//')
-EJECTABLE=$(get "Ejectable")
-PROTOCOL=$(get "Protocol")
-MEDIANAME=$(get "Device / Media Name")
-WHOLE=$(get "Whole")
-SYSIMAGE=$(get "OS Can Be Installed")
-DISK_BYTES=$(printf '%s\n' "$INFO" | grep -E '^ *Disk Size:' | grep -oE '\([0-9]+ Bytes\)' | grep -oE '[0-9]+' | head -n1 || true)
+INTERNAL=$(get internal)
+REMOVABLE=$(get removable)
+VIRTUAL=$(get virtual)
+DISK_SIZE=$(get size_human)
+EJECTABLE=$(get ejectable)
+PROTOCOL=$(get protocol)
+MEDIANAME=$(get media_name)
+WHOLE=$(get whole)
+SYSIMAGE=$(get os_installable)
+DISK_BYTES=$(get size_bytes)
 
 # Volume names currently mounted from this device -- the most human-readable
 # clue there is about what the thing actually is.
@@ -1672,7 +1689,7 @@ printf '    Removable  : %s\n'      "$REMOVABLE" >&2
 printf '    Ejectable  : %s\n'      "${EJECTABLE:-(not reported)}" >&2
 [ -n "$MOUNTED" ] && printf '    Volumes    : %s\n' "$MOUNTED" >&2
 echo >&2
-diskutil list "/dev/$DISK" >&2
+disk show "$DISK" >&2
 echo >&2
 
 # --- soft signals: not fatal, but each one earns a warning -----------------
@@ -1699,8 +1716,15 @@ if [ "${DISK_BYTES:-0}" -gt 549755813888 ]; then
     SUSPECT=$((SUSPECT+2))
 fi
 [ "$SYSIMAGE" = "Yes" ] && {
-    warn "macOS says an OS can be installed here -- typical of a system drive"
+    warn "the host says an OS can be installed here -- typical of a system drive"
     SUSPECT=$((SUSPECT+1)); }
+# SAID OUT LOUD RATHER THAN ABSORBED. macOS answers "OS Can Be Installed" and
+# Linux has nothing equivalent, so on Linux this device is judged on three
+# signals instead of four. That is a real difference in how hard it is to
+# catch a wrong disk, and it belongs on the screen rather than in a comment.
+if [ "$SYSIMAGE" = "unknown" ]; then
+    info "One signal fewer on this host: $(uname -s) cannot say whether an OS could be installed here."
+fi
 fi   # end of the soft signals, skipped for a disk image
 
 if [ "$SUSPECT" -ge 2 ]; then
@@ -1715,14 +1739,14 @@ fi
 # Disks renumber when devices are plugged or unplugged. The identifier chosen
 # now may point at something else by the time the destructive step runs, so
 # record what this device *is* and re-check it immediately before erasing.
-DISK_FINGERPRINT="${MEDIANAME}|${DISK_BYTES}|$(get "Disk / Partition UUID")"
+DISK_FINGERPRINT="${MEDIANAME}|${DISK_BYTES}|$(get uuid)"
 
 # ---------------------------------------------------------------- format ---
 if [ "$REFRESH" -eq 1 ]; then
     # Refresh: mount the existing boot partition and leave everything else be.
-    MNT="/Volumes/$BOOT_LABEL"
-    diskutil mount "${DISK}s1" >/dev/null 2>&1 || true
-    [ -d "$MNT" ] || die "could not mount ${DISK}s1 at $MNT -- is this a card written by copal-prep.sh?"
+    MNT=$(disk mount "$DISK" 1) \
+        || die "could not mount partition 1 of /dev/$DISK -- is this a card written by copal-prep.sh?"
+    [ -d "$MNT" ] || die "could not mount partition 1 of /dev/$DISK at $MNT"
     assert_mount_is "$MNT" "$DISK"
     [ -e "$MNT/config.txt" ] && [ -e "$MNT/boot/vmlinuz-rpi" ] \
         || die "$MNT does not contain an Alpine payload. Refusing to refresh a card that was never written."
@@ -1789,10 +1813,9 @@ fi   # end of the confirmations, skipped for a disk image
 # Between selecting the disk and confirming twice, a device may have been
 # plugged in or removed, renumbering everything. Re-read the device and
 # compare it with what was inspected earlier.
-RECHECK=$(diskutil info "/dev/$DISK" 2>/dev/null) || die "/dev/$DISK has gone away. Aborted."
-recheck_get() { printf '%s\n' "$RECHECK" | grep -E "^ *$1:" | head -n1 | sed 's/.*: *//' | xargs || true; }
-NOW_BYTES=$(printf '%s\n' "$RECHECK" | grep -E '^ *Disk Size:' | grep -oE '\([0-9]+ Bytes\)' | grep -oE '[0-9]+' | head -n1 || true)
-NOW_FINGERPRINT="$(recheck_get "Device / Media Name")|${NOW_BYTES}|$(recheck_get "Disk / Partition UUID")"
+RECHECK=$(disk probe "$DISK") || die "/dev/$DISK has gone away. Aborted."
+recheck_get() { printf '%s\n' "$RECHECK" | sed -n "s/^$1=//p" | head -n1; }
+NOW_FINGERPRINT="$(recheck_get media_name)|$(recheck_get size_bytes)|$(recheck_get uuid)"
 
 if [ "$NOW_FINGERPRINT" != "$DISK_FINGERPRINT" ]; then
     echo >&2
@@ -1812,57 +1835,55 @@ ERASED=1
 # MBRFormat: the Pi firmware reads an MBR/FDisk partition table, not GPT.
 # MS-DOS FAT32 boot partition, remainder left as free space for ext4 later.
 info "Partitioning /dev/$DISK (MBR: FAT32 ${BOOT_SIZE} '${BOOT_LABEL}' + ${ROOT_SIZE_LABEL} '${ROOT_LABEL}')..."
-diskutil unmountDisk "/dev/$DISK" >/dev/null 2>&1 || true
-if [ "$ROOT_SIZE" = "R" ]; then
-    # No trailing "Free Space" entry: p2 takes everything left.
-    diskutil partitionDisk "/dev/$DISK" MBRFormat \
-        MS-DOS "$BOOT_LABEL" "$BOOT_SIZE" \
-        MS-DOS "$ROOT_LABEL" R
-else
-    diskutil partitionDisk "/dev/$DISK" MBRFormat \
-        MS-DOS "$BOOT_LABEL" "$BOOT_SIZE" \
-        MS-DOS "$ROOT_LABEL" "$ROOT_SIZE" \
-        "Free Space" %noformat% R
-fi
+disk unmount-all "$DISK"
+# "R" means the remainder; with an explicit root size the rest is left
+# unallocated. Both backends take the same five arguments and mean the same
+# thing by them.
+disk partition "$DISK" "$BOOT_LABEL" "$BOOT_SIZE" "$ROOT_LABEL" "$ROOT_SIZE"
 
 # p2 is created as FAT only because macOS has no ext4 support; the filesystem
 # is replaced on the Pi. Set the MBR type byte to 0x83 (Linux) so the partition
 # is not mistaken for a FAT volume, and unmount it so macOS stops touching it.
 info "Setting partition 2 type to Linux (0x83)..."
-diskutil unmount "${DISK}s2" >/dev/null 2>&1 || true
-printf 't 2\n83\nw\ny\nq\n' | sudo fdisk -e "/dev/$DISK" >/dev/null 2>&1 \
+disk unmount "$DISK" 2
+disk type "$DISK" 2 83 \
     || warn "could not set the type byte on p2 (harmless; mkfs.ext4 overwrites it anyway)"
 
 # On a PC, partition 1 has to be an EFI System Partition: type 0xEF. The Pi
-# firmware does not care what the type byte says and diskutil's default (0x0B/
+# firmware does not care what the type byte says and the FAT32 default (0x0B/
 # 0x0C, plain FAT32) is fine there, but UEFI firmware is entitled to ignore a
 # FAT partition that is not marked as an ESP, and some do. One fdisk call is
 # cheaper than a card that boots on one machine and not the next.
 if [ "$PLATFORM" = pc ]; then
     info "Setting partition 1 type to EFI System (0xEF)..."
-    diskutil unmount "${DISK}s1" >/dev/null 2>&1 || true
-    printf 't 1\nEF\nw\ny\nq\n' | sudo fdisk -e "/dev/$DISK" >/dev/null 2>&1 \
+    disk unmount "$DISK" 1
+    disk type "$DISK" 1 EF \
         || warn "could not set the ESP type byte on p1 -- most firmware still boots it"
 fi
 
 # Mark partition 1 active/bootable. The Pi firmware tolerates its absence, but
 # the Alpine documentation specifies it and some firmware revisions want it.
 step "Set the bootable flag on partition 1" \
-    "Runs: sudo fdisk -e /dev/$DISK   (marks partition 1 active)" \
+    "Marks partition 1 of /dev/$DISK active." \
     "" \
-    "This will prompt for your macOS password." \
+    "This writes to the partition table, so it may prompt for your password." \
     "If it fails the script warns and continues -- the Pi firmware usually" \
     "boots without the active flag."
 
 phase "Boot flag"
 info "Marking partition 1 bootable..."
-printf 'f 1\nw\ny\nq\n' | sudo fdisk -e "/dev/$DISK" >/dev/null 2>&1 \
+disk bootflag "$DISK" 1 \
     || warn "could not set the bootable flag (usually harmless; continuing)"
 
 sleep 2
-MNT="/Volumes/$BOOT_LABEL"
-diskutil mount "${DISK}s1" >/dev/null 2>&1 || true
-[ -d "$MNT" ] || die "expected $MNT to be mounted after formatting; check 'diskutil list'"
+# WHERE, not whether. macOS mounts by label wherever it likes and Linux mounts
+# where it is told, so the mount point is what the disk layer reports back --
+# the /Volumes/$BOOT_LABEL constant that used to be here could only ever be
+# right on one of the two hosts, and was quietly wrong on a Mac with two
+# builds running anyway.
+MNT=$(disk mount "$DISK" 1) \
+    || die "could not mount partition 1 of /dev/$DISK after formatting"
+[ -d "$MNT" ] || die "expected $MNT to be mounted after formatting"
 assert_mount_is "$MNT" "$DISK"
 
 # ------------------------------------------------------------------ copy ---
@@ -30794,7 +30815,7 @@ df -h "$MNT" | tail -n1
 info "Flushing writes (this can take a while)..."
 sync
 # 'eject' on an attached image detaches it, so there is no special case here.
-diskutil eject "/dev/$DISK"
+disk eject "$DISK"
 
 # An image is finished at this point, and what you need next is the command to
 # boot it -- not two pages about SD card partitions. Print that instead and
@@ -30814,6 +30835,18 @@ $(info "Done. $IMAGE_PATH is written and detached.")
   $(du -h "$IMAGE_PATH" | awk '{print $1}') on disk, ${IMAGE_SIZE} apparent (sparse -- it grows as it is used).
 
 EOF
+    # The closing advice names real commands, so it has to name the ones that
+    # exist here. A Mac is told brew and /dev/rdiskN; a Linux host is told apk
+    # and /dev/sdX, and neither is shown the other's.
+    case "$(uname -s)" in
+        Darwin) _qemu_hint='brew install qemu'
+                _card_eg='disk4'
+                _dd_line="sudo dd if=$IMAGE_ABS of=/dev/rdisk4 bs=4m status=progress" ;;
+        *)      _qemu_hint="apk add qemu-system-$(uname -m)"
+                _card_eg='sda'
+                _dd_line="doas dd if=$IMAGE_ABS of=/dev/sda bs=4M status=progress conv=fsync" ;;
+    esac
+
     if [ "$VM" -eq 1 ] && [ "$ARCH" != aarch64 ]; then
         cat <<EOF
   Boot it in UTM:
@@ -30839,12 +30872,12 @@ EOF
     ./copal-vm.sh --check $IMAGE_ABS       boot headless, report, exit
 
   copal-vm.sh finds the UEFI firmware, creates the EFI variable store and
-  refuses to start if the image is still attached to macOS. --check is the
+  refuses to start if the image is still attached to the host. --check is the
   one to run after changing this script: it boots with no terminal attached
   and exits non-zero if the system does not reach a login prompt, which takes
   about a minute rather than a card and a reboot.
 
-  Needs QEMU:  brew install qemu
+  Needs QEMU:  $_qemu_hint
 
   UTM instead: New > Virtualize > Linux, skip the boot ISO, then remove the
   default drive and Import this file as a VirtIO drive.
@@ -30852,11 +30885,12 @@ EOF
 EOF
     else
         cat <<EOF
-  This image is for $ARCH${MODEL:+ (MODEL=$MODEL)}, not for a VM on this Mac.
-  Write it to a card with:
+  This image is for $ARCH${MODEL:+ (MODEL=$MODEL)}, not for a VM on this host.
+  Write it to a card with (${_card_eg} being YOUR card, checked first):
 
-    diskutil unmountDisk /dev/diskN
-    sudo dd if=$IMAGE_ABS of=/dev/rdiskN bs=4m status=progress
+    ./tools/copal-disk.sh list
+    ./tools/copal-disk.sh unmount-all $_card_eg
+    $_dd_line
 
   Or re-run with MODEL=vm for an image that boots in UTM or QEMU directly.
 
@@ -30864,10 +30898,10 @@ EOF
     fi
     cat <<EOF
   First boot runs copal-init.sh from the boot partition, exactly as on a card.
-  Its log lands on the FAT partition as firstrun.log, which macOS can read
+  Its log lands on the FAT partition as firstrun.log, which this host can read
   after you attach the image again:
 
-    hdiutil attach -imagekey diskimage-class=CRawDiskImage $IMAGE_ABS
+    ./tools/copal-disk.sh image-attach $IMAGE_ABS
 
 ================================================================================
 EOF

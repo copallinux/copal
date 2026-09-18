@@ -209,7 +209,30 @@ targets boards:
 # tool stops the build on line one with a single clear message, rather than
 # four hundred megabytes in when curl turns out to be the thing that is absent.
 
+# PER HOST, and only what that host's backend of tools/copal-disk.sh calls.
+# A Mac that listed lsblk, or a Linux host that listed diskutil, would be
+# telling someone to install a program nothing is ever going to run.
+HOST_OS = $(shell uname -s)
+ifeq ($(HOST_OS),Darwin)
 REQUIRED_TOOLS = curl shasum bsdtar diskutil hdiutil script
+TOOLS_HINT     = All of these ship with macOS.
+QEMU_HINT      = brew install qemu
+else ifeq ($(HOST_OS),Linux)
+REQUIRED_TOOLS = curl sha256sum bsdtar lsblk sfdisk losetup mkfs.vfat script
+TOOLS_HINT     = On Alpine: apk add curl coreutils libarchive-tools util-linux sfdisk dosfstools.
+QEMU_HINT      = apk add qemu-system-$(shell uname -m)
+else
+REQUIRED_TOOLS = curl bsdtar script
+TOOLS_HINT     = Copal builds from macOS or Linux; this is $(HOST_OS).
+QEMU_HINT      = install qemu
+endif
+# Recursively expanded on purpose: this forks once per tool, and only the two
+# targets below ever ask. `configure` reads it directly rather than calling
+# require-tools, because a sub-make that fails prints its own "*** Error 1"
+# over the report, and then hands make a failure -- which made the diagnostic
+# the error message recommends exit non-zero.
+MISSING_TOOLS = $(strip $(foreach t,$(REQUIRED_TOOLS),\
+                  $(if $(shell command -v $(t) 2>/dev/null),,$(t))))
 # QEMU's aarch64 'virt' machine has no built-in firmware the way a PC does:
 # EDK2 arrives as a pflash image inside the qemu formula. copal-vm.sh looks in
 # these three places, so configure looks in the same three.
@@ -219,13 +242,9 @@ QEMU_FW = $(shell for f in "$$(brew --prefix qemu 2>/dev/null)/share/qemu/edk2-a
                   do [ -f "$$f" ] && { echo "$$f"; break; }; done)
 
 require-tools:
-	@_missing=''; \
-	for _t in $(REQUIRED_TOOLS); do \
-	    command -v "$$_t" >/dev/null 2>&1 || _missing="$$_missing $$_t"; \
-	done; \
-	[ -z "$$_missing" ] || { \
-	    printf '\033[31merror:\033[0m required tool(s) not found:%s\n' "$$_missing"; \
-	    printf '       All of these ship with macOS. Run \033[1mmake configure\033[0m for the report.\n'; \
+	@[ -z "$(MISSING_TOOLS)" ] || { \
+	    printf '\033[31merror:\033[0m required tool(s) not found: %s\n' "$(MISSING_TOOLS)"; \
+	    printf '       $(TOOLS_HINT) Run \033[1mmake configure\033[0m for the report.\n'; \
 	    exit 1; }
 
 configure:
@@ -238,7 +257,7 @@ configure:
 	    if command -v "$$_n" >/dev/null 2>&1; then \
 	        printf '  \033[32m[ok]\033[0m   %-22s %s\n' "$$_n" "$$_w"; \
 	    else \
-	        printf '  \033[33m[  ]\033[0m   %-22s %s \033[2m(brew install qemu)\033[0m\n' "$$_n" "$$_w"; \
+	        printf '  \033[33m[  ]\033[0m   %-22s %s \033[2m($(QEMU_HINT))\033[0m\n' "$$_n" "$$_w"; \
 	    fi; \
 	done
 	@if [ -n "$(QEMU_FW)" ]; then \
@@ -253,10 +272,16 @@ configure:
 	    printf '  \033[33m[  ]\033[0m   %-22s %s\n' "utmctl" "absent -- only utm/utm-vm.sh needs it"; \
 	fi
 	@printf '\n'
-	@$(MAKE) --no-print-directory require-tools \
-	    && printf '\033[36m==>\033[0m \033[1mReady.\033[0m Every required tool is present.\n' \
-	       && printf '    Cards and PC images need nothing else. The VM targets need qemu\n' \
-	       && printf '    or UTM, and the lines above say which of those you have.\n\n'
+	@if [ -z "$(MISSING_TOOLS)" ]; then \
+	    printf '\033[36m==>\033[0m \033[1mReady.\033[0m Every required tool is present.\n'; \
+	    printf '    Cards and PC images need nothing else. The VM targets need qemu\n'; \
+	    printf '    or UTM, and the lines above say which of those you have.\n\n'; \
+	else \
+	    printf '\033[33m==>\033[0m \033[1mNot ready.\033[0m Missing: %s\n' "$(MISSING_TOOLS)"; \
+	    printf '    $(TOOLS_HINT)\n'; \
+	    printf '    This target reports; it does not fail, so the verdict above is\n'; \
+	    printf '    the answer and not an error.\n\n'; \
+	fi
 
 # ---------------------------------------------------------------- booting ---
 
@@ -948,6 +973,13 @@ lint: | $(BUILDDIR)
 	@python3 tools/copal_nats.py self-test | sed 's/^/  ok      /'
 	@python3 tools/copal-fleet-agent --self-test 2>/dev/null | sed 's/^/  ok      /'
 	@sh tools/copal-media.sh self-test | sed 's/^/  ok      /'
+	@sh tools/copal-disk.sh self-test | sed 's/^/  ok      /'
+	@_bad=$$(grep -nE '^[^#]*(diskutil|hdiutil|shasum)' copal-prep.sh || true); \
+	 [ -z "$$_bad" ] || { \
+	    printf '\033[31merror:\033[0m copal-prep.sh reaches a macOS disk program directly.\n'; \
+	    printf '       Every disk call goes through tools/copal-disk.sh, or the Linux\n'; \
+	    printf '       host has no implementation of it:\n%s\n' "$$_bad"; exit 1; }; \
+	 printf '  ok      copal-prep.sh touches disks only through tools/copal-disk.sh\n'
 	@python3 tools/copal-fleet-view self-test | sed 's/^/  ok      /'
 	@python3 tools/copal-fleet-console.py --self-test | sed 's/^/  ok      /'
 	@sed -n "/^    cat > \/usr\/lib\/copal\/copal_nkeys.py <<'COPALNKEYS'$$/,/^COPALNKEYS$$/p" $(PREP) \

@@ -312,8 +312,27 @@ detail() {
 }
 
 # ------------------------------------------------------- requirements check ---
-# What this particular Mac can do, checked rather than assumed.
-check_host() {
+# What this particular machine can do, checked rather than assumed.
+#
+# TWO HOSTS. Copal was built from a Mac for its whole life, and this function
+# said "WHAT THIS MAC CAN BUILD" and read macOS interfaces with quiet
+# fallbacks. Run on Linux it filled itself in with "unknown", "? cores" and
+# "0 GB", and then called the machine an Intel Mac -- the architecture test is
+# against arm64, which is what macOS calls this chip while Linux calls the
+# same chip aarch64. A profile that wrong is worse than no profile, so the
+# host is decided first and each kind of host is reported by its own function.
+#
+# The tool list each one checks is the list its backend of tools/copal-disk.sh
+# actually calls, and nothing else.
+tool_row() {   # <name> <note>
+    if command -v "$1" >/dev/null 2>&1; then
+        printf '  %b[ok]%b   %-18s %s\n' "$G" "$Z" "$1" "required, present"
+    else
+        printf '  %b[--]%b   %-18s %s\n' "$R" "$Z" "$1" "REQUIRED, MISSING"
+    fi
+}
+
+check_host_macos() {
     say ""
     say "${B}WHAT THIS MAC CAN BUILD${Z}"
     rule
@@ -326,13 +345,7 @@ check_host() {
     printf '  %-24s %s GB\n' "RAM" "$(( $(sysctl -n hw.memsize 2>/dev/null || echo 0) / 1073741824 ))"
     printf '  %-24s %s\n' "Free disk" "$(df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2{print $4}')"
     say ""
-    for t in curl shasum bsdtar diskutil hdiutil; do
-        if command -v "$t" >/dev/null 2>&1; then
-            printf '  %b[ok]%b   %-18s %s\n' "$G" "$Z" "$t" "required, present"
-        else
-            printf '  %b[--]%b   %-18s %s\n' "$R" "$Z" "$t" "REQUIRED, MISSING"
-        fi
-    done
+    for t in curl shasum bsdtar diskutil hdiutil; do tool_row "$t"; done
     if [ -d /Applications/UTM.app ]; then
         printf '  %b[ok]%b   %-18s %s\n' "$G" "$Z" "UTM" \
             "$(defaults read /Applications/UTM.app/Contents/Info.plist CFBundleShortVersionString 2>/dev/null || echo present)"
@@ -357,6 +370,75 @@ check_host() {
     say "  ${D}copied, never executed, so the host architecture does not matter.${Z}"
     say ""
     rule
+}
+
+check_host_linux() {
+    say ""
+    say "${B}WHAT THIS LINUX HOST CAN BUILD${Z}"
+    rule
+    say ""
+    hostarch="$(uname -m)"
+    _distro="$(. /etc/os-release 2>/dev/null && printf '%s' "${PRETTY_NAME:-}")"
+    _ramkb="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+    printf '  %-24s %s\n' "Kernel" "$(uname -r)"
+    printf '  %-24s %s\n' "Architecture" "$hostarch"
+    printf '  %-24s %s\n' "Distribution" "${_distro:-unknown}"
+    printf '  %-24s %s cores\n' "CPU" "$(nproc 2>/dev/null || echo '?')"
+    printf '  %-24s %s GB\n' "RAM" "$(( ${_ramkb:-0} / 1048576 ))"
+    printf '  %-24s %s\n' "Free disk" "$(df -h . 2>/dev/null | awk 'NR==2{print $4}')"
+    say ""
+    for t in curl sha256sum bsdtar lsblk sfdisk losetup mkfs.vfat; do tool_row "$t"; done
+    # Root, however this machine spells it. Alpine ships doas and no sudo.
+    if [ "$(id -u)" = 0 ]; then
+        printf '  %b[ok]%b   %-18s %s\n' "$G" "$Z" "root" "already root"
+    elif command -v doas >/dev/null 2>&1; then
+        printf '  %b[ok]%b   %-18s %s\n' "$G" "$Z" "doas" "required, present"
+    elif command -v sudo >/dev/null 2>&1; then
+        printf '  %b[ok]%b   %-18s %s\n' "$G" "$Z" "sudo" "required, present"
+    else
+        printf '  %b[--]%b   %-18s %s\n' "$R" "$Z" "doas or sudo" "REQUIRED, MISSING"
+    fi
+    if command -v qemu-system-aarch64 >/dev/null 2>&1; then
+        printf '  %b[ok]%b   %-18s %s\n' "$G" "$Z" "qemu" "present -- copal-vm.sh can boot images directly"
+    else
+        printf '  %b[  ]%b   %-18s %s\n' "$Y" "$Z" "qemu" "absent -- optional (apk add qemu-system-$hostarch)"
+    fi
+    if [ -e /dev/kvm ] && [ -r /dev/kvm ]; then
+        printf '  %b[ok]%b   %-18s %s\n' "$G" "$Z" "/dev/kvm" "the $hostarch VM target runs natively"
+    else
+        printf '  %b[  ]%b   %-18s %s\n' "$Y" "$Z" "/dev/kvm" "absent or unreadable -- VM targets would be emulated"
+    fi
+    say ""
+    say "  ${Y}The Linux disk path is newer than the macOS one.${Z} Cards have been"
+    say "  written from a Mac for this project's whole life and from Linux only"
+    say "  recently, so the two are not equally worn in. Both go through"
+    say "  ${C}tools/copal-disk.sh${Z}, and ${C}make lint${Z} proves that neither backend is"
+    say "  missing a verb the other has -- which is the failure worth fearing:"
+    say "  a step that silently does nothing and a card that will not boot."
+    say ""
+    say "  ${D}All card and PC targets can be built from either host -- the payload${Z}"
+    say "  ${D}is copied, never executed, so neither the host architecture nor the${Z}"
+    say "  ${D}host operating system reaches the machine being built.${Z}"
+    say ""
+    rule
+}
+
+check_host() {
+    case "$(uname -s)" in
+        Darwin) check_host_macos ;;
+        Linux)  check_host_linux ;;
+        *)
+            say ""
+            say "${B}THIS HOST IS NEITHER macOS NOR LINUX${Z}"
+            rule
+            say ""
+            printf '  %-24s %s\n' "Host" "$(uname -s) $(uname -m)"
+            say ""
+            say "  Copal is built from macOS or from Linux. The disk layer,"
+            say "  ${C}tools/copal-disk.sh${Z}, has a backend for each and none for this."
+            say ""
+            rule ;;
+    esac
 }
 
 worth_knowing() {

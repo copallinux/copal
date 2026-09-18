@@ -421,11 +421,29 @@ between twenty minutes and several hours, depending entirely on how many of
 the sixteen stages you ask for. The split falls there because macOS cannot
 create an ext4 filesystem.
 
-### Step 0 — ask the Mac what it can do
+### Step 0 — ask the host what it can do
 
-Nothing here needs Homebrew. `curl`, `shasum`, `bsdtar`, `diskutil` and
-`hdiutil` all ship with macOS; UTM is needed only for the `.utm` targets and
-QEMU only if you want `copal-vm.sh` to boot an image directly.
+**A Mac or a Linux machine.** Copal wrote cards from a Mac for its whole life,
+and now writes them from either: every call that finds, partitions, mounts or
+lets go of a block device goes through `tools/copal-disk.sh`, which has a
+backend for each. Nothing else in the build cares what the host is, because
+the payload is *copied* and never executed.
+
+On macOS nothing here needs Homebrew — `curl`, `shasum`, `bsdtar`, `diskutil`
+and `hdiutil` all ship with the system. On Alpine the equivalents are `curl`,
+`coreutils`, `libarchive-tools`, `util-linux`, `sfdisk` and `dosfstools`, plus
+`doas`. UTM is needed only for the `.utm` targets and QEMU only if you want
+`copal-vm.sh` to boot an image directly.
+
+`./copal --check` and `make configure` report on whichever host you are on,
+and name the missing programs in that host's spelling.
+
+**The two paths are not equally worn in, and the report says so.** Thousands
+of cards have been written from a Mac and very few from Linux. What *is*
+guaranteed is that neither backend is missing a verb the other has: `make
+lint` compares them name for name and fails on a gap, because the failure
+worth fearing is not a crash — it is a step that silently does nothing and a
+card that will not boot.
 
 ```console
 $ ./copal --check
