@@ -20039,6 +20039,13 @@ The Workspace: sstr-workspace
     left / h            back out         q / Esc             leave
     Space               pick the selection up onto the Shelf, or put it down
     Q                   ytq's queue, as one more column to browse
+    ,                   the settings: what each one is, which file set it,
+                        and how to change it. Space walks a value with a
+                        short list of choices (OUTPUT, AUTOSTART), e types
+                        one, u takes the line out, w aims the next change at
+                        ~/.config/ytq/config instead of media.conf. It writes
+                        no file itself -- it runs 'sstr config set KEY VALUE'
+                        and prints the line first, like every other key here
 
     The Inspector shows the selection: for a capture, what 'sstr verify'
     says about it, in the same words. Services go to the selection with one
