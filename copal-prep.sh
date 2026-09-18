@@ -19778,7 +19778,6 @@ MSG
     add_optional ffmpeg
 
     write_ytdlp_conf
-    write_ytdlp_guide
 }
 
 # yt-dlp's filenames, for every run on the machine: the first word of the
@@ -20830,6 +20829,21 @@ MSG
     install_ytdlp || warn "yt-dlp not installed -- re-run stage 10 to try again"
     install_ytbrave
     install_ytq
+    # THE GUIDE IS WRITTEN WHATEVER THE THREE ABOVE DID, because it is a text
+    # file and not a part of installing anything. It used to be the last line
+    # of install_ytdlp, which returns early when there is no network, when the
+    # package will not add, when python3 is missing, when the download fails,
+    # and when the answer is to skip -- and install_ytq, the other place it
+    # might have been written from, returns at once if yt-dlp is not there.
+    # So a machine that already had yt-dlp kept whichever guide it was given
+    # the first time, however many times stage 10 was re-run. Found two days
+    # stale, alone among the guides in /usr/local/share/copal/guides, every
+    # one of which its own stage had just rewritten.
+    #
+    # /etc/yt-dlp.conf stays where it is, deliberately: a config for a program
+    # only matters when the program is there. A guide is what someone reads to
+    # decide whether to install it.
+    write_ytdlp_guide
 
     say "Network capture"
     # Wireshark's GUI is out of the question here -- Qt plus a live capture
