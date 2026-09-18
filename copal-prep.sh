@@ -10627,7 +10627,8 @@ COPALGPU
                         and it starts by itself.
    Super + Shift + A    the Static Stream Workspace: a Browser over the
                         folder ytq archives into, the queue itself on Q,
-                        and Play, Verify, Export and Text on one key.
+                        and Play, Verify, Export and Text on one key --
+                        and X over a folder to export every capture in it.
    Super + Shift + B    the camera -- birdshot, which stage 7 built from
                         ~/code, or whatever CAMERA= names in ~/.profile.
                         Also the Camera entry at the top of the menu.
@@ -15404,6 +15405,12 @@ install_copal_build() {
 #                     birdshot-gui when Qt 6 is installed. THE CAMERA
 #                     APPLICATION: copal-camera looks for it first.
 #   ascitty           cargo -- the terminal renderer
+#   staticstream      cargo -- three programs from one crate: sstr (record a
+#                     stream into a .sstr and play it back, and 'sstr export'
+#                     a folder of them), ytq (the download queue Super+Shift+Y
+#                     feeds) and sstr-workspace (Super+Shift+A). Installing it
+#                     is what retires the Python ytq in /usr/local/bin, since
+#                     ~/.local/bin comes first on PATH.
 #   urfinkel          cc65 -- a Plus/4 game, run under VICE
 #   codexofconquest   npm -- a web game over a local node server
 #   gonex             go -- Team Yodacon's game, Ebitengine over cgo
@@ -19937,20 +19944,32 @@ The queue: ytq
     ytq run             download what is queued, one at a time, into
                         ~/Downloads/SharedVM when the Mac's share is
                         mounted there, otherwise ~/Videos. What it leaves is
-                        a Static Stream capture, Author-Title_ID.sstr: the
-                        MP4 byte for byte, with about 21% more bytes that
-                        repair damage, signed with your SSH key, and the
-                        source URL and stated license in its header. The MP4
-                        goes only once the capture has been read back and
-                        checked. OUTPUT=mp4 in the config keeps today's .mp4
-                        instead, and OUTPUT=both keeps the two. A YouTube
-                        video's captions come too, as text:
-                        Author-Title_ID.txt, headed by Notes -- full title,
-                        author, URL, published and downloaded -- and the
-                        description (SUBS= in the config turns that off).
-                        An .mp4 carries the notes in its metadata; a capture
-                        carries them in its header. 'sstr play FILE.sstr -o
-                        FILE.mp4' gives the MP4 back.
+                        the video file itself, Author-Title_ID.mp4, because
+                        Copal installs OUTPUT=mp4 in
+                        ~/.config/copal/media.conf -- the share is read by
+                        other machines, and a .sstr is not a file a player
+                        opens. OUTPUT=sstr there keeps a Static Stream
+                        capture instead (the MP4 byte for byte, with about
+                        21% more bytes that repair damage, signed with your
+                        SSH key, and the source URL and stated license in
+                        its header; the MP4 goes only once the capture has
+                        been read back and checked), and OUTPUT=both keeps
+                        the two. 'ytq --sstr URL' decides one download
+                        without editing anything. Captions come too, as
+                        text: Author-Title_ID.txt, headed by Notes -- full
+                        title, author, where it was posted, the site, how
+                        long it runs, URL, published and downloaded -- then
+                        the description (SUBS= in the config turns the
+                        captions off). An .mp4 carries the notes in its
+                        metadata; a capture carries them in its header.
+    sstr export DIR     every capture in a folder, written back out as the
+                        file it holds -- the name comes from the capture's
+                        own header, a file already there is skipped and
+                        counted, and nothing is renamed to the real name
+                        until it has verified. 'sstr export DIR --remove'
+                        deletes each capture once its file is written; -n
+                        shows what it would do. One capture on its own is
+                        still 'sstr play FILE.sstr -o FILE.mp4'.
     ytq transcript URL  only the captions, as that .txt
     ytq status          what is downloading -- which part, how far, merging,
                         the transcript -- and what is left. The window shows
@@ -19978,16 +19997,28 @@ The queue: ytq
     When a download fails on a login, age gate or bot check, ytq opens Brave
     on the URL and the entry waits. Sign in or pass the check there, then
     'ytq cookies' (or 'c' in the window) retries once through yt-brave.
+
+    SITES. YouTube (watch, shorts, live and embed links, with or without
+    the https://), x.com and reddit.com. Any http(s) URL you copy or type
+    is queued and handed to yt-dlp, which decides whether it can fetch it;
+    the YouTube-specific part is that a page of text -- a bookmarks export,
+    a page of notes -- is scanned for YouTube links, and that captions are
+    fetched. The .txt names where a post came from in whichever way its
+    site means it: r/SUBREDDIT for Reddit, the @handle for x.com, the
+    channel for YouTube when it is not just the uploader's name again.
+
     Settings, if you want any, go in
     ~/.config/ytq/config: DIR, FORMAT, PROFILE and KEYRING (the last two
     are handed to yt-brave as --profile and --keyring), and SUBS, the
     caption languages (default en,en-orig,en-US,en-GB; SUBS=ja,en for a
     Japanese video). Three more decide what a download is kept as:
-    OUTPUT (sstr, the default, or mp4 or both), ARCHIVE_DIR (where captures
-    go; DIR when unset) and SSTR_KEY (the key they are signed with;
-    ~/.ssh/id_ed25519 when there is one, and SSTR_KEY= for unsigned).
+    OUTPUT (mp4 as Copal installs it, or sstr or both), ARCHIVE_DIR (where
+    captures go; DIR when unset) and SSTR_KEY (the key they are signed
+    with; ~/.ssh/id_ed25519 when there is one, and SSTR_KEY= for unsigned).
     ~/.config/copal/media.conf is read first, so a key set there covers
-    sstr and ytq together and ytq's own file still wins.
+    sstr and ytq together and ytq's own file still wins -- which is why
+    OUTPUT lives there as installed, and why putting it in ytq's own file
+    overrides it.
 
 The Workspace: sstr-workspace
 
@@ -20015,7 +20046,13 @@ The Workspace: sstr-workspace
 
         p Play    P Paced    s Serve    v Verify
         x Export  t Text     a Armor
+        X Export all                            (on a folder of captures)
         r Retry   f Forget                      (on a queue entry)
+
+    x Export writes one capture back out as the file it holds, under a name
+    nothing is using. X on a FOLDER is 'sstr export DIR': every capture in
+    it, each named from its own header, a file already there skipped and
+    counted rather than overwritten or quietly copied to a -1 name.
 
     With anything on the Shelf a Service goes to everything on it, one
     command line each. EVERY SERVICE IS A COMMAND LINE, written into the
@@ -20358,11 +20395,88 @@ install_ytq() {
         note "removed the Python ytq from /usr/local/bin -- ytq is Rust now, from ~/code/staticstream"
     fi
 
+    write_media_conf
+
     note "ytq -- a download queue: Super+Shift+Y queues the clipboard's URL, 'ytq run' downloads"
     note "  it is built from ~/code/staticstream:  copal-build staticstream   (into ~/.local/bin)"
     note "  to have it start downloading by itself:  touch ~/.config/ytq/auto   (ytq --help)"
+    note "  what a download leaves:  OUTPUT in ~/.config/copal/media.conf   (mp4 as installed)"
     note "  the Workspace over what it keeps:  Super+Shift+A, or 'sstr-workspace'  -- the archive"
-    note "  and the queue in one Browser, with Play, Verify, Export and Text on one key"
+    note "  and the queue in one Browser, with Play, Verify, Export and Text on one key;"
+    note "  X over a folder exports every capture in it  (or 'sstr export DIR' in a shell)"
+}
+
+# ~/.config/copal/media.conf -- the settings sstr, ytq and the Workspace share.
+#
+# ONE FILE FOR THREE PROGRAMS, AND IT IS WRITTEN ONCE. staticstream reads it
+# before ytq's own ~/.config/ytq/config, so a key set here covers all three and
+# a key set there still wins -- which is what makes it safe for an installer to
+# write at all. It goes through install_home_once, so it is created once and
+# never written again: a settings file is the user's, and the second run of an
+# installer that overwrites one is an installer that eats what you changed.
+# Delete it and run the stage again to get the shipped copy back.
+#
+# WHY OUTPUT=mp4 IS WHAT COPAL INSTALLS, when staticstream's own default is
+# sstr. A capture is the better archive of the two by every measure that
+# matters to keeping something -- it is signed, it carries the source URL and
+# the notes in its header, and about 21% more bytes let it come back from
+# damage that would take an MP4 with it. None of that helps the machine this
+# actually runs on, where ~/Downloads/SharedVM is a share a Mac has mounted and
+# the point of downloading a video is that something on the other side can play
+# it. A .sstr is not a file a player opens, and a share full of them is a share
+# that looks empty to everything but sstr.
+#
+# So the archive default and the desktop default are different answers to
+# different questions, and the desktop's is written here where a person can see
+# it and change it. Both directions are one line and neither loses anything:
+#
+#   OUTPUT=both       keep the video AND the capture
+#   OUTPUT=sstr       keep the capture alone, as staticstream does by default
+#   sstr export DIR   a folder of captures back to the files they hold
+#   ytq --sstr URL    this one download kept as a capture, whatever the file says
+write_media_conf() {
+    cat > "/tmp/mediaconf.$$" <<'MEDIACONF'
+# SPDX-License-Identifier: MIT
+# media.conf -- the settings sstr, ytq and the Static Stream Workspace share,
+# as KEY=VALUE, # for comments.
+#
+# Copal created this file once and will not write to it again: it is yours.
+# staticstream reads it BEFORE ~/.config/ytq/config, so a key set here covers
+# all three programs and a key set there still wins over it.
+
+# WHAT A FINISHED DOWNLOAD LEAVES.
+#   mp4   the video file yt-dlp downloaded, and no capture   <- as installed
+#   sstr  a Static Stream capture; the video goes only once the capture has
+#         been read back and verified byte for byte
+#   both  the video and the capture
+#
+# mp4 is what Copal installs because ~/Downloads/SharedVM is a share other
+# machines read, and a .sstr is not a file a player opens -- a share full of
+# them looks empty to everything but sstr. The capture is the better archive
+# by every other measure: signed, the source URL and the notes in its header,
+# and about 21% more bytes that bring it back from damage which would take an
+# MP4 with it. If what you want is an archive rather than a share, say sstr
+# here and mean it.
+#
+# Neither choice strands anything:
+#   sstr export DIR     every capture in a folder, back out as the file it holds
+#   ytq --sstr URL      this one download kept as a capture (or --mp4, --both)
+OUTPUT=mp4
+
+# Where captures go when OUTPUT is sstr or both. Unset means beside the
+# downloads, in ytq's DIR.
+#ARCHIVE_DIR=
+
+# The key captures are signed with. Unset means ~/.ssh/id_ed25519 when there
+# is one; SSTR_KEY= with nothing after it means unsigned.
+#SSTR_KEY=
+
+# What the Workspace's Play sends a video to, and what its Serve binds.
+#PLAYER=mpv
+#SERVE=127.0.0.1:8080
+MEDIACONF
+    install_home_once .config/copal/media.conf "/tmp/mediaconf.$$"
+    rm -f "/tmp/mediaconf.$$"
 }
 
 # ------------------------------------------- stage 10: the Geiger counter ---
