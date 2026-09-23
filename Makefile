@@ -851,6 +851,16 @@ sync-store:
 	@printf '  ok      tools/copal-store -> $(PREP)\n'
 	@$(MAKE) --no-print-directory lint
 
+## sync-gui: copy tools/copal-gui (the Mint-style menu) into stage 4's heredoc in copal-prep.sh.
+sync-gui:
+	@python3 -c 'import sys;\
+	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
+	m="    cat > /usr/local/bin/copal-gui <<\x27COPALGUI\x27\n";\
+	i=s.index(m)+len(m);j=s.index("COPALGUI\n",i);\
+	open(p,"w").write(s[:i]+prog.rstrip("\n")+"\n"+s[j:])' $(PREP) tools/copal-gui
+	@printf '  ok      tools/copal-gui -> $(PREP)\n'
+	@$(MAKE) --no-print-directory lint
+
 ## sync-nats: copy tools/copal_nats.py into the heredoc in copal-prep.sh.
 sync-nats:
 	@python3 -c 'import sys;\
@@ -1033,6 +1043,16 @@ lint: | $(BUILDDIR)
 	    > $(BUILDDIR)/.store.selftest; _rc=$$?; sed 's/^/  /' $(BUILDDIR)/.store.selftest; \
 	    rm -f $(BUILDDIR)/.store.lint.sh $(BUILDDIR)/.catalogue.lint $(BUILDDIR)/.store.selftest; \
 	    [ $$_rc = 0 ] || { printf '\033[31merror:\033[0m copal-store self-test failed\n'; exit 1; }
+	@sed -n "/^    cat > \/usr\/local\/bin\/copal-gui <<'COPALGUI'$$/,/^COPALGUI$$/p" $(PREP) \
+	    | sed '1d;$$d' > $(BUILDDIR)/.gui.lint.py
+	@test -s $(BUILDDIR)/.gui.lint.py \
+	    || { printf '\033[31merror:\033[0m could not extract copal-gui from $(PREP)\n'; exit 1; }
+	@cmp -s $(BUILDDIR)/.gui.lint.py tools/copal-gui \
+	    && printf '  ok      copal-gui in $(PREP) matches tools/\n' \
+	    || { printf '\033[31merror:\033[0m copal-gui in $(PREP) has drifted -- run: make sync-gui\n'; \
+	         diff -u tools/copal-gui $(BUILDDIR)/.gui.lint.py | head -20; exit 1; }
+	@python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' $(BUILDDIR)/.gui.lint.py \
+	    && printf '  ok      copal-gui parses\n'; _rc=$$?; rm -f $(BUILDDIR)/.gui.lint.py; exit $$_rc
 	@sed -n "/^    cat > \/usr\/bin\/copal-fleet <<'COPALFLEET'$$/,/^COPALFLEET$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.copal-fleet.lint.sh
 	@test -s $(BUILDDIR)/.copal-fleet.lint.sh && sh -n $(BUILDDIR)/.copal-fleet.lint.sh \

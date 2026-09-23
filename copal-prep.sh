@@ -7834,6 +7834,9 @@ XORGKMS
     # ImageMagick paint the key bindings onto the root window. All four are
     # small, and all four are guarded at runtime -- none is required.
     add_optional yad dialog feh imagemagick
+    # copal-gui, the Mint-style menu (Super+A), is Python over GTK 3 -- which
+    # yad has already brought in, so this is the bindings and nothing else.
+    add_optional python3 py3-gobject3 gtk+3.0
 
     # THE UNIFIED CLIPBOARD's X half. Omarchy's best small idea is that
     # Super+C and Super+V copy and paste EVERYWHERE, including the terminal,
@@ -8013,6 +8016,9 @@ bindsym $mod+Shift+q kill
 # A clickable menu, built from what is actually installed. Falls back to
 # dmenu over the same list when jgmenu is absent, so it always works.
 bindsym $mod+z      exec copal-menu
+# The other menu: Linux Mint's, for the mouse -- favourites, categories,
+# icons, search. Built from the .desktop files; see copal-gui.
+bindsym $mod+a      exec copal-gui
 # The desk, laid out the same way every time -- see copal-desk.
 bindsym $mod+Shift+d exec --no-startup-id copal-desk
 # And the same menu on a right-click on the desktop, which is where everyone
@@ -9481,6 +9487,645 @@ walk
 COPALMENU
     chmod 0755 /usr/local/bin/copal-menu
     # ----------------------------------------------------------------------
+    # copal-gui: the second menu, laid out like Linux Mint's Cinnamon menu --
+    # favourites down the left with lock, log out and shut down under them,
+    # the programs by category with their icons, a search box, and a line
+    # saying what the program under the pointer is. copal-menu stays the
+    # keyboard's menu; this is the mouse's, and fills itself from every
+    # .desktop file, so nothing is listed by hand. The copy of record is
+    # tools/copal-gui; 'make sync-gui' writes it here and lint compares.
+    cat > /usr/local/bin/copal-gui <<'COPALGUI'
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+"""copal-gui -- the other menu: Linux Mint's Cinnamon menu, for the mouse.
+
+copal-menu is the keyboard's menu: two panes of text in wofi or jgmenu, fast,
+and it knows the terminal programs and the Install branch.  This one is the
+menu people arrive from Mint already knowing how to use, so it is laid out
+the way Cinnamon's is:
+
+    +------+----------------------------------------------+
+    | fav  | [ search                                  ]  |
+    | fav  | All Applications  |  [icon] Firefox          |
+    | fav  | Favourites        |  [icon] GIMP             |
+    | ...  | Accessories       |  [icon] ...              |
+    |      | Games       <-hover switches                 |
+    | lock | ...               |                          |
+    | out  +----------------------------------------------+
+    | boot | Name                                         |
+    | off  | the program's own one-line description       |
+    +------+----------------------------------------------+
+
+NOTHING IS WRITTEN BY HAND.  Every entry is a .desktop file the system
+already advertises, read through GIO, so NoDisplay, Hidden, OnlyShowIn and
+TryExec are honoured the way every desktop honours them, and a program
+installed a minute ago -- by apk, the store, or a Flatpak -- is in the menu
+the next time it opens.  Its Categories= line decides the section, in the
+order below; the first match wins, so a game that is also Education is a
+game.  Terminal=true entries open in the same terminal copal-menu uses.
+
+FAVOURITES are the column on the left, as in Mint.  Right-click any program
+to add or remove it; the list is ~/.config/copal/gui-favourites, one desktop
+id per line, and until that file exists a starter set is picked from what is
+installed.
+
+ONE AT A TIME.  Pressing the key while the menu is open closes it, the way
+the Mint menu's button does.  The pid is kept in $XDG_RUNTIME_DIR.
+
+ON HYPRLAND it is a layer-shell overlay covering the screen below the bar,
+transparent except for the menu, so a click anywhere else closes it and the
+keyboard is its own while it is up.  ON i3, or without gtk-layer-shell, it is
+an undecorated dialog, which i3 floats; losing focus closes it.
+
+  copal-gui            open the menu (or close it, if it is open)
+  copal-gui --list     print section|name|desktop-id for every entry
+"""
+
+import os
+import shlex
+import shutil
+import signal
+import subprocess
+import sys
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib  # noqa: E402
+
+# GLib 2.86 moved DesktopAppInfo to GioUnix and deprecated the old name.
+try:
+    gi.require_version("GioUnix", "2.0")
+    from gi.repository import GioUnix  # noqa: E402
+    DesktopAppInfo = GioUnix.DesktopAppInfo
+except (ValueError, ImportError):
+    DesktopAppInfo = Gio.DesktopAppInfo
+
+# Cinnamon's sections, with the icons each may show -- the first the theme
+# has; GNOME's Adwaita dropped most of the full-colour category icons, so
+# each carries a symbolic one it does have -- and the Categories= words that
+# land a program there.  Checked top to bottom; first match wins.
+SECTIONS = [
+    ("Preferences",    ("preferences-desktop", "preferences-system-symbolic"), {"Settings", "DesktopSettings"}),
+    ("Games",          ("applications-games",), {"Game"}),
+    ("Programming",    ("applications-development", "utilities-terminal-symbolic"), {"Development"}),
+    ("Office",         ("applications-office", "x-office-document-symbolic"), {"Office"}),
+    ("Graphics",       ("applications-graphics",), {"Graphics"}),
+    ("Education",      ("applications-education", "applications-science-symbolic"), {"Education", "Science"}),
+    ("Sound & Video",  ("applications-multimedia",), {"AudioVideo", "Audio", "Video"}),
+    ("Internet",       ("applications-internet", "web-browser-symbolic"), {"Network"}),
+    ("System Tools",   ("applications-system", "applications-system-symbolic"), {"System", "Monitor", "PackageManager"}),
+    ("Accessories",    ("applications-accessories", "applications-utilities-symbolic"), {"Utility", "Accessibility"}),
+]
+OTHER = ("Other", ("applications-other", "view-more-symbolic", "view-list-symbolic"))
+# The order they are listed in, which is Mint's, not the matching order.
+SHOWN = ["Accessories", "Education", "Games", "Graphics", "Internet", "Office",
+         "Programming", "Sound & Video", "System Tools", "Preferences", "Other"]
+
+CONF = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "copal")
+FAVFILE = os.path.join(CONF, "gui-favourites")
+PIDFILE = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "copal-gui.%d.pid" % os.getuid())
+
+# Tried in order until each role has one, for a first open with no file yet.
+STARTER = [
+    ("foot.desktop", "kitty.desktop", "Alacritty.desktop", "xterm.desktop"),
+    ("pcmanfm.desktop", "thunar.desktop", "org.gnome.Nautilus.desktop"),
+    ("firefox-esr.desktop", "firefox.desktop", "com.brave.Browser.desktop", "chromium.desktop"),
+    ("org.gnome.TextEditor.desktop", "mousepad.desktop", "l3afpad.desktop", "geany.desktop"),
+    ("copal-store.desktop",),
+]
+
+
+def wayland():
+    return bool(os.environ.get("WAYLAND_DISPLAY"))
+
+
+def have(prog):
+    return shutil.which(prog) is not None
+
+
+def terminal():
+    """The same choice copal-menu makes, so both menus open the same one."""
+    if os.environ.get("TERMINAL"):
+        return os.environ["TERMINAL"]
+    for t in (("foot", "kitty", "alacritty", "xterm") if wayland() else ("urxvt", "xterm")):
+        if have(t):
+            return t
+    return "xterm"
+
+
+def section_of(app):
+    cats = set(filter(None, (app.get_categories() or "").split(";")))
+    for name, _icon, words in SECTIONS:
+        if cats & words:
+            return name
+    return OTHER[0]
+
+
+def section_icon(name):
+    for n, icon, _w in SECTIONS:
+        if n == name:
+            return icon
+    return OTHER[1]
+
+
+def load_apps():
+    """Every entry a launcher should show, deduplicated by name, sorted."""
+    seen, apps = set(), []
+    for a in Gio.AppInfo.get_all():
+        if not isinstance(a, DesktopAppInfo) or not a.should_show():
+            continue
+        key = a.get_display_name().casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        apps.append(a)
+    apps.sort(key=lambda a: a.get_display_name().casefold())
+    return apps
+
+
+def read_favourites(by_id):
+    try:
+        with open(FAVFILE) as f:
+            ids = [l.strip() for l in f if l.strip() and not l.startswith("#")]
+    except OSError:
+        ids = [next(i for i in role if i in by_id) for role in STARTER if any(i in by_id for i in role)]
+    return [i for i in ids if i in by_id]
+
+
+def write_favourites(ids):
+    os.makedirs(CONF, exist_ok=True)
+    with open(FAVFILE + ".tmp", "w") as f:
+        f.write("# copal-gui favourites: one desktop id per line, in order\n")
+        f.writelines(i + "\n" for i in ids)
+    os.replace(FAVFILE + ".tmp", FAVFILE)
+
+
+LOCK = ("system-lock-screen", "system-lock-screen-symbolic")
+LOGOUT = ("system-log-out", "system-log-out-symbolic")
+
+
+def session_actions():
+    """Lock, log out, reboot, shut down -- the commands copal-menu uses."""
+    if wayland():
+        acts = [("Lock screen", LOCK, ["hyprlock"] if have("hyprlock") else None),
+                ("Log out", LOGOUT, ["hyprctl", "dispatch", "exit"])]
+    else:
+        acts = [("Lock screen", LOCK, ["i3lock", "-c", "1a1b26"] if have("i3lock") else None),
+                ("Log out", LOGOUT, ["i3-msg", "exit"])]
+    # copal-halt asks before it acts; a bare poweroff cannot signal init as a user.
+    # Adwaita draws reboot as a second power symbol; a circular arrow first.
+    acts += [("Restart", ("view-refresh-symbolic", "system-reboot"), ["copal-halt", "reboot"]),
+             ("Shut down", ("system-shutdown", "system-shutdown-symbolic"), ["copal-halt"])]
+    return [a for a in acts if a[2]]
+
+
+def spawn(argv):
+    # Its own session, so the program outlives the menu that started it.
+    subprocess.Popen(argv, start_new_session=True, stdin=subprocess.DEVNULL,
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def launch(app):
+    if app.get_boolean("Terminal"):
+        # Field codes (%U, %f...) stand for files we are not passing.
+        cmd = [w for w in shlex.split(app.get_commandline() or "") if not (len(w) == 2 and w[0] == "%")]
+        spawn([terminal(), "-e"] + cmd)
+        return
+    from gi.repository import Gdk
+    app.launch([], Gdk.Display.get_default().get_app_launch_context())
+
+
+# --------------------------------------------------------------------------
+# One at a time: a second copal-gui closes the first and exits.
+def toggle_existing():
+    try:
+        with open(PIDFILE) as f:
+            pid = int(f.read().strip())
+        with open("/proc/%d/cmdline" % pid, "rb") as f:
+            if b"copal-gui" not in f.read():
+                return False
+        os.kill(pid, signal.SIGTERM)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+CSS = b"""
+#backdrop, #backdrop > * { background: transparent; }
+#panel {
+    background: @theme_base_color;
+    border: 1px solid alpha(@theme_fg_color, 0.18);
+    border-radius: 8px;
+}
+#sidebar {
+    background: alpha(@theme_fg_color, 0.05);
+    border-right: 1px solid alpha(@theme_fg_color, 0.10);
+    border-radius: 8px 0 0 8px;
+    padding: 8px 4px;
+}
+#sidebar button { padding: 6px; margin: 1px 2px; }
+#sections row { padding: 5px 10px; border-radius: 5px; }
+#apps row { padding: 3px 8px; border-radius: 5px; }
+#sections, #apps { background: transparent; }
+#appname { font-weight: bold; }
+#appdesc { opacity: 0.75; }
+"""
+
+
+def run_gui():
+    if toggle_existing():
+        return 0
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk, Gtk
+    try:
+        gi.require_version("GtkLayerShell", "0.1")
+        from gi.repository import GtkLayerShell
+    except (ValueError, ImportError):
+        GtkLayerShell = None
+
+    with open(PIDFILE, "w") as f:
+        f.write(str(os.getpid()))
+
+    apps = load_apps()
+    by_id = {a.get_id(): a for a in apps}
+    favs = read_favourites(by_id)
+    term = terminal()
+
+    prov = Gtk.CssProvider()
+    prov.load_from_data(CSS)
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), prov,
+                                             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    win = Gtk.Window(title="Menu")
+    win.set_name("backdrop")
+    layered = bool(wayland() and GtkLayerShell and GtkLayerShell.is_supported())
+
+    def quit_(*_a):
+        try:
+            os.unlink(PIDFILE)
+        except OSError:
+            pass
+        Gtk.main_quit()
+        return False
+
+    try:
+        gi.require_version("GLibUnix", "2.0")
+        from gi.repository import GLibUnix
+        GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, quit_)
+    except (ValueError, ImportError):
+        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, quit_)
+    win.connect("destroy", quit_)
+
+    # ----- the panel -----
+    panel = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+    panel.set_name("panel")
+
+    sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    sidebar.set_name("sidebar")
+    favbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    sidebar.pack_start(favbox, False, False, 0)
+    sessbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    sidebar.pack_end(sessbox, False, False, 0)
+    panel.pack_start(sidebar, False, False, 0)
+
+    main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+    main.set_border_width(10)
+    panel.pack_start(main, True, True, 0)
+
+    search = Gtk.SearchEntry()
+    search.set_placeholder_text("Type to search")
+    main.pack_start(search, False, False, 0)
+
+    body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    main.pack_start(body, True, True, 0)
+
+    sections = Gtk.ListBox()
+    sections.set_name("sections")
+    sections.set_selection_mode(Gtk.SelectionMode.BROWSE)
+    body.pack_start(sections, False, False, 0)
+
+    scroll = Gtk.ScrolledWindow()
+    scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    applist = Gtk.ListBox()
+    applist.set_name("apps")
+    applist.set_selection_mode(Gtk.SelectionMode.BROWSE)
+    applist.set_activate_on_single_click(True)
+    scroll.add(applist)
+    body.pack_start(scroll, True, True, 0)
+
+    name_l = Gtk.Label(xalign=0)
+    name_l.set_name("appname")
+    desc_l = Gtk.Label(xalign=0)
+    desc_l.set_name("appdesc")
+    desc_l.set_ellipsize(3)  # Pango.EllipsizeMode.END
+    main.pack_start(Gtk.Separator(), False, False, 0)
+    main.pack_start(name_l, False, False, 0)
+    main.pack_start(desc_l, False, False, 0)
+
+    def describe(app=None, text=None):
+        if app is not None:
+            name_l.set_text(app.get_display_name())
+            desc_l.set_text(app.get_description() or app.get_generic_name() or "")
+        else:
+            name_l.set_text(text or "")
+            desc_l.set_text("")
+
+    theme = Gtk.IconTheme.get_default()
+
+    def icon_for(gicon, fallback, px):
+        # A .desktop file may name an icon the theme does not have (ARandR).
+        if gicon is None or theme.lookup_by_gicon(gicon, px, 0) is None:
+            gicon = Gio.ThemedIcon.new(fallback)
+        img = Gtk.Image.new_from_gicon(gicon, Gtk.IconSize.DND)
+        img.set_pixel_size(px)
+        return img
+
+    def go(app):
+        try:
+            launch(app)
+        except GLib.Error as e:
+            describe(text="Could not start %s: %s" % (app.get_display_name(), e.message))
+            return
+        quit_()
+
+    # ----- favourites and the session -----
+    def fav_menu(app, event):
+        m = Gtk.Menu()
+        i = app.get_id()
+        item = Gtk.MenuItem(label="Remove from favourites" if i in favs else "Add to favourites")
+
+        def flip(_w):
+            favs.remove(i) if i in favs else favs.append(i)
+            write_favourites(favs)
+            fill_favs()
+            applist.invalidate_filter()
+        item.connect("activate", flip)
+        m.append(item)
+        m.show_all()
+        m.attach_to_widget(win)
+        m.popup_at_pointer(event)
+
+    def fill_favs():
+        for c in favbox.get_children():
+            favbox.remove(c)
+        for i in favs:
+            app = by_id[i]
+            b = Gtk.Button()
+            b.set_relief(Gtk.ReliefStyle.NONE)
+            b.add(icon_for(app.get_icon(), "application-x-executable", 32))
+            b.set_tooltip_text(app.get_display_name())
+            b.connect("clicked", lambda _b, a=app: go(a))
+            b.connect("enter-notify-event", lambda *_x, a=app: describe(a))
+            b.connect("button-press-event",
+                      lambda _b, e, a=app: (fav_menu(a, e), True)[1] if e.button == 3 else False)
+            favbox.pack_start(b, False, False, 0)
+        favbox.show_all()
+
+    for label, icon, argv in session_actions():
+        b = Gtk.Button()
+        b.set_relief(Gtk.ReliefStyle.NONE)
+        b.add(Gtk.Image.new_from_gicon(Gio.ThemedIcon.new_from_names(icon), Gtk.IconSize.LARGE_TOOLBAR))
+        b.set_tooltip_text(label)
+        b.connect("clicked", lambda _b, a=argv: (spawn(a), quit_()))
+        b.connect("enter-notify-event", lambda *_x, t=label: describe(text=t))
+        sessbox.pack_start(b, False, False, 0)
+    fill_favs()
+
+    # ----- sections -----
+    sec_of = {a.get_id(): section_of(a) for a in apps}
+    present = set(sec_of.values())
+    state = {"section": "All Applications", "rank": None}
+    for name, icon in [("All Applications", ("view-app-grid-symbolic",)),
+                       ("Favourites", ("starred", "starred-symbolic"))] + \
+            [(s, section_icon(s)) for s in SHOWN if s in present]:
+        row = Gtk.ListBoxRow()
+        row.section = name
+        h = Gtk.Box(spacing=8)
+        h.pack_start(Gtk.Image.new_from_gicon(Gio.ThemedIcon.new_from_names(icon),
+                                              Gtk.IconSize.LARGE_TOOLBAR), False, False, 0)
+        h.pack_start(Gtk.Label(label=name, xalign=0), True, True, 0)
+        row.add(h)
+        sections.add(row)
+
+    # ----- the programs -----
+    for app in apps:
+        row = Gtk.ListBoxRow()
+        row.app = app
+        h = Gtk.Box(spacing=10)
+        h.pack_start(icon_for(app.get_icon(), "application-x-executable", 24), False, False, 0)
+        h.pack_start(Gtk.Label(label=app.get_display_name(), xalign=0), True, True, 0)
+        row.add(h)
+        applist.add(row)
+
+    def visible(row):
+        i = row.app.get_id()
+        if state["rank"] is not None:
+            return i in state["rank"]
+        s = state["section"]
+        return s == "All Applications" or (s == "Favourites" and i in favs) or sec_of[i] == s
+    applist.set_filter_func(visible)
+
+    def order(r1, r2):
+        rk = state["rank"]
+        if rk is not None:
+            d = rk[r1.app.get_id()] - rk[r2.app.get_id()]
+            if d:
+                return d
+        a, b = r1.app.get_display_name().casefold(), r2.app.get_display_name().casefold()
+        return (a > b) - (a < b)
+    applist.set_sort_func(order)
+
+    def select_section(row):
+        if row is None or state["section"] == row.section and state["rank"] is None:
+            return
+        state["section"] = row.section
+        if search.get_text():
+            search.set_text("")  # its changed handler refilters
+        else:
+            applist.invalidate_filter()
+        scroll.get_vadjustment().set_value(0)
+
+    sections.connect("row-selected", lambda _l, r: select_section(r))
+
+    # Hover switches the section, as in Cinnamon -- after a short pause, so
+    # sweeping the pointer across the list towards the programs does not
+    # flick through every section on the way.
+    hover = {"id": 0}
+
+    def on_sections_motion(_w, ev):
+        row = sections.get_row_at_y(int(ev.y))
+        if hover["id"]:
+            GLib.source_remove(hover["id"])
+            hover["id"] = 0
+        if row is not None and row is not sections.get_selected_row():
+            def fire():
+                hover["id"] = 0
+                sections.select_row(row)
+                return False
+            hover["id"] = GLib.timeout_add(120, fire)
+        return False
+    sections.add_events(Gdk.EventMask.POINTER_MOTION_MASK)
+    sections.connect("motion-notify-event", on_sections_motion)
+
+    def on_apps_motion(_w, ev):
+        row = applist.get_row_at_y(int(ev.y))
+        if row is not None and row is not applist.get_selected_row():
+            applist.select_row(row)
+        return False
+    applist.add_events(Gdk.EventMask.POINTER_MOTION_MASK)
+    applist.connect("motion-notify-event", on_apps_motion)
+    applist.connect("row-selected", lambda _l, r: describe(r.app) if r else describe())
+    applist.connect("row-activated", lambda _l, r: go(r.app))
+
+    def on_apps_press(_w, ev):
+        if ev.button == 3:
+            row = applist.get_row_at_y(int(ev.y))
+            if row is not None:
+                fav_menu(row.app, ev)
+                return True
+        return False
+    applist.connect("button-press-event", on_apps_press)
+
+    # ----- search -----
+    def on_search(_e):
+        t = search.get_text().strip()
+        if not t:
+            state["rank"] = None
+        else:
+            rank, n = {}, 0
+            for group in DesktopAppInfo.search(t):
+                for i in group:
+                    if i in by_id and i not in rank:
+                        rank[i] = n
+                        n += 1
+            # Fall back to a plain substring on the name and command, for
+            # the programs whose .desktop file carries no keywords at all.
+            low = t.casefold()
+            for a in apps:
+                i = a.get_id()
+                if i not in rank and (low in a.get_display_name().casefold()
+                                      or low in (a.get_executable() or "").casefold()):
+                    rank[i] = n
+                    n += 1
+            state["rank"] = rank
+        applist.invalidate_filter()
+        applist.invalidate_sort()
+        scroll.get_vadjustment().set_value(0)
+        for r in applist.get_children():
+            if visible(r):
+                applist.select_row(r)
+                break
+        else:
+            describe(text="Nothing matches '%s'" % t if t else "")
+
+    search.connect("search-changed", on_search)
+
+    def on_search_activate(_e):
+        r = applist.get_selected_row()
+        if r is not None and visible(r):
+            go(r.app)
+    search.connect("activate", on_search_activate)
+
+    def on_key(_w, ev):
+        k = ev.keyval
+        if k == Gdk.KEY_Escape:
+            if search.get_text():
+                search.set_text("")
+            else:
+                quit_()
+            return True
+        if k in (Gdk.KEY_Down, Gdk.KEY_Up) and search.has_focus():
+            r = applist.get_selected_row()
+            if r is not None:
+                r.grab_focus()
+            return False
+        if k in (Gdk.KEY_Left, Gdk.KEY_Right) and not search.has_focus():
+            return False
+        # Type-to-search from anywhere in the menu.
+        if not search.has_focus() and search.handle_event(ev):
+            search.grab_focus_without_selecting()
+            search.set_position(-1)
+            return True
+        return False
+    win.connect("key-press-event", on_key)
+
+    # ----- where it goes -----
+    scroll.set_size_request(340, 400)
+    if layered:
+        GtkLayerShell.init_for_window(win)
+        GtkLayerShell.set_namespace(win, "copal-gui")
+        GtkLayerShell.set_layer(win, GtkLayerShell.Layer.OVERLAY)
+        for edge in (GtkLayerShell.Edge.TOP, GtkLayerShell.Edge.BOTTOM,
+                     GtkLayerShell.Edge.LEFT, GtkLayerShell.Edge.RIGHT):
+            GtkLayerShell.set_anchor(win, edge, True)
+        if hasattr(GtkLayerShell, "set_keyboard_mode"):
+            GtkLayerShell.set_keyboard_mode(win, GtkLayerShell.KeyboardMode.EXCLUSIVE)
+        else:
+            GtkLayerShell.set_keyboard_interactivity(win, True)
+        visual = win.get_screen().get_rgba_visual()
+        if visual is not None:
+            win.set_visual(visual)
+        win.set_app_paintable(True)
+        # The screen below the bar, transparent; the menu in its top-left
+        # corner, where the bar's menu button is. A click that reaches the
+        # backdrop missed the menu, and closes it.
+        backdrop = Gtk.EventBox()
+        backdrop.set_visible_window(False)
+        catcher = Gtk.EventBox()  # swallows clicks inside the menu
+        catcher.add(panel)
+        catcher.set_halign(Gtk.Align.START)
+        catcher.set_valign(Gtk.Align.START)
+        catcher.set_margin_start(6)
+        catcher.set_margin_top(6)
+        catcher.connect("button-press-event", lambda *_a: True)
+        backdrop.add(catcher)
+        backdrop.connect("button-press-event", lambda *_a: quit_())
+        win.add(backdrop)
+    else:
+        win.set_decorated(False)
+        win.set_type_hint(Gdk.WindowTypeHint.DIALOG)  # i3 floats dialogs
+        win.set_skip_taskbar_hint(True)
+        win.set_keep_above(True)
+        win.set_position(Gtk.WindowPosition.MOUSE)
+        win.add(panel)
+        # Closing on focus-out, but not in the first instant: the window
+        # manager may not have handed focus over yet.
+        armed = {"on": False}
+        GLib.timeout_add(400, lambda: armed.update(on=True) or False)
+        win.connect("focus-out-event", lambda *_a: quit_() if armed["on"] else False)
+
+    win.show_all()
+    sections.select_row(sections.get_row_at_index(0))
+    applist.invalidate_filter()
+    search.grab_focus()
+    Gtk.main()
+    return 0
+
+
+def main(argv):
+    if len(argv) > 1 and argv[1] in ("-h", "--help"):
+        print(__doc__.split("\n\n")[0].strip() + "\n")
+        print("  copal-gui            open the menu (or close it, if it is open)")
+        print("  copal-gui --list     print section|name|desktop-id for every entry")
+        return 0
+    if len(argv) > 1 and argv[1] == "--list":
+        for a in load_apps():
+            print("%s|%s|%s" % (section_of(a), a.get_display_name(), a.get_id()))
+        return 0
+    if len(argv) > 1:
+        print("usage: copal-gui [--list|--help]", file=sys.stderr)
+        return 2
+    return run_gui()
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
+COPALGUI
+    chmod 0755 /usr/local/bin/copal-gui
+    # ----------------------------------------------------------------------
     # copal-desk: the desk, laid out the same way every time.
     #
     # WHY THIS EXISTS, and it is not tidiness. Competitive StarCraft has a
@@ -10851,6 +11496,9 @@ COPALGPU
    Right-click          the same app menu, opened where you clicked. The
      on the desktop     desktop is the empty background -- any part of the
                         screen with no window over it.
+   Super + A            the Mint-style menu: favourites on the left, the
+                        programs by category with their icons, and a search
+                        box. Right-click a program to make it a favourite.
    Super + Shift + C    the Copal Center: one window listing every program
                         in the catalogue, installed or not, with a button
                         to run it or fetch it.
@@ -12691,6 +13339,9 @@ stage_hyprland() {
     # Optional, and after the spine: a machine with no kitty is a working
     # desktop, which was the entire problem with it being on the spine.
     add_optional kitty
+    # copal-gui (Super+A) and what makes it an overlay rather than a window
+    # Hyprland would tile: gtk-layer-shell. Without it the menu still opens.
+    add_optional python3 py3-gobject3 gtk+3.0 gtk-layer-shell
 
     # The seat and the bus. A Wayland compositor needs permission to open the
     # DRM device and the input devices; on a systemd distro logind brokers
@@ -13465,6 +14116,10 @@ bind = $mainMod, SPACE, exec, $menu
 # some time while nothing here bound it at all. All three keys are now the
 # same menu, so which one somebody remembers no longer decides what they get.
 bind = $mainMod, Z, exec, copal-menu --system
+# The other menu, Linux Mint's: favourites, categories, icons, search. It is
+# a layer over the screen, so a click anywhere else closes it; so does
+# pressing Super+A again.
+bind = $mainMod, A, exec, copal-gui
 # THE MENU'S ARROW KEYS. copal-menu shows its two panes in wofi, one at a
 # time, and Left/Right swap them. wofi 1.5 cannot do that by itself: a
 # user-bound key only arms an exit status for whenever Enter or Escape is
@@ -13720,6 +14375,8 @@ ANTIQHYPR
    Super + Return       a terminal
    Super + E            the file manager
    Super + Z            the same menu, opened on the right-hand side
+   Super + A            the Mint-style menu: favourites, categories, icons,
+                        search. Right-click a program to make it a favourite.
    Super + Shift + N    the editor (nvim)
    Super + Shift + M    music (cmus, or mpv on ~/Music)
    Super + Shift + Y    queue the clipboard's video URL (ytq)
@@ -24100,7 +24757,7 @@ COPALSTORE
     chmod 0755 /usr/local/bin/copal-store
     printf '[Desktop Entry]\nType=Application\nName=Copal Store\nComment=Find programs by what they do, and install them\nExec=copal-store\nIcon=system-software-install\nCategories=System;PackageManager;\nTerminal=false\n' \
         > /usr/local/share/applications/copal-store.desktop
-    note "/usr/local/bin/copal-store -- Super+Shift+C, or the menu's System section"
+    note "/usr/local/bin/copal-store -- Super+Shift+C, or Copal Store at the top of the menu (Super+Z)"
 
     cat <<'MSG'
 
