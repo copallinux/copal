@@ -16784,6 +16784,23 @@ NPMG
     # findings and exits; run as the user so it looks at the user's install.
     say "claude doctor"
     su - "$PI_USER" -c 'claude doctor' 2>&1 | sed 's/^/    /' || true
+
+    # The rust-analyzer plugin, at the FULL level. Claude Code offers it
+    # itself the first time it opens a .rs file, which is an interruption on
+    # a machine whose ~/code is mostly Rust; the full monty answers it here.
+    # The plugin is only the wiring -- the rust-analyzer binary it starts is
+    # the stage 12 catalogue's, which the full level installs anyway.
+    #
+    # The marketplace add is a no-op where Claude Code already knows the
+    # official one, and the install is user scope, as the user, like the
+    # rest of this function. Neither failing is a reason to stop.
+    if [ "$(copal_profile)" = full ]; then
+        say "Claude Code plugin: rust-analyzer-lsp"
+        su - "$PI_USER" -c 'claude plugin marketplace add anthropics/claude-plugins-official >/dev/null 2>&1; claude plugin install rust-analyzer-lsp@claude-plugins-official' 2>&1 \
+            | sed 's/^/    /'
+        su - "$PI_USER" -c 'claude plugin list' 2>/dev/null | grep -q rust-analyzer-lsp \
+            || note "not installed -- later, as $PI_USER: claude plugin install rust-analyzer-lsp@claude-plugins-official"
+    fi
     note "Sign in by running:  claude      (as $PI_USER, not as root)"
     note "Credentials land in ~/.claude, so run it as the account you use."
     note "If it runs out of memory: NODE_OPTIONS=--max-old-space-size=256 claude"
