@@ -229,7 +229,29 @@ the reason for each.
 - **Flathub-only**, by choice: Zen, Floorp, Legcord, WebCord, OnlyOffice,
   PeaZip, Packet, Notejot, Dot Matrix, Bambu Studio.
 
-## VII. Using it
+## VII. Games beyond Pi-Apps
+
+Seventeen games that Pi-Apps does not list were added on 2026-09-23, all from
+Alpine: Armagetron Advanced, C-Dogs SDL, Crispy Doom (with Freedoom),
+Dolphin, Extreme Tux Racer, FCEUX, Moon Buggy, OpenRCT2, Quakespasm,
+Sauerbraten, Sonic Robo Blast 2, SuperTuxKart, The Powder Toy, VCMI,
+Warzone 2100, X-Moto and Xonotic. Four are in community and thirteen in
+edge/testing (`name@testing`).
+
+Each gate was read from the v3.24 and edge/testing APKINDEX for armhf, armv7,
+aarch64, x86 and x86_64: Dolphin, VCMI and Warzone 2100 exist only for the
+two 64-bit architectures (`64`), and Sonic Robo Blast 2 is not built for ARM
+32-bit (`!v6,!v7`). `!v6` is also set where the package exists but a Zero
+could not run it: the 3D games and the Qt6 emulator. **These rows were not
+launched on the bench.** With 2 GB free it could not hold SuperTuxKart
+(800 MB) or Xonotic (1.2 GB), and doas needs a password there. That matches
+the standard of the other Alpine rows, which the table carries on the
+package's word; only `@source` recipes have to build and run here first.
+
+Considered and left out: mGBA is already in the catalogue (Retro); Flare's
+Alpine package is a script that downloads the game on first run.
+
+## VIII. Using it
 
     copal-store                     the window (or menus under dialog, in a terminal)
     copal-store list [SECTION]      status, section, id, name
@@ -249,7 +271,7 @@ on the bench and launch the program with `copal-app-probe.sh`. If it opens,
 run `make sync-store`, which also runs lint. A row goes into the table only
 after its recipe has built and run.
 
-## VIII. Open items
+## IX. Open items
 
 1. **No build has yet run as root on a real card.** Everything above ran
    through the bench, with apk replaced by a sysroot. The `apk add -t`
