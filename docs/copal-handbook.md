@@ -121,6 +121,7 @@ be retyped at the Pi's console.
 | `copal-desk` | Lay the workspaces out the same way every time (**Super+Shift+D**) |
 | `copal-menu` | The menu, built from what is installed: applications on the left, categories/settings/session on the right (**Super+Space**, or **Super+Z** for the right side) |
 | `copal-center` | One window listing all 329 programs — run or install (**Super+C**) |
+| `copal-store` | Stage 18's store: the catalogue plus Pi-Apps' programs, ported — Alpine packages, or compiled here from GitHub; `copal-center` opens it once installed (**Super+Shift+C**) |
 | `copal-guide` | Plain-text guides — eleven of them, on the machine, no network (**Super+Shift+G**) |
 | `copal-startx` | Starts the desktop, and refuses to do it as root |
 | `copal-morse` | Send, drill or print morse code (Alpine packages none) |
@@ -994,6 +995,9 @@ different things read the same table:
 - **`copal-center`** (Super+C) shows the lot in one window with a status
   column and a Run button that installs first if it has to.
 - **Stage 12** bulk-installs from it.
+- **`copal-store`** (stage 18) shows it beside a second table, the store's,
+  whose programs nothing installs until they are picked; some of those are
+  compiled on the machine from GitHub. `docs/copal-store.md` is its record.
 
 Because there is one table, nothing can appear in a menu that is not
 installable, and nothing installable is missing from the menus.

@@ -841,6 +841,16 @@ sync-agent:
 	@printf '  ok      tools/copal-fleet-agent -> $(PREP)\n'
 	@$(MAKE) --no-print-directory lint
 
+## sync-store: copy tools/copal-store into stage 18's heredoc in copal-prep.sh.
+sync-store:
+	@python3 -c 'import sys;\
+	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
+	m="    cat > /usr/local/bin/copal-store <<\x27COPALSTORE\x27\n";\
+	i=s.index(m)+len(m);j=s.index("COPALSTORE\n",i);\
+	open(p,"w").write(s[:i]+prog.rstrip("\n")+"\n"+s[j:])' $(PREP) tools/copal-store
+	@printf '  ok      tools/copal-store -> $(PREP)\n'
+	@$(MAKE) --no-print-directory lint
+
 ## sync-nats: copy tools/copal_nats.py into the heredoc in copal-prep.sh.
 sync-nats:
 	@python3 -c 'import sys;\
@@ -1009,6 +1019,20 @@ lint: | $(BUILDDIR)
 	    || { printf '\033[31merror:\033[0m copal-fleet-agent in $(PREP) has drifted -- run: make sync-agent\n'; \
 	         diff -u tools/copal-fleet-agent $(BUILDDIR)/.agent.lint.py | head -20; exit 1; }
 	@rm -f $(BUILDDIR)/.nkeys.lint.py $(BUILDDIR)/.nats.lint.py $(BUILDDIR)/.agent.lint.py
+	@sed -n "/^    cat > \/usr\/local\/bin\/copal-store <<'COPALSTORE'$$/,/^COPALSTORE$$/p" $(PREP) \
+	    | sed '1d;$$d' > $(BUILDDIR)/.store.lint.sh
+	@test -s $(BUILDDIR)/.store.lint.sh \
+	    || { printf '\033[31merror:\033[0m could not extract copal-store from $(PREP)\n'; exit 1; }
+	@cmp -s $(BUILDDIR)/.store.lint.sh tools/copal-store \
+	    && printf '  ok      copal-store in $(PREP) matches tools/\n' \
+	    || { printf '\033[31merror:\033[0m copal-store in $(PREP) has drifted -- run: make sync-store\n'; \
+	         diff -u tools/copal-store $(BUILDDIR)/.store.lint.sh | head -20; exit 1; }
+	@sed -n "/^catalogue() {$$/,/^CATALOGUE$$/p" $(PREP) | sed '1,2d;$$d' \
+	    | awk -F'|' 'NF >= 6 { print $$1 "|" $$2 "|" $$3 "|" $$4 "|" $$5 }' > $(BUILDDIR)/.catalogue.lint
+	@COPAL_CATFILE=$(BUILDDIR)/.catalogue.lint sh $(BUILDDIR)/.store.lint.sh self-test \
+	    > $(BUILDDIR)/.store.selftest; _rc=$$?; sed 's/^/  /' $(BUILDDIR)/.store.selftest; \
+	    rm -f $(BUILDDIR)/.store.lint.sh $(BUILDDIR)/.catalogue.lint $(BUILDDIR)/.store.selftest; \
+	    [ $$_rc = 0 ] || { printf '\033[31merror:\033[0m copal-store self-test failed\n'; exit 1; }
 	@sed -n "/^    cat > \/usr\/bin\/copal-fleet <<'COPALFLEET'$$/,/^COPALFLEET$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.copal-fleet.lint.sh
 	@test -s $(BUILDDIR)/.copal-fleet.lint.sh && sh -n $(BUILDDIR)/.copal-fleet.lint.sh \

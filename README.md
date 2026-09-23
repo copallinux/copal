@@ -1093,11 +1093,30 @@ and there are four ways in:
 |---|---|
 | `Super`+`space`, or `Super`+`d` | **dmenu** — everything on `PATH`. Type a few letters, Enter runs it |
 | `Super`+`z` | **copal-menu** — a clickable menu built from what is actually installed (cached, and rebuilt by itself when something is installed), with an *Install software* branch listing the rest of the catalogue |
-| `Super`+`Shift`+`c` | **copal-center** — one window listing the whole catalogue, installed or not, with a button that either runs it or fetches it |
+| `Super`+`Shift`+`c` | **copal-store** once stage 18 has run (see below); before that **copal-center** — one window listing the whole catalogue, installed or not, with a button that either runs it or fetches it |
 | `Super`+`,` | **copal-config** — users and groups, hostname, services, SSH, boot options. Asks `doas` for the root it needs |
 | `Super`+`/`, or `Super`+`F1` | the key list, floating. Shown once at login, because a tiling WM with no menus is unusable until you know the bindings |
 | `Super`+`Shift`+`g` | the other guides |
 | `Super`+`Return` / `Super`+`e` / `Super`+`t` | terminal / file manager / `htop` |
+
+#### The Copal Store — Pi-Apps, ported
+
+Stage 18 adds the **Copal Store**, `Super`+`Shift`+`c` on both desktops: a
+window of programs grouped by what they do, each with a sentence saying what
+it is, so a name you half remember can be found again. It lists the catalogue
+and a second shelf that nothing installs until you pick from it. Programs
+Alpine does not package are **compiled on the machine from their GitHub
+source**: OpenShot, LibreCAD, VeraCrypt, Amiberry, DDNet, Marathon, Descent,
+PyChess, Pixelorama and others, 19 recipes pinned by checksum. The rest are
+Alpine packages. Nothing comes from Flathub. `doas copal-store remove` takes
+away every file a build installed.
+
+    copal-store                         the window
+    doas copal-store install openshot   or any id from 'copal-store list'
+
+`docs/copal-store.md` has every Pi-Apps entry with where it went: 20 compiled
+here, 58 from Alpine, 36 already in Copal, and 146 not ported, each with its
+reason. It also records the musl repairs the builds needed.
 
 #### The browser, and what opens a link
 
@@ -1381,7 +1400,7 @@ you know it is there, and left for you to delete by hand.
 
 ---
 
-## The anatomy — three machines, one file, sixteen stages
+## The anatomy — three machines, one file, eighteen stages
 
 Copal is named for tree resin caught halfway to amber: hardened, but not yet
 stone. The design follows the metaphor more closely than the name suggests.
@@ -1454,10 +1473,11 @@ That "generated, never edited" is why `make lint` extracts it and runs `sh -n`
 on the file it *becomes*: a syntax error inside a heredoc is invisible to every
 check that reads the generator, and would land on the hardware instead.
 
-### The sixteen stages
+### The eighteen stages
 
-Roughly: 1–3 make it a computer, 4–6 make it usable, 7–15 make it yours, and
-16 makes it one of several.
+Roughly: 1–3 make it a computer, 4–6 make it usable, 7–15 make it yours,
+16 makes it one of several, 17 gives it the Antiquity desktop, and 18 opens
+the store.
 
 | | Stage | What it settles |
 |---|---|---|
@@ -1477,6 +1497,8 @@ Roughly: 1–3 make it a computer, 4–6 make it usable, 7–15 make it yours, a
 | 14 | the workshop | CAD, KiCad, ngspice, the ADI instruments (libiio, ADALM2000, Pluto), LaTeX, trackers |
 | 15 | SD card care | what actually wears a card; log policy; a genuinely read-only root |
 | 16 | the fleet | join a named fleet: one certificate authority, an mDNS beacon, one console. **Skipped entirely on a card with no fleet named** |
+| 17 | the Antiquity desktop | Hyprland on Wayland with the Linux Antiquity theme — the full monty. `aarch64`/`x86_64` only |
+| 18 | the Copal Store | Pi-Apps, ported: programs by what they do, compiled from GitHub or taken from Alpine, none installed until picked. Offers a starter set with OpenShot, compiled |
 
 ### What the machine gains
 

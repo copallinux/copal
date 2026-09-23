@@ -1,0 +1,1479 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+#
+# copal-store -- find a good program by what it does, and install it.
+#
+#   copal-store                    the store window (yad), or menus in a terminal
+#   copal-store list [SECTION]     every program: status, section, id, name
+#   copal-store sections           the sections, and how many programs in each
+#   copal-store info ID            what it is, where it comes from, how it installs
+#   copal-store install ID...      install (root: doas is asked for)
+#   copal-store remove ID...       and take it away again
+#   copal-store recipes            the programs built from GitHub source here
+#   copal-store section NAME       the window for one section
+#   copal-store show ID            the window for one program, to link to
+#
+# WHAT THIS IS. Pi-Apps, ported: the same idea -- a short, curated shelf of
+# programs a desktop user actually wants, each with a sentence saying what it
+# is, so a name you half remember can be found by what it does -- rebuilt for
+# Alpine. Pi-Apps installs with Debian packages and upstream binaries built
+# for glibc; neither exists here. What does exist is two sources, taken in
+# this order:
+#
+#   1. The program's own source on GitHub, compiled on this machine. A recipe
+#      below pins a release tag and its SHA-256, carries whatever patch musl
+#      needed, and installs under /usr/local through a staging directory, so
+#      the list of files it put there is exact and 'remove' can take them all
+#      away again. Some "run" rather than compile: a Java jar, a LOVE game.
+#   2. An Alpine package, main, community or edge/testing, where Alpine
+#      already builds the program -- no reason to compile what apk ships.
+#
+# Flathub is deliberately not a source here: the one Flathub program Copal
+# carries (Brave) stays in the catalogue where it always was. Programs that
+# only exist as a Flatpak, a glibc binary or a Windows program are left out
+# of the table, and docs/copal-store.md says which and why.
+#
+# THE SHELF IS TWO TABLES. The catalogue (/usr/local/share/copal/catalogue),
+# which stage 12 installs from and copal-menu is built from, and the store's
+# own table below, which nothing installs unless someone asks. The window
+# shows both; the store's rows carry a description, the catalogue's carry it
+# in their label. The two never list the same program: tools/copal-store-check
+# fails if they do.
+#
+# THE TABLE'S FIELDS are the catalogue's, plus two:
+#
+#   section|label|install|bin|mode|gate|description|home
+#
+#   install   apk names, 'name@testing' for edge/testing, or 'recipe@source'
+#   bin       the command it answers to, or '-' for a font (nothing to run)
+#   mode      x window, t terminal program, h command-line tool, - nothing
+#   gate      the catalogue's architecture gate: *, 64, !v6, !x32 ...
+#   home      where the source lives
+#
+# Each program's id is its bin, or its first package when bin is '-'.
+set -u
+
+PREFIX="${COPAL_STORE_PREFIX:-/usr/local}"
+STATE="${COPAL_STORE_STATE:-/var/lib/copal/store}"
+CACHE="${COPAL_STORE_CACHE:-/var/cache/copal-store}"
+WORK="${COPAL_STORE_WORK:-/usr/local/src/copal-store}"
+LOGDIR="${COPAL_STORE_LOGDIR:-/var/log/copal-store}"
+CATFILE="${COPAL_CATFILE:-/usr/local/share/copal/catalogue}"
+APKDB="${COPAL_APKDB:-/lib/apk/db/installed}"
+
+have() { command -v "$1" >/dev/null 2>&1; }
+say()  { printf '\n==> %s\n' "$*"; }
+note() { printf '    %s\n' "$*"; }
+warn() { printf '    warning: %s\n' "$*" >&2; }
+die()  { printf 'copal-store: %s\n' "$*" >&2; exit 1; }
+
+# ------------------------------------------------------------------ table ---
+store_table() {
+    cat <<'STORETABLE'
+Appearance|Caskaydia Cove NF (Cascadia Code, Nerd cut)|font-cascadia-code-nerd|-|-|*|Microsoft's coding font with the Nerd Font icons added: the glyphs prompt themes and status bars draw with.|https://github.com/ryanoasis/nerd-fonts
+Appearance|Color Emoji font (Noto)|font-noto-emoji|-|-|*|Colour emoji for every program, so a chat message or a web page shows faces instead of empty boxes.|https://github.com/googlefonts/noto-emoji
+Appearance|Oh My Posh (prompt themes)|ohmyposh@source|oh-my-posh|h|*|Over a hundred ready-made prompt themes for bash, zsh and fish, showing git state, battery, time and more. Themes are in /usr/local/share/oh-my-posh/themes; pair it with Caskaydia Cove NF.|https://github.com/JanDeDobbeleer/oh-my-posh
+Appearance|Starship (shell prompt)|starship|starship|h|*|A fast prompt for any shell showing the git branch, the language version and how long the last command took. The maintained successor to Powerline-Shell.|https://github.com/starship/starship
+Creative|Kolourpaint (simple paint)|kolourpaint|kolourpaint|x|!v6|KDE's paint program in the spirit of MS Paint: draw, crop, resize and save, with nothing to learn first.|https://invent.kde.org/graphics/kolourpaint
+Creative|Pixelorama (pixel art)|pixelorama@source|pixelorama|x|!v6|Draws pixel art and animates sprites: layers, onion skinning, tile mode and palettes, exporting to PNG, GIF and sprite sheets.|https://github.com/Orama-Interactive/Pixelorama
+Creative|Shotwell (photo library)|shotwell|shotwell|x|*|Imports photos from a camera or a folder, sorts them by date and event, and does quick fixes: crop, straighten, red-eye.|https://gitlab.gnome.org/GNOME/shotwell
+Games|AstroMenace (3D space shooter)|astromenace@source|astromenace|x|64|A hardcore 3D shoot-'em-up: fifteen levels of enemies and bosses, with the money you collect spent on weapons and armour between them.|https://github.com/viewizard/astromenace
+Engineering|LibreCAD (2D CAD)|librecad@source|librecad|x|64|Precise 2D drawings -- floor plans, parts, schematics -- in layers and blocks, read and written as DXF and read from DWG.|https://github.com/LibreCAD/LibreCAD
+Engineering|OpenSCAD (programmer's 3D CAD)|openscad|openscad|x|!v6,!v7,!a64|Solid 3D models written as code -- cubes, cylinders, unions and differences -- for 3D printing. Alpine builds it for x86 only.|https://github.com/openscad/openscad
+Games|Amiberry (Amiga emulator)|amiberry@source|amiberry|x|64|An Amiga 500 to 4000 emulator tuned for ARM boards, with WHDLoad for games from hard-disk images. Needs Kickstart ROMs for most software; AROS boots without them.|https://github.com/BlitterStudio/amiberry
+Games|Celeste Classic (PICO-8 platformer)|ccleste@source|ccleste|x|64|The original Celeste, a precise little platformer from a 2015 game jam, in a C port. Arrow keys, Z to jump, X to dash.|https://github.com/lemon32767/ccleste
+Games|Pac-Man (SDL clone)|pacman@source|pacman-game|x|64|A faithful Pac-Man for the desktop: eat the dots, dodge the four ghosts. Arrow keys.|https://github.com/ebuc99/pacman
+Games|DDNet (DDraceNetwork)|ddnet@source|DDNet|x|64|Cooperative Teeworlds: a team of tiny gunners hooks, jumps and freezes its way through thousands of puzzle maps together, online or on a LAN.|https://github.com/ddnet/ddnet
+Games|Descent 1 (shareware, DXX-Rebirth)|dxx@source|d1x-rebirth|x|64|The 1995 shooter flown in six degrees of freedom through mines taken over by robots. The shareware episode; copy the full game's files into ~/.d1x-rebirth to play the rest.|https://github.com/dxx-rebirth/dxx-rebirth
+Games|Descent 2 (demo, DXX-Rebirth)|dxx@source|d2x-rebirth|x|64|Descent's sequel: more robots, a guide-bot, afterburners. The demo levels; the full game's files go in ~/.d2x-rebirth. Installed together with Descent 1.|https://github.com/dxx-rebirth/dxx-rebirth
+Games|Doom 3 (dhewm3 engine)|dhewm3@testing|dhewm3|x|*|The Doom 3 engine, open-sourced by id and kept alive as dhewm3. Bring the game's base/ folder from the demo or a copy you own.|https://github.com/dhewm/dhewm3
+Games|Friday Night Funkin' Rewritten (LOVE)|funkin@source|funkin-rewritten|x|*|The rhythm game where you win a girlfriend's approval by out-singing her father, arrow keys to the beat, rebuilt on the LOVE engine.|https://github.com/HTV04/funkin-rewritten
+Games|Godot (game engine)|godot@testing|godot|x|!v6|A complete engine and editor for 2D and 3D games, scripted in GDScript. The engine Pixelorama is written in.|https://github.com/godotengine/godot
+Games|Heroes 2 (fheroes2 engine)|fheroes2@testing|fheroes2|x|*|Heroes of Might and Magic II rebuilt as free software. Plays the free demo or the original game's data.|https://github.com/ihhub/fheroes2
+Games|Marathon (the free trilogy, Aleph One)|alephone@source|marathon|x|64|Bungie's 1990s first-person shooters Marathon, Marathon 2 and Marathon Infinity, released free and played on Aleph One, the engine built from Bungie's source. Three launchers: marathon, marathon2, marathon-infinity.|https://github.com/Aleph-One-Marathon/alephone
+Games|Minecraft Java (Prism Launcher)|prismlauncher|prismlauncher|x|*|Signs in to your Minecraft account and runs Java Edition, with separate instances for each modpack.|https://github.com/PrismLauncher/PrismLauncher
+Games|PyChess|pychess@source|pychess|x|*|Chess against the computer (Stockfish is installed with it), online at FICS and Lichess, with opening books, puzzles and lessons.|https://github.com/pychess/pychess
+Games|PPSSPP (PSP emulator)|ppsspp|PPSSPPQt|x|!v6,!v7|Plays PlayStation Portable games from your own ISO files, upscaled to the screen you have.|https://github.com/hrydgard/ppsspp
+Internet|SpeedTest-CLI|speedtest-cli|speedtest-cli|h|*|Measures the connection's download and upload speed and ping against the nearest speedtest.net server.|https://github.com/sivel/speedtest-cli
+Browsers|Epiphany (GNOME Web)|epiphany|epiphany|x|*|A clean WebKit browser that turns any site into its own app window.|https://gitlab.gnome.org/GNOME/epiphany
+Browsers|Firefox (rapid release)|firefox|firefox|x|!v6|Mozilla's current Firefox, updated every four weeks. The catalogue carries Firefox ESR, the slower-moving branch.|https://github.com/mozilla-firefox/firefox
+Browsers|LibreWolf (private Firefox)|librewolf|librewolf|x|!v6,!x32|Firefox with telemetry removed and uBlock Origin built in, private by default.|https://codeberg.org/librewolf
+Browsers|Browsh (the web in a terminal)|browsh@source|browsh|t|!v6|A modern browser in a terminal or over SSH: a headless Firefox renders the page and Browsh draws it in text and colour blocks, video included.|https://github.com/browsh-org/browsh
+Chat|Caprine (Facebook Messenger)|caprine@testing|caprine|x|64|An unofficial desktop Messenger with a dark mode and no Facebook feed around it.|https://github.com/sindresorhus/caprine
+Chat|Signal|signal-desktop@testing|signal-desktop|x|64|End-to-end encrypted messages and calls. Link it to the Signal app on your phone.|https://github.com/signalapp/Signal-Desktop
+Chat|Telegram|telegram-desktop|Telegram|x|*|The official Telegram client: chats, channels and file transfers of any size.|https://github.com/telegramdesktop/tdesktop
+Transfer|Deluge (BitTorrent)|deluge|deluge|x|*|A BitTorrent client that grows by plug-ins: scheduling, labels, blocklists, a web interface.|https://github.com/deluge-torrent/deluge
+Transfer|HTTrack (website copier)|httrack@testing|httrack|h|*|Downloads a whole website to a folder so it can be browsed offline, links and all.|https://github.com/xroche/httrack
+Transfer|OnionShare (share over Tor)|onionshare@testing|onionshare-cli|h|!v6|Shares files or a small website straight from this machine through Tor, with no server and no account.|https://github.com/onionshare/onionshare
+Transfer|Persepolis (download manager)|persepolis@source|persepolis|x|!v6|A download manager over aria2: many connections per file, queues, schedules, and video pages through yt-dlp.|https://github.com/persepolisdm/persepolis
+Multimedia|OpenShot (video editor)|openshot@source|openshot-qt|x|64|A video editor to cut clips, lay them on tracks, and add titles, transitions and effects, then export for the web. Compiled here from GitHub: libopenshot-audio, libopenshot and openshot-qt.|https://github.com/OpenShot/openshot-qt
+Multimedia|Easy Effects|easyeffects|easyeffects|x|*|An equaliser, compressor and noise remover for everything the machine plays or records (PipeWire).|https://github.com/wwmm/easyeffects
+Multimedia|FreeTube (private YouTube)|freetube@testing|freetube|x|64|Watches YouTube without an account or tracking; subscriptions are kept on this machine.|https://github.com/FreeTubeApp/FreeTube
+Multimedia|Kdenlive (video editor)|kdenlive|kdenlive|x|!v6|KDE's multi-track video editor, bigger than OpenShot: proxies, keyframes and colour grading.|https://invent.kde.org/multimedia/kdenlive
+Multimedia|Kodi (media centre)|kodi|kodi|x|!v6|A full-screen media centre for films, music, photos and TV, made to be driven from the sofa.|https://github.com/xbmc/xbmc
+Multimedia|OBS Studio|obs-studio|obs|x|!v6|Records the screen and camera, or streams them live, mixing scenes and sources as it goes.|https://github.com/obsproject/obs-studio
+Multimedia|Sound Recorder|gnome-sound-recorder|gnome-sound-recorder|x|!v6|One button to record from the microphone, and a list of the recordings made.|https://gitlab.gnome.org/GNOME/gnome-sound-recorder
+Multimedia|YouTube Player (pipe-viewer)|pipe-viewer|pipe-viewer|t|*|Searches and plays YouTube from a terminal, through mpv, with no browser at all.|https://github.com/trizen/pipe-viewer
+Multimedia|SimpleScreenRecorder (X11)|simplescreenrecorder|simplescreenrecorder|x|!v6,!v7,!a64|A screen recorder for the X desktop that is easy to set up and gentle on the CPU. Records X only, not Hyprland.|https://github.com/MaartenBaert/ssr
+Programming|Arduino CLI|arduino-cli@testing|arduino-cli|h|*|Compiles and uploads Arduino sketches and manages boards and libraries, from a terminal.|https://github.com/arduino/arduino-cli
+Programming|GitHub CLI|github-cli|gh|h|*|Pull requests, issues and releases from the command line: gh pr create, gh repo clone.|https://github.com/cli/cli
+Programming|GNOME Builder|gnome-builder|gnome-builder|x|*|An IDE for GNOME, C, Rust, Python and Vala projects, with builds in a click.|https://gitlab.gnome.org/GNOME/gnome-builder
+Programming|Node.js|nodejs npm|node|t|*|The JavaScript runtime outside the browser, with npm to fetch packages.|https://github.com/nodejs/node
+Programming|Thonny (Python IDE)|thonny|thonny|x|*|A Python editor for beginners: step through code and watch the variables change.|https://github.com/thonny/thonny
+System|BleachBit (clean up disk space)|bleachbit@source|bleachbit|x|*|Frees disk space and privacy by deleting caches, logs, thumbnails and browser history, program by program, with a preview first.|https://github.com/bleachbit/bleachbit
+System|btop++|btop|btop|t|*|A resource monitor in the terminal: CPU, memory, disks, network and processes, with graphs.|https://github.com/aristocratos/btop
+System|Fastfetch|fastfetch|fastfetch|h|*|Prints the machine's logo and specs (OS, kernel, CPU, memory, desktop) in the terminal.|https://github.com/fastfetch-cli/fastfetch
+System|Neofetch|neofetch@testing|neofetch|h|*|The original system-summary-with-a-logo script. Fastfetch is its faster successor.|https://github.com/dylanaraps/neofetch
+System|Pika Backup|pika-backup@testing|pika-backup|x|*|Backs up your home folder to a USB disk or server with BorgBackup, on a schedule.|https://gitlab.gnome.org/World/pika-backup
+System|Syncthing GTK|syncthing-gtk@testing|syncthing-gtk|x|*|A window and tray icon for Syncthing, which keeps folders the same on several machines with no cloud.|https://github.com/kozec/syncthing-gtk
+System|System Monitoring Center|smc@source|system-monitoring-center|x|*|A task manager in the style of Windows': CPU, memory, disks, network, sensors and processes on tabs with graphs.|https://github.com/hakandundar34coding/system-monitoring-center
+System|Timeshift|timeshift@testing|timeshift-launcher|x|*|Takes snapshots of the system files so a bad update can be rolled back.|https://github.com/linuxmint/timeshift
+Terminals|Microsoft PowerShell|powershell|pwsh|t|!v6,!x32|Microsoft's shell and scripting language, as on Windows, working with objects rather than text.|https://github.com/PowerShell/PowerShell
+Tools|AntiMicroX (gamepad to keys)|antimicrox@testing|antimicrox|x|*|Maps a gamepad's buttons and sticks to keys and the mouse, for games and programs without controller support.|https://github.com/AntiMicroX/antimicrox
+Tools|ckb-next (Corsair keyboards)|ckb-next@testing|ckb-next|x|*|Lighting and macros for Corsair keyboards and mice.|https://github.com/ckb-next/ckb-next
+Tools|FF Multi Converter|ffconverter@source|ffconverter|x|*|Converts audio, video, images and documents between formats in batches, a front end to ffmpeg and ImageMagick.|https://github.com/l-koehler/FF-converter
+Tools|Flameshot (screenshots)|flameshot|flameshot|x|!v6|Takes a screenshot and lets you draw arrows, boxes and blur on it before saving or copying.|https://github.com/flameshot-org/flameshot
+Tools|GNOME Maps|gnome-maps|gnome-maps|x|!v6|OpenStreetMap maps with search and directions.|https://gitlab.gnome.org/GNOME/gnome-maps
+Tools|Organic Maps (offline maps)|organicmaps@testing|OMaps|x|*|Maps downloaded by region for use with no connection: hiking, cycling and car routes.|https://github.com/organicmaps/organicmaps
+Tools|Raspberry Pi Imager|rpi-imager@testing|rpi-imager|x|!v6|Writes an operating system image to an SD card or USB stick, and can download the image first.|https://github.com/raspberrypi/rpi-imager
+Tools|KeePassXC (passwords)|keepassxc|keepassxc|x|*|A password manager kept in one encrypted file that you own, with a browser extension to fill logins.|https://github.com/keepassxreboot/keepassxc
+Tools|Nautilus (GNOME Files)|nautilus|nautilus|x|*|GNOME's file manager.|https://gitlab.gnome.org/GNOME/nautilus
+Tools|Nemo (file manager)|nemo|nemo|x|*|Linux Mint's file manager: two panes, a tree, and everything in right-click menus.|https://github.com/linuxmint/nemo
+Tools|Ollama (local AI models)|ollama|ollama|h|64|Downloads and runs large language models on this machine: ollama run llama3.|https://github.com/ollama/ollama
+Tools|scrcpy (Android screen)|scrcpy|scrcpy|h|*|Shows an Android phone's screen in a window and controls it with the keyboard and mouse, over USB.|https://github.com/Genymobile/scrcpy
+Tools|Screenshot (GNOME)|gnome-screenshot|gnome-screenshot|x|*|Takes a screenshot of the screen, a window or an area, after a delay if you like.|https://gitlab.gnome.org/GNOME/gnome-screenshot
+Tools|VeraCrypt (encrypted volumes)|veracrypt@source|veracrypt|x|64|Makes an encrypted file or disk that opens as a drive with the right password. The successor to TrueCrypt; mounting asks for your admin password.|https://github.com/veracrypt/VeraCrypt
+Tools|tldr (tealdeer)|tealdeer@testing|tldr|h|*|Short, example-first help pages: tldr tar shows the five commands you actually wanted.|https://github.com/tealdeer-rs/tealdeer
+Crypto|Feather Wallet (Monero)|feather-wallet@testing|feather|x|*|A small, fast Monero wallet.|https://github.com/feather-wallet/feather
+Crypto|Monero GUI|monero-gui@testing|monero-wallet-gui|x|!v6|The Monero project's own wallet, able to run a full node.|https://github.com/monero-project/monero-gui
+Crypto|XMRig|xmrig|xmrig|h|*|A CPU miner for RandomX coins such as Monero.|https://github.com/xmrig/xmrig
+Emulation|QEMU (PC emulator)|qemu-system-x86_64 qemu-ui-gtk|qemu-system-x86_64|h|64|Emulates a whole x86_64 PC in a window, to boot another operating system from an ISO.|https://gitlab.com/qemu-project/qemu
+Emulation|Waydroid (Android)|waydroid|waydroid|h|!v6|Runs a full Android system in a container, its apps as windows on this desktop.|https://github.com/waydroid/waydroid
+STORETABLE
+}
+
+# The architecture, in the catalogue's gate vocabulary.
+store_arch() {
+    case "$(apk --print-arch 2>/dev/null)" in
+        aarch64) echo a64 ;; x86_64) echo x64 ;; armv7) echo v7 ;;
+        armhf) echo v6 ;; x86) echo x32 ;; *) echo unknown ;;
+    esac
+}
+
+# Every program this machine can have, one line each, both tables:
+#   id|section|label|install|bin|mode|description|home|origin
+# The store's rows are gated here exactly as catalogue_available gates the
+# catalogue's; the catalogue file on disk is already gated.
+rows() {
+    { store_table | sed 's/^/S|/'
+      [ -f "$CATFILE" ] && sed 's/^/C|/' "$CATFILE"
+    } | awk -F'|' -v OFS='|' -v a="$(store_arch)" '
+        $1 == "S" {
+            keep = 1; n = split($7, g, ",")
+            for (i = 1; i <= n; i++) {
+                if (g[i] == "*") continue
+                if (g[i] == "64") { if (a != "a64" && a != "x64") keep = 0 }
+                else if (substr(g[i], 1, 1) == "!" && a == substr(g[i], 2)) keep = 0
+            }
+            if (a == "unknown") keep = 1
+            if (!keep) next
+            sec = $2; label = $3; inst = $4; bin = $5; mode = $6; desc = $8; home = $9; o = "store"
+        }
+        $1 == "C" {
+            if ($2 == "" || substr($2, 1, 1) == "#") next
+            sec = $2; label = $3; inst = $4; bin = $5; mode = $6; desc = ""; home = ""; o = "catalogue"
+        }
+        {
+            id = bin
+            if (id == "-") { split(inst, p, " "); id = p[1]; sub(/@.*/, "", id) }
+            if (seen[id]++) next
+            print id, sec, label, inst, bin, mode, desc, home, o
+        }'
+}
+
+# rows() plus a status column in front: installed or -. One pass, with the
+# apk database read once -- asking apk about 400 rows one at a time takes
+# long enough to see.
+#
+# INSTALLED MEANS, by kind of row:
+#   @source    the recipe's file list exists in $STATE -- this store put it there
+#   @flathub   its command exists (the catalogue's contract)
+#   apk names  every one of them is in apk's database. Not 'command -v': a
+#              font has no command, and a package's command can be shadowed.
+status_rows() {
+    rows | awk -F'|' -v OFS='|' -v db="$APKDB" -v st="$STATE" -v path="$PATH" '
+        BEGIN {
+            while ((getline l < db) > 0) if (l ~ /^P:/) apk[substr(l, 3)] = 1
+            np = split(path, pd, ":")
+        }
+        function command_exists(c,   i, f) {
+            if (c == "-" || c == "") return 0
+            for (i = 1; i <= np; i++) {
+                f = pd[i] "/" c
+                if ((getline _l < f) >= 0) { close(f); return 1 }
+            }
+            return 0
+        }
+        {
+            n = split($4, pk, " "); ok = 1; src = ""
+            for (i = 1; i <= n; i++) {
+                p = pk[i]
+                if (p ~ /@source$/) { src = substr(p, 1, length(p) - 7); continue }
+                if (p ~ /@flathub$/) { if (!command_exists($5)) ok = 0; continue }
+                sub(/@testing$/, "", p)
+                if (!(p in apk)) ok = 0
+            }
+            if (src != "") { f = st "/" src ".files"; if ((getline _l < f) < 0) ok = 0; close(f) }
+            print (ok ? "installed" : "-"), $0
+        }'
+}
+
+row_for() {  # <id or label> -- the row, or nothing
+    rows | awk -F'|' -v q="$1" '
+        BEGIN { q = tolower(q) }
+        tolower($1) == q || index(" " $4 " ", " " q "@source ") { print; found = 1; exit }
+        { l = tolower($3); if (!first && index(l, q) == 1) first = $0 }
+        END { if (!found && first) print first }'
+}
+
+# What a row's install field amounts to, in words.
+how_installed() {  # <install field>
+    for _p in $1; do
+        case "$_p" in
+            *@source)  printf 'compiled here from GitHub source (recipe %s)\n' "${_p%@source}" ;;
+            *@testing) printf 'Alpine package %s, from edge/testing\n' "${_p%@testing}" ;;
+            *@flathub) printf 'Flathub application %s\n' "${_p%@flathub}" ;;
+            *)         printf 'Alpine package %s\n' "$_p" ;;
+        esac
+    done
+}
+
+# --------------------------------------------------------- the terminal ---
+wayland() { [ -n "${WAYLAND_DISPLAY:-}" ]; }
+if wayland; then
+    TERM_EMU="${TERMINAL:-$(have foot && echo foot || (have kitty && echo kitty) \
+                          || (have alacritty && echo alacritty) || echo xterm)}"
+else
+    TERM_EMU="${TERMINAL:-$(have urxvt && echo urxvt || echo xterm)}"
+fi
+
+cmd_for() {  # <bin> <mode> -- kept identical to copal-menu's
+    case "$2" in
+        -) return 1 ;;
+        t) printf '%s -e %s' "$TERM_EMU" "$1" ;;
+        h) printf "%s -e sh -c '%s --help 2>&1 | head -40; echo; echo \"-- shell in this directory; Ctrl-D to close --\"; exec sh'" \
+                  "$TERM_EMU" "$1" ;;
+        *) printf '%s' "$1" ;;
+    esac
+}
+
+# ----------------------------------------------------------------- privilege ---
+# Root for apk and for /usr/local -- unless the prefix is somewhere this user
+# can write and nothing needs apk, which is how the bench runs recipes.
+need_root() {  # <args to re-run with>
+    [ "$(id -u)" = 0 ] && return 0
+    if [ "${COPAL_STORE_NODEPS:-0}" = 1 ] && mkdir -p "$PREFIX" "$STATE" 2>/dev/null \
+       && [ -w "$PREFIX" ] && [ -w "$STATE" ]; then
+        return 0
+    fi
+    have doas || die "needs root, and there is no doas here"
+    exec doas "$0" "$@"
+}
+
+# ------------------------------------------------------------- apk rows ---
+enable_testing_tag() {
+    grep -q '^@testing[[:space:]]' /etc/apk/repositories 2>/dev/null && return 0
+    _m=$(sed -n 's|^\(https\?://.*\)/v[0-9][0-9.]*/main[[:space:]]*$|\1|p' \
+             /etc/apk/repositories 2>/dev/null | head -n1)
+    [ -n "$_m" ] || _m="https://dl-cdn.alpinelinux.org/alpine"
+    note "adding $_m/edge/testing as @testing -- used ONLY for names written name@testing"
+    printf '@testing %s/edge/testing\n' "$_m" >> /etc/apk/repositories
+    apk update >/dev/null 2>&1 || true
+}
+
+apk_install() {  # <names...>
+    case " $* " in *@testing*) enable_testing_tag ;; esac
+    # shellcheck disable=SC2068
+    apk add "$@"
+}
+
+# ------------------------------------------------------------ recipes: kit ---
+#
+# A recipe is four functions named after it:
+#
+#   NAME_bdeps   apk packages needed only to build   (removed afterwards)
+#   NAME_rdeps   apk packages needed to run          (kept, under a virtual
+#                                                     package, until 'remove')
+#   NAME_build   download, patch, compile, and install into $DEST$PREFIX
+#   NAME_seed    optional: first-run settings for each home, never overwriting
+#
+# The build runs in $W, a fresh directory, and installs into the staging tree
+# $DEST. Only when it has all succeeded is the staging tree copied onto the
+# system and its file list kept in $STATE/NAME.files -- so a failed build
+# leaves nothing behind but its log, and 'remove' knows every file to take.
+
+# A tagged release's source from GitHub, verified. Prints the unpacked directory.
+# A 40-digit commit in place of the tag, for a project whose last tag is years
+# behind its working tree.
+gh_source() {  # <owner/repo> <tag or commit> <sha256>
+    _repo=${1#*/}; _f="$CACHE/$_repo-$2.tar.gz"
+    case "$2" in
+        [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) _ref="$2" ;;
+        *) _ref="refs/tags/$2" ;;
+    esac
+    mkdir -p "$CACHE"
+    if [ ! -s "$_f" ]; then
+        note "downloading $1 $2" >&2
+        curl -fL --retry 3 -o "$_f.part" "https://github.com/$1/archive/$_ref.tar.gz" >&2 \
+            && mv "$_f.part" "$_f" || { rm -f "$_f.part"; warn "could not download $1 $2"; return 1; }
+    fi
+    verify_sum "$_f" "$3" || return 1
+    _d="$W/src-$_repo"; rm -rf "$_d"; mkdir -p "$_d"
+    tar -xzf "$_f" -C "$_d" || { warn "$_f did not unpack"; return 1; }
+    printf '%s\n' "$_d"/*
+}
+
+# One release file from GitHub, verified. Prints its path.
+gh_asset() {  # <owner/repo> <tag> <file> <sha256>
+    _f="$CACHE/${1#*/}-$2-$3"
+    mkdir -p "$CACHE"
+    if [ ! -s "$_f" ]; then
+        note "downloading $1 $2 $3" >&2
+        curl -fL --retry 3 -o "$_f.part" "https://github.com/$1/releases/download/$2/$3" >&2 \
+            && mv "$_f.part" "$_f" || { rm -f "$_f.part"; warn "could not download $3"; return 1; }
+    fi
+    verify_sum "$_f" "$4" || return 1
+    printf '%s\n' "$_f"
+}
+
+verify_sum() {  # <file> <sha256>
+    printf '%s  %s\n' "$2" "$1" | sha256sum -c - >/dev/null 2>&1 && return 0
+    warn "checksum mismatch on $1 -- deleted, not built"
+    rm -f "$1"; return 1
+}
+
+# Configure, build and stage a CMake project. Extra arguments go to cmake.
+# CMAKE_POLICY_VERSION_MINIMUM: CMake 4 refuses a project that declares a
+# minimum below 3.5, which older releases do; this is CMake's own remedy.
+# -D_LARGEFILE64_SOURCE: musl 1.2.4 declares fopen64, stat64 and the other
+# LFS64 names only when asked, and code written on glibc calls them freely.
+# Through CMAKE_*_FLAGS rather than an exported CFLAGS, which would also
+# reach autotools and quietly replace its default -O2.
+# -z stack-size: a thread gets 128 KB of stack on musl and 8 MB on glibc,
+# and code written on glibc assumes the 8. musl takes its default from this
+# field of the program header, so every thread the program starts gets
+# glibc's size. It reserves address space, not memory. DDNet's renderer
+# thread overflowed without it, on the first store into its stack frame.
+cmake_stage() {  # <source dir> [cmake args...]
+    _s="$1"; shift
+    _b="$W/build-$(basename "$_s")"
+    cmake -S "$_s" -B "$_b" -G Ninja -Wno-dev \
+          -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+          -DCMAKE_PREFIX_PATH="$DEST$PREFIX;$PREFIX" \
+          -DCMAKE_INSTALL_RPATH="$PREFIX/lib" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+          -DCMAKE_C_FLAGS="${CFLAGS:-} -D_LARGEFILE64_SOURCE" \
+          -DCMAKE_CXX_FLAGS="${CXXFLAGS:-} -D_LARGEFILE64_SOURCE" \
+          -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS:-} -Wl,-z,stack-size=8388608" "$@" \
+      && nice -n 10 ninja -C "$_b" -j "$JOBS" \
+      && DESTDIR="$DEST" ninja -C "$_b" install
+}
+
+# A launcher script under $PREFIX/bin.
+launcher() {  # <name> -- the script body on stdin
+    mkdir -p "$DEST$PREFIX/bin"
+    { printf '#!/bin/sh\n# written by copal-store\n'; cat; } > "$DEST$PREFIX/bin/$1"
+    chmod 0755 "$DEST$PREFIX/bin/$1"
+}
+
+# A menu entry, for launchers that read .desktop files (wofi, rofi, GNOME).
+desktop_entry() {  # <id> <Name> <Exec> <Icon> <Categories> <Comment>
+    mkdir -p "$DEST$PREFIX/share/applications"
+    printf '[Desktop Entry]\nType=Application\nName=%s\nExec=%s\nIcon=%s\nCategories=%s\nComment=%s\nTerminal=false\n' \
+        "$2" "$3" "$4" "$5" "$6" > "$DEST$PREFIX/share/applications/$1.desktop"
+}
+
+# Write FILE into every real home on the machine -- root's and the users' --
+# only where it is absent, so a person's own settings are never touched.
+seed_homes() {  # <relative path> -- contents on stdin
+    _t="$W/seed.$$"; cat > "$_t"
+    for _h in /root /home/*; do
+        [ -d "$_h" ] && [ -w "$_h" ] || continue
+        [ -e "$_h/$1" ] && continue
+        mkdir -p "$_h/$(dirname "$1")" && cp "$_t" "$_h/$1" || continue
+        _own=$(stat -c '%u:%g' "$_h" 2>/dev/null) \
+            && chown -R "$_own" "$_h/${1%%/*}" 2>/dev/null || true
+    done
+    rm -f "$_t"
+}
+
+apply_patch() {  # <dir> <patch function>
+    note "patch: $2"
+    "$2" | (cd "$1" && patch -p1 --no-backup-if-mismatch -s) \
+        || { warn "$2 did not apply"; return 1; }
+}
+
+# ------------------------------------------------------------ recipes ---
+#
+# OpenShot, from its three repositories at matching releases. Verified on the
+# aarch64 bench, 23 Sep 2026 -- openshot-qt opened its main window.
+#
+# The three musl repairs, all in upstream code that assumes glibc:
+#   * <execinfo.h>, for a crash handler's stack trace, in both libraries.
+#     musl has none; the stubs report zero frames, which both callers
+#     already handle.
+#   * _NL_ADDRESS_LANG_AB and _NL_ADDRESS_COUNTRY_AB2: glibc's own
+#     nl_langinfo items. JUCE's BSD branch reads $LANG instead; musl joins it.
+#   * stat64: musl 1.2.4 declares the LFS64 names only when asked;
+#     cmake_stage passes -D_LARGEFILE64_SOURCE to every recipe.
+# And one upstream slip that is not about musl: libopenshot 1.0.0 draws its
+# tracked-object mask with a class that is compiled only WITH OpenCV, so a
+# build without OpenCV fails to link. Guarded; without OpenCV there are no
+# tracked objects to draw.
+#
+# OpenCV is left out: it would add the Tracker and Object Detection effects
+# at the cost of ~150 MB of libraries. openshot-qt 4.0 needs no QtWebEngine;
+# its timeline is a plain widget now.
+OPENSHOT_VER=1.0.0
+OPENSHOT_QT_VER=4.0.0
+openshot_bdeps() {
+    echo build-base cmake samurai swig python3-dev qt6-qtbase-dev qt6-qtsvg-dev \
+         ffmpeg-dev zeromq-dev cppzmq jsoncpp-dev alsa-lib-dev
+}
+openshot_rdeps() {
+    echo py3-qt6 py3-pyzmq py3-requests py3-defusedxml qt6-qtsvg ffmpeg-libavcodec \
+         ffmpeg-libavformat ffmpeg-libswscale ffmpeg-libswresample jsoncpp libzmq
+}
+openshot_build() {
+    _pyd="$PREFIX/lib/copal-store/openshot/python"
+    _a=$(gh_source OpenShot/libopenshot-audio "v$OPENSHOT_VER" \
+         80dc23fff901064194fcc7732d41cc953df6b7ed2742376fcf28df23b5a10a29) || return 1
+    apply_patch "$_a" patch_juce_musl || return 1
+    cmake_stage "$_a" \
+        -DENABLE_AUDIO_DOCS=OFF -DAUTO_INSTALL_DOCS=OFF || return 1
+
+    _l=$(gh_source OpenShot/libopenshot "v$OPENSHOT_VER" \
+         5c5f3790f6f70977f3573b9d039372d5b85bddc46f8944244a6225a79891acf2) || return 1
+    apply_patch "$_l" patch_libopenshot_musl || return 1
+    cmake_stage "$_l" \
+        -DOpenShotAudio_ROOT="$DEST$PREFIX" \
+        -DENABLE_LIB_DOCS=OFF -DBUILD_TESTING=OFF -DENABLE_OPENCV=OFF \
+        -DENABLE_MAGICK=OFF -DPYTHON_MODULE_PATH="${_pyd#"$PREFIX"/}" || return 1
+
+    _q=$(gh_source OpenShot/openshot-qt "v$OPENSHOT_QT_VER" \
+         97cf3d02392527d3f386ee97724828587ba1b1badee40879269ec32fe551ae6e) || return 1
+    rm -f "$DEST$PREFIX/bin/openshot-audio-demo"   # JUCE's test tone player, not a program for the menu
+    mkdir -p "$DEST$PREFIX/share/openshot-qt" "$DEST$PREFIX/share/icons/hicolor/scalable/apps"
+    cp -a "$_q/src/." "$DEST$PREFIX/share/openshot-qt/"
+    cp "$_q/xdg/openshot-qt.svg" "$DEST$PREFIX/share/icons/hicolor/scalable/apps/"
+    # Alpine's Python does not look in /usr/local, and the module is kept in
+    # a directory of its own besides, so nothing else can import it by chance.
+    launcher openshot-qt <<EOF
+export PYTHONPATH="$_pyd\${PYTHONPATH:+:\$PYTHONPATH}"
+exec python3 "$PREFIX/share/openshot-qt/launch.py" "\$@"
+EOF
+    desktop_entry openshot-qt "OpenShot Video Editor" "openshot-qt %F" openshot-qt \
+        "AudioVideo;Video;AudioVideoEditing;" "Edit videos: tracks, titles, transitions"
+}
+# The welcome tutorial and the "send anonymous metrics?" question, both on
+# every first start. The settings file is merged key by key over OpenShot's
+# defaults, so two keys are a whole settings file.
+openshot_seed() {
+    seed_homes .openshot_qt/openshot.settings <<'EOF'
+[
+ {"setting": "send_metrics", "value": false},
+ {"setting": "tutorial_enabled", "value": false}
+]
+EOF
+}
+
+
+# Celeste Classic, the PICO-8 original of Celeste, in lemon32767's C port:
+# the cart's logic transcribed to C over SDL2, its graphics and sounds in
+# data/. It reads data/ from the working directory and writes its input
+# settings there too, so the launcher runs it from the install directory
+# and moves the settings file into the home directory.
+CCLESTE_VER=1.4.0
+ccleste_bdeps() { echo build-base sdl2-dev sdl2_mixer-dev; }
+ccleste_rdeps() { echo sdl2 sdl2_mixer; }
+ccleste_build() {
+    _s=$(gh_source lemon32767/ccleste "v$CCLESTE_VER" \
+         32dfd797f3c863201e0c19aa97974c56a8ed589a34c0522503f25f6e1399edd6) || return 1
+    make -C "$_s" -j "$JOBS"
+    _d="$DEST$PREFIX/lib/copal-store/ccleste"
+    mkdir -p "$_d" "$DEST$PREFIX/share/icons/hicolor/128x128/apps"
+    cp "$_s/ccleste" "$_d/" && cp -r "$_s/data" "$_s/gamecontrollerdb.txt" "$_d/"
+    cp "$_s/icon.png" "$DEST$PREFIX/share/icons/hicolor/128x128/apps/ccleste.png"
+    launcher ccleste <<EOF
+mkdir -p "\$HOME/.local/share/ccleste"
+export CCLESTE_INPUT_CFG_PATH="\$HOME/.local/share/ccleste/input-cfg.txt"
+cd "$PREFIX/lib/copal-store/ccleste" && exec ./ccleste "\$@"
+EOF
+    desktop_entry ccleste "Celeste Classic" ccleste ccleste "Game;ActionGame;" \
+        "The PICO-8 original of Celeste"
+}
+
+# Pac-Man, ebuc99's SDL2 clone, autotools with the configure script shipped.
+# Installed as pacman-game: /usr/local/bin/pacman would shadow Arch's package
+# manager, which Alpine also packages as 'pacman'.
+PACMAN_VER=0.9
+pacman_bdeps() { echo build-base sdl2-dev sdl2_image-dev sdl2_ttf-dev sdl2_mixer-dev; }
+pacman_rdeps() { echo sdl2 sdl2_image sdl2_ttf sdl2_mixer; }
+pacman_build() {
+    _s=$(gh_source ebuc99/pacman "v$PACMAN_VER" \
+         e0a8fd6d9919b16a539e06c7d3c12bc1bfd41f867366bf8dad72b49f37f8422b) || return 1
+    # The data directory is written into platform.cpp as /usr/local/share,
+    # beside the PACKAGE_DATA_DIR that Makefile.am already passes in.
+    sed -i 's|"/usr/local/share/pacman/"|PACKAGE_DATA_DIR "/"|' "$_s/src/platform.cpp"
+    (cd "$_s" && ./configure --prefix="$PREFIX" && make -j "$JOBS" && make DESTDIR="$DEST" install)
+    mv "$DEST$PREFIX/bin/pacman" "$DEST$PREFIX/bin/pacman-game"
+}
+
+
+# AstroMenace: a 3D shoot-'em-up, CMake over SDL2, OpenAL and ALUT. The build
+# packs the raw game data into gamedata.vfs by running the binary it just
+# made (--pack), and the game looks for that file in DATADIR.
+ASTROMENACE_VER=1.4.3
+astromenace_bdeps() {
+    echo build-base cmake samurai sdl2-dev openal-soft-dev freealut-dev@testing \
+         libogg-dev libvorbis-dev freetype-dev fontconfig-dev mesa-dev
+}
+astromenace_rdeps() { echo sdl2 openal-soft-libs freealut@testing libvorbis freetype fontconfig; }
+astromenace_build() {
+    _s=$(gh_source viewizard/astromenace "v$ASTROMENACE_VER" \
+         c16b56bfa91f0b1ac1520d09ead2a1fbb536cbd3d4f3a792a222d44bc708eab1) || return 1
+    _d="$PREFIX/lib/copal-store/astromenace"
+    cmake -S "$_s" -B "$W/build" -G Ninja -Wno-dev -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX="$_d" -DDATADIR="$_d" -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    nice -n 10 ninja -C "$W/build" -j "$JOBS"
+    mkdir -p "$DEST$_d" "$DEST$PREFIX/share/icons/hicolor/128x128/apps"
+    cp "$W/build/astromenace" "$W/build/gamedata.vfs" "$DEST$_d/"
+    cp "$_s/share/astromenace_128.png" "$DEST$PREFIX/share/icons/hicolor/128x128/apps/astromenace.png"
+    launcher astromenace <<EOF
+exec "$_d/astromenace" "\$@"
+EOF
+    desktop_entry astromenace AstroMenace astromenace astromenace "Game;ActionGame;" \
+        "3D space shoot-'em-up"
+}
+
+# Amiberry: an Amiga emulator tuned for ARM, on SDL3. Alpine has every library
+# it asks for, two of them in edge/testing, so none of its FetchContent
+# fallbacks (which would clone at build time) is used. It needs Kickstart ROMs
+# to run most software; its built-in AROS ROM boots without them.
+AMIBERRY_VER=8.3.0
+amiberry_bdeps() {
+    echo build-base cmake samurai pkgconf sdl3-dev sdl3_image-dev@testing flac-dev mpg123-dev \
+         libpng-dev zlib-dev curl-dev nlohmann-json libpcap-dev zstd-dev libmpeg2-dev \
+         portmidi-dev enet-dev libserialport-dev@testing mesa-dev dbus-dev wayland-dev
+}
+amiberry_rdeps() {
+    echo sdl3 sdl3_image@testing flac-libs mpg123-libs libpng libcurl libpcap zstd-libs \
+         libmpeg2 portmidi enet libserialport@testing
+}
+amiberry_build() {
+    _s=$(gh_source BlitterStudio/amiberry "v$AMIBERRY_VER" \
+         881628c2465fe28063b8444350e78167e7a9ed047def66b9ef3cfdabd4bdc1d6) || return 1
+    # musl declares aarch64's mcontext_t.regs as unsigned long, glibc as
+    # unsigned long long: both 64 bits there, so the cast is exact.
+    sed -i 's|unsigned long long\* regs = context->regs;|unsigned long long* regs = reinterpret_cast<unsigned long long*>(context->regs);  // copal: musl|' \
+        "$_s/src/osdep/sigsegv_handler.cpp"
+    # musl's C++ NULL is nullptr, which no static_cast turns into an address;
+    # glibc's is an integer. The intent is zero.
+    sed -i 's|static_cast<uaecptr>(NULL)|static_cast<uaecptr>(0)|g' "$_s/src/custom.cpp"
+    cmake_stage "$_s" -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DUSE_DBUS=OFF -DUSE_GPIOD=OFF
+}
+
+
+# Marathon: Bungie's trilogy, released free, on Aleph One, the engine built
+# from Bungie's own source. The release tarball has its configure script
+# already generated; the three games' data come from the same GitHub release
+# (about 90 MB between them) and each gets its own launcher.
+ALEPHONE_VER=20250829
+alephone_bdeps() {
+    echo build-base boost-dev asio-dev sdl2-dev sdl2_ttf-dev sdl2_image-dev openal-soft-dev \
+         libsndfile-dev glu-dev mesa-dev zlib-dev libpng-dev curl-dev zziplib-dev libvorbis-dev
+}
+alephone_rdeps() { echo; }
+alephone_build() {
+    _t=$(gh_asset Aleph-One-Marathon/alephone "release-$ALEPHONE_VER" "AlephOne-$ALEPHONE_VER.tar.bz2" \
+         e7c447034aa35dd85ca6836dd8367034c4f4512aa0d14e9781d7033946098806) || return 1
+    mkdir -p "$W/src" && tar -xjf "$_t" -C "$W/src"
+    _s=$(printf '%s\n' "$W"/src/*)
+    (cd "$_s" && ./configure --prefix="$PREFIX" && nice -n 10 make -j "$JOBS" && make DESTDIR="$DEST" install)
+    _data="$PREFIX/share/alephone"
+    mkdir -p "$DEST$_data"
+    for _g in "Marathon:644fa202a8df19fd5c36b8c4bc3777c33afd291e2874669defc1819d8e132620:marathon:Marathon" \
+              "Marathon2:cac0ce7bd37b91f5da15ad63be1b6131e1f75496906e8fd6af20f0bb1ab86cf9:marathon2:Marathon 2" \
+              "MarathonInfinity:8b6ba6b2ca9714a2235b3063281f176ccd27a2e23b96c014f5c700d9a222a018:marathon-infinity:Marathon Infinity"; do
+        _z=${_g%%:*}; _x=${_g#*:}; _sum=${_x%%:*}; _x=${_x#*:}; _cmd=${_x%%:*}; _dir=${_x#*:}
+        _f=$(gh_asset Aleph-One-Marathon/alephone "release-$ALEPHONE_VER" "$_z-$ALEPHONE_VER-Data.zip" "$_sum")
+        unzip -q "$_f" -d "$DEST$_data"
+        launcher "$_cmd" <<EOF
+exec "$PREFIX/bin/alephone" "$_data/$_dir" "\$@"
+EOF
+        desktop_entry "$_cmd" "$_dir" "$_cmd" alephone "Game;ActionGame;" "Bungie's $_dir, on the Aleph One engine"
+    done
+}
+
+
+# Descent 1 and 2, on DXX-Rebirth, which builds both engines from one tree.
+# Its last tag is 2018 and the work has gone on since, so this pins a commit.
+# The data are the shareware Descent and the Descent 2 demo, both freely
+# distributable, as dxx-rebirth.com served them until 2022 -- that site now
+# holds only its final release, so the copies come from the Wayback Machine,
+# the same place Pi-Apps takes them from, pinned here by checksum. The full
+# games' data dropped into ~/.d1x-rebirth or ~/.d2x-rebirth play instead.
+DXX_COMMIT=e0165250820d0e11f4cb29890eb68017ea4bbb64
+DXX_DATA=https://web.archive.org/web/20221208193117if_/https://www.dxx-rebirth.com/download/dxx/content
+dxx_bdeps() {
+    echo build-base scons pkgconf sdl2-dev sdl2_mixer-dev sdl2_image-dev physfs-dev libpng-dev glu-dev mesa-dev
+}
+dxx_rdeps() { echo; }
+dxx_build() {
+    _s=$(gh_source dxx-rebirth/dxx-rebirth "$DXX_COMMIT" \
+         4e43938f718548dadbded1c0ea3687ef0ba3cef65bf894becb93c04bdd53edcb) || return 1
+    # builddir stays the default, inside the tree: scons's default target is
+    # '.', and a build directory elsewhere is outside it and never built.
+    (cd "$_s" && nice -n 10 scons -j "$JOBS" sdl2=1 opengl=1 d1x=1 d2x=1)
+    _d="$PREFIX/lib/copal-store/dxx-rebirth"
+    mkdir -p "$DEST$_d/d1" "$DEST$_d/d2"
+    cp "$(find "$_s/build" -type f -name d1x-rebirth | head -n1)" \
+       "$(find "$_s/build" -type f -name d2x-rebirth | head -n1)" "$DEST$_d/"
+    for _z in "descent-pc-shareware.zip:744b7f29043e977e7702173b150db7a6a3c253cacc9f608a0b3709acb46b51f1:d1" \
+              "descent2-pc-demo.zip:b842cf983d0f393cede5cb6703186ec6eedac9bc5732dc577966f6f3122b9130:d2"; do
+        _n=${_z%%:*}; _x=${_z#*:}; _sum=${_x%%:*}; _to=${_x#*:}
+        _f="$CACHE/dxx-$_n"
+        [ -s "$_f" ] || curl -fL --retry 3 -o "$_f" "$DXX_DATA/$_n"
+        verify_sum "$_f" "$_sum"
+        unzip -q -o "$_f" -d "$DEST$_d/$_to"
+    done
+    for _g in "d1x-rebirth:d1:Descent (shareware)" "d2x-rebirth:d2:Descent 2 (demo)"; do
+        _b=${_g%%:*}; _x=${_g#*:}; _h=${_x%%:*}; _name=${_x#*:}
+        launcher "$_b" <<EOF
+exec "$_d/$_b" -hogdir "$_d/$_h" "\$@"
+EOF
+        desktop_entry "$_b" "$_name" "$_b" applications-games "Game;ActionGame;" "Six-degrees-of-freedom shooter in the mines"
+    done
+}
+
+
+# THE PYTHON PROGRAMS keep their modules in a directory of their own,
+# $PREFIX/lib/copal-store/NAME, and their launcher puts it on PYTHONPATH.
+# Not site-packages: Alpine's Python does not read /usr/local's, and a path
+# with python3.14 in it breaks the day Alpine moves to 3.15. Every library
+# they import comes from Alpine's py3-* packages -- nothing from PyPI.
+
+# PyChess runs from its source tree, the way its README runs it.
+PYCHESS_VER=1.2.0
+pychess_bdeps() { echo; }
+pychess_rdeps() {
+    echo python3 py3-gobject3 py3-cairo py3-psutil py3-pexpect py3-sqlalchemy py3-websockets \
+         gtk+3.0 gtksourceview4 gstreamer gst-plugins-base gst-plugins-good librsvg stockfish@testing
+}
+pychess_build() {
+    _s=$(gh_source pychess/pychess "$PYCHESS_VER" \
+         da989acb45ebe77fa013ab68a5e6d4202c8d831af68e3533c8b96a9b5e387548) || return 1
+    _d="$PREFIX/lib/copal-store/pychess"
+    mkdir -p "$DEST$_d" "$DEST$PREFIX/share/icons/hicolor/scalable/apps"
+    # The whole tree: it opens ARTISTS, AUTHORS and the rest by path at start.
+    cp -r "$_s/." "$DEST$_d/"
+    rm -rf "$DEST$_d/testing" "$DEST$_d/debian" "$DEST$_d/macos" "$DEST$_d/devsvg"
+    cp "$_s/pychess.svg" "$DEST$PREFIX/share/icons/hicolor/scalable/apps/"
+    launcher pychess <<EOF
+exec python3 "$_d/pychess" "\$@"
+EOF
+    desktop_entry pychess PyChess pychess pychess "Game;BoardGame;" "Play chess against the computer or online"
+}
+# Two dialogs on the first start, both spared: the tip of the day, and one
+# asking leave to download scoutfish and chess_db -- prebuilt glibc programs,
+# which would not run here if they were fetched.
+pychess_seed() {
+    seed_homes .config/pychess/config <<'EOF'
+[General]
+show_tip_at_startup = False
+download_scoutfish = False
+download_chess_db = False
+dont_show_externals_at_startup = True
+EOF
+}
+
+# BleachBit's own Makefile installs it, prefix and DESTDIR both honoured.
+BLEACHBIT_VER=6.0.4
+bleachbit_bdeps() { echo make; }
+bleachbit_rdeps() { echo python3 py3-gobject3 gtk+3.0; }
+bleachbit_build() {
+    _s=$(gh_source bleachbit/bleachbit "v$BLEACHBIT_VER" \
+         5af7cec3ed77b38e2e9ef91201e69d75100664116669b04a053dfd788d996f12) || return 1
+    make -C "$_s" install prefix="$PREFIX" DESTDIR="$DEST"
+    # po/Makefile writes the translations to /usr/share/locale whatever the
+    # prefix; they belong beside everything else.
+    mkdir -p "$DEST$PREFIX/share"
+    mv "$DEST/usr/share/locale" "$DEST$PREFIX/share/locale"
+    rmdir -p "$DEST/usr/share" 2>/dev/null || true
+    # The script looks for its package only in /usr/share; it is kept
+    # beside the rest and started with the prefix on the path.
+    mkdir -p "$DEST$PREFIX/lib/copal-store/bleachbit"
+    mv "$DEST$PREFIX/bin/bleachbit" "$DEST$PREFIX/lib/copal-store/bleachbit/bleachbit"
+    launcher bleachbit <<EOF
+export PYTHONPATH="$PREFIX/share\${PYTHONPATH:+:\$PYTHONPATH}"
+exec python3 "$PREFIX/lib/copal-store/bleachbit/bleachbit" "\$@"
+EOF
+}
+# The first start writes its settings file and reports a write error while
+# doing it (seen on the bench, with a fresh home); a settings file already
+# there, marked as past the first start, and the window opens clean.
+bleachbit_seed() {
+    seed_homes .config/bleachbit/bleachbit.ini <<'EOF'
+[bleachbit]
+first_start = False
+EOF
+}
+
+# Persepolis: meson, with its Python package steered into a private directory
+# by meson's own python.purelibdir option. It drives aria2 for the transfers
+# and yt-dlp for video pages.
+PERSEPOLIS_VER=5.2.0
+persepolis_bdeps() { echo meson samurai; }
+persepolis_rdeps() {
+    echo python3 py3-pyside6 py3-psutil py3-requests py3-setproctitle aria2 yt-dlp ffmpeg libnotify
+}
+persepolis_build() {
+    _s=$(gh_source persepolisdm/persepolis "$PERSEPOLIS_VER" \
+         8d002e369955fd77e5353714185ce3edb98463b7117a26583b72f4db4e51b2c8) || return 1
+    _py="lib/copal-store/persepolis/python"
+    # Its install script checks for the dependencies by importing them, and
+    # fails the install when one is missing -- which on a staging build is
+    # the wrong moment to ask. apk has already been told what to install.
+    sed -i "/add_install_script('check_dependencies.py')/d" "$_s/meson.build"
+    meson setup "$W/build" "$_s" --prefix="$PREFIX" -Dpython.purelibdir="$_py" -Dpython.platlibdir="$_py"
+    meson compile -C "$W/build"
+    DESTDIR="$DEST" meson install -C "$W/build"
+    mv "$DEST$PREFIX/bin/persepolis" "$DEST$PREFIX/lib/copal-store/persepolis/persepolis"
+    launcher persepolis <<EOF
+export PYTHONPATH="$PREFIX/$_py\${PYTHONPATH:+:\$PYTHONPATH}"
+exec python3 "$PREFIX/lib/copal-store/persepolis/persepolis" "\$@"
+EOF
+}
+
+# FF Multi Converter: a PyQt5 front end to ffmpeg, ImageMagick, unoconv and
+# pandoc, whichever are present. pip installs it from the source tree into a
+# private target directory -- --no-deps, so pip fetches nothing.
+FFCONVERTER_VER=2.4.6
+ffconverter_bdeps() { echo py3-pip py3-setuptools py3-wheel; }
+ffconverter_rdeps() { echo python3 py3-qt5 ffmpeg imagemagick; }
+ffconverter_build() {
+    _s=$(gh_source l-koehler/FF-converter "v$FFCONVERTER_VER" \
+         41c8b93151464ef12aa35ec5f77fed52c2998ed05f0cd564aab6ca344ea73388) || return 1
+    _t="$PREFIX/lib/copal-store/ffconverter"
+    # It looks for presets.xml under /usr/local/share and /usr/share; the
+    # prefix it was installed to goes first.
+    sed -i "s|presets_lookup_dirs = \\[|presets_lookup_dirs = [\"$PREFIX/share/\", |" "$_s/ffconverter/config.py"
+    pip3 install --no-deps --no-build-isolation --no-compile --break-system-packages \
+         --target "$DEST$_t" "$_s"
+    rm -rf "$DEST$_t/bin" "$DEST$_t/share"
+    mkdir -p "$DEST$PREFIX/share/ffconverter" "$DEST$PREFIX/share/icons/hicolor/128x128/apps"
+    cp "$_s/share/presets.xml" "$DEST$PREFIX/share/ffconverter/"
+    cp "$_s/share/ffconverter.png" "$DEST$PREFIX/share/icons/hicolor/128x128/apps/"
+    launcher ffconverter <<EOF
+export PYTHONPATH="$_t\${PYTHONPATH:+:\$PYTHONPATH}"
+exec python3 -c 'import sys; from ffconverter.ffconverter import main; sys.exit(main())' "\$@"
+EOF
+    desktop_entry ffconverter "FF Multi Converter" ffconverter ffconverter "Utility;AudioVideo;" \
+        "Convert audio, video, image and document files"
+}
+
+# System Monitoring Center: GTK4 and libadwaita, meson. It keeps its modules
+# in share/, not in a Python library directory, so needs no launcher.
+SMC_VER=3.4.1
+smc_bdeps() { echo meson samurai gettext; }
+smc_rdeps() { echo python3 python3-tkinter py3-gobject3 py3-cairo gtk4.0 libadwaita dmidecode util-linux-misc; }
+smc_build() {
+    _s=$(gh_source hakandundar34coding/system-monitoring-center "v$SMC_VER" \
+         abe601aaa8f6a3beea2874292931d8b0bf43ecb17a75f605feb8b4b08b4708e5) || return 1
+    # Its modules go to share/system-monitoring-center, and the script meson
+    # writes puts that directory on sys.path itself.
+    meson setup "$W/build" "$_s" --prefix="$PREFIX"
+    meson compile -C "$W/build"
+    DESTDIR="$DEST" meson install -C "$W/build"
+}
+
+# Friday Night Funkin' Rewritten, a LOVE game: its source tree, zipped, is the
+# game file LOVE runs. The release's images are already in the tree.
+FUNKIN_VER=1.1.0-beta.2-1
+funkin_bdeps() { echo zip; }
+funkin_rdeps() { echo love; }
+funkin_build() {
+    _s=$(gh_source HTV04/funkin-rewritten "v$FUNKIN_VER" \
+         5563f4096234f3b2b108bbfcf69f5fdc4fa5b77b4dbc680eb86a6876d837d8fa) || return 1
+    _d="$PREFIX/lib/copal-store/funkin"
+    mkdir -p "$DEST$_d" "$DEST$PREFIX/share/icons/hicolor/256x256/apps"
+    (cd "$_s/src/love" && zip -q -r -9 "$DEST$_d/funkin-rewritten.love" .)
+    cp "$_s/src/love/icons/default.png" "$DEST$PREFIX/share/icons/hicolor/256x256/apps/funkin-rewritten.png"
+    launcher funkin-rewritten <<EOF
+exec love "$_d/funkin-rewritten.love" "\$@"
+EOF
+    desktop_entry funkin-rewritten "Friday Night Funkin' Rewritten" funkin-rewritten funkin-rewritten \
+        "Game;MusicGame;" "Rhythm battles, arrow keys to the beat"
+}
+
+
+# LibreCAD: 2D CAD, CMake over Qt 5, with muParser in its own tree. Its crash
+# handler includes glibc's <execinfo.h>; the patch gives musl empty stubs.
+LIBRECAD_VER=2.2.1.5
+librecad_bdeps() {
+    echo build-base cmake samurai qt5-qtbase-dev qt5-qtsvg-dev qt5-qttools-dev boost-dev freetype-dev
+}
+librecad_rdeps() { echo qt5-qtsvg; }
+librecad_build() {
+    _s=$(gh_source LibreCAD/LibreCAD "v$LIBRECAD_VER" \
+         703f6e6701b7ee47769b6def271fa025ef32e31ee193e2ba69a2c47fff8da459) || return 1
+    apply_patch "$_s" patch_librecad_musl
+    cmake_stage "$_s"
+}
+# Its first start asks for a unit and a language before drawing anything.
+# Millimetres, and the language the desktop is in.
+librecad_seed() {
+    seed_homes .config/LibreCAD/LibreCAD.conf <<'EOF'
+[Startup]
+FirstLoad=0
+
+[Defaults]
+Unit=Millimeter
+EOF
+}
+
+# VeraCrypt: encrypted volumes and whole-disk encryption, TrueCrypt's heir.
+# Its own Makefile, wxWidgets for the window, FUSE 3 to present a mounted
+# volume. Its Linux 'install' stages into /usr, so the three files that
+# matter are placed here instead. Mounting needs root, which it asks for
+# through sudo -- on a Copal machine, doas-sudo-shim answers.
+VERACRYPT_VER=1.26.29
+veracrypt_bdeps() {
+    echo build-base pkgconf wxwidgets-dev fuse3-dev pcsc-lite-dev
+}
+veracrypt_rdeps() { echo fuse3 doas-sudo-shim; }
+veracrypt_build() {
+    _s=$(gh_source veracrypt/VeraCrypt "VeraCrypt_$VERACRYPT_VER" \
+         5141f046e90c8d7660d1eef7d492c4a0ee15283500f092ebb2b72d5260779229) || return 1
+    # The Makefile derives SOURCE_DATE_EPOCH from git, or else from the
+    # release date in Common/Tcdefs.h with an awk that busybox's awk cannot
+    # run; given explicitly, that date is 8 June 2026.
+    nice -n 10 make -C "$_s/src" -j "$JOBS" WITHFUSE3=1 SOURCE_DATE_EPOCH=1780876800
+    mkdir -p "$DEST$PREFIX/bin" "$DEST$PREFIX/share/applications" "$DEST$PREFIX/share/pixmaps"
+    cp "$_s/src/Main/veracrypt" "$DEST$PREFIX/bin/"
+    cp "$_s/src/Setup/Linux/veracrypt.desktop" "$DEST$PREFIX/share/applications/"
+    cp "$_s/src/Resources/Icons/VeraCrypt-256x256.xpm" "$DEST$PREFIX/share/pixmaps/veracrypt.xpm"
+}
+
+# Oh My Posh: prompt themes for any shell, Go. Held at 30.9.0, the last
+# release whose go.mod accepts Alpine 3.24's Go 1.26; 31.0 wants 1.27, and
+# the alternative -- GOTOOLCHAIN fetching a newer Go -- downloads a compiler
+# from outside GitHub and outside apk. The modules come from the Go
+# proxy at build time into a cache inside the build directory, which goes
+# when the build does. The themes are installed beside it:
+#   eval "$(oh-my-posh init bash --config /usr/local/share/oh-my-posh/themes/jandedobbeleer.omp.json)"
+OHMYPOSH_VER=30.9.0
+ohmyposh_bdeps() { echo go; }
+ohmyposh_rdeps() { echo; }
+ohmyposh_build() {
+    _s=$(gh_source JanDeDobbeleer/oh-my-posh "v$OHMYPOSH_VER" \
+         1f883716db56729bc2c97703673758892917502a81e844e2f6305067ebf968ce) || return 1
+    mkdir -p "$DEST$PREFIX/bin" "$DEST$PREFIX/share/oh-my-posh"
+    (cd "$_s/src" && GOPATH="$W/go" GOCACHE="$W/gocache" GOFLAGS=-modcacherw CGO_ENABLED=0 \
+        go build -trimpath -o "$DEST$PREFIX/bin/oh-my-posh" \
+        -ldflags "-s -w -X github.com/jandedobbeleer/oh-my-posh/src/build.Version=$OHMYPOSH_VER")
+    cp -r "$_s/themes" "$DEST$PREFIX/share/oh-my-posh/"
+}
+
+patch_librecad_musl() {
+    cat <<'PATCH'
+--- a/librecad/src/lib/debug/lc_crashhandler.cpp
++++ b/librecad/src/lib/debug/lc_crashhandler.cpp
+@@ -49,7 +49,13 @@
+ #  include <sys/stat.h>
+ #else
+ #  include <csignal>
+-#  include <execinfo.h>
++#  if __has_include(<execinfo.h>)
++#    include <execinfo.h>
++#  else
++     // copal: musl has no execinfo.h; the crash log goes without a stack trace.
++     static inline int backtrace(void**, int) { return 0; }
++     static inline void backtrace_symbols_fd(void* const*, int, int) {}
++#  endif
+ #  include <fcntl.h>
+ #  include <sys/types.h>
+ #  include <unistd.h>
+PATCH
+}
+
+
+# DDNet: DDraceNetwork, the cooperative Teeworlds that outlived Teeworlds.
+# CMake over C++ with one Rust library inside, which cargo builds -- its
+# crates come from crates.io at build time, into a CARGO_HOME inside the
+# build directory that goes when the build does. The video recorder (FFmpeg)
+# and the self-updater are left out: the store is the updater.
+DDNET_VER=20.0
+ddnet_bdeps() {
+    echo build-base cmake samurai python3 rust cargo sdl2-dev sqlite-dev curl-dev freetype-dev \
+         libogg-dev opus-dev opusfile-dev libpng-dev wavpack-dev glslang glslang-dev \
+         vulkan-headers vulkan-loader-dev openssl-dev zlib-dev
+}
+ddnet_rdeps() { echo; }
+ddnet_build() {
+    _s=$(gh_source ddnet/ddnet "$DDNET_VER" \
+         c4f6cca7b04e9d370fc2f187b873347b546d6e0c749c01fa7e5cd7d278c88851) || return 1
+    # DATA_DIR is DDNet's own compile-time hook for where its data is; without
+    # it the game looks in /usr/local/share and a few fixed places, and any
+    # other prefix starts with no data at all (seen on the bench: exit 139).
+    # The escaped quotes survive the sh -c that ninja runs each command in.
+    CARGO_HOME="$W/cargo" CXXFLAGS="${CXXFLAGS:-} -DDATA_DIR=\\\"$PREFIX/share/ddnet/data\\\"" \
+        cmake_stage "$_s" -DVIDEORECORDER=OFF -DAUTOUPDATE=OFF \
+        -DINFORM_UPDATE=OFF -DPREFER_BUNDLED_LIBS=OFF -DTOOLS=OFF -DUPNP=OFF
+}
+
+
+# Pixelorama: a pixel-art editor written in Godot, run as a Godot project by
+# Alpine's Godot. Held at 1.2, the last release made for Godot 4.6, which is
+# what edge/testing carries; 1.2.1 on want 4.7. A Godot project imports its
+# assets into a cache inside itself on first run, and /usr/local is not
+# writable by the person running it, so the import is done here, at build
+# time, and the project is installed already imported.
+PIXELORAMA_VER=1.2
+pixelorama_bdeps() { echo; }
+pixelorama_rdeps() { echo godot@testing; }
+pixelorama_build() {
+    _s=$(gh_source Orama-Interactive/Pixelorama "v$PIXELORAMA_VER" \
+         45accd447b0561003bf484725326df48223bdab9e695a1a510f9ac5ff82afd06) || return 1
+    HOME="$W/home" XDG_DATA_HOME="$W/home/data" XDG_CONFIG_HOME="$W/home/config" \
+        godot --headless --path "$_s" --import
+    [ -d "$_s/.godot/imported" ] || { echo "the Godot import made no cache"; return 1; }
+    _d="$PREFIX/lib/copal-store/pixelorama"
+    mkdir -p "$DEST$_d" "$DEST$PREFIX/share/icons/hicolor/256x256/apps"
+    cp -r "$_s/." "$DEST$_d/"
+    rm -rf "$DEST$_d/.github" "$DEST$_d/Misc"
+    cp "$_s/assets/graphics/icons/icon.png" "$DEST$PREFIX/share/icons/hicolor/256x256/apps/pixelorama.png"
+    launcher pixelorama <<EOF
+exec godot --path "$_d" "\$@"
+EOF
+    desktop_entry pixelorama Pixelorama pixelorama pixelorama "Graphics;2DGraphics;RasterGraphics;" \
+        "Draw pixel art and animate sprites"
+}
+
+
+# Browsh: the web in a terminal, rendered by a real Firefox running headless
+# and drawn as text and half-block colour. The Go program embeds its Firefox
+# extension (go:embed browsh.xpi); the release publishes that extension and,
+# since 1.8.3, no Linux binary -- so the extension is fetched from the same
+# release and built in. It drives whichever Firefox is here; Copal's is ESR.
+BROWSH_VER=1.8.3
+browsh_bdeps() { echo go; }
+browsh_rdeps() { echo firefox-esr; }
+browsh_build() {
+    _s=$(gh_source browsh-org/browsh "v$BROWSH_VER" \
+         88462530dbfac4e17c8f8ba560802d21042d90236043e11461a1cfbf458380ca) || return 1
+    _x=$(gh_asset browsh-org/browsh "v$BROWSH_VER" "browsh-$BROWSH_VER.xpi" \
+         c0b72d7c61c30a0cb79cc1bf9dcf3cdaa3631ce029f1578e65c116243ed04e16) || return 1
+    cp "$_x" "$_s/interfacer/src/browsh/browsh.xpi"
+    mkdir -p "$DEST$PREFIX/lib/copal-store/browsh"
+    (cd "$_s/interfacer" && GOPATH="$W/go" GOCACHE="$W/gocache" GOFLAGS=-modcacherw CGO_ENABLED=0 \
+        go build -trimpath -ldflags "-s -w" -o "$DEST$PREFIX/lib/copal-store/browsh/browsh" ./cmd/browsh)
+    launcher browsh <<EOF
+_ff=\$(command -v firefox || command -v firefox-esr)
+exec "$PREFIX/lib/copal-store/browsh/browsh" --firefox.path "\$_ff" "\$@"
+EOF
+}
+
+patch_juce_musl() {
+    cat <<'PATCH'
+--- a/JuceLibraryCode/modules/juce_core/juce_core.cpp
++++ b/JuceLibraryCode/modules/juce_core/juce_core.cpp
+@@ -103,7 +103,13 @@
+  #include <sys/ioctl.h>
+ 
+  #if ! (JUCE_ANDROID || JUCE_WASM)
+-  #include <execinfo.h>
++  #if __has_include(<execinfo.h>)
++   #include <execinfo.h>
++  #else
++   // copal: musl has no execinfo.h; an empty stack trace instead.
++   static inline int backtrace (void**, int) { return 0; }
++   static inline char** backtrace_symbols (void* const*, int) { return nullptr; }
++  #endif
+  #endif
+ #endif
+ 
+--- a/JuceLibraryCode/modules/juce_core/native/juce_SystemStats_linux.cpp
++++ b/JuceLibraryCode/modules/juce_core/native/juce_SystemStats_linux.cpp
+@@ -198,7 +198,7 @@
+ 
+ String SystemStats::getUserLanguage()
+ {
+-   #if JUCE_BSD
++   #if JUCE_BSD || ! defined (__GLIBC__)  // copal: musl has no _NL_ADDRESS_* items
+     if (auto langEnv = getenv ("LANG"))
+         return String::fromUTF8 (langEnv).upToLastOccurrenceOf (".UTF-8", false, true);
+ 
+@@ -210,7 +210,7 @@
+ 
+ String SystemStats::getUserRegion()
+ {
+-   #if JUCE_BSD
++   #if JUCE_BSD || ! defined (__GLIBC__)  // copal: musl has no _NL_ADDRESS_* items
+     return {};
+    #else
+     return getLocaleValue (_NL_ADDRESS_COUNTRY_AB2);
+PATCH
+}
+
+patch_libopenshot_musl() {
+    cat <<'PATCH'
+--- a/src/CrashHandler.h
++++ b/src/CrashHandler.h
+@@ -20,8 +20,12 @@
+ 	#include <winsock2.h>
+ 	#include <windows.h>
+ 	#include <DbgHelp.h>
+-#else
++#elif __has_include(<execinfo.h>)
+ 	#include <execinfo.h>
++#else
++	// copal: musl has no execinfo.h; report no frames, which the handler already handles.
++	static inline int backtrace(void**, int) { return 0; }
++	static inline char** backtrace_symbols(void* const*, int) { return nullptr; }
+ #endif
+ #include <errno.h>
+ #include <cxxabi.h>
+--- a/src/AudioLocation.h
++++ b/src/AudioLocation.h
+@@ -13,6 +13,8 @@
+ #ifndef OPENSHOT_AUDIOLOCATION_H
+ #define OPENSHOT_AUDIOLOCATION_H
+ 
++#include <cstdint>  // copal: glibc brings this in transitively, musl does not
++
+ 
+ namespace openshot
+ {
+--- a/src/EffectBase.cpp
++++ b/src/EffectBase.cpp
+@@ -550,6 +550,9 @@
+ std::shared_ptr<QImage> EffectBase::TrackedObjectMask(std::shared_ptr<QImage> target_image, int64_t frame_number) const {
+ 	if (!target_image || target_image->isNull() || trackedObjects.empty())
+ 		return {};
++#ifndef USE_OPENCV
++	return {};  // copal: tracked boxes exist only in OpenCV builds
++#else
+ 
+ 	auto mask_image = std::make_shared<QImage>(
+ 		target_image->width(), target_image->height(), QImage::Format_RGBA8888_Premultiplied);
+@@ -595,6 +598,7 @@
+ 	if (!drew_any_box)
+ 		return {};
+ 	return mask_image;
++#endif
+ }
+ 
+ void EffectBase::BlendWithMask(std::shared_ptr<QImage> original_image, std::shared_ptr<QImage> effected_image,
+PATCH
+}
+
+# ------------------------------------------------------------ recipe driver ---
+RECIPES="openshot ccleste pacman astromenace amiberry alephone dxx pychess bleachbit persepolis ffconverter smc funkin librecad veracrypt ohmyposh ddnet pixelorama browsh"
+
+is_recipe() { case " $RECIPES " in *" $1 "*) return 0 ;; esac; return 1; }
+
+missing_apks() {  # <names...> -- the ones apk's database does not have
+    awk -v want="$*" '
+        BEGIN { n = split(want, w, " ") }
+        /^P:/ { have[substr($0, 3)] = 1 }
+        END { for (i = 1; i <= n; i++) { p = w[i]; sub(/@testing$/, "", p); if (!(p in have)) printf "%s ", w[i] } }' "$APKDB"
+}
+
+build_recipe() {  # <recipe>
+    _r="$1"
+    is_recipe "$_r" || die "no recipe called $_r"
+    JOBS="${COPAL_STORE_JOBS:-$(nproc 2>/dev/null || echo 1)}"
+    W="$WORK/$_r"; DEST="$W/stage"
+    mkdir -p "$STATE" "$LOGDIR" "$CACHE" || die "cannot create $STATE, $LOGDIR or $CACHE"
+    _log="$LOGDIR/$_r.log"
+    say "$_r: built from GitHub source"
+    note "log: $_log"
+
+    _b=$("${_r}_bdeps"); _rt=$("${_r}_rdeps")
+    if [ "${COPAL_STORE_NODEPS:-0}" = 1 ]; then
+        _m=$(missing_apks $_b $_rt)
+        [ -z "$_m" ] || note "not installed (expected to be provided some other way): $_m"
+    else
+        say "Build and run dependencies"
+        case " $_b $_rt " in *@testing*) enable_testing_tag ;; esac
+        # Runtime dependencies under a virtual package named for the recipe,
+        # so 'remove' can hand them back to apk to drop if nothing else wants
+        # them; build-only ones under another, deleted once the build is done.
+        # shellcheck disable=SC2086
+        [ -z "$_rt" ] || apk add -t "copal-store-$_r" $_rt || { warn "could not install what $_r needs to run"; return 1; }
+        # shellcheck disable=SC2086
+        [ -z "$_b" ] || apk add -t ".copal-store-build-$_r" $_b || { warn "could not install what $_r needs to build"; return 1; }
+    fi
+
+    rm -rf "$W"; mkdir -p "$DEST"
+    _t0=$(date +%s)
+    say "Compiling -- 'tail -f $_log' in another terminal to watch"
+    # IN A NEW SHELL, not a subshell. A recipe relies on set -e to stop at
+    # the first failed step, and a shell ignores set -e in everything to the
+    # left of || and inside an if -- subshells included, however deep, and
+    # build_recipe is itself called as 'build_recipe ... || _rc=1'. Seen on
+    # the bench: cmake failed, and the recipe carried on and installed a
+    # launcher for a binary that was never built. A fresh 'sh' starts with
+    # set -e in force.
+    W="$W" DEST="$DEST" JOBS="$JOBS" PREFIX="$PREFIX" CACHE="$CACHE" \
+        sh "$0" __build "$_r" > "$_log" 2>&1
+    if [ $? -ne 0 ]; then
+        warn "$_r did not build. The last lines of $_log:"
+        tail -n 20 "$_log" | sed 's/^/      /' >&2
+        note "the build tree is left in $W for a look; the system is unchanged"
+        drop_build_deps "$_r"
+        return 1
+    fi
+    note "built in $(( $(date +%s) - _t0 )) s"
+
+    # WHAT IT LINKS AGAINST, asked of the binaries rather than written down.
+    # Every NEEDED library of every ELF file staged, less the ones the recipe
+    # installs itself, becomes an apk 'so:' dependency of copal-store-NAME --
+    # abuild's own method. A hand-kept list misses things and goes stale:
+    # Boost's runtime package is boost1.84-filesystem, a new name every
+    # Alpine release, while so:libboost_filesystem.so.1.84.0 is whatever
+    # this machine's Boost actually is. NAME_rdeps is left for what no ELF
+    # header can say: Python modules, data, programs run by name.
+    _sos=$(needed_sonames "$DEST")
+    if [ "${COPAL_STORE_NODEPS:-0}" = 1 ]; then
+        _lost=$(for _so in $_sos; do
+                    for _dir in /lib /usr/lib $(printf '%s' "${LD_LIBRARY_PATH:-}" | tr ':' ' '); do
+                        [ -e "$_dir/$_so" ] && continue 2
+                    done; printf '%s ' "$_so"; done)
+        [ -z "$_lost" ] || warn "libraries it needs that this machine cannot find: $_lost"
+    elif [ -n "$_sos" ]; then
+        # shellcheck disable=SC2046,SC2086
+        apk add -q -t "copal-store-$_r" $_rt $(printf 'so:%s ' $_sos) \
+            || warn "could not record the libraries $_r needs; 'apk del' may take them from it"
+    fi
+
+    # Everything a recipe installs goes under $PREFIX; that is what makes the
+    # file list the whole truth, and 'remove' complete.
+    _out=$(cd "$DEST" && find . ! -type d | sed 's|^\.||' | grep -v "^$PREFIX/" | head -n 5)
+    if [ -n "$_out" ]; then
+        warn "$_r staged files outside $PREFIX -- a recipe bug, nothing installed:"
+        printf '%s\n' "$_out" | sed 's/^/      /' >&2
+        drop_build_deps "$_r"; return 1
+    fi
+
+    # Refuse to write over a file this recipe did not put there last time --
+    # the same caution flathub_shim takes with a binary apk owns.
+    _new="$W/files"; (cd "$DEST" && find . ! -type d | sed 's|^\.||' | sort) > "$_new"
+    _old="$STATE/$_r.files"; [ -f "$_old" ] || : > "$_old.none"
+    _clash=$(while IFS= read -r _f; do
+                 [ -e "$_f" ] || [ -L "$_f" ] || continue
+                 grep -qxF "$_f" "$_old" 2>/dev/null || printf '%s\n' "$_f"
+             done < "$_new")
+    rm -f "$_old.none"
+    if [ -n "$_clash" ] && [ "${COPAL_STORE_FORCE:-0}" != 1 ]; then
+        warn "$_r would overwrite files it does not own:"
+        printf '%s\n' "$_clash" | head -n 10 | sed 's/^/      /' >&2
+        note "nothing was installed. COPAL_STORE_FORCE=1 overrides this."
+        drop_build_deps "$_r"; return 1
+    fi
+
+    # An upgrade: the old build's files go first, all of them -- they are
+    # this recipe's own by the check above, and a file installed read-only
+    # (meson installs scripts 0555) cannot be copied over by a non-root
+    # bench, which is how this was found.
+    if [ -f "$_old" ]; then
+        while IFS= read -r _f; do rm -f "$_f"; done < "$_old"
+    fi
+    cp -a "$DEST$PREFIX/." "$PREFIX/" || { warn "copying $_r into place failed"; return 1; }
+    cp "$_new" "$_old"
+    (cd "$DEST" && find . -mindepth 1 -type d | sed 's|^\.||' | sort -r) > "$STATE/$_r.dirs"
+
+    if type "${_r}_seed" >/dev/null 2>&1; then "${_r}_seed"; fi
+    have update-desktop-database && update-desktop-database -q "$PREFIX/share/applications" 2>/dev/null
+    rm -rf "$W"
+    drop_build_deps "$_r"
+    note "installed: $(wc -l < "$_old") files under $PREFIX"
+}
+
+needed_sonames() {  # <staging dir> -- NEEDED libraries not provided by the stage itself
+    find "$1" -type f | while IFS= read -r _f; do
+        readelf -d "$_f" 2>/dev/null | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p'
+    done | sort -u > "$W/needed"
+    find "$1" -name '*.so*' | sed 's|.*/||' | sort -u > "$W/own"
+    comm -23 "$W/needed" "$W/own" | tr '\n' ' '
+}
+
+drop_build_deps() {
+    [ "${COPAL_STORE_NODEPS:-0}" = 1 ] && return 0
+    [ "${COPAL_STORE_KEEP_BUILD_DEPS:-0}" = 1 ] && return 0
+    apk del -q ".copal-store-build-$1" >/dev/null 2>&1 || true
+}
+
+remove_recipe() {  # <recipe>
+    _f="$STATE/$1.files"
+    [ -f "$_f" ] || { warn "$1 was not installed by copal-store"; return 1; }
+    while IFS= read -r _p; do rm -f "$_p"; done < "$_f"
+    [ -f "$STATE/$1.dirs" ] && while IFS= read -r _d; do rmdir "$_d" 2>/dev/null; done < "$STATE/$1.dirs"
+    rm -f "$_f" "$STATE/$1.dirs"
+    [ "${COPAL_STORE_NODEPS:-0}" = 1 ] || apk del -q "copal-store-$1" >/dev/null 2>&1 || true
+    note "removed $1"
+}
+
+# ------------------------------------------------------------ verbs ---
+install_ids() {
+    _rc=0
+    for _id in "$@"; do
+        _row=$(row_for "$_id"); [ -n "$_row" ] || { warn "nothing called '$_id'"; _rc=1; continue; }
+        _inst=$(printf '%s' "$_row" | cut -d'|' -f4)
+        _label=$(printf '%s' "$_row" | cut -d'|' -f3)
+        say "Installing $_label"
+        _apks=""; _flat=""
+        for _p in $_inst; do
+            case "$_p" in
+                *@source)  build_recipe "${_p%@source}" || _rc=1 ;;
+                *@flathub) _flat="$_flat $_p" ;;
+                *)         _apks="$_apks $_p" ;;
+            esac
+        done
+        # shellcheck disable=SC2086
+        [ -z "$_apks" ] || apk_install $_apks || _rc=1
+        # Flathub rows belong to the catalogue, and copal-install knows them.
+        # shellcheck disable=SC2086
+        [ -z "$_flat" ] || { have copal-install && copal-install $_flat; } || _rc=1
+    done
+    refresh_menu
+    return $_rc
+}
+
+remove_ids() {
+    _rc=0
+    for _id in "$@"; do
+        _row=$(row_for "$_id"); [ -n "$_row" ] || { warn "nothing called '$_id'"; _rc=1; continue; }
+        _inst=$(printf '%s' "$_row" | cut -d'|' -f4)
+        _apks=""
+        for _p in $_inst; do
+            case "$_p" in
+                *@source)  remove_recipe "${_p%@source}" || _rc=1 ;;
+                *@flathub) have flatpak && flatpak uninstall -y "${_p%@flathub}" || _rc=1 ;;
+                *)         _apks="$_apks ${_p%@testing}" ;;
+            esac
+        done
+        # shellcheck disable=SC2086
+        [ -z "$_apks" ] || apk del $_apks || _rc=1
+    done
+    refresh_menu
+    return $_rc
+}
+
+# The menu opens from a cached list; rebuild it as the person who asked.
+refresh_menu() {
+    if [ -n "${DOAS_USER:-}" ] && have copal-menu; then
+        su "$DOAS_USER" -s /bin/sh -c 'copal-menu --rebuild-all' >/dev/null 2>&1 &
+    fi
+    return 0
+}
+
+info_id() {
+    _row=$(status_rows | awk -F'|' -v q="$1" 'tolower($2) == tolower(q)')
+    [ -n "$_row" ] || { _r=$(row_for "$1"); [ -n "$_r" ] && _row=$(status_rows | awk -F'|' -v q="${_r%%|*}" '$2 == q'); }
+    [ -n "$_row" ] || die "nothing called '$1'"
+    printf '%s' "$_row" | awk -F'|' '{
+        printf "%s\n\n", $4
+        if ($8 != "") printf "%s\n\n", $8
+        printf "  section    %s\n  status     %s\n  command    %s\n", $3, $1, $6
+        if ($9 != "") printf "  source     %s\n", $9
+        printf "  listed in  the %s\n", ($10 == "store" ? "store" : "catalogue (stage 12)")
+    }'
+    printf '  installs   '; how_installed "$(printf '%s' "$_row" | cut -d'|' -f5)" | sed '2,$s/^/             /'
+}
+
+list_rows() {  # [section]
+    status_rows | awk -F'|' -v s="${1:-}" '
+        s == "" || tolower($3) == tolower(s) { printf "%-9s  %-12s  %-22s  %s\n", $1, $3, $2, $4 }'
+}
+
+sections() {
+    status_rows | awk -F'|' '{ n[$3]++; if ($1 == "installed") i[$3]++ }
+        END { for (s in n) printf "%s|%d|%d\n", s, n[s], i[s] + 0 }' | sort
+}
+
+# ------------------------------------------------------------ the window ---
+#
+# Pi-Apps' shape, which is the right one: sections first, then the programs
+# in one, then a page about one program with its buttons. Every install and
+# removal runs in a terminal window, so the apk output or the compiler's is
+# there to read, and the list is redrawn afterwards with the new status.
+in_terminal() {  # <copal-store verb and ids>
+    _c="copal-store $*; printf '\\nPress Enter to close.'; read _"
+    [ "$(id -u)" = 0 ] || _c="doas $_c"
+    $TERM_EMU -e sh -c "$_c"
+}
+
+run_detached() {  # <shell command>
+    ( setsid sh -c "$1" >/dev/null 2>&1 & )
+}
+
+gui_program() {  # <id>
+    while :; do
+        _row=$(status_rows | awk -F'|' -v q="$1" '$2 == q')
+        [ -n "$_row" ] || return 0
+        _st=$(printf '%s' "$_row" | cut -d'|' -f1)
+        _label=$(printf '%s' "$_row" | cut -d'|' -f4)
+        _bin=$(printf '%s' "$_row" | cut -d'|' -f6)
+        _mode=$(printf '%s' "$_row" | cut -d'|' -f7)
+        _home=$(printf '%s' "$_row" | cut -d'|' -f9)
+        _text=$(info_id "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+        if [ "$_st" = installed ]; then
+            set -- "$1" --button="Back:1" --button="Remove:4" --button="Open:5"
+        else
+            set -- "$1" --button="Back:1" --button="Install:3"
+        fi
+        [ -n "$_home" ] && set -- "$@" --button="Website:6"
+        _id="$1"; shift
+        printf '%s\n' "$_text" | yad --text-info --wrap --title="$_label -- Copal Store" \
+            --width=640 --height=420 --center "$@" 2>/dev/null
+        _rc=$?; set -- "$_id"
+        case "$_rc" in
+            3) in_terminal install "$_id" ;;
+            4) in_terminal remove "$_id" ;;
+            5) _c=$(cmd_for "$_bin" "$_mode") && run_detached "$_c"; return 0 ;;
+            6) run_detached "xdg-open '$_home'" ;;
+            *) return 0 ;;
+        esac
+    done
+}
+
+gui_section() {  # <section>
+    while :; do
+        _pick=$(status_rows | awk -F'|' -v s="$1" -v OFS='\n' '
+                    $3 == s { d = ($8 != "" ? $8 : "(from the catalogue)"); if (length(d) > 90) d = substr(d, 1, 87) "..."
+                              print $2, ($1 == "installed" ? "installed" : ""), $4, d }' \
+                | yad --list --title="$1 -- Copal Store" --width=900 --height=560 --center \
+                      --text="Double-click a program to read about it, install it, or open it." \
+                      --column="id:HD" --column="Status" --column="Program" --column="What it is" \
+                      --search-column=3 --expand-column=4 --print-column=1 \
+                      --button="Back:1" --button="Details:0" 2>/dev/null) || return 0
+        _pick=${_pick%%|*}
+        [ -n "$_pick" ] && gui_program "$_pick"
+    done
+}
+
+gui() {
+    while :; do
+        _pick=$(sections | awk -F'|' -v OFS='\n' '{ print $1, $2, ($3 > 0 ? $3 : "") }' \
+                | yad --list --title="Copal Store" --width=520 --height=600 --center \
+                      --text="<b>Copal Store</b>\nPrograms ported from Pi-Apps and the Copal catalogue, by what they do.\nMost come from Alpine; the rest are compiled here from their GitHub source." \
+                      --column="Section" --column="Programs:NUM" --column="Installed:NUM" \
+                      --print-column=1 --button="Close:1" --button="Open:0" 2>/dev/null) || exit 0
+        _pick=${_pick%%|*}
+        [ -n "$_pick" ] && gui_section "$_pick"
+    done
+}
+
+# The same three levels under dialog, in a terminal or on the console.
+tui() {
+    _t="${TMPDIR:-/tmp}/copal-store.$$"
+    trap 'rm -f "$_t"' EXIT
+    while :; do
+        sections > "$_t"; set --
+        while IFS='|' read -r _s _n _i; do set -- "$@" "$_s" "$_n programs, $_i installed"; done < "$_t"
+        _sec=$(dialog --clear --title "Copal Store" --menu "Pick a section." 22 64 16 "$@" 3>&1 1>&2 2>&3) || { clear; exit 0; }
+        while :; do
+            status_rows | awk -F'|' -v s="$_sec" '$3 == s' > "$_t"; set --
+            while IFS='|' read -r _st _id _s _l _rest; do
+                set -- "$@" "$_id" "$( [ "$_st" = installed ] && printf '* ' || printf '  ')$_l"
+            done < "$_t"
+            _id=$(dialog --clear --title "$_sec" --menu "* = installed" 22 76 16 "$@" 3>&1 1>&2 2>&3) || break
+            _act=$(dialog --clear --title "$_id" --menu "$(info_id "$_id" | head -n 3 | tr '\n' ' ')" 16 76 4 \
+                     install "Install it" remove "Remove it" back "Back" 3>&1 1>&2 2>&3) || continue
+            clear
+            case "$_act" in
+                install) if [ "$(id -u)" = 0 ]; then install_ids "$_id"; else doas "$0" install "$_id"; fi ;;
+                remove)  if [ "$(id -u)" = 0 ]; then remove_ids "$_id"; else doas "$0" remove "$_id"; fi ;;
+                *) continue ;;
+            esac
+            printf '\nPress Enter.'; read -r _
+        done
+    done
+}
+
+# ------------------------------------------------------------ self-test ---
+#
+# What 'make lint' asks of the table, offline. Each line printed is one
+# check; a failure prints what failed and returns non-zero.
+#   - every row has the eight fields, a one-word section, a mode, a gate
+#   - ids are unique within the table
+#   - every recipe@source names a recipe here with its three functions,
+#     and every recipe is installed by some row
+#   - no row repeats a program the catalogue already lists (COPAL_CATFILE,
+#     which lint extracts from copal-prep.sh)
+#   - no recipe carries a checksum left as a placeholder
+self_test() {
+    _rc=0
+    store_table | awk -F'|' '
+        NF != 8                              { print "  bad row, " NF " fields: " $0; bad = 1; next }
+        $1 !~ /^[A-Z][a-z]+$/                { print "  bad section: " $1; bad = 1 }
+        $5 !~ /^[xth-]$/                     { print "  bad mode for " $2 ": " $5; bad = 1 }
+        $6 !~ /^(\*|64|!(v6|v7|x32|x64|a64))(,(64|!(v6|v7|x32|x64|a64)))*$/ { print "  bad gate for " $2 ": " $6; bad = 1 }
+        END { exit bad }' || _rc=1
+    [ $_rc = 0 ] && printf 'ok      copal-store table: %s rows, fields, sections, modes, gates\n' "$(store_table | grep -c .)"
+
+    _dup=$(store_table | awk -F'|' '{ id = $4; if (id == "-") { split($3, p, " "); id = p[1]; sub(/@.*/, "", id) } print id }' | sort | uniq -d)
+    if [ -n "$_dup" ]; then echo "  ids used twice: $_dup"; _rc=1
+    else echo "ok      copal-store ids are unique"; fi
+
+    _used=$(store_table | tr '|' '\n' | tr ' ' '\n' | sed -n 's/@source$//p' | sort -u)
+    _r_ok=1
+    for _r in $_used; do
+        is_recipe "$_r" || { echo "  row asks for recipe '$_r', which is not in RECIPES"; _r_ok=0; continue; }
+        for _f in bdeps rdeps build; do
+            type "${_r}_$_f" >/dev/null 2>&1 || { echo "  recipe $_r has no ${_r}_$_f"; _r_ok=0; }
+        done
+    done
+    for _r in $RECIPES; do
+        printf '%s\n' "$_used" | grep -qx "$_r" || { echo "  recipe $_r is installed by no row"; _r_ok=0; }
+    done
+    if [ $_r_ok = 1 ]; then printf 'ok      copal-store recipes: %s, each with a row and its functions\n' "$(echo $RECIPES | wc -w)"
+    else _rc=1; fi
+
+    if grep -qE '0{64}' "$0"; then echo "  a placeholder checksum is still in $0"; _rc=1
+    else echo "ok      copal-store checksums: none left as placeholders"; fi
+
+    if [ -f "$CATFILE" ]; then
+        _clash=$( { store_table | awk -F'|' '$4 != "-" { print $4 }' | sort -u
+                    awk -F'|' 'NF >= 5 && $4 != "" { print $4 }' "$CATFILE" | sort -u; } | sort | uniq -d)
+        if [ -n "$_clash" ]; then echo "  listed in both the store and the catalogue: $_clash"; _rc=1
+        else printf 'ok      copal-store and the catalogue list no program twice (%s catalogue rows)\n' "$(grep -c '|' "$CATFILE")"; fi
+    fi
+    return $_rc
+}
+
+# ------------------------------------------------------------ dispatch ---
+case "${1:-}" in
+    list)     shift; list_rows "${1:-}" ;;
+    sections) sections | awk -F'|' '{ printf "%-13s %3d programs, %d installed\n", $1, $2, $3 }' ;;
+    info)     [ $# -ge 2 ] || die "info needs an id"; info_id "$2" ;;
+    install)  shift; [ $# -gt 0 ] || die "install what?"; need_root install "$@"; install_ids "$@" ;;
+    remove)   shift; [ $# -gt 0 ] || die "remove what?"; need_root remove "$@"; remove_ids "$@" ;;
+    recipes)  for _r in $RECIPES; do printf '%s\n' "$_r"; done ;;
+    self-test) self_test ;;
+    __build)  set -e; cd "$W"; "${2}_build" ;;   # build_recipe's worker, in its own shell
+    deps)     [ $# -ge 2 ] && is_recipe "$2" || die "deps needs a recipe"
+              printf 'build: %s\nrun: %s\n' "$("$2_bdeps")" "$("$2_rdeps")" ;;
+    tui)      tui ;;
+    section)  [ $# -ge 2 ] || die "section needs a name"; gui_section "$2" ;;
+    show)     [ $# -ge 2 ] || die "show needs an id"; _r=$(row_for "$2"); [ -n "$_r" ] || die "nothing called '$2'"
+              gui_program "${_r%%|*}" ;;
+    -h|--help|help) sed -n '5,15p' "$0" | sed 's/^# \{0,1\}//' ;;
+    '')
+        if { [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; } && have yad; then gui
+        elif have dialog; then tui
+        else list_rows; fi ;;
+    *) die "unknown verb '$1' -- copal-store --help" ;;
+esac
