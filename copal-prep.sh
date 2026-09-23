@@ -24942,9 +24942,9 @@ stage_grow() {
     resize, p2 may need an e2fsck before it mounts again.
 MSG
     require_network || return 1
-    add_optional parted e2fsprogs-extra
+    add_optional sfdisk e2fsprogs-extra
 
-    command -v parted >/dev/null 2>&1 || { warn "parted is unavailable -- cannot resize"; return 1; }
+    command -v sfdisk >/dev/null 2>&1 || { warn "sfdisk is unavailable -- cannot resize"; return 1; }
     command -v resize2fs >/dev/null 2>&1 || { warn "resize2fs is unavailable -- cannot resize"; return 1; }
 
     [ "$(fstype_of "$P2")" = ext4 ] || { warn "$P2 is not ext4 -- refusing to touch it"; return 1; }
@@ -24959,9 +24959,15 @@ MSG
         && note "first sector saved to $BOOT/mbr-backup.bin"
 
     say "Moving the end of partition 2 to the end of the card"
-    if ! parted -s "/dev/$DISKDEV" resizepart 2 100%; then
-        warn "parted could not rewrite the table."
-        note "Nothing was changed. If p2 is mounted as /, try again after a reboot."
+    # sfdisk, not parted: p2 is mounted as / whenever this runs, and parted -s
+    # meets its own "partition is being used, are you sure?" with a silent no
+    # -- which no reboot changes, since / is always in use. ', +' keeps p2's
+    # start and takes every sector after it; --no-reread skips the in-use
+    # check, which is the kernel's refusal to re-read the whole table, not a
+    # danger to the data.
+    if ! printf ', +\n' | sfdisk --quiet --no-reread -N 2 "/dev/$DISKDEV"; then
+        warn "sfdisk could not rewrite the table."
+        note "Nothing was changed. The first sector is saved in $BOOT/mbr-backup.bin."
         return 1
     fi
 
