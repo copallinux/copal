@@ -38,7 +38,7 @@ the first place.
 Copal installs stock Alpine from sd-card in an embedded fashion 
 from Alpine's own mirrors and then walks you through fifteen optional,
 re-runnable stages — from a RAM-resident shell to a full ext4 root with a
-tiling desktop, 316 curated applications, emulators and a multi-language IDE. On a
+tiling desktop, 329 curated applications, emulators and a multi-language IDE. On a
 1 GHz single core with 512 MB of RAM, shared with the framebuffer.
 
 Built for the Pi Zero 1 / Zero W and prepared from macOS. It also builds for the
@@ -120,7 +120,7 @@ be retyped at the Pi's console.
 | `copal --auto` | Run every stage unattended, resuming across the reboot |
 | `copal-desk` | Lay the workspaces out the same way every time (**Super+Shift+D**) |
 | `copal-menu` | The menu, built from what is installed: applications on the left, categories/settings/session on the right (**Super+Space**, or **Super+Z** for the right side) |
-| `copal-center` | One window listing all 316 programs — run or install (**Super+C**) |
+| `copal-center` | One window listing all 329 programs — run or install (**Super+C**) |
 | `copal-guide` | Plain-text guides — eleven of them, on the machine, no network (**Super+Shift+G**) |
 | `copal-startx` | Starts the desktop, and refuses to do it as root |
 | `copal-morse` | Send, drill or print morse code (Alpine packages none) |
@@ -288,7 +288,7 @@ The branch this project targets:
 
 Two practical consequences run through this repository:
 
-- **Most interesting software is in `community`, not `main`.** Of Copal's 316
+- **Most interesting software is in `community`, not `main`.** Of Copal's 329
   catalogued applications, the overwhelming majority come from `community`.
   That is fine, but it is supported only until the next release rather than for
   two years.
@@ -421,8 +421,8 @@ is missing, and the installer degrades to a warning rather than failing.
   cannot run either of the big two. It is what the automatic install picks.
 - **The catalogue is filtered per port.** Every row carries an architecture
   gate, and `write_catalogue` drops the ones this board cannot install before
-  the menu, the Center or stage 12 ever see them — 316 entries on `aarch64` and
-  `x86_64`, 294 on `armv7`, 286 on `x86`, 272 on `armhf`. Nothing offered will
+  the menu, the Center or stage 12 ever see them — 329 entries on `aarch64` and
+  `x86_64`, 305 on `armv7`, 297 on `x86`, 279 on `armhf`. Nothing offered will
   fail with "no such package". `!v6` entries (Firefox, Krita, FreeCAD, LMMS,
   MuseScore, mGBA, Krusader, Foliate) exist everywhere but ARMv6; `64` entries
   (Blender, KiCad, OpenMW, GZDoom, Calibre, KOReader, Cura, Cataclysm DDA,
@@ -959,7 +959,7 @@ copal --auto      # also starts it, and is what the resume hook calls
 | 9 | Retro emulators: Mini vMac (Macintosh Plus — fast, and the one that works) and VICE (C64, now a package rather than an overnight build). Both get a directory under your home with disk images and launchers | 7, network |
 | 10 | Peripherals and media: wifi, bluetooth, HDMI audio, the PipeWire sound server, tcpdump/tshark, hex editors, HFS and disk-image tools, and **radbeeper** for a GQ GMC Geiger counter on USB | 3, network |
 | 11 | Snapshots: rsync snapshots on a third partition, and Timeshift if you want it. **Offers to repartition** | 3, network |
-| 12 | Applications: the 316-program catalogue, as a minimal set, by section, or all of it. **Everything** now includes Thunderbird where it is packaged, given 700 MB free | 3, network |
+| 12 | Applications: the 329-program catalogue, as a minimal set, by section, or all of it. **Everything** now includes Thunderbird where it is packaged, given 700 MB free | 3, network |
 | 13 | Hands over root: locks the root password, `PermitRootLogin no`, leaving `user` + `doas`. Verifies the admin account first and declines if it is not ready | 1 |
 | 14 | The workshop: CAD and 3D printing for the Ender 3, KiCad with its templates, demos and plugin set, gerber export, ngspice, the ADI instrument stack (libiio and iiod, pyadi-iio, libm2k, the IIO oscilloscope, GNU Radio blocks — mostly compiled), LaTeX and maths (wxMaxima compiled from source), trackers and SID, a piano tutor built from source, and Windows programs under Wine in sandboxed boxes (`winebox`). Eight bundles, each stating what this port lacks before it installs | 3, network |
 | 15 | SD card and logs: log policy, syslog caps, and a genuinely read-only root via `overlaytmpfs`. **Not run unattended** — read-only root would discard everything the later stages did | 3 |
@@ -986,7 +986,7 @@ card, and enough for a TUI (`apk add tmux`).
 
 ## One catalogue, three front ends
 
-Copal carries a table of **316 applications across 28 sections**, and three
+Copal carries a table of **329 applications across 28 sections**, and three
 different things read the same table:
 
 - **`copal-menu`** (Super+Z) builds a nested menu from what is installed, with
@@ -1013,11 +1013,11 @@ running port before anything reads it:
 
 | Port | Board | Rows shown |
 |---|---|---|
-| `aarch64` | Zero 2 W, Pi 3/4/5, CM3/CM4 | 316 |
-| `x86_64` | PC, laptop, Intel Mac | 316 |
-| `armv7` | Pi 2B v1.1 | 294 |
-| `x86` | 32-bit PC | 286 |
-| `armhf` | Zero, Zero W, Pi 1, CM1 | 272 |
+| `aarch64` | Zero 2 W, Pi 3/4/5, CM3/CM4 | 329 |
+| `x86_64` | PC, laptop, Intel Mac | 329 |
+| `armv7` | Pi 2B v1.1 | 305 |
+| `x86` | 32-bit PC | 297 |
+| `armhf` | Zero, Zero W, Pi 1, CM1 | 279 |
 
 The gate is a comma-separated list, so a row can be excluded from more than one
 port — `!v6,!x32` is "not on ARMv6 and not on 32-bit x86", which is what Chromium

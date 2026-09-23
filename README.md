@@ -568,7 +568,7 @@ THE PROCESS, BEGINNING TO END
                                           |
                                       10 Stages 5-15 all optional,
                                              all re-runnable: zram, SSH,
-                                             toolchain, 316 apps, emulators
+                                             toolchain, 329 apps, emulators
 
 ────────────────────────────────────────────────────────────────────
   Steps 1-5 are this script. Steps 6-10 run on the target itself,
@@ -920,7 +920,7 @@ Then the menu itself:
     a) Full automatic install  every stage, unattended, resuming across the
                                reboot. Only stops for the root password,
                                and reboots again when it is done
-   12) Applications           316 small programs -- browser, mail, audio,
+   12) Applications           329 small programs -- browser, mail, audio,
                                editors, viewers, games, gopher/gemini, disc
                                tools. What the menu installs from too
    13) Hand over root         lock the root account and log in as 'user'
@@ -975,7 +975,7 @@ flowchart LR
     RB --> S6["<b>6</b> ssh key"]
     RB --> S4["<b>4</b> X.Org + i3"]
     S4 --> S7["<b>7</b> toolchain"]
-    S4 --> S12["<b>12</b> 316 applications"]
+    S4 --> S12["<b>12</b> 329 applications"]
     S4 --> S9["<b>9</b> emulators"]
     S4 --> S14["<b>14</b> workshop"]
     RB --> S10["<b>10</b> wifi, audio, capture"]
@@ -1098,6 +1098,43 @@ and there are four ways in:
 | `Super`+`/`, or `Super`+`F1` | the key list, floating. Shown once at login, because a tiling WM with no menus is unusable until you know the bindings |
 | `Super`+`Shift`+`g` | the other guides |
 | `Super`+`Return` / `Super`+`e` / `Super`+`t` | terminal / file manager / `htop` |
+
+#### The browser, and what opens a link
+
+The full monty installs **Brave**, in stage 4, on `x86_64` and `aarch64` — the
+two architectures Flathub publishes it for. It is a Flatpak rather than an apk
+and that is not a preference: there is no Brave in Alpine's main, community or
+testing on any architecture, Brave's own one-line installer supports neither
+`apk` nor musl, and the Flatpak works precisely because it brings its own glibc
+runtime and sits beside the system instead of pretending to be part of it. The
+cost is about 600 MB with the runtime, which is why the medium and server
+levels get BadWolf instead. It appears in the menu under *Internet* like
+everything else, and `brave` on `PATH` is a two-line wrapper over
+`flatpak run com.brave.Browser`.
+
+Whatever browser the machine ends up with, stage 4 registers it in both places
+a link can be resolved from:
+
+| Written | Read by |
+|---|---|
+| `/etc/profile.d/browser.sh` — `$BROWSER` | terminal programs that print a URL: `git web--browse`, Claude Code's sign-in link, `xdg-open` with no desktop database |
+| `/etc/xdg/mimeapps.list` — `text/html`, `application/xhtml+xml`, `http`, `https` | everything with a window: the file manager's *Open With*, a double-clicked `.html`, a mail client following a link |
+
+Only the four types above are rewritten; anything else already in that file is
+left alone. `/etc/xdg` is the *system* answer and the spec reads
+`~/.config/mimeapps.list` first, so a preference of your own still wins:
+
+```sh
+xdg-mime default firefox-esr.desktop text/html
+xdg-settings get default-web-browser      # what is actually in force
+```
+
+Before this, the association was an accident worth knowing about: Flatpak puts
+its export directory at the front of `XDG_DATA_DIRS`, so Brave won `text/html`
+by being looked at first, with nothing anywhere recording that as the intent.
+One more browser, or a different `XDG_DATA_DIRS`, and a `.html` file opened in
+AbiWord — alphabetically first in the cache, and no more a browser than the
+four other programs ahead of Brave in it.
 
 #### Copy and paste, on the same keys everywhere
 
@@ -1435,7 +1472,7 @@ Roughly: 1–3 make it a computer, 4–6 make it usable, 7–15 make it yours, a
 | 9 | emulators | Mini vMac and VICE, with disk images and launchers |
 | 10 | peripherals | wifi, bluetooth, audio, capture, hex editors, disk tools |
 | 11 | snapshots | rsync snapshots on a third partition |
-| 12 | applications | the catalogue — 316 small programs |
+| 12 | applications | the catalogue — 329 small programs |
 | 13 | hand over root | lock root, log in as yourself with `doas`. **Checks first, run it last** |
 | 14 | the workshop | CAD, KiCad, ngspice, the ADI instruments (libiio, ADALM2000, Pluto), LaTeX, trackers |
 | 15 | SD card care | what actually wears a card; log policy; a genuinely read-only root |

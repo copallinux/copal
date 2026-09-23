@@ -509,7 +509,7 @@ GTK, icons and cursors out of the repository deliberately ("those are highly
 up to you"), which is a reasonable choice for a personal rice and the wrong
 one for an installer.
 
-It matters more on Copal than in a one-person setup: the catalogue is 316
+It matters more on Copal than in a one-person setup: the catalogue is 329
 programs and most of the graphical ones are GTK. Untreated, the full level
 produces a themed *compositor* with three hundred unthemed windows in it.
 

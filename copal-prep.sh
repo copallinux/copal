@@ -19,7 +19,7 @@
 # Not a remaster, not an image to dd. Copal is an installer: it lays down
 # stock Alpine and then walks you through fifteen stages, each one optional,
 # each one re-runnable, from a RAM-resident shell to a full ext4 root with a
-# tiling desktop, 316 curated applications, emulators and a toolchain -- on a
+# tiling desktop, 329 curated applications, emulators and a toolchain -- on a
 # 1 GHz single core with 512 MB of RAM.
 #
 # ---------------------------------------------------------------------------
@@ -3169,7 +3169,7 @@ have_space_mb() {  # <megabytes> <what it is for>
 # of it was ever on the disk.
 #
 # THIS ACTUALLY HAPPENED, which is why it is now a function instead of a
-# comment. Stages 7 and 12 -- the toolchain and the 316-package catalogue,
+# comment. Stages 7 and 12 -- the toolchain and the 329-package catalogue,
 # the two biggest installers in the whole script -- had no check at all. A run
 # that reached them before stage 3 put 2.8 GB into /usr on a RAM disk and
 # wedged the machine. Stages 4 and 16 did check, but only by warning and then
@@ -3668,6 +3668,76 @@ try_add() {
 # hand, which is the one case nobody was watching a log for.
 add_optional() { try_add "$@" || true; }
 
+# THE OTHER PACKAGE SOURCE, and the one marker that says so.
+#
+# A catalogue row may write its package as 'app.id@flathub' instead of an apk
+# name. It means one thing and only one: Alpine packages this nowhere -- not
+# main, not community, not edge/testing -- and Flathub does. Brave is the only
+# row that needs it today and the reason the marker exists; install_brave has
+# the long version of why apk cannot have it.
+#
+# The suffix is deliberately the same shape as '@testing'. Both say "this row
+# comes from somewhere other than the stable apk repositories", both keep the
+# row one line, and both are read by the handful of places that actually
+# install something -- stage 12 and copal-install -- rather than by the menu,
+# the Center or anything else that only ever reads the table.
+#
+# What it is NOT is a general Flatpak escape hatch. A Flatpak brings its own
+# glibc runtime and sits beside the musl system rather than in it: ~500 MB
+# before the application, which is a real decision on a card and never a
+# silent one. Every path that installs one prints the size first.
+flathub_ready() {
+    command -v flatpak >/dev/null 2>&1 || try_add flatpak \
+        || { warn "could not install flatpak"; return 1; }
+    # --if-not-exists so a re-run is not an error. The apk does not configure
+    # flathub; without this there is no remote for the install to resolve from.
+    flatpak remote-add --if-not-exists flathub \
+        https://dl.flathub.org/repo/flathub.flatpakrepo >/dev/null 2>&1 \
+        || { warn "could not add the flathub remote"; return 1; }
+}
+
+add_flathub() {  # <app id>
+    flathub_ready || return 1
+    say "Installing $1 from Flathub"
+    note "A Flatpak carries its own runtime -- the first one costs ~500 MB extra."
+    flatpak install -y --noninteractive flathub "$1" || {
+        warn "flatpak could not install $1 -- usually network or space"
+        note "Try again with: flatpak install flathub $1"
+        return 1
+    }
+    # A launcher under the plain name, so the row's 'bin' field is true and
+    # the thing is reachable without typing a reverse-DNS id from memory.
+    flathub_shim "$1"
+}
+
+# The 'bin' column of a catalogue row has to be a command on PATH -- that is
+# the whole contract the table makes, and nothing downstream has any other way
+# to ask "is this installed?". A Flatpak satisfies it with a two-line wrapper.
+#
+# ASK THE FLATPAK WHAT IT IS CALLED. The name is in the application's own
+# metadata as 'command=', which is the same string 'flatpak run' would exec
+# inside the sandbox, so the wrapper and the sandbox cannot disagree. Guessing
+# from the id does not work and is not nearly obviously wrong enough to be
+# safe: com.brave.Browser would give 'browser', and a /usr/local/bin/browser
+# that starts Brave is exactly the kind of thing nobody finds for a year.
+flathub_shim() {  # <app id>
+    _cmd=$(flatpak info --show-metadata "$1" 2>/dev/null \
+           | sed -n 's/^command=//p' | head -n1)
+    [ -n "$_cmd" ] || { warn "$1 declares no command -- no wrapper written"; return 0; }
+    # The metadata may give a path (/app/bin/foo); PATH gets the name.
+    _cmd=${_cmd##*/}
+    # Never over a real binary. If apk ever starts packaging the thing, the
+    # apk is the one that should win and this must not shadow it.
+    if command -v "$_cmd" >/dev/null 2>&1 \
+       && [ "$(command -v "$_cmd")" != "/usr/local/bin/$_cmd" ]; then
+        return 0
+    fi
+    mkdir -p /usr/local/bin
+    printf '#!/bin/sh\nexec flatpak run %s "$@"\n' "$1" > "/usr/local/bin/$_cmd"
+    chmod 0755 "/usr/local/bin/$_cmd"
+    note "or just:  $_cmd"
+}
+
 # ---------------------------------------------------------------------------
 # The application catalogue.
 #
@@ -3720,17 +3790,27 @@ add_optional() { try_add "$@" || true; }
 #
 # BROWSERS, and the one thing that really does change with MODEL. There is no
 # Chromium and no Firefox for armhf -- neither is built for ARMv6. On armv7 and
-# aarch64 both exist (chromium, firefox, firefox-esr). They are not in the
-# table because the table is shared across every board and a menu entry that
-# only works on some of them is worse than none. Stage 4 handles that instead:
-# install_modern_browser asks apk which architecture this actually is and
-# offers only what exists there. On a Zero 1, Dillo and NetSurf are not a
-# compromise -- they are the entire field, and both are genuinely usable.
+# aarch64 both exist (chromium, firefox, firefox-esr). That used to keep them
+# out of the table altogether, because a row that works on some boards and not
+# others is worse than no row; the gate column is what changed, and it says so
+# per row instead. Stage 4 still chooses the browser an unattended install
+# gets -- install_modern_browser asks apk which architecture this actually is
+# -- but the table can now carry the ones that do not exist everywhere. On a
+# Zero 1, Dillo and NetSurf are not a compromise: they are the entire field,
+# and both are genuinely usable.
 #
 # BadWolf is the one entry in the table that is both modern and universal:
 # a minimal front end over WebKitGTK, which is a current engine with current
 # TLS, and it is built for armhf as well. It is what makes "a supported
 # browser" answerable on an ARMv6 board at all.
+#
+# Brave is gated '64' and is the one row that is not an apk -- see the
+# '@flathub' note below add_optional. Flathub publishes it for x86_64 and
+# aarch64 and nobody publishes it for armhf or armv7, which is exactly what
+# that gate says. It is in the table so the menu can show it under Internet
+# with everything else, and so a medium install can reach it from Install
+# software without being told to go and read install_brave; the full monty
+# still installs it in stage 4 rather than waiting for stage 12.
 #
 # THE SMALL WEB. This is the one category where the Pi Zero is not making do
 # with less -- it is the right machine for the job. Gopher and Gemini are
@@ -3820,6 +3900,7 @@ Internet|NetSurf (web - own engine)|netsurf|netsurf|x|*
 Internet|BadWolf (WebKit - modern engine, tiny)|badwolf|badwolf|x|*
 Internet|Firefox ESR (full browser)|firefox-esr|firefox-esr|x|!v6
 Internet|Chromium (full browser)|chromium|chromium|x|!v6,!x32
+Internet|Brave (ad and tracker blocking)|com.brave.Browser@flathub|brave|x|64
 Internet|Links (text/graphics web)|links|links|t|*
 Internet|ELinks (text web + gopher)|elinks|elinks|t|*
 Internet|w3m (text web)|w3m|w3m|t|*
@@ -6380,7 +6461,109 @@ export BROWSER=$_b
 BROWSERENV
         chmod +x /etc/profile.d/browser.sh
         note "\$BROWSER=$_b -- the browser CLI tools will open links in"
+        register_default_browser "$_b"
         return 0
+    done
+    return 1
+}
+
+# $BROWSER IS HALF THE ANSWER, and it is the half only terminal programs read.
+#
+# Everything with a window asks the other database: xdg-open, the file
+# manager's "Open With", a mail client following a link, and a double-clicked
+# .html file all resolve through the MIME associations, and a machine with
+# $BROWSER set and no association still opens .html in whatever happens to
+# claim text/html first. On this desktop that was AbiWord -- alphabetically
+# first in /usr/share/applications/mimeinfo.cache and no more the browser than
+# any of the other four programs ahead of it.
+#
+# THIS WORKED BY ACCIDENT BEFORE, which is the part worth spelling out. Brave
+# arrives as a Flatpak, Flatpak's export directory goes to the FRONT of
+# XDG_DATA_DIRS, and xdg-open walks that list in order, so http, https and
+# text/html all landed on Brave with nothing anywhere recording that as the
+# intent. Install one more browser, or reorder XDG_DATA_DIRS, and .html opens
+# in AbiWord again with no error and no warning. An association nobody wrote
+# down is not a default.
+#
+# /etc/xdg/mimeapps.list is where an installer says it. The mime-apps spec
+# reads $XDG_CONFIG_HOME/mimeapps.list first and $XDG_CONFIG_DIRS second, so
+# this is the system answer AND stays overridable: a user who prefers Firefox
+# runs 'xdg-mime default firefox-esr.desktop text/html' once and their own
+# file wins for ever after. Written as root, so it also covers the accounts
+# that do not exist yet on a machine being installed.
+register_default_browser() {  # <browser command>
+    _desk=$(browser_desktop_id "$1")
+    [ -n "$_desk" ] || {
+        note "no .desktop file for $1 -- \$BROWSER set, associations left alone"
+        return 0
+    }
+    mkdir -p /etc/xdg
+    # Rewritten rather than appended, and only OUR four types: anything else
+    # already in the file -- a mail handler, a PDF viewer, the claude-cli
+    # scheme -- is somebody's decision and is carried across untouched.
+    _tmp=/tmp/mimeapps.$$
+    awk -v desk="$_desk" '
+        BEGIN {
+            n = split("text/html application/xhtml+xml " \
+                      "x-scheme-handler/http x-scheme-handler/https", t, " ")
+            for (i = 1; i <= n; i++) ours[t[i]] = 1
+        }
+        /^\[/ { grp = ($0 == "[Default Applications]"); print; next }
+        {
+            if (grp) { split($0, kv, "="); if (kv[1] in ours) next }
+            print
+        }
+    ' /etc/xdg/mimeapps.list 2>/dev/null > "$_tmp" || : > "$_tmp"
+    grep -q '^\[Default Applications\]' "$_tmp" 2>/dev/null \
+        || printf '[Default Applications]\n' >> "$_tmp"
+    # Appended under the group heading wherever it is, which for a file this
+    # script owns is the last line of it.
+    awk -v desk="$_desk" '
+        { print }
+        /^\[Default Applications\]$/ {
+            print "text/html=" desk
+            print "application/xhtml+xml=" desk
+            print "x-scheme-handler/http=" desk
+            print "x-scheme-handler/https=" desk
+        }
+    ' "$_tmp" > /etc/xdg/mimeapps.list
+    rm -f "$_tmp"
+    chmod 0644 /etc/xdg/mimeapps.list
+    note ".html, http and https open in $1 ($_desk)"
+    # So the association has a cache entry to be found in. Harmless where the
+    # database is already current, and the difference between working and not
+    # on a machine where a .desktop file was written by hand.
+    command -v update-desktop-database >/dev/null 2>&1 \
+        && update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
+}
+
+# Which .desktop file IS this browser. Not derivable from the command name:
+# Brave's is com.brave.Browser.desktop, written by Flatpak into its own export
+# directory, and its Exec line is /usr/bin/flatpak rather than anything called
+# brave. So look the file up by what it runs, and keep one special case for
+# the one that cannot be found that way.
+browser_desktop_id() {  # <browser command>
+    case "$1" in
+        brave) [ -f /var/lib/flatpak/exports/share/applications/com.brave.Browser.desktop ] \
+                   && { echo com.brave.Browser.desktop; return 0; } ;;
+    esac
+    for _dir in /usr/share/applications /usr/local/share/applications \
+                /var/lib/flatpak/exports/share/applications; do
+        [ -d "$_dir" ] || continue
+        # The obvious name first, so firefox-esr.desktop is not beaten to it
+        # by some other file that happens to mention firefox-esr.
+        [ -f "$_dir/$1.desktop" ] && { echo "$1.desktop"; return 0; }
+    done
+    for _dir in /usr/share/applications /usr/local/share/applications \
+                /var/lib/flatpak/exports/share/applications; do
+        [ -d "$_dir" ] || continue
+        for _f in "$_dir"/*.desktop; do
+            [ -f "$_f" ] || continue
+            # The Exec line's first word, basename'd -- 'Exec=/usr/bin/foo %u'
+            # is the same program as 'Exec=foo %u' and both have to match.
+            _exec=$(sed -n 's/^Exec=//p' "$_f" | head -n1 | cut -d' ' -f1)
+            [ "${_exec##*/}" = "$1" ] && { echo "${_f##*/}"; return 0; }
+        done
     done
     return 1
 }
@@ -6435,6 +6618,20 @@ MSG
         curl -fsS https://dl.brave.com/install.sh | sh || true
         if command -v brave-browser >/dev/null 2>&1 || command -v brave >/dev/null 2>&1; then
             note "installed by Brave's installer: $(command -v brave-browser 2>/dev/null || command -v brave)"
+            # THE CATALOGUE ASKS FOR 'brave' AND THIS PATH MAY LEAVE
+            # 'brave-browser'. Every consumer of the table decides "installed?"
+            # with 'command -v brave', so on the one route where the name
+            # differs the row would read "not installed" for ever -- offered
+            # under Install on a machine that already has it, and offered as a
+            # 600 MB Flatpak at that. One wrapper closes the gap, and it is
+            # written only when the real thing is absent so it can never
+            # shadow a binary Brave's own installer put there.
+            if ! command -v brave >/dev/null 2>&1; then
+                mkdir -p /usr/local/bin
+                printf '#!/bin/sh\nexec brave-browser "$@"\n' > /usr/local/bin/brave
+                chmod 0755 /usr/local/bin/brave
+                note "and as:  brave"
+            fi
             set_default_browser || true
             return 0
         fi
@@ -6442,26 +6639,15 @@ MSG
         note "that script supports. Falling back to the Flatpak, which works."
     fi
 
-    try_add flatpak || { warn "could not install flatpak"; return 1; }
-    # --if-not-exists so a re-run is not an error. flathub is not configured by
-    # the package; without this the install below has no remote to resolve from.
-    flatpak remote-add --if-not-exists flathub \
-        https://dl.flathub.org/repo/flathub.flatpakrepo >/dev/null 2>&1 \
-        || warn "could not add the flathub remote"
-
+    # add_flathub is the shared path -- the same one the catalogue row and
+    # copal-install take, remote and wrapper included. This function used to
+    # carry its own copy of all three steps, which is how stage 4 and stage 12
+    # would have drifted apart the first time one of them was fixed.
     say "Installing com.brave.Browser (this is the slow part)"
-    if flatpak install -y --noninteractive flathub com.brave.Browser; then
-        note "run it with:  flatpak run com.brave.Browser"
-        # A launcher, so it appears beside everything else rather than only
-        # being reachable by typing a reverse-DNS name from memory.
-        mkdir -p /usr/local/bin
-        printf '#!/bin/sh\nexec flatpak run com.brave.Browser "$@"\n' > /usr/local/bin/brave
-        chmod 0755 /usr/local/bin/brave
-        note "or just:  brave"
+    if add_flathub com.brave.Browser; then
+        note "run it with:  brave   (or flatpak run com.brave.Browser)"
         set_default_browser || true
     else
-        warn "the Flatpak install did not complete -- usually network or space"
-        note "Try again with: flatpak install flathub com.brave.Browser"
         return 1
     fi
 }
@@ -8312,7 +8498,55 @@ case " $* " in
             apk update >/dev/null 2>&1 || true
         fi ;;
 esac
-if apk add "$@"; then
+# The other suffix. 'app.id@flathub' is a Flathub application, not an apk, and
+# handing one to apk produces "package not found" for something that exists --
+# the most misleading answer available. Split the argument list in two and
+# send each half where it can actually be resolved; a row is one or the other
+# and an install of several may be both.
+FLATPAKS=""
+APKS=""
+for a in "$@"; do
+    case "$a" in
+        *@flathub) FLATPAKS="$FLATPAKS ${a%@flathub}" ;;
+        *)         APKS="$APKS $a" ;;
+    esac
+done
+ok=1
+if [ -n "$FLATPAKS" ]; then
+    printf 'From Flathub:%s\n' "$FLATPAKS"
+    printf 'A Flatpak brings its own runtime -- the first one costs ~500 MB\n'
+    printf 'extra, beside the system rather than in it.\n\n'
+    if ! command -v flatpak >/dev/null 2>&1 && ! apk add flatpak; then
+        printf '\nCould not install flatpak.\n'; ok=0
+    fi
+    if [ "$ok" = 1 ]; then
+        flatpak remote-add --if-not-exists flathub \
+            https://dl.flathub.org/repo/flathub.flatpakrepo >/dev/null 2>&1 \
+            || printf 'warning: could not add the flathub remote\n'
+        for f in $FLATPAKS; do
+            flatpak install -y --noninteractive flathub "$f" || { ok=0; continue; }
+            # A wrapper under the name the application answers to inside the
+            # sandbox, so the catalogue's 'bin' column is true and the thing
+            # is reachable without typing a reverse-DNS id. 'command=' comes
+            # from the Flatpak's own metadata -- guessing from the id gives
+            # 'browser' for com.brave.Browser.
+            c=$(flatpak info --show-metadata "$f" 2>/dev/null \
+                | sed -n 's/^command=//p' | head -n1)
+            c=${c##*/}
+            [ -n "$c" ] || continue
+            if ! command -v "$c" >/dev/null 2>&1 \
+               || [ "$(command -v "$c")" = "/usr/local/bin/$c" ]; then
+                mkdir -p /usr/local/bin
+                printf '#!/bin/sh\nexec flatpak run %s "$@"\n' "$f" > "/usr/local/bin/$c"
+                chmod 0755 "/usr/local/bin/$c"
+                printf 'run it with:  %s\n' "$c"
+            fi
+        done
+    fi
+fi
+# shellcheck disable=SC2086 -- deliberate word splitting, these are names
+if [ -n "$APKS" ] && ! apk add $APKS; then ok=0; fi
+if [ "$ok" = 1 ]; then
     printf '\n\nDone. The menu will show it next time you open it.\n'
     # The menu opens from a cached list; rebuild it now, as the person who
     # asked (doas hands their name over in DOAS_USER), so the new program is
@@ -8328,8 +8562,10 @@ if apk add "$@"; then
     fi
 else
     printf '\n\nFailed. The usual causes are no network, or the package not\n'
-    printf 'existing for this architecture (%s). Try: apk search -v NAME\n' \
+    printf 'existing for this architecture (%s).\n' \
            "$(apk --print-arch 2>/dev/null || echo unknown)"
+    [ -n "$APKS" ]     && printf 'Look a name up with:  apk search -v NAME\n'
+    [ -n "$FLATPAKS" ] && printf 'Or from Flathub with: flatpak search NAME\n'
 fi
 printf '\nPress Enter to close.\n'; read -r _
 COPALINSTALL
@@ -12019,6 +12255,17 @@ window {
 WOFICSS
     install_home_file .config/wofi/style.css /tmp/woficss.$$
     rm -f /tmp/woficss.$$
+    # THE IMPORT MADE ABSOLUTE, per home. wofi parses its stylesheet as
+    # anonymous <data>, so a relative url() resolves against wofi's working
+    # directory and never finds the tokens: every @name is undefined, the
+    # window loses its background, and the menu is drawn as bare text over
+    # whatever is behind it. copal-theme makes the same rewrite on every
+    # switch; this is for the desktop nobody has switched yet.
+    for _h in /root "$(user_home)"; do
+        [ -n "$_h" ] && [ -f "$_h/.config/wofi/style.css" ] || continue
+        sed -i "s|url(\"\.\./copal/current/colors\.css\")|url(\"$_h/.config/copal/current/colors.css\")|" \
+            "$_h/.config/wofi/style.css"
+    done
 
     # ----------------------------------------------------------------------
     # DESKTOP WIDGETS -- the clock and the weather that sit ON the wallpaper.
@@ -13767,7 +14014,7 @@ ANTIQFOOT
     # doesn't adhere to our theme at all."
     #
     # It matters more here than in a one-person rice. Copal's catalogue is
-    # 316 programs and most of the graphical ones are GTK, so this is the
+    # 329 programs and most of the graphical ones are GTK, so this is the
     # difference between a themed desktop and a themed compositor with 300
     # unthemed windows in it.
     say "Theming the layers the configs do not reach: fonts, GTK, cursor"
@@ -22177,8 +22424,8 @@ MSG
       a   Everything    -- the whole catalogue for this board, minus the
                            handful too big to install unattended: GIMP,
                            Krita, Blender, FreeCAD, KiCad, LibreOffice,
-                           Calibre, TeX Live, Chromium, FileZilla and
-                           Remmina. Install those by section.
+                           Calibre, TeX Live, Chromium, Brave, FileZilla
+                           and Remmina. Install those by section.
                            Thunderbird IS included -- see below
       s   By section    -- pick one section at a time
       l   List          -- show the catalogue and what is already installed
@@ -22199,7 +22446,14 @@ MSG
                     zathura-pdf-mupdf galculator xarchiver 7zip unzip" ;;
         a|A) # The standing exclusions: too big to install unattended, and
              # listed in the 'a' description above so this is not a surprise.
-             _excl='gimp|blender|freecad|kicad|libreoffice-writer|calibre@testing|texlive-full|krita|chromium|remmina|filezilla'
+             #
+             # Brave is on this list for the Flatpak runtime rather than for
+             # Brave: ~600 MB all told, and the only entry in the table that
+             # would pull a second userland onto the card. The full monty
+             # already has it from stage 4, so the only machine this withholds
+             # it from is one that never asked for it -- and stage 12 -> s ->
+             # Internet installs it in one step for one that did.
+             _excl='gimp|blender|freecad|kicad|libreoffice-writer|calibre@testing|texlive-full|krita|chromium|com\.brave\.Browser@flathub|remmina|filezilla'
              # AND, at the FULL level only, the other graphical browsers.
              #
              # That level installs Brave in stage 4, and Firefox ESR is left
@@ -22260,7 +22514,17 @@ MSG
 
     # add_optional one at a time rather than in one apk call: on a board this
     # slow a single failed name should not throw away twenty good ones.
-    for _p in $_want; do add_optional "$_p"; done
+    #
+    # '@flathub' rows are not apk names and apk must never see one -- it would
+    # report "package not found" for a package that exists perfectly well
+    # somewhere apk cannot reach, which is the most misleading error this
+    # stage could print. Routed by the same suffix the catalogue writes.
+    for _p in $_want; do
+        case "$_p" in
+            *@flathub) add_flathub "${_p%@flathub}" || true ;;
+            *)         add_optional "$_p" ;;
+        esac
+    done
 
     # Kate and Emacs are catalogue entries, so they arrive HERE -- at stage 12
     # -- and stage 7 has long since run and found no binary to configure. In a
@@ -28962,7 +29226,7 @@ tui_preflight() {
 #   5       zram, so everything after has more usable memory
 #   6 4 7   ssh key, desktop, toolchain
 #   10      peripherals and media
-#   12      the 316-package catalogue -- a long download
+#   12      the 329-package catalogue -- a long download
 #   14      the workshop -- CAD, 3D printing, EDA, LaTeX, trackers
 #   9       Mini vMac, which compiles from source. Slowest, so last.
 #   13      hand over root -- genuinely last, because it takes away the
@@ -30806,7 +31070,7 @@ while :; do
                                Timeshift if you want it (edge/testing only)
     a) Full automatic install  every stage, unattended, resuming across the
                                reboot. Only stops for the root password
-   12) Applications           316 small programs -- browser, mail, audio,
+   12) Applications           329 small programs -- browser, mail, audio,
                                editors, viewers, games, gopher/gemini, disc
                                tools. What the menu installs from too
    13) Hand over root         lock the root account and log in as '$PI_USER'
@@ -31245,15 +31509,15 @@ ON THE PI -- there is only one command to run
        ~${CFG_USER}/.ssh/ with the permissions sshd insists on. Only the
        public half is ever copied; the private key stays on the Mac.
 
-   12) Applications  A catalogue of 316 small programs across 28 sections
+   12) Applications  A catalogue of 329 small programs across 28 sections
        -- browser, mail, audio, editors, viewers, games, the small web,
        disc tools, system settings -- one good pick per job, in the spirit of the minimal
        distributions. Install the lot, a section at a time, or a
        twelve-program minimal set. The list is filtered to this board first,
-       so 316 is the count on a 64-bit port and fewer on armhf.
+       so 329 is the count on a 64-bit port and fewer on armhf.
 
        Three front ends, one table. The desktop menu (Super+z) is built from
-       it, the Copal Center (Super+Shift+c) lists all 316 with a status column and
+       it, the Copal Center (Super+Shift+c) lists all 329 with a status column and
        a Run button that installs first if it has to, and this stage bulk
        installs from it. Nothing can appear in a menu that is not
        installable, and nothing installable is missing from the menus.
