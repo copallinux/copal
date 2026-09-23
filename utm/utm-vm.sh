@@ -33,6 +33,7 @@
 #   utm/utm-vm.sh stop    --target aarch64
 #   utm/utm-vm.sh refresh --target aarch64 --image build/copal-vm.img
 #   utm/utm-vm.sh export  --target aarch64 --image build/copal-vm.img
+#   utm/utm-vm.sh grow    --target aarch64 --size 128g   # a bigger disk; then stage 8
 #   utm/utm-vm.sh delete  --target aarch64
 #   utm/utm-vm.sh config  --target x86_64        # print the plist, write nothing
 #   utm/utm-vm.sh progress --target x86_64       # how far the install has got
@@ -89,6 +90,7 @@ SSH_PORT=""
 SHARE_DIR="${SHARE_DIR:-$HOME/Downloads/SharedVM}"
 NET_MODE="shared"
 FORCE=0
+GROW_SIZE=""
 # create points the machine at SHARE_DIR by itself. --no-share opts out, for a
 # machine that should reach nothing on this Mac.
 NO_SHARE=0
@@ -780,9 +782,9 @@ do_layout() {
 }
 
 case "$ACTION" in
-    create|start|stop|status|delete|refresh|export|config|ip|log|progress|share|layout) : ;;
+    create|start|stop|status|delete|refresh|export|grow|config|ip|log|progress|share|layout) : ;;
     -h|--help) usage; exit 0 ;;
-    *) die "unknown action '$ACTION'. One of: create share start stop status delete refresh export config ip log progress layout" ;;
+    *) die "unknown action '$ACTION'. One of: create share start stop status delete refresh export grow config ip log progress layout" ;;
 esac
 
 while [ $# -gt 0 ]; do
@@ -801,6 +803,7 @@ while [ $# -gt 0 ]; do
         --no-start) NO_START=1; shift ;;
         --init-path) INIT_PATH="${2:-}"; shift 2 ;;
         --force)    FORCE=1; shift ;;
+        --size)     GROW_SIZE="${2:-}"; shift 2 ;;
         --no-share) NO_SHARE=1; shift ;;
         -h|--help)  usage; exit 0 ;;
         *) die "unknown option '$1'. See --help." ;;
@@ -1679,6 +1682,42 @@ do_delete() {
 #
 #   utm/utm-vm.sh export --target aarch64 --image build/copal-vm.img
 #
+# A bigger disk for a machine that has filled its own. UTM's disk is the
+# qcow2 inside the bundle, so this is qemu-img resize on that file: the
+# virtual size moves out, nothing already written moves at all, and the
+# qcow2 stays sparse -- the Mac pays for what the guest writes, not for
+# the number. The partition and the filesystem are the guest's business:
+# boot it and run stage 8, which moves p2's end to the end of the disk and
+# grows ext4 online.
+#
+# Stopped only, for the same reason as export. Never smaller: shrinking a
+# disk under a filesystem that reaches its end destroys the end of it.
+do_grow() {
+    require_bundle
+    [ -n "$GROW_SIZE" ] || die "grow needs --size, the new disk size (e.g. --size 128g)"
+    command -v qemu-img >/dev/null 2>&1 || die "qemu-img not found. brew install qemu"
+    if [ -x "$UTMCTL" ] && [ "$("$UTMCTL" status "$NAME" 2>/dev/null || echo stopped)" != stopped ]; then
+        die "'$NAME' is running. Stop it first: $0 stop --target $TARGET"
+    fi
+    local disk now want
+    disk=$(ls "$BUNDLE/Data"/*.qcow2 2>/dev/null | head -1) || true
+    [ -n "$disk" ] || die "no disk in $BUNDLE/Data"
+    # The text form, not --output=json: the JSON lists the file under the
+    # image first, with its own "virtual-size", and that one is a few KB.
+    now=$(qemu-img info "$disk" | sed -n 's/^virtual size:.*(\([0-9]*\) bytes).*/\1/p' | head -1)
+    case "$GROW_SIZE" in
+        *[gG]) want=$(( ${GROW_SIZE%[gG]} * 1073741824 )) ;;
+        *[tT]) want=$(( ${GROW_SIZE%[tT]} * 1099511627776 )) ;;
+        *) die "--size takes gigabytes or terabytes: 128g, 1t" ;;
+    esac
+    [ -n "$now" ] || die "qemu-img could not read the size of $disk"
+    [ "$want" -gt "$now" ] || die "$NAME's disk is already $(( now / 1073741824 ))g; grow only makes it bigger."
+    info "Growing ${NAME}'s disk: $(( now / 1073741824 ))g -> $(( want / 1073741824 ))g (sparse)"
+    qemu-img resize "$disk" "$want" >/dev/null || die "qemu-img resize failed; the disk is unchanged"
+    info "Done. Start it, then grow the root filesystem into the new space:"
+    printf '    %s\n' "$0 start --target $TARGET" "doas copal --stage 8        # in the guest" >&2
+}
+
 # The machine must be stopped. Converting a disk out from under a running
 # guest reads a half-written filesystem, which is not a backup, it is a
 # corrupted copy that looks fine until it is booted.
@@ -1957,6 +1996,7 @@ case "$ACTION" in
     delete)  do_delete  ;;
     refresh) do_refresh ;;
     export)  do_export  ;;
+    grow)    do_grow    ;;
     config)  do_config  ;;
     ip)      do_ip      ;;
     log)     do_log     ;;

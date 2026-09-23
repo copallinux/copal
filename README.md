@@ -750,7 +750,7 @@ CFG_USER=alice MODEL=pi4 ./copal-prep.sh           # no questions except the era
 | `--fresh` | delete the image first and build it from nothing. **Use this after changing the installer** |
 | `--refresh` | rewrite only the generated files on an existing card — no partitioning, no erase, no re-download |
 | `/path/to/payload` | use an already-extracted Alpine payload and skip the download |
-| `IMAGE_SIZE=12g` | smaller image. The default 64g is a sparse ceiling, not an allocation — see [Sizing](#sizing) |
+| `IMAGE_SIZE=12g` | smaller image. The default 128g is a sparse ceiling, not an allocation — see [Sizing](#sizing) |
 | `BUILDDIR=` / `CACHEDIR=` | where output and the download cache go. Default `./build` and `./build/cache` |
 | `MODEL=` / `ARCH=` | choose the board, or the architecture directly |
 
@@ -2044,10 +2044,22 @@ preference. It is written to be picked up cold.
 
 ## Sizing
 
-`IMAGE_SIZE` defaults to **64g**, which yields a 4 GB FAT boot partition and
-**~60 GiB of root**. The image is sparse — a fresh one is about 550 MB on disk
+`IMAGE_SIZE` defaults to **128g**, which yields a 4 GB FAT boot partition and
+**~124 GiB of root**. The image is sparse — a fresh one is about 550 MB on disk
 and grows only as it is written, reaching 15–25 GB after a full sixteen-stage
-run. The number is a ceiling, not an allocation.
+run. The number is a ceiling, not an allocation. The default was 64g until a
+working machine — toolchains, checkouts, the store's builds — filled its
+~60 GiB root.
+
+**A VM that has filled its disk** is grown in place, with nothing reinstalled:
+
+```sh
+make utm-grow SIZE=256g          # on the Mac: stops it, grows the qcow2 (sparse)
+doas copal --stage 8             # in the guest: p2 and ext4 grow into the space
+```
+
+A card needs none of this: `ROOT_SIZE` defaults to the rest of the card, so
+the root partition is as large as whatever card it is written to.
 
 It used to default to 16g, and that was too small for what this builds: minus
 the boot partition it leaves ~12 GiB, and `texlive-full` (~4 GB), KiCad (~2 GB),

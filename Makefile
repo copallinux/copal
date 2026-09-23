@@ -88,7 +88,7 @@ model_of = $(patsubst pizero%,zero%,$(1))
 .PHONY: alldebug build-all-debug imagedebug freshdebug purge \
 	help menu flow targets boards configure require-tools vm graphical check \
         fresh auto image refresh utm utm-x86 layout layout-auto answers answers-show lint space clean distclean \
-        all cache build-all release capture video screens verify gallery chain walkthrough release-cast logs utm-export install \
+        all cache build-all release capture video screens verify gallery chain walkthrough release-cast logs utm-export utm-grow install \
         redeploy redeploy-check answers-node fleet-console fleet-web
 
 help:
@@ -392,6 +392,15 @@ utm: image
 utm-export:
 	@$(UTMRUN) stop --target aarch64 >/dev/null 2>&1 || true
 	@$(UTMRUN) export --target aarch64 --image $(IMG)
+
+# A bigger disk for the UTM machine, when it has filled the one it was
+# created with. Stops it, grows the qcow2 to SIZE (sparse -- the Mac pays
+# only for what is written), and says what to run in the guest: stage 8
+# moves the root partition's end out and grows ext4 into it.
+SIZE ?= 128g
+utm-grow:
+	@$(UTMRUN) stop --target aarch64 >/dev/null 2>&1 || true
+	@$(UTMRUN) grow --target aarch64 --size $(SIZE)
 
 # Boot the image with its console on THIS terminal, and say what to type. The
 # install itself is hours and happens inside the guest -- this is only the

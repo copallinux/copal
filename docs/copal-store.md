@@ -251,6 +251,14 @@ package's word; only `@source` recipes have to build and run here first.
 Considered and left out: mGBA is already in the catalogue (Retro); Flare's
 Alpine package is a script that downloads the game on first run.
 
+**Compiled from GitHub, the same day: OpenTyrian** (`opentyrian@source`), the
+twentieth recipe. The engine is built from the tagged source with its own
+Makefile; the freeware Tyrian 2.1 data is taken from the same release's arm64
+archive, the only copy on GitHub, and its `data/` is the same on every
+architecture. It built in 11 s and opened on its title screen, data found.
+DevilutionX, Taisei, Naev and Endless Sky are next; the last three are
+300-600 MB of source each and wait on a larger bench disk (`make utm-grow`).
+
 ## VIII. Using it
 
     copal-store                     the window (or menus under dialog, in a terminal)

@@ -64,8 +64,8 @@
 # --image writes to a sparse file rather than a card. Nothing physical is
 # touched, so there is no identifier to mistype: it is the way to try a change
 # without a boot cycle, and with MODEL=vm the result boots on this Mac at
-# native speed. IMAGE_SIZE=64g by default -- sparse, so it costs only what is
-# written. See IMAGE_SIZE below for why 64 and not 16.
+# native speed. IMAGE_SIZE=128g by default -- sparse, so it costs only what is
+# written. See IMAGE_SIZE below for why 128 and not 16.
 #
 set -euo pipefail
 
@@ -325,9 +325,14 @@ IMAGE_PATH=""
 # corrupt anything -- it just quietly produced a system missing the half of the
 # catalogue that would not fit, which is a worse failure for being silent.
 #
-# 64g leaves ~60 GiB of root and 2.5-4x headroom. Lower it freely for a test
-# image that will never run past stage 4.
-IMAGE_SIZE="${IMAGE_SIZE:-64g}"
+# 64g was the next default, and it too was filled: the bench guest reached
+# 97% of its ~60 GiB root in September 2026 -- the toolchains, the store's
+# builds and a home directory of checkouts, 53 GB between them -- with the
+# store's games still to come. 128g leaves ~124 GiB of root. The sparse file
+# still starts near 550 MB. Lower it freely for a test image that will never
+# run past stage 4. A machine already made smaller is grown with
+# 'make utm-grow SIZE=...' on the Mac and stage 8 inside it.
+IMAGE_SIZE="${IMAGE_SIZE:-128g}"
 FRESH=0
 SRC_ARG=""
 # Debug logging, decided HERE rather than only on the machine. A card written
@@ -23360,6 +23365,7 @@ Engineering|OpenSCAD (programmer's 3D CAD)|openscad|openscad|x|!v6,!v7,!a64|Soli
 Games|Amiberry (Amiga emulator)|amiberry@source|amiberry|x|64|An Amiga 500 to 4000 emulator tuned for ARM boards, with WHDLoad for games from hard-disk images. Needs Kickstart ROMs for most software; AROS boots without them.|https://github.com/BlitterStudio/amiberry
 Games|Celeste Classic (PICO-8 platformer)|ccleste@source|ccleste|x|64|The original Celeste, a precise little platformer from a 2015 game jam, in a C port. Arrow keys, Z to jump, X to dash.|https://github.com/lemon32767/ccleste
 Games|Pac-Man (SDL clone)|pacman@source|pacman-game|x|64|A faithful Pac-Man for the desktop: eat the dots, dodge the four ghosts. Arrow keys.|https://github.com/ebuc99/pacman
+Games|OpenTyrian (Tyrian 2000)|opentyrian@source|opentyrian|x|64|The 1995 vertical shooter Tyrian, freeware since 2004, on its open-source engine: a story campaign, an arcade mode, and ship upgrades bought between levels. Arrow keys to fly, Space to fire.|https://github.com/opentyrian/opentyrian
 Games|DDNet (DDraceNetwork)|ddnet@source|DDNet|x|64|Cooperative Teeworlds: a team of tiny gunners hooks, jumps and freezes its way through thousands of puzzle maps together, online or on a LAN.|https://github.com/ddnet/ddnet
 Games|Descent 1 (shareware, DXX-Rebirth)|dxx@source|d1x-rebirth|x|64|The 1995 shooter flown in six degrees of freedom through mines taken over by robots. The shareware episode; copy the full game's files into ~/.d1x-rebirth to play the rest.|https://github.com/dxx-rebirth/dxx-rebirth
 Games|Descent 2 (demo, DXX-Rebirth)|dxx@source|d2x-rebirth|x|64|Descent's sequel: more robots, a guide-bot, afterburners. The demo levels; the full game's files go in ~/.d2x-rebirth. Installed together with Descent 1.|https://github.com/dxx-rebirth/dxx-rebirth
@@ -23820,6 +23826,29 @@ pacman_build() {
     sed -i 's|"/usr/local/share/pacman/"|PACKAGE_DATA_DIR "/"|' "$_s/src/platform.cpp"
     (cd "$_s" && ./configure --prefix="$PREFIX" && make -j "$JOBS" && make DESTDIR="$DEST" install)
     mv "$DEST$PREFIX/bin/pacman" "$DEST$PREFIX/bin/pacman-game"
+}
+
+# OpenTyrian: the 1995 shooter Tyrian 2000's engine, ported to C over SDL2.
+# The engine is compiled from the tagged source; the game's data -- freeware
+# since 2004 -- comes from the same release's Linux archive, which is the only
+# copy on GitHub (the README's other link is camanis.net). Only its data/
+# directory is used, and it is the same for every architecture, so the arm64
+# archive is fetched on all of them.
+OPENTYRIAN_VER=v2.1.20260913
+opentyrian_bdeps() { echo build-base pkgconf sdl2-dev sdl2_net-dev; }
+opentyrian_rdeps() { echo sdl2 sdl2_net; }
+opentyrian_build() {
+    _s=$(gh_source opentyrian/opentyrian "$OPENTYRIAN_VER" \
+         dbcd96383d4fa571137242c36bd7eca054cf5a08a9bf2eec15ef230d6e60680d) || return 1
+    _a=$(gh_asset opentyrian/opentyrian "$OPENTYRIAN_VER" "opentyrian-$OPENTYRIAN_VER-linux-arm64.tar.gz" \
+         8608e68622edcabd30eb62fcbdfd8106982c13e29fb775ccccf56956dccd90fb) || return 1
+    # VCS_IDREV: the tarball is not a git checkout, so the version is given.
+    make -C "$_s" -j "$JOBS" prefix="$PREFIX" VCS_IDREV="echo $OPENTYRIAN_VER" \
+        && make -C "$_s" prefix="$PREFIX" VCS_IDREV="echo $OPENTYRIAN_VER" DESTDIR="$DEST" install \
+        || return 1
+    _g="$DEST$PREFIX/share/games/tyrian"
+    mkdir -p "$_g"
+    tar -xzf "$_a" -C "$W" opentyrian/data && cp "$W"/opentyrian/data/* "$_g/"
 }
 
 
@@ -24372,7 +24401,7 @@ PATCH
 }
 
 # ------------------------------------------------------------ recipe driver ---
-RECIPES="openshot ccleste pacman astromenace amiberry alephone dxx pychess bleachbit persepolis ffconverter smc funkin librecad veracrypt ohmyposh ddnet pixelorama browsh"
+RECIPES="openshot ccleste pacman opentyrian astromenace amiberry alephone dxx pychess bleachbit persepolis ffconverter smc funkin librecad veracrypt ohmyposh ddnet pixelorama browsh"
 
 is_recipe() { case " $RECIPES " in *" $1 "*) return 0 ;; esac; return 1; }
 
