@@ -256,8 +256,23 @@ twentieth recipe. The engine is built from the tagged source with its own
 Makefile; the freeware Tyrian 2.1 data is taken from the same release's arm64
 archive, the only copy on GitHub, and its `data/` is the same on every
 architecture. It built in 11 s and opened on its title screen, data found.
-DevilutionX, Taisei, Naev and Endless Sky are next; the last three are
-300-600 MB of source each and wait on a larger bench disk (`make utm-grow`).
+
+**DevilutionX** (`devilutionx@source`), the twenty-first, is Diablo's
+reconstructed engine from the release's fully-vendored source, with the free
+shareware episode (`spawn.mpq`, from DevilutionX's own assets repository on
+GitHub) installed beside it. Three things had to be learned on the bench. A
+source distribution defaults every library to its bundled copy, and the
+bundled SDL2 2.30 no longer compiles against Alpine's PipeWire headers, so
+the recipe names Alpine's SDL2, SDL2_image, zlib, bzip2, libpng and libsodium
+explicitly. SDL2's CMake package in 3.24 is sdl2-compat's, and it imports
+`libSDL2main.a`, which ships only in `sdl2-compat-static` -- without it
+`find_package(SDL2)` fails outright. And the Linux install rules sit inside
+the CPack block, so CPack stays on. It built in under three minutes on four
+cores and played the intro from `spawn.mpq`; every library resolves from
+`/usr/lib`. ZeroTier online play is left out; LAN play over TCP remains.
+
+Taisei, Naev and Endless Sky are next: 300-600 MB of source each, waiting on a
+larger bench disk (`make utm-grow`).
 
 ## VIII. Using it
 

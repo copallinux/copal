@@ -85,6 +85,7 @@ Games|Amiberry (Amiga emulator)|amiberry@source|amiberry|x|64|An Amiga 500 to 40
 Games|Celeste Classic (PICO-8 platformer)|ccleste@source|ccleste|x|64|The original Celeste, a precise little platformer from a 2015 game jam, in a C port. Arrow keys, Z to jump, X to dash.|https://github.com/lemon32767/ccleste
 Games|Pac-Man (SDL clone)|pacman@source|pacman-game|x|64|A faithful Pac-Man for the desktop: eat the dots, dodge the four ghosts. Arrow keys.|https://github.com/ebuc99/pacman
 Games|OpenTyrian (Tyrian 2000)|opentyrian@source|opentyrian|x|64|The 1995 vertical shooter Tyrian, freeware since 2004, on its open-source engine: a story campaign, an arcade mode, and ship upgrades bought between levels. Arrow keys to fly, Space to fire.|https://github.com/opentyrian/opentyrian
+Games|DevilutionX (Diablo)|devilutionx@source|devilutionx|x|64|Diablo, the 1996 dungeon crawler, on its reconstructed engine: widescreen, controller support and quality-of-life fixes. Plays the free shareware episode as installed; copy DIABDAT.MPQ from the CD or GOG into ~/.local/share/diasurgical/devilution for the whole game.|https://github.com/diasurgical/devilutionX
 Games|DDNet (DDraceNetwork)|ddnet@source|DDNet|x|64|Cooperative Teeworlds: a team of tiny gunners hooks, jumps and freezes its way through thousands of puzzle maps together, online or on a LAN.|https://github.com/ddnet/ddnet
 Games|Descent 1 (shareware, DXX-Rebirth)|dxx@source|d1x-rebirth|x|64|The 1995 shooter flown in six degrees of freedom through mines taken over by robots. The shareware episode; copy the full game's files into ~/.d1x-rebirth to play the rest.|https://github.com/dxx-rebirth/dxx-rebirth
 Games|Descent 2 (demo, DXX-Rebirth)|dxx@source|d2x-rebirth|x|64|Descent's sequel: more robots, a guide-bot, afterburners. The demo levels; the full game's files go in ~/.d2x-rebirth. Installed together with Descent 1.|https://github.com/dxx-rebirth/dxx-rebirth
@@ -568,6 +569,59 @@ opentyrian_build() {
     _g="$DEST$PREFIX/share/games/tyrian"
     mkdir -p "$_g"
     tar -xzf "$_a" -C "$W" opentyrian/data && cp "$W"/opentyrian/data/* "$_g/"
+}
+
+# DevilutionX: Diablo (1996), its engine reconstructed from the original and
+# carried on as free software. Built from the release's fully-vendored source
+# -- the libraries it fetches at build time are already in its dist/, so the
+# build reaches nothing but this tarball. Alpine supplies SDL2, SDL2_image,
+# zlib, bzip2, libpng and libsodium, each named ON below: a source
+# distribution defaults every library to its dist/ copy, and dist/'s SDL2
+# 2.30 no longer compiles against Alpine's PipeWire headers. SDL_audiolib
+# (not packaged) and fmt (it wants its own major version) come from dist/.
+#
+# THE GAME'S DATA. The engine is free; Diablo is not. What is free is the
+# 1997 shareware episode, spawn.mpq, which DevilutionX's own assets
+# repository hosts on GitHub, so it plays the first two dungeon levels out
+# of the box. A copied DIABDAT.MPQ (the CD or GOG) in
+# ~/.local/share/diasurgical/devilution/ is found first and plays the whole
+# game. The launcher puts the store's share/ at the head of XDG_DATA_DIRS,
+# which is where the engine looks beyond the home directory, so spawn.mpq is
+# found under any prefix.
+#
+# Left out: ZeroTier online play (a large vendored build; TCP multiplayer
+# over a LAN stays), Discord presence, the tests, and the Hellfire menu entry,
+# which needs Hellfire's own files.
+DEVILUTIONX_VER=1.5.5
+devilutionx_bdeps() {
+    # sdl2-compat-static: SDL2's CMake package (sdl2-compat's, in 3.24)
+    # imports SDL2::SDL2main from libSDL2main.a, which only the -static
+    # subpackage ships, and find_package fails outright without it.
+    echo build-base cmake samurai pkgconf sdl2-dev sdl2-compat-static sdl2_image-dev zlib-dev \
+         bzip2-dev libpng-dev libsodium-dev gettext-dev
+}
+devilutionx_rdeps() { echo sdl2 sdl2_image libsodium libbz2 zlib libpng; }
+devilutionx_build() {
+    _t=$(gh_asset diasurgical/devilutionX "$DEVILUTIONX_VER" devilutionx-src-fully-vendored.tar.xz \
+         f42379cdf098a351a2020d9e6de1840c76e09113c792f73c6df34dec26818b04) || return 1
+    _m=$(gh_asset diasurgical/devilutionx-assets v2 spawn.mpq \
+         64427cd7c1ba904eaa2e0031c16a6b136d0ecef9abc888c5ff8344b459356e38) || return 1
+    tar -xJf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
+    _s="$W/devilutionx-src-full-$DEVILUTIONX_VER"
+    cmake_stage "$_s" -DBUILD_TESTING=OFF -DDISABLE_ZERO_TIER=ON -DDISCORD_INTEGRATION=OFF \
+        -DDEVILUTIONX_SYSTEM_LIBFMT=OFF -DDEVILUTIONX_SYSTEM_SDL_AUDIOLIB=OFF \
+        -DDEVILUTIONX_SYSTEM_SDL2=ON -DDEVILUTIONX_SYSTEM_SDL_IMAGE=ON -DDEVILUTIONX_SYSTEM_ZLIB=ON \
+        -DDEVILUTIONX_SYSTEM_BZIP2=ON -DDEVILUTIONX_SYSTEM_LIBPNG=ON -DDEVILUTIONX_SYSTEM_LIBSODIUM=ON \
+        -DDISABLE_LTO=ON || return 1
+    _d="$DEST$PREFIX/share/diasurgical/devilutionx"
+    mkdir -p "$_d" && cp "$_m" "$_d/spawn.mpq"
+    rm -f "$DEST$PREFIX/share/applications/devilutionx-hellfire.desktop" \
+          "$DEST$PREFIX/share/icons/hicolor/512x512/apps/devilutionx-hellfire.png"
+    mv "$DEST$PREFIX/bin/devilutionx" "$DEST$PREFIX/share/diasurgical/devilutionx/devilutionx.bin"
+    launcher devilutionx <<EOF
+export XDG_DATA_DIRS="$PREFIX/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+exec "$PREFIX/share/diasurgical/devilutionx/devilutionx.bin" "\$@"
+EOF
 }
 
 
@@ -1120,7 +1174,7 @@ PATCH
 }
 
 # ------------------------------------------------------------ recipe driver ---
-RECIPES="openshot ccleste pacman opentyrian astromenace amiberry alephone dxx pychess bleachbit persepolis ffconverter smc funkin librecad veracrypt ohmyposh ddnet pixelorama browsh"
+RECIPES="openshot ccleste pacman opentyrian devilutionx astromenace amiberry alephone dxx pychess bleachbit persepolis ffconverter smc funkin librecad veracrypt ohmyposh ddnet pixelorama browsh"
 
 is_recipe() { case " $RECIPES " in *" $1 "*) return 0 ;; esac; return 1; }
 
