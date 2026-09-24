@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="site.css">
+<link rel="stylesheet" href="menu-sim.css">
 </head>
 <body>
 
@@ -53,12 +54,34 @@
 <h2><span class="idx">01</span>What you get</h2>
 
 <div class="plate">
-  <figure>
+  <figure id="menu-sim">
     <img src="img/site/desktop-menu.jpg" width="1280" height="800" loading="lazy"
          alt="The Copal desktop on Hyprland: an Art Nouveau wallpaper of lilies, a large clock, the bar along the top, and the Mint-style application menu open on the left.">
     <figcaption><b>The full monty.</b> Hyprland with the Linux Antiquity theme,
     the bar along the top, and the application menu laid out the way Linux
     Mint's is — on an aarch64 virtual machine on a Mac.</figcaption>
+    <p class="sim-hint" hidden>It works: hover a category, hover a program to
+    see what it opens to, click to start it, type to search, right-click for
+    favourites. <kbd>Esc</kbd> clears the search, then closes the menu; the
+    bar's <kbd>≡</kbd> opens it again. The entries, icons and pictures are the
+    real menu's and the gallery's; the wallpaper is Linux Antiquity's (MIT).</p>
+  </figure>
+</div>
+
+<div class="plate">
+  <figure id="textmenu-sim">
+    <img src="img/menu-apps.png" width="520" height="553" loading="lazy"
+         alt="copal-menu in wofi: a dark list of every application, with the search prompt reading Applications and System.">
+    <figcaption><b>The keyboard's menu.</b> <code>copal-menu</code>, on
+    Super+Space: every program in one list on the left, the categories, the
+    settings, the session and an Install branch on the right — two panes,
+    never more than two levels deep, and it lists the terminal programs a
+    launcher cannot see.</figcaption>
+    <p class="sim-hint" hidden>It plays itself until you point at it. Then:
+    type to filter, <kbd>↑</kbd> <kbd>↓</kbd> to move, <kbd>←</kbd>
+    <kbd>→</kbd> to cross between the panes or go back, <kbd>Enter</kbd> to
+    run. A terminal program with no picture links to its page in the
+    <a href="commands.html">command reference</a>.</p>
   </figure>
 </div>
 
@@ -93,7 +116,7 @@ are good — each with two sentences saying what it is.
     <h3>Full monty</h3>
     <p class="what">Hyprland, themed as Linux Antiquity.</p>
     <p>Everything above, then a GPU-composited Wayland desktop, Copal Apps,
-    and sixteen more programs installed at the first login while a slideshow
+    and thirteen more programs installed at the first login while a slideshow
     shows each one arriving.</p>
     <p class="stages">aarch64 and x86_64</p>
   </article>
@@ -162,5 +185,8 @@ window — and a gallery of 203 programs photographed running on it.
 
 </main>
 <script src="orbit.js"></script>
+<script src="menu-data.js"></script>
+<script src="menu-sim.js"></script>
+<script src="textmenu-sim.js"></script>
 </body>
 </html>

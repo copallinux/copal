@@ -1,0 +1,212 @@
+/* The live menu on the home page: copal-gui, drawn at the screenshot's own
+   geometry (a 1280x800 desktop) and scaled to the plate. Its colours are the
+   desktop's, not the page's -- it is a picture of the machine, and a picture
+   keeps its own palette whatever it is printed on. */
+
+.sim-wrap {
+  position: relative; width: 100%; aspect-ratio: 16 / 10; overflow: hidden;
+  border: 1px solid var(--ink-key); box-shadow: 5px 5px 0 var(--ink-key);
+  background: #2b2b24;
+}
+.sim-wrap:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+
+.sim {
+  --bar: #121212; --bar-ink: #a79f8a; --bar-hot: #e9b86a;
+  --panel: #ffffff; --side: #f2f2f2; --line: #dedede;
+  --row-hot: #e8e8e8; --ink: #242424; --ink-soft: #5e5e5e;
+  position: absolute; left: 0; top: 0; width: 1280px; height: 800px;
+  transform-origin: 0 0; overflow: hidden; user-select: none;
+  font: 15px/1.2 "Recia", "Inter", "Cantarell", system-ui, sans-serif;
+  color: var(--ink); background: #6f7a55 center / cover no-repeat;
+  cursor: default;
+}
+
+/* ----- the bar and the desktop's own clock ----- */
+.sim-bar {
+  position: absolute; inset: 0 0 auto 0; height: 26px; z-index: 5;
+  display: flex; align-items: center; gap: 14px; padding: 0 10px;
+  background: var(--bar); color: var(--bar-ink);
+  font: 12px/26px "JetBrains Mono", ui-monospace, monospace;
+}
+.sim-bar button {
+  all: unset; cursor: pointer; padding: 0 6px; color: var(--bar-hot); font-size: 15px;
+}
+.sim-ws { display: flex; gap: 0; }
+.sim-ws span { width: 32px; text-align: center; cursor: pointer; }
+.sim-ws span.on { color: var(--bar-hot); box-shadow: inset 0 -2px 0 var(--bar-hot); }
+.sim-bar .grow { flex: 1; color: #c9b27a; white-space: nowrap; overflow: hidden; }
+.sim-bar .time { color: var(--bar-hot); font-weight: 700; }
+
+.sim-clock {
+  position: absolute; left: 560px; top: 118px; z-index: 1; pointer-events: none;
+  text-align: left;
+}
+.sim-clock .hm {
+  font: 600 120px/1 "Cormorant Garamond", Georgia, serif; color: #f4c27c;
+  text-shadow: 0 2px 10px rgba(0,0,0,.25); letter-spacing: 2px;
+}
+.sim-clock .date {
+  margin-top: 6px; font: 14px "JetBrains Mono", monospace; color: #e8e1cf;
+  text-shadow: 0 1px 3px rgba(0,0,0,.6);
+}
+
+/* ----- the menu ----- */
+.sim-menu {
+  position: absolute; left: 6px; top: 32px; width: 590px; height: 562px; z-index: 4;
+  display: flex; background: var(--panel);
+  border: 1px solid rgba(0,0,0,.18); border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.25);
+}
+.sim-menu[hidden] { display: none; }
+.sim-side {
+  width: 58px; flex: none; display: flex; flex-direction: column; justify-content: space-between;
+  padding: 12px 0 10px; background: var(--side); border-right: 1px solid var(--line);
+  border-radius: 8px 0 0 8px;
+}
+.sim-side .col { display: flex; flex-direction: column; align-items: center; gap: 11px; }
+.sim-side .col.sess { gap: 6px; }
+.sim-ib {
+  width: 40px; height: 40px; display: grid; place-items: center; border-radius: 6px; cursor: pointer;
+}
+.sim-ib:hover, .sim-ib.hot { background: var(--row-hot); }
+
+.sim-main { flex: 1; display: flex; flex-direction: column; padding: 10px 10px 8px; min-width: 0; }
+.sim-search {
+  height: 34px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  border: 1px solid #b9c2cf; border-radius: 6px; background: #ececec;
+}
+.sim-search.focus { border-color: #3584e4; box-shadow: 0 0 0 1px #3584e4 inset; background: #fff; }
+.sim-search svg { flex: none; }
+.sim-search .q { flex: 1; white-space: pre; overflow: hidden; color: var(--ink); }
+.sim-search .q:empty::before { content: "Type to search"; color: #8a8a8a; }
+.sim-search.focus .caret {
+  width: 1px; height: 18px; background: var(--ink); animation: sim-blink 1s steps(1) infinite;
+}
+@keyframes sim-blink { 50% { opacity: 0; } }
+
+.sim-body { flex: 1; display: flex; gap: 8px; min-height: 0; margin-top: 10px; }
+.sim-secs { width: 162px; flex: none; }
+.sim-sec {
+  height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 10px;
+  border-radius: 5px; white-space: nowrap;
+}
+.sim-sec.on { background: var(--row-hot); }
+.sim-apps { flex: 1; overflow-y: auto; min-width: 0; scrollbar-width: thin; }
+.sim-app {
+  height: 30px; display: flex; align-items: center; gap: 10px; padding: 0 8px;
+  border-radius: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sim-app.on { background: var(--row-hot); }
+.sim-app .n { overflow: hidden; text-overflow: ellipsis; }
+.sim-app .t { margin-left: auto; font-size: 11px; color: var(--ink-soft); }
+
+.sim-foot { flex: none; border-top: 1px solid var(--line); margin-top: 6px; padding: 8px 6px 0; height: 48px; }
+.sim-foot .n { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sim-foot .d { opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+
+.sim-ico {
+  display: inline-block; flex: none; background-repeat: no-repeat;
+  image-rendering: auto;
+}
+
+/* ----- hover: what the program opens to ----- */
+.sim-peek {
+  position: absolute; left: 640px; top: 350px; width: 560px; z-index: 3;
+  background: #fce2ab; border: 1px solid #121212; box-shadow: 5px 5px 0 #121212;
+  padding: 8px 8px 10px; pointer-events: none;
+  opacity: 0; transform: translateY(6px); transition: opacity .12s, transform .12s;
+}
+.sim-peek.on { opacity: 1; transform: none; }
+.sim-peek .shot {
+  width: 100%; aspect-ratio: 16 / 10; display: block; background: #e7d5a6 center / cover no-repeat;
+  border: 1px solid #121212; image-rendering: auto;
+}
+.sim-peek .shot.none { display: grid; place-items: center; color: #6d6047; font-size: 13px; }
+.sim-peek .cap { margin-top: 7px; font-size: 13px; color: #1b1710; line-height: 1.35; }
+.sim-peek .cap b { font-weight: 700; }
+
+/* ----- click: the program's screen ----- */
+.sim-run {
+  position: absolute; inset: 0; z-index: 8; background: #000 center / cover no-repeat;
+  opacity: 0; pointer-events: none; transition: opacity .18s;
+}
+.sim-run.on { opacity: 1; pointer-events: auto; }
+.sim-run .pill {
+  position: absolute; right: 14px; top: 34px; display: flex; align-items: center; gap: 12px;
+  padding: 7px 8px 7px 14px; border-radius: 18px; background: rgba(18,18,18,.86); color: #f2e3c0;
+  font: 13px "JetBrains Mono", monospace;
+}
+.sim-run .pill button {
+  all: unset; cursor: pointer; padding: 3px 10px; border-radius: 12px; background: #fccf8a; color: #121212;
+}
+.sim-run .none {
+  position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 14px;
+  color: #f2e3c0; font: 15px "JetBrains Mono", monospace; text-align: center;
+}
+
+/* ----- the session buttons' screens ----- */
+.sim-veil {
+  position: absolute; inset: 0; z-index: 9; display: none; place-items: center; align-content: center;
+  gap: 10px; background: rgba(10,10,10,.92); color: #f2e3c0; text-align: center;
+  font: 16px "JetBrains Mono", monospace; cursor: pointer;
+}
+.sim-veil.on { display: grid; }
+.sim-veil .big { font: 600 64px "Cormorant Garamond", Georgia, serif; color: #f4c27c; }
+
+/* ----- right-click ----- */
+.sim-ctx {
+  position: absolute; z-index: 10; min-width: 190px; padding: 4px; display: none;
+  background: #fff; border: 1px solid rgba(0,0,0,.2); border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.2);
+}
+.sim-ctx.on { display: block; }
+.sim-ctx div { padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+.sim-ctx div:hover { background: var(--row-hot); }
+
+.sim-hint { font-size: .8rem; color: var(--ink-dim); margin-top: .5rem; }
+.sim-hint kbd {
+  font: .75rem "JetBrains Mono", monospace; padding: 0 .3rem;
+  border: 1px solid var(--ink-key); border-radius: 3px; background: var(--paper-raised);
+}
+
+/* ----- the other menu: copal-menu in wofi, as the screenshots show it ----- */
+.tm-menu {
+  position: absolute; left: 60px; top: 60px; width: 520px; height: 540px; z-index: 4;
+  background: #1a1a1a; border: 1px solid #2c2c2c; border-radius: 4px; overflow: hidden;
+  font: 14px/1 "JetBrains Mono", ui-monospace, monospace; color: #d8d2c4;
+  box-shadow: 0 8px 28px rgba(0,0,0,.35);
+}
+.tm-menu[hidden] { display: none; }
+.tm-head {
+  height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  background: #111; color: #8e8778; cursor: pointer; white-space: pre;
+}
+.tm-q { color: #efe6d2; }
+.tm-head.focus .tm-caret { width: 8px; height: 17px; background: #c49a52; animation: sim-blink 1s steps(1) infinite; }
+.tm-rows { padding-top: 0; }
+.tm-row {
+  height: 28px; line-height: 28px; padding: 0 10px; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; border-left: 3px solid transparent; cursor: pointer;
+}
+.tm-row.on { background: #2b2b2b; border-left-color: #e9b86a; color: #e9b86a; }
+.tm-row.tm-none { color: #6d6658; cursor: default; }
+.tm-card { left: 640px; top: 150px; }
+.tm-man {
+  width: 100%; height: 100%; box-sizing: border-box; padding: 26px 28px; background: #151515;
+  font: 15px/1.5 "JetBrains Mono", monospace; color: #d8d2c4; text-align: left;
+}
+.tm-man .k { color: #8e8778; text-transform: uppercase; letter-spacing: .12em; font-size: 12px; }
+.tm-man .c { color: #e9b86a; font-size: 22px; margin: 12px 0 10px; }
+.tm-man .p { color: #efe6d2; }
+.sim-peek .cap a { color: #8a6320; font-weight: 700; }
+.tm-term {
+  width: 760px; padding: 22px 26px; background: #151515; border: 1px solid #333; text-align: left;
+  font: 16px/1.6 "JetBrains Mono", monospace; color: #d8d2c4; white-space: pre;
+}
+.tm-manlink {
+  font: 15px "JetBrains Mono", monospace; color: #121212; background: #fccf8a;
+  padding: 7px 14px; border-radius: 16px; text-decoration: none; pointer-events: auto;
+}
+.tm-badge {
+  position: absolute; left: 60px; top: 612px; z-index: 6; padding: 6px 12px; border-radius: 14px;
+  background: rgba(18,18,18,.82); color: #f2e3c0; font: 13px "JetBrains Mono", monospace;
+}
