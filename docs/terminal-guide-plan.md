@@ -454,6 +454,25 @@ Each ends with a review of what it produced before the next begins.
 - **The catalogue is written**, apart from Security (11, facts only by the
   author's choice), `lldb`, `pwndbg` and `cl65`. The store's shelf is next.
 
+### Phase 4, batch 13: the store's shelf (24 Sep 2026)
+
+- **22 entries**: `node`, `btop`; `starship`, `oh-my-posh`, `browsh`,
+  `qemu-system-x86_64`, `waydroid`, `fdupes`, `jdupes`, `rdfind`,
+  `moon-buggy`, `speedtest-cli`, `pipe-viewer`, `httrack`, `arduino-cli`,
+  `gh`, `fastfetch`, `neofetch`, `tldr`, `pwsh`, `ollama`, `scrcpy`. Each
+  installed through `copal-store install`, so the man pages, optionals
+  and access path was exercised too.
+- **XMRig removed** from Copal entirely: no crypto mining.
+- **OnionShare** does not install: Alpine's testing package depends on
+  `py3-flask-httpauth`, which no repository has.
+- **Store fixes**: `copal-store access` (plugdev, wireshark, cdrom,
+  dialout, users); optionals for qemu (`qemu-img`) and scrcpy
+  (`android-udev-rules`); scrcpy and adb in plugdev, arduino-cli in
+  dialout.
+- **Left**: Copal's own commands (41), which were to come after the core
+  and never did; Security (11) by choice; `lldb`, `pwndbg`, `cl65`,
+  `onionshare-cli`.
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.

@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 289 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 212 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 232 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.
   How it is written, checked against a running machine: <a href="terminal-guide-lab-report.html">the lab report</a>.</p>
 </header>
@@ -247,19 +247,29 @@
 </article>
 </section>
 <section class="sec" id="s-appearance"><h2>Appearance</h2>
-<article class="cmd facts-only" id="c-oh-my-posh" data-s="oh-my-posh  appearance ">
-<h3><a class="self" href="#c-oh-my-posh"><code>oh-my-posh</code></a> <span class="purpose"></span></h3>
+<article class="cmd" id="c-oh-my-posh" data-s="oh-my-posh a shell prompt engine with a hundred ready-made themes. appearance ">
+<h3><a class="self" href="#c-oh-my-posh"><code>oh-my-posh</code></a> <span class="purpose">A shell prompt engine with a hundred ready-made themes.</span></h3>
 <p class="facts">Appearance · command-line tool · built from source by Copal Apps · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf</p>
+<p class="why"><b>On Copal:</b> The store's other prompt: built by Copal Apps from source, with its whole theme collection, for anyone who wants to pick a look rather than design one.</p>
 <pre class="syn">Usage:
   oh-my-posh [flags]
   oh-my-posh [command]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Initialise it in your shell's start-up file with a theme; the next shell has that prompt. The themes are JSON files: try one, keep the one you like, or copy it and change it.</p>
+<h4>Examples</h4><div class="ex"><code>ls /usr/local/share/oh-my-posh/themes</code><span>the themes</span></div><div class="ex"><code>echo 'eval "$(oh-my-posh init bash --config /usr/local/share/oh-my-posh/themes/jandedobbeleer.omp.json)"' &gt;&gt; ~/.bashrc</code></div><div class="ex"><code>oh-my-posh print primary --config THEME.omp.json</code><span>preview a theme's prompt</span></div><div class="ex"><code>oh-my-posh debug</code><span>timing of each segment, to find a slow one</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>init SHELL</code></dt><dd>print the line that turns it on; --config THEME</dd><dt><code>print primary</code></dt><dd>print the prompt, to preview</dd><dt><code>config</code></dt><dd>read or export the configuration</dd><dt><code>debug</code></dt><dd>show what each segment costs</dd><dt><code>font</code></dt><dd>install a Nerd Font for the icons</dd><dt><code>version</code></dt><dd>the version</dd></dl>
+<h4>Notes</h4><ul><li>Most themes need a Nerd Font; without one the icons show as boxes. <code>copal-fonts install coding</code> brings them.</li><li>A theme that runs <a href="#c-git"><code>git</code></a> in every prompt can feel slow on a Pi in a big repository; <code>oh-my-posh debug</code> shows which segment it is.</li></ul>
+<p class="see">See also <a href="#c-starship"><code>starship</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-starship" data-s="starship minimal, blazing-fast and infinitely customizable prompt for any shell appearance starship">
-<h3><a class="self" href="#c-starship"><code>starship</code></a> <span class="purpose">Minimal, blazing-fast and infinitely customizable prompt for any shell</span></h3>
+<article class="cmd" id="c-starship" data-s="starship a fast, configurable shell prompt: the folder, git state, language versions, all at a glance. appearance starship">
+<h3><a class="self" href="#c-starship"><code>starship</code></a> <span class="purpose">A fast, configurable shell prompt: the folder, git state, language versions, all at a glance.</span></h3>
 <p class="facts">Appearance · command-line tool · <b>starship</b> 1.24.2 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="https://starship.rs">home</a></p>
 <p class="deps">needs dbus-libs</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The store's prompt for any shell: one line added to the shell's start-up file, and the prompt shows the branch, what changed, how long the last command took and whether it failed.</p>
+<h4>Use</h4><p>Add its init line to your shell's start-up file; the next shell has the prompt. Change it in <code>~/.config/starship.toml</code>, or start from one of its presets.</p>
+<h4>Examples</h4><div class="ex"><code>echo 'eval "$(starship init bash)"' &gt;&gt; ~/.bashrc</code><span>turn it on for bash</span></div><div class="ex"><code>starship preset --list</code><span>the ready-made looks</span></div><div class="ex"><code>starship preset gruvbox-rainbow -o ~/.config/starship.toml</code><span>use one</span></div><div class="ex"><code>starship explain</code><span>what each part of the prompt is</span></div><div class="ex"><code>starship toggle git_status</code><span>switch a part off, and on again</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>init SHELL</code></dt><dd>print the line that turns it on (bash, zsh, fish...)</dd><dt><code>preset NAME</code></dt><dd>print a preset; -o FILE to write it</dd><dt><code>explain</code></dt><dd>describe the prompt you are looking at</dd><dt><code>config</code></dt><dd>edit the configuration</dd><dt><code>print-config</code></dt><dd>the configuration in force</dd><dt><code>toggle MODULE</code></dt><dd>turn one part on or off</dd></dl>
+<h4>Notes</h4><ul><li>Many presets use Nerd Font symbols: without such a font they show as boxes. <code>copal-fonts install coding</code> brings them.</li><li>For the Linux console, a plain preset (<code>plain-text-symbols</code>) avoids symbols the console font lacks.</li></ul>
+<p class="see">See also <a href="#c-oh-my-posh"><code>oh-my-posh</code></a>, <a href="#c-git"><code>git</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-audio"><h2>Audio</h2>
@@ -335,10 +345,15 @@ pactl --version</pre>
 </article>
 </section>
 <section class="sec" id="s-browsers"><h2>Browsers</h2>
-<article class="cmd facts-only" id="c-browsh" data-s="browsh  browsers ">
-<h3><a class="self" href="#c-browsh"><code>browsh</code></a> <span class="purpose"></span></h3>
+<article class="cmd" id="c-browsh" data-s="browsh the modern web in a terminal: a real firefox renders the page, browsh draws it in text. browsers ">
+<h3><a class="self" href="#c-browsh"><code>browsh</code></a> <span class="purpose">The modern web in a terminal: a real Firefox renders the page, browsh draws it in text.</span></h3>
 <p class="facts">Browsers · terminal program · built from source by Copal Apps · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The store's browser for pages the text browsers cannot show -- JavaScript, video thumbnails, modern layouts -- over SSH or on a console, with Firefox ESR doing the rendering headless.</p>
+<h4>Use</h4><p>Start it with an address; Firefox runs in the background and browsh draws the page with coloured characters. Ctrl-l goes to a new address; the mouse clicks links where the terminal passes clicks.</p>
+<h4>Examples</h4><div class="ex"><code>browsh</code><span>its start page</span></div><div class="ex"><code>browsh --startup-url https://example.com</code><span>open a page</span></div><div class="ex"><code>browsh --monochrome</code><span>for terminals without colour</span></div><div class="ex"><code>browsh --http-server-mode</code><span>serve pages as plain HTML to other machines</span></div><div class="ex"><code>Ctrl-l         (in browsh) type an address</code></div><div class="ex"><code>Backspace      back</code></div><div class="ex"><code>Ctrl-t / Ctrl-w   a new tab / close it</code></div><div class="ex"><code>Ctrl-q         quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>--startup-url URL</code></dt><dd>the page to open</dd><dt><code>--monochrome</code></dt><dd>no colour</dd><dt><code>--http-server-mode</code></dt><dd>run as an HTTP service instead of a terminal UI</dd><dt><code>--time-limit SECS</code></dt><dd>quit after SECS seconds</dd><dt><code>--firefox.path PATH</code></dt><dd>which Firefox (Copal's launcher passes firefox-esr)</dd></dl>
+<h4>Notes</h4><ul><li>It is Firefox underneath, so it costs Firefox's memory: a few hundred MB, and a slow start on a small Pi.</li><li>Not on ARMv6 (the first Zero): its row is gated off there.</li></ul>
+<p class="see">See also <a href="#c-links"><code>links</code></a>, <a href="#c-w3m"><code>w3m</code></a>, <code>firefox-esr</code></p>
 </article>
 </section>
 <section class="sec" id="s-code"><h2>Code</h2>
@@ -1210,17 +1225,27 @@ nano [options] [[+[crCR]{/|?}string] file]...</pre>
 </article>
 </section>
 <section class="sec" id="s-emulation"><h2>Emulation</h2>
-<article class="cmd facts-only" id="c-qemu-system-x86_64" data-s="qemu-system-x86_64 qemu system x86_64 emulator emulation qemu-system-x86_64">
-<h3><a class="self" href="#c-qemu-system-x86_64"><code>qemu-system-x86_64</code></a> <span class="purpose">Qemu system x86_64 emulator</span></h3>
+<article class="cmd" id="c-qemu-system-x86_64" data-s="qemu-system-x86_64 emulate a whole 64-bit pc: boot another operating system inside a window on the pi. emulation qemu-system-x86_64">
+<h3><a class="self" href="#c-qemu-system-x86_64"><code>qemu-system-x86_64</code></a> <span class="purpose">Emulate a whole 64-bit PC: boot another operating system inside a window on the Pi.</span></h3>
 <p class="facts">Emulation · command-line tool · <b>qemu-system-x86_64</b> 11.0.3 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="https://qemu.org/">home</a></p>
 <p class="deps">needs qemu, qemu-edk2-i386-vars, libaio, libbpf, capstone, libdw, libfdt, glib</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The store's PC emulator, on the 64-bit boards: run an x86 Linux, a BSD or DOS inside Copal. On an ARM board it emulates the CPU in software, so it works everywhere and fast nowhere.</p>
+<h4>Use</h4><p>Make a disk image with <code>qemu-img</code>, then boot an installer ISO with it attached. <code>-m</code> sets the memory, <code>-smp</code> the CPUs; the display opens in a window.</p>
+<h4>Examples</h4><div class="ex"><code>qemu-img create -f qcow2 disk.qcow2 20G</code><span>a 20 GB disk that grows as used</span></div><div class="ex"><code>qemu-system-x86_64 -m 2G -smp 2 -hda disk.qcow2 -cdrom install.iso -boot d</code><span>install</span></div><div class="ex"><code>qemu-system-x86_64 -m 2G -smp 2 -hda disk.qcow2</code><span>boot the installed system</span></div><div class="ex"><code>qemu-system-x86_64 -m 1G -nographic -hda disk.qcow2</code><span>serial console, no window</span></div><div class="ex"><code>qemu-system-x86_64 -accel help</code><span>the accelerators this build has</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-m SIZE</code></dt><dd>memory: 1G, 2048M</dd><dt><code>-smp N</code></dt><dd>CPUs</dd><dt><code>-hda FILE</code></dt><dd>the first disk</dd><dt><code>-cdrom FILE</code></dt><dd>an ISO in the CD drive</dd><dt><code>-boot d</code></dt><dd>boot from the CD (c for the disk)</dd><dt><code>-nographic</code></dt><dd>no window: the console on this terminal</dd><dt><code>-accel NAME</code></dt><dd>tcg (software) is what an ARM board has</dd><dt><code>-bios FILE</code></dt><dd>firmware: /usr/share/qemu/edk2-x86_64-code.fd for UEFI</dd></dl>
+<h4>Notes</h4><ul><li>On an ARM Pi there is no KVM for x86: every instruction is translated, so a guest runs at a small fraction of native speed. Small, text-mode systems are the good fit.</li><li><code>qemu-img</code> comes with it as an optional from 24 Sep 2026; before that, <code>doas apk add qemu-img</code>.</li><li>64-bit boards only: its row is gated to aarch64 and x86_64.</li></ul>
+<p class="see">See also <a href="#c-waydroid"><code>waydroid</code></a>, <a href="#c-mednafen"><code>mednafen</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-waydroid" data-s="waydroid a container-based approach to boot a full android system on a regular linux system emulation waydroid">
-<h3><a class="self" href="#c-waydroid"><code>waydroid</code></a> <span class="purpose">A container-based approach to boot a full Android system on a regular Linux system</span></h3>
+<article class="cmd" id="c-waydroid" data-s="waydroid run android apps in a container on the desktop, each in its own window or a full android screen. emulation waydroid">
+<h3><a class="self" href="#c-waydroid"><code>waydroid</code></a> <span class="purpose">Run Android apps in a container on the desktop, each in its own window or a full Android screen.</span></h3>
 <p class="facts">Emulation · command-line tool · <b>waydroid</b> 1.6.2 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="https://github.com/waydroid/waydroid">home</a></p>
 <p class="deps">needs dnsmasq, gbinder-python, iptables, kmod, lxc, py3-dbus, py3-gobject3, py3-pyclip</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The store's Android layer: LineageOS in a container, sharing the Linux kernel, drawn through Wayland -- so it needs the Hyprland desktop, not i3.</p>
+<h4>Use</h4><p>Initialise it once (it downloads the Android images, about a gigabyte), start the container service, then start a session from the desktop and open the full UI or single apps.</p>
+<h4>Examples</h4><div class="ex"><code>doas waydroid init</code><span>download and set up the images, once</span></div><div class="ex"><code>doas rc-service waydroid-container start</code><span>the container service</span></div><div class="ex"><code>waydroid session start &amp;</code><span>the Android session, in the desktop</span></div><div class="ex"><code>waydroid show-full-ui</code><span>the Android screen in a window</span></div><div class="ex"><code>waydroid app install app.apk</code><span>install an APK</span></div><div class="ex"><code>waydroid status</code><span>is it running, and what</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>init</code></dt><dd>set up the images (root)</dd><dt><code>container</code></dt><dd>start, stop, restart the container (root)</dd><dt><code>session start</code></dt><dd>start the Android session (as you, in the desktop)</dd><dt><code>show-full-ui</code></dt><dd>the whole Android screen</dd><dt><code>app install APK</code></dt><dd>install an app;  app list  the installed ones</dd><dt><code>prop</code></dt><dd>read and set Android properties</dd></dl>
+<h4>Notes</h4><ul><li>It needs the kernel's binder, which Copal's kernel has built in, and a Wayland session: from i3 or over SSH it cannot draw.</li><li>To start it at boot: <code>doas rc-update add waydroid-container</code>.</li><li>Not on ARMv6: its row is gated off there.</li></ul>
+<p class="see">See also <a href="#c-scrcpy"><code>scrcpy</code></a>, <a href="#c-qemu-system-x86_64"><code>qemu-system-x86_64</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-engineering"><h2>Engineering</h2>
@@ -1260,19 +1285,29 @@ nano [options] [[+[crCR]{/|?}string] file]...</pre>
 </article>
 </section>
 <section class="sec" id="s-files"><h2>Files</h2>
-<article class="cmd facts-only" id="c-fdupes" data-s="fdupes finds duplicate files in a given set of directories files fdupes">
-<h3><a class="self" href="#c-fdupes"><code>fdupes</code></a> <span class="purpose">finds duplicate files in a given set of directories</span></h3>
+<article class="cmd" id="c-fdupes" data-s="fdupes find duplicate files -- identical contents, whatever their names -- and optionally delete them. files fdupes">
+<h3><a class="self" href="#c-fdupes"><code>fdupes</code></a> <span class="purpose">Find duplicate files -- identical contents, whatever their names -- and optionally delete them.</span></h3>
 <p class="facts">Files · command-line tool · <b>fdupes</b> 2.4.0 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="man/fdupes.html">man fdupes(1)</a> · <a href="https://github.com/adrianlopezroche/fdupes">home</a></p>
 <p class="deps">needs libncursesw, libpcre2-32, sqlite-libs</p>
+<p class="why"><b>On Copal:</b> The store's duplicate finder: photos copied twice, downloads saved again, backups of backups. It compares sizes, then checksums, then bytes, so a match is exact.</p>
 <pre class="syn">fdupes [ options ] DIRECTORY ...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Point it at folders; it prints each set of identical files together. Look at the list before deleting anything; <code>-d</code> then asks, set by set, which copy to keep.</p>
+<h4>Examples</h4><div class="ex"><code>fdupes -r ~/Pictures</code><span>sets of duplicates, recursively</span></div><div class="ex"><code>fdupes -rS ~/Downloads</code><span>with each file's size</span></div><div class="ex"><code>fdupes -rm ~/Music</code><span>just a summary: how many, how much space</span></div><div class="ex"><code>fdupes -rd ~/Pictures</code><span>choose, set by set, which to keep</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-r, --recurse</code></dt><dd>go into subfolders</dd><dt><code>-S, --size</code></dt><dd>show sizes</dd><dt><code>-m, --summarize</code></dt><dd>only the totals</dd><dt><code>-n, --noempty</code></dt><dd>ignore empty files</dd><dt><code>-d, --delete</code></dt><dd>ask which file of each set to keep, delete the rest</dd><dt><code>-N, --noprompt</code></dt><dd>with -d: keep the first of each set without asking</dd><dt><code>-f, --omitfirst</code></dt><dd>list all but the first file of each set</dd></dl>
+<h4>Notes</h4><ul><li><code>-dN</code> deletes without asking, keeping whichever file happened to be listed first: check the list without <code>-d</code> first.</li><li>Deleting is permanent; there is no bin. For a gentler clean-up, <code>rdfind -makehardlinks true</code> keeps every name and frees the space.</li></ul>
+<p class="see">See also <a href="#c-jdupes"><code>jdupes</code></a>, <a href="#c-rdfind"><code>rdfind</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-jdupes" data-s="jdupes finds and performs actions upon duplicate files files jdupes">
-<h3><a class="self" href="#c-jdupes"><code>jdupes</code></a> <span class="purpose">finds and performs actions upon duplicate files</span></h3>
+<article class="cmd" id="c-jdupes" data-s="jdupes a faster fdupes: find duplicate files, and delete, hard-link or deduplicate them. files jdupes">
+<h3><a class="self" href="#c-jdupes"><code>jdupes</code></a> <span class="purpose">A faster fdupes: find duplicate files, and delete, hard-link or deduplicate them.</span></h3>
 <p class="facts">Files · command-line tool · <b>jdupes</b> 1.31.1 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="man/jdupes.html">man jdupes(1)</a> · <a href="https://codeberg.org/jbruchon/jdupes">home</a></p>
 <p class="deps">needs libjodycode, libxxhash</p>
+<p class="why"><b>On Copal:</b> The store's fast duplicate finder: the same results as fdupes, much quicker on large folders, and able to replace copies with hard links instead of deleting.</p>
 <pre class="syn">jdupes [ options ] DIRECTORIES ...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>The same way as fdupes: point it at folders, read the sets, then decide. Beyond deleting, <code>-L</code> replaces duplicates with hard links, so every name stays and the space is freed.</p>
+<h4>Examples</h4><div class="ex"><code>jdupes -r ~/Pictures</code><span>sets of duplicates</span></div><div class="ex"><code>jdupes -rm ~/Music</code><span>a summary</span></div><div class="ex"><code>jdupes -rL ~/Photos</code><span>hard-link duplicates together</span></div><div class="ex"><code>jdupes -rd ~/Downloads</code><span>choose which to keep, set by set</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-r, --recurse</code></dt><dd>go into subfolders</dd><dt><code>-S, --size</code></dt><dd>show sizes</dd><dt><code>-m, --summarize</code></dt><dd>only the totals</dd><dt><code>-d, --delete</code></dt><dd>ask which to keep, delete the rest</dd><dt><code>-N, --no-prompt</code></dt><dd>with -d: keep the first without asking</dd><dt><code>-L, --link-hard</code></dt><dd>replace duplicates with hard links</dd><dt><code>-B, --dedupe</code></dt><dd>copy-on-write deduplication (Btrfs, XFS)</dd><dt><code>-Q, --quick</code></dt><dd>skip the final byte-by-byte check (faster, less sure)</dd></dl>
+<h4>Notes</h4><ul><li>Hard links only work within one filesystem, and after linking, editing one name edits them all -- fine for photos, wrong for files you mean to change separately.</li><li><code>-Q</code> trades certainty for speed; leave it off before deleting.</li><li>It comes from Alpine's testing repository (<code>jdupes@testing</code>).</li></ul>
+<p class="see">See also <a href="#c-fdupes"><code>fdupes</code></a>, <a href="#c-rdfind"><code>rdfind</code></a></p>
 </article>
 <article class="cmd" id="c-mc" data-s="mc midnight commander: a two-panel file manager for the terminal, with a viewer and an editor. files mc">
 <h3><a class="self" href="#c-mc"><code>mc</code></a> <span class="purpose">Midnight Commander: a two-panel file manager for the terminal, with a viewer and an editor.</span></h3>
@@ -1314,12 +1349,17 @@ nano [options] [[+[crCR]{/|?}string] file]...</pre>
 <h4>Notes</h4><ul><li>Text previews work out of the box; previews of images and PDFs need helper programs.</li><li><code>S</code> opens a shell in the current folder; <code>exit</code> returns to ranger.</li></ul>
 <p class="see">See also <a href="#c-mc"><code>mc</code></a>, <a href="#c-nnn"><code>nnn</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-rdfind" data-s="rdfind finds duplicate files files rdfind">
-<h3><a class="self" href="#c-rdfind"><code>rdfind</code></a> <span class="purpose">finds duplicate files</span></h3>
+<article class="cmd" id="c-rdfind" data-s="rdfind find redundant files across folders, ranked by which copy is the original, and act on them. files rdfind">
+<h3><a class="self" href="#c-rdfind"><code>rdfind</code></a> <span class="purpose">Find redundant files across folders, ranked by which copy is the original, and act on them.</span></h3>
 <p class="facts">Files · command-line tool · <b>rdfind</b> 1.8.0 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="man/rdfind.html">man rdfind(1)</a> · <a href="https://rdfind.pauldreik.se">home</a></p>
 <p class="deps">needs nettle, libxxhash</p>
+<p class="why"><b>On Copal:</b> The store's duplicate finder for "which copy do I keep?": it ranks files by the order the folders were given, so the first folder's copies win -- right for clearing a backup against the originals.</p>
 <pre class="syn">rdfind [ options ] directory1 | file1 [ directory2 | file2 ] ...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Name the folders, the one to keep first. By default it only writes a report, <code>results.txt</code>; options replace the later copies with links, or delete them. Try with <code>-dryrun true</code> before changing anything.</p>
+<h4>Examples</h4><div class="ex"><code>rdfind ~/Pictures /media/usb/old-backup</code><span>report only: results.txt</span></div><div class="ex"><code>rdfind -dryrun true -deleteduplicates true ~/Pictures /media/usb/old</code><span>what it would delete</span></div><div class="ex"><code>rdfind -deleteduplicates true ~/Pictures /media/usb/old</code><span>delete the backup's copies</span></div><div class="ex"><code>rdfind -makehardlinks true ~/Music</code><span>link duplicates, keep every name</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-dryrun true</code></dt><dd>say what would change, change nothing</dd><dt><code>-deleteduplicates true</code></dt><dd>delete all but the highest-ranked copy</dd><dt><code>-makehardlinks true</code></dt><dd>replace duplicates with hard links</dd><dt><code>-makesymlinks true</code></dt><dd>replace them with symbolic links</dd><dt><code>-makeresultsfile false</code></dt><dd>no results.txt</dd><dt><code>-ignoreempty true</code></dt><dd>skip empty files (the default)</dd></dl>
+<h4>Notes</h4><ul><li>The order of the folders is the ranking: the first folder's copy is the one kept. Put the originals first.</li><li>Options take <code>true</code> or <code>false</code> after them, unlike most commands.</li></ul>
+<p class="see">See also <a href="#c-fdupes"><code>fdupes</code></a>, <a href="#c-jdupes"><code>jdupes</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-games"><h2>Games</h2>
@@ -1478,12 +1518,17 @@ command line invocation.
 <h4>Notes</h4><ul><li>The keys are shown on the screen as you play; <code>?</code> if they are not.</li><li><a href="#c-ttysolitaire"><code>ttysolitaire</code></a> is the same game drawn with box characters, and it counts passes through the deck.</li></ul>
 <p class="see">See also <a href="#c-ttysolitaire"><code>ttysolitaire</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-moon-buggy" data-s="moon-buggy drive some car across the moon games moon-buggy">
-<h3><a class="self" href="#c-moon-buggy"><code>moon-buggy</code></a> <span class="purpose">drive some car across the moon</span></h3>
+<article class="cmd" id="c-moon-buggy" data-s="moon-buggy drive a buggy across the moon, jumping craters and blasting rocks -- in a terminal. games moon-buggy">
+<h3><a class="self" href="#c-moon-buggy"><code>moon-buggy</code></a> <span class="purpose">Drive a buggy across the moon, jumping craters and blasting rocks -- in a terminal.</span></h3>
 <p class="facts">Games · terminal program · <b>moon-buggy</b> 1.0.51 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="man/moon-buggy.html">man moon-buggy(6)</a> · <a href="https://www.seehuhn.de/pages/moon-buggy.html">home</a></p>
 <p class="deps">needs libncursesw</p>
+<p class="why"><b>On Copal:</b> The store's terminal arcade game: one key to jump, one to fire, and it gets faster. Playable anywhere, over SSH included.</p>
 <pre class="syn">moon-buggy [-hnsV] [--help] [--no-title] [--show-scores] [--version]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>The buggy drives itself; jump over the craters with Space and clear rocks with the laser. The timing of a jump is fixed, so the skill is choosing when.</p>
+<h4>Examples</h4><div class="ex"><code>moon-buggy</code><span>play</span></div><div class="ex"><code>moon-buggy -n</code><span>skip the title screen</span></div><div class="ex"><code>moon-buggy -s</code><span>the high scores, and exit</span></div><div class="ex"><code>Space  j       (in the game) jump</code></div><div class="ex"><code>a  l           fire the laser</code></div><div class="ex"><code>q              quit (the score is kept)</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-n, --no-title</code></dt><dd>no title screen</dd><dt><code>-s, --show-scores</code></dt><dd>print the high scores and exit</dd><dt><code>-m, --mesg</code></dt><dd>keep other users' messages off the screen</dd></dl>
+<h4>Notes</h4><ul><li>A jump can only start with the wheels on the ground: jumping early is the usual way to land in the next crater.</li><li>It comes from Alpine's testing repository (<code>moon-buggy@testing</code>).</li></ul>
+<p class="see">See also <a href="#c-robots"><code>robots</code></a>, <a href="#c-snake"><code>snake</code></a>, <a href="#c-nethack"><code>nethack</code></a></p>
 </article>
 <article class="cmd" id="c-nethack" data-s="nethack nethack: the deepest of the roguelikes -- a dungeon of letters, and everything interacts. games nethack">
 <h3><a class="self" href="#c-nethack"><code>nethack</code></a> <span class="purpose">NetHack: the deepest of the roguelikes -- a dungeon of letters, and everything interacts.</span></h3>
@@ -1670,11 +1715,16 @@ Use “lynx -help” to display a complete list of current options.</pre>
 <h4>Notes</h4><ul><li>It is from 2006 and speaks older HTML well and newer HTML less so; a modern site may come out as a column of text in the wrong order.</li><li>The full key list is in <code>/usr/share/doc/retawq/key.html</code> -- open it in retawq itself.</li></ul>
 <p class="see">See also <a href="#c-links"><code>links</code></a>, <a href="#c-lynx"><code>lynx</code></a>, <a href="#c-w3m"><code>w3m</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-speedtest-cli" data-s="speedtest-cli command line interface for testing internet bandwidth using speedtest.net internet speedtest-cli">
-<h3><a class="self" href="#c-speedtest-cli"><code>speedtest-cli</code></a> <span class="purpose">Command line interface for testing internet bandwidth using speedtest.net</span></h3>
+<article class="cmd" id="c-speedtest-cli" data-s="speedtest-cli measure the connection's download speed, upload speed and ping, against speedtest.net. internet speedtest-cli">
+<h3><a class="self" href="#c-speedtest-cli"><code>speedtest-cli</code></a> <span class="purpose">Measure the connection's download speed, upload speed and ping, against speedtest.net.</span></h3>
 <p class="facts">Internet · command-line tool · <b>speedtest-cli</b> 2.1.3 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="https://github.com/sivel/speedtest-cli">home</a></p>
 <p class="deps">needs python3</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The store's line test: from a Pi with no browser, is the network slow, or is it something else?</p>
+<h4>Use</h4><p>Run it; it picks the nearest speedtest.net server, measures latency, then download and upload, and prints the results.</p>
+<h4>Examples</h4><div class="ex"><code>speedtest-cli</code><span>the full test, with progress</span></div><div class="ex"><code>speedtest-cli --simple</code><span>three lines: ping, download, upload</span></div><div class="ex"><code>speedtest-cli --list | head</code><span>servers near you, with their IDs</span></div><div class="ex"><code>speedtest-cli --server 12345</code><span>test against one server</span></div><div class="ex"><code>speedtest-cli --json &gt; result.json</code><span>machine-readable, for a log</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--simple</code></dt><dd>only ping, download and upload</dd><dt><code>--list</code></dt><dd>nearby servers and their IDs</dd><dt><code>--server ID</code></dt><dd>use this server</dd><dt><code>--no-upload</code></dt><dd>skip the upload test</dd><dt><code>--bytes</code></dt><dd>show bytes per second instead of bits</dd><dt><code>--json / --csv</code></dt><dd>output for scripts</dd><dt><code>--share</code></dt><dd>a link to a result image on speedtest.net</dd></dl>
+<h4>Notes</h4><ul><li>Over wifi, the result measures the wifi as much as the line: compare with a cable before blaming the provider.</li><li>A test transfers tens of megabytes; on a metered connection, run it sparingly.</li></ul>
+<p class="see">See also <a href="#c-curl"><code>curl</code></a>, <a href="#c-ip"><code>ip</code></a>, <a href="#c-iw"><code>iw</code></a></p>
 </article>
 <article class="cmd" id="c-w3m" data-s="w3m a text web browser and pager: tables laid out, good forms, and it pages files too. internet w3m">
 <h3><a class="self" href="#c-w3m"><code>w3m</code></a> <span class="purpose">A text web browser and pager: tables laid out, good forms, and it pages files too.</span></h3>
@@ -2211,11 +2261,16 @@ weechat [-v|--version]</pre>
 </article>
 </section>
 <section class="sec" id="s-multimedia"><h2>Multimedia</h2>
-<article class="cmd facts-only" id="c-pipe-viewer" data-s="pipe-viewer youtube from command line. pipe-viewer --help pipe-viewer --tricks pipe-viewer --examples pipe-viewer --stdin-help multimedia pipe-viewer">
-<h3><a class="self" href="#c-pipe-viewer"><code>pipe-viewer</code></a> <span class="purpose">YouTube from command line. pipe-viewer --help pipe-viewer --tricks pipe-viewer --examples pipe-viewer --stdin-help</span></h3>
+<article class="cmd" id="c-pipe-viewer" data-s="pipe-viewer search and play youtube from the terminal, through mpv, without a browser. multimedia pipe-viewer">
+<h3><a class="self" href="#c-pipe-viewer"><code>pipe-viewer</code></a> <span class="purpose">Search and play YouTube from the terminal, through mpv, without a browser.</span></h3>
 <p class="facts">Multimedia · terminal program · <b>pipe-viewer</b> 0.5.3 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="man/pipe-viewer.html">man pipe-viewer(1)</a> · <a href="https://github.com/trizen/pipe-viewer">home</a></p>
 <p class="deps">needs perl-data-dump, perl-json, perl-libwww, perl-lwp-protocol-https, perl-term-readline-gnu, perl-unicode-linebreak</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The store's YouTube client: searches, channels and playlists at a prompt, played in mpv -- far lighter than a browser tab on a Pi.</p>
+<h4>Use</h4><p>Give it search words; it lists the results, numbered. Type a number to play it in mpv; <code>:n</code> goes to the next page. With <code>-n</code> it plays sound only.</p>
+<h4>Examples</h4><div class="ex"><code>pipe-viewer alpine linux tutorial</code><span>search, then pick by number</span></div><div class="ex"><code>pipe-viewer -n lofi</code><span>audio only</span></div><div class="ex"><code>pipe-viewer --resolution=720p cats</code><span>cap the video resolution</span></div><div class="ex"><code>pipe-viewer -id dQw4w9WgXcQ</code><span>play one video by its ID</span></div><div class="ex"><code>pipe-viewer -sc copal</code><span>search for channels</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-n, --novideo</code></dt><dd>audio only</dd><dt><code>--resolution=RES</code></dt><dd>the highest resolution: 1080p, 720p, 480p...</dd><dt><code>-id, --videoids=IDS</code></dt><dd>play these video IDs</dd><dt><code>-sc, --channels</code></dt><dd>search channels</dd><dt><code>-sp, --search-pl</code></dt><dd>search playlists</dd><dt><code>--player=NAME</code></dt><dd>mpv (default), vlc</dd><dt><code>-A, --all</code></dt><dd>play all the results in order</dd></dl>
+<h4>Notes</h4><ul><li>On a small Pi, <code>--resolution=480p</code> or <code>-n</code> keeps playback smooth: the decoding is the cost, not the download.</li><li>To keep a video, <code>ytq add URL</code> queues it for download instead.</li></ul>
+<p class="see">See also <a href="#c-ytq"><code>ytq</code></a>, <code>mpv</code></p>
 </article>
 </section>
 <section class="sec" id="s-network"><h2>Network</h2>
@@ -2503,17 +2558,27 @@ Commands:
 </article>
 </section>
 <section class="sec" id="s-programming"><h2>Programming</h2>
-<article class="cmd facts-only" id="c-arduino-cli" data-s="arduino-cli arduino command line tool programming arduino-cli">
-<h3><a class="self" href="#c-arduino-cli"><code>arduino-cli</code></a> <span class="purpose">Arduino command line tool</span></h3>
+<article class="cmd" id="c-arduino-cli" data-s="arduino-cli the arduino toolchain without the ide: install board cores, compile sketches, upload them. programming arduino-cli">
+<h3><a class="self" href="#c-arduino-cli"><code>arduino-cli</code></a> <span class="purpose">The Arduino toolchain without the IDE: install board cores, compile sketches, upload them.</span></h3>
 <p class="facts">Programming · command-line tool · <b>arduino-cli</b> 1.5.1 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="https://github.com/arduino/arduino-cli">home</a></p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The store's Arduino: the IDE is Electron and Java and does not run here, but everything it does underneath is this command -- boards, libraries, compile, upload, serial monitor.</p>
+<h4>Use</h4><p>Install the core for your board once, then compile and upload a sketch folder. The board is named by its FQBN, such as <code>arduino:avr:uno</code>; <code>board list</code> shows what is plugged in and its port.</p>
+<h4>Examples</h4><div class="ex"><code>arduino-cli core update-index &amp;&amp; arduino-cli core install arduino:avr</code><span>once, for Uno and Nano</span></div><div class="ex"><code>arduino-cli board list</code><span>the boards plugged in, and their ports</span></div><div class="ex"><code>arduino-cli sketch new Blink</code><span>a new sketch folder</span></div><div class="ex"><code>arduino-cli compile -b arduino:avr:uno Blink</code></div><div class="ex"><code>arduino-cli upload -b arduino:avr:uno -p /dev/ttyACM0 Blink</code></div><div class="ex"><code>arduino-cli monitor -p /dev/ttyACM0 -c baudrate=9600</code><span>the serial monitor</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>core install CORE</code></dt><dd>install a board platform (arduino:avr, esp32:esp32...)</dd><dt><code>board list</code></dt><dd>connected boards and their ports</dd><dt><code>compile -b FQBN DIR</code></dt><dd>compile a sketch</dd><dt><code>upload -b FQBN -p PORT DIR</code></dt><dd>upload it</dd><dt><code>lib install NAME</code></dt><dd>install a library</dd><dt><code>monitor -p PORT</code></dt><dd>the serial monitor</dd><dt><code>config init</code></dt><dd>write a configuration file to edit</dd></dl>
+<h4>Notes</h4><ul><li>Uploading uses the serial port, which belongs to <code>dialout</code>; Copal adds you with it (<code>copal-store access</code>), then log in again.</li><li>Other boards' cores need their URL first: <code>arduino-cli config add board_manager.additional_urls URL</code>, then <code>core update-index</code>.</li><li>It comes from Alpine's testing repository (<code>arduino-cli@testing</code>).</li></ul>
+<p class="see">See also <a href="#c-screen"><code>screen</code></a>, <a href="#c-make"><code>make</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-gh" data-s="gh github cli programming github-cli">
-<h3><a class="self" href="#c-gh"><code>gh</code></a> <span class="purpose">GitHub CLI</span></h3>
+<article class="cmd" id="c-gh" data-s="gh github from the command line: pull requests, issues, releases, repositories and ci runs. programming github-cli">
+<h3><a class="self" href="#c-gh"><code>gh</code></a> <span class="purpose">GitHub from the command line: pull requests, issues, releases, repositories and CI runs.</span></h3>
 <p class="facts">Programming · command-line tool · <b>github-cli</b> 2.97.0 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="man/gh.html">man gh(1)</a> · <a href="https://cli.github.com">home</a></p>
 <p class="deps">needs git</p>
+<p class="why"><b>On Copal:</b> The store's GitHub client: everything around the code -- review, issues, Actions -- without a browser, next to git in the same terminal.</p>
 <pre class="syn">gh &lt;command&gt; &lt;subcommand&gt; [flags]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Sign in once with <code>gh auth login</code>; then run commands inside a checkout and gh knows which repository you mean.</p>
+<h4>Examples</h4><div class="ex"><code>gh auth login</code><span>sign in (a browser code, or a token)</span></div><div class="ex"><code>gh repo clone owner/project</code><span>clone</span></div><div class="ex"><code>gh pr list</code><span>open pull requests here</span></div><div class="ex"><code>gh pr create --fill</code><span>a pull request from this branch</span></div><div class="ex"><code>gh pr checkout 42</code><span>check out someone's pull request</span></div><div class="ex"><code>gh issue list --label bug</code><span>issues with a label</span></div><div class="ex"><code>gh run watch</code><span>follow the current Actions run</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>auth login</code></dt><dd>sign in to GitHub</dd><dt><code>repo clone R</code></dt><dd>clone a repository</dd><dt><code>pr list/create/checkout/merge</code></dt><dd>pull requests</dd><dt><code>issue list/create/view</code></dt><dd>issues</dd><dt><code>release create TAG</code></dt><dd>a release, with files</dd><dt><code>run list/watch</code></dt><dd>GitHub Actions runs</dd><dt><code>gist create FILE</code></dt><dd>a gist</dd></dl>
+<h4>Notes</h4><ul><li><code>gh auth login</code> can make git use gh for HTTPS as well, so pushes over HTTPS work without a separate token; SSH keys keep working as before.</li><li>On a machine without a desktop browser, choose the device-code way to sign in: it prints a code to enter on any other device.</li></ul>
+<p class="see">See also <a href="#c-git"><code>git</code></a>, <a href="#c-ssh-keygen"><code>ssh-keygen</code></a></p>
 </article>
 <article class="cmd" id="c-node" data-s="node node.js: run javascript outside the browser, with npm for its packages. programming nodejs">
 <h3><a class="self" href="#c-node"><code>node</code></a> <span class="purpose">Node.js: run JavaScript outside the browser, with npm for its packages.</span></h3>
@@ -3170,12 +3235,17 @@ dmesg --console-off</pre>
 <h4>Notes</h4><ul><li>The LAST matching rule wins. Rule files in <code>/etc/doas.d</code> are read in alphabetical order -- setup-alpine writes <code>20-wheel.conf</code> -- which is why Copal names its narrow no-password rules <code>zz-copal-halt.conf</code> and <code>zz-radbeeper.conf</code>: after the general wheel rule, so they match.</li><li>A new group takes effect at the next login. After <code>adduser you wheel</code>, log out and back in before <a href="#c-doas"><code>doas</code></a> will let you through.</li><li><code>sudo</code> exists too: <code>doas-sudo-shim</code> turns the usual <code>sudo</code> spellings into doas, for scripts and habits that say sudo. There is no <code>/etc/sudoers</code>.</li><li>Always check an edited rule with <code>doas -C FILE</code> before logging out: a syntax error denies everything, and with root locked that means a rescue from another machine.</li></ul>
 <p class="see">See also <a href="#c-apk"><code>apk</code></a>, <a href="#c-rc-service"><code>rc-service</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-fastfetch" data-s="fastfetch a fast and feature-rich system information tool similar to neofetch system fastfetch">
-<h3><a class="self" href="#c-fastfetch"><code>fastfetch</code></a> <span class="purpose">A fast and feature-rich system information tool similar to neofetch</span></h3>
+<article class="cmd" id="c-fastfetch" data-s="fastfetch the system at a glance, beside a logo: os, kernel, cpu, memory, desktop, uptime. system fastfetch">
+<h3><a class="self" href="#c-fastfetch"><code>fastfetch</code></a> <span class="purpose">The system at a glance, beside a logo: OS, kernel, CPU, memory, desktop, uptime.</span></h3>
 <p class="facts">System · command-line tool · <b>fastfetch</b> 2.64.2 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="man/fastfetch.html">man fastfetch(1)</a> · <a href="https://github.com/fastfetch-cli/fastfetch">home</a></p>
 <p class="deps">needs hwdata-pci</p>
+<p class="why"><b>On Copal:</b> The store's system summary: what this machine is, in one screen -- useful for a bug report, and the screenshot every desktop gets.</p>
 <pre class="syn">fastfetch [OPTIONS...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run it; it prints the details beside Alpine's logo. A config file chooses which modules appear and in what order.</p>
+<h4>Examples</h4><div class="ex"><code>fastfetch</code><span>the summary</span></div><div class="ex"><code>fastfetch -l none</code><span>without the logo (for a bug report)</span></div><div class="ex"><code>fastfetch -c all</code><span>every module it has</span></div><div class="ex"><code>fastfetch --gen-config</code><span>write a config to edit</span></div><div class="ex"><code>fastfetch --list-modules</code><span>what it can show</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-l, --logo NAME</code></dt><dd>another logo, or none</dd><dt><code>-c, --config FILE</code></dt><dd>a config file or preset (all, neofetch...)</dd><dt><code>--gen-config [PATH]</code></dt><dd>write a starting config</dd><dt><code>--list-modules</code></dt><dd>list the modules</dd><dt><code>-s, --structure LIST</code></dt><dd>which modules, in order: OS:Kernel:Memory</dd></dl>
+<h4>Notes</h4><ul><li>Its config is <code>~/.config/fastfetch/config.jsonc</code> once generated.</li><li>It is neofetch's fast successor: the same idea, in C, in a fraction of the time.</li></ul>
+<p class="see">See also <a href="#c-neofetch"><code>neofetch</code></a>, <a href="#c-btop"><code>btop</code></a>, <code>uname</code></p>
 </article>
 <article class="cmd" id="c-gitui" data-s="gitui a fast terminal interface for git, in tabs: status, log, files, stashes. system gitui">
 <h3><a class="self" href="#c-gitui"><code>gitui</code></a> <span class="purpose">A fast terminal interface for git, in tabs: status, log, files, stashes.</span></h3>
@@ -3247,12 +3317,17 @@ pcp-htop [-dCFhpustvH] [--host/-h host]</pre>
 <h4>Notes</h4><ul><li>A root on something the features do not name -- NVMe, LVM, an encrypted disk -- boots to "mounting root failed" and an emergency shell. Add <code>nvme</code>, <code>lvm</code> or <code>cryptsetup</code> to <code>features=</code> and rebuild before rebooting onto it.</li><li>After a kernel upgrade, reboot soon: the running kernel's modules have been replaced, so loading a new module fails until you do.</li><li>"WARNING: no kernel found" during stage 3 is expected: setup-disk runs on the RAM system, which has no kernel package of its own.</li></ul>
 <p class="see">See also <a href="#c-apk"><code>apk</code></a>, <a href="#c-lsblk"><code>lsblk</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-neofetch" data-s="neofetch a fast, highly customizable system info script system neofetch">
-<h3><a class="self" href="#c-neofetch"><code>neofetch</code></a> <span class="purpose">A fast, highly customizable system info script</span></h3>
+<article class="cmd" id="c-neofetch" data-s="neofetch the original system-summary-with-a-logo script. system neofetch">
+<h3><a class="self" href="#c-neofetch"><code>neofetch</code></a> <span class="purpose">The original system-summary-with-a-logo script.</span></h3>
 <p class="facts">System · command-line tool · <b>neofetch</b> 7.1.0 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="man/neofetch.html">man neofetch(1)</a> · <a href="https://github.com/dylanaraps/neofetch">home</a></p>
 <p class="deps">needs bash</p>
+<p class="why"><b>On Copal:</b> The store keeps it for the recipes and screenshots that name it; fastfetch is its faster successor and the one to use day to day.</p>
 <pre class="syn">neofetch func_name --option "value" --option "value"</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run it; it prints the system's details beside an ASCII logo. It is a bash script, so it is slower than fastfetch, and no longer developed.</p>
+<h4>Examples</h4><div class="ex"><code>neofetch</code><span>the summary</span></div><div class="ex"><code>neofetch --off</code><span>no logo</span></div><div class="ex"><code>neofetch --ascii_distro arch</code><span>another distribution's logo</span></div><div class="ex"><code>neofetch --config none</code><span>ignore any config file</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--off</code></dt><dd>no ASCII art</dd><dt><code>--ascii_distro NAME</code></dt><dd>use that distribution's logo</dd><dt><code>--config FILE</code></dt><dd>another config file; none for the defaults</dd><dt><code>--backend NAME</code></dt><dd>how to show an image (ascii, off...)</dd></dl>
+<h4>Notes</h4><ul><li>Upstream stopped in 2020: details of newer hardware and desktops may be missing or wrong. fastfetch reports them correctly.</li><li>It comes from Alpine's testing repository (<code>neofetch@testing</code>).</li></ul>
+<p class="see">See also <a href="#c-fastfetch"><code>fastfetch</code></a></p>
 </article>
 <article class="cmd" id="c-setup-alpine" data-s="setup-alpine alpine's installer: keyboard, hostname, network, time, users, sshd, disk. system alpine-conf">
 <h3><a class="self" href="#c-setup-alpine"><code>setup-alpine</code></a> <span class="purpose">Alpine's installer: keyboard, hostname, network, time, users, sshd, disk.</span></h3>
@@ -3362,11 +3437,16 @@ dtach -p &lt;socket&gt;</pre>
 <h4>Notes</h4><ul><li>To keep a session when the terminal closes, run it inside abduco (as above) and reattach with <code>abduco -a work</code>.</li><li>Ctrl-g is also a key some programs want; <code>-m</code> moves the prefix.</li></ul>
 <p class="see">See also <a href="#c-abduco"><code>abduco</code></a>, <a href="#c-tmux"><code>tmux</code></a>, <a href="#c-zellij"><code>zellij</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-pwsh" data-s="pwsh a cross-platform automation and configuration tool/framework terminals powershell">
-<h3><a class="self" href="#c-pwsh"><code>pwsh</code></a> <span class="purpose">A cross-platform automation and configuration tool/framework</span></h3>
+<article class="cmd" id="c-pwsh" data-s="pwsh powershell: microsoft's shell and scripting language, passing objects between commands. terminals powershell">
+<h3><a class="self" href="#c-pwsh"><code>pwsh</code></a> <span class="purpose">PowerShell: Microsoft's shell and scripting language, passing objects between commands.</span></h3>
 <p class="facts">Terminals · terminal program · <b>powershell</b> 7.6.1 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="https://github.com/PowerShell/PowerShell">home</a></p>
 <p class="deps">needs dotnet10-runtime, libpsl-native</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The store's PowerShell, as on Windows: for scripts written for it, for managing Windows and cloud systems from the Pi, and for learning it where it is used at work.</p>
+<h4>Use</h4><p>Start it for its prompt, or run a script or one command. Its commands are Verb-Noun (<code>Get-ChildItem</code>, <code>Get-Process</code>) and pass objects, not text: a pipeline sorts and filters by property.</p>
+<h4>Examples</h4><div class="ex"><code>pwsh</code><span>the prompt; exit to leave</span></div><div class="ex"><code>pwsh -File script.ps1</code><span>run a script</span></div><div class="ex"><code>pwsh -c 'Get-Process | Sort-Object CPU -Descending | Select-Object -First 5'</code></div><div class="ex"><code>pwsh -NoProfile -c '$PSVersionTable' # the version, without your profile</code></div><div class="ex"><code>Get-Help Get-ChildItem -Examples     (at the prompt) examples for a command</code></div><div class="ex"><code>Get-Command *Item*                   commands matching a word</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-File FILE</code></dt><dd>run a script</dd><dt><code>-Command CMD</code></dt><dd>run CMD (-c)</dd><dt><code>-NoProfile</code></dt><dd>skip the profile scripts</dd><dt><code>-NoLogo</code></dt><dd>no banner</dd><dt><code>-Login</code></dt><dd>start as a login shell</dd></dl>
+<h4>Notes</h4><ul><li>Linux commands still work inside it, but they pass text: <code>ls | Sort-Object</code> sorts lines, not files. <code>Get-ChildItem</code> gives objects.</li><li>Its telemetry is off only with <code>POWERSHELL_TELEMETRY_OPTOUT=1</code> set in the environment before it starts.</li><li>Not on ARMv6 or 32-bit x86: its row is gated off there.</li></ul>
+<p class="see">See also <a href="#c-dotnet"><code>dotnet</code></a>, <code>bash</code></p>
 </article>
 <article class="cmd" id="c-screen" data-s="screen gnu screen: terminal sessions that survive disconnection, with windows inside one terminal. terminals screen">
 <h3><a class="self" href="#c-screen"><code>screen</code></a> <span class="purpose">GNU Screen: terminal sessions that survive disconnection, with windows inside one terminal.</span></h3>
@@ -3395,17 +3475,27 @@ screen -r sessionowner/[[pid.]tty[.host]]</pre>
 </article>
 </section>
 <section class="sec" id="s-tools"><h2>Tools</h2>
-<article class="cmd facts-only" id="c-ollama" data-s="ollama download and run large language models locally (cpu) tools ollama">
-<h3><a class="self" href="#c-ollama"><code>ollama</code></a> <span class="purpose">Download and run large language models locally (CPU)</span></h3>
+<article class="cmd" id="c-ollama" data-s="ollama run large language models locally: download a model, then chat with it or call it from programs. tools ollama">
+<h3><a class="self" href="#c-ollama"><code>ollama</code></a> <span class="purpose">Run large language models locally: download a model, then chat with it or call it from programs.</span></h3>
 <p class="facts">Tools · command-line tool · <b>ollama</b> 0.17.7 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="https://github.com/ollama/ollama">home</a></p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The store's local AI, on the 64-bit boards: small models run on a Pi 5's CPU, offline, with nothing sent anywhere.</p>
+<h4>Use</h4><p>Start the server, then pull a model and run it. The server stays running and answers programs on port 11434; <code>ollama run</code> gives a chat prompt.</p>
+<h4>Examples</h4><div class="ex"><code>ollama serve &amp;</code><span>start the server (no service is installed)</span></div><div class="ex"><code>ollama pull llama3.2:1b</code><span>a small model, about 1.3 GB</span></div><div class="ex"><code>ollama run llama3.2:1b</code><span>chat; /bye to leave</span></div><div class="ex"><code>ollama list</code><span>the models downloaded</span></div><div class="ex"><code>ollama ps</code><span>which are loaded, and in what memory</span></div><div class="ex"><code>ollama rm llama3.2:1b</code><span>free the space</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>serve</code></dt><dd>start the server</dd><dt><code>pull MODEL</code></dt><dd>download a model</dd><dt><code>run MODEL</code></dt><dd>chat with it (pulls it first if needed)</dd><dt><code>list</code></dt><dd>the downloaded models</dd><dt><code>ps</code></dt><dd>the running ones</dd><dt><code>stop MODEL</code></dt><dd>unload one</dd><dt><code>rm MODEL</code></dt><dd>delete one</dd></dl>
+<h4>Notes</h4><ul><li>Models are large: each is gigabytes, kept in <code>~/.ollama/models</code>. On a small card, one small model is the budget.</li><li>Speed depends on memory: a model bigger than free RAM swaps and crawls. On a 4 GB Pi, 1B to 3B models are the practical size.</li><li>64-bit boards only: its row is gated to aarch64 and x86_64.</li></ul>
+<p class="see">See also <a href="#c-python3"><code>python3</code></a>, <a href="#c-curl"><code>curl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-scrcpy" data-s="scrcpy display and control your android device tools scrcpy">
-<h3><a class="self" href="#c-scrcpy"><code>scrcpy</code></a> <span class="purpose">Display and control your Android device</span></h3>
+<article class="cmd" id="c-scrcpy" data-s="scrcpy show and control an android phone on the desktop, over usb or wi-fi, through adb. tools scrcpy">
+<h3><a class="self" href="#c-scrcpy"><code>scrcpy</code></a> <span class="purpose">Show and control an Android phone on the desktop, over USB or Wi-Fi, through adb.</span></h3>
 <p class="facts">Tools · command-line tool · <b>scrcpy</b> 4.0 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="man/scrcpy.html">man scrcpy(1)</a> · <a href="https://github.com/Genymobile/scrcpy">home</a></p>
 <p class="deps">needs android-tools, sdl3, ffmpeg-libavcodec, ffmpeg-libavdevice, ffmpeg-libavformat, ffmpeg-libavutil, ffmpeg-libswresample, libusb</p>
+<p class="why"><b>On Copal:</b> The store's phone mirror: the phone's screen in a window, typed on with the keyboard, its sound on the Pi's speakers -- nothing installed on the phone.</p>
 <pre class="syn">scrcpy [options]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Turn on USB debugging on the phone (Developer options), plug it in and accept the prompt on the phone, then run scrcpy. The phone's screen opens in a window; the mouse and keyboard control it.</p>
+<h4>Examples</h4><div class="ex"><code>adb devices</code><span>is the phone seen and authorised?</span></div><div class="ex"><code>scrcpy</code><span>mirror and control it</span></div><div class="ex"><code>scrcpy -m 1024</code><span>a smaller picture, for a slower board</span></div><div class="ex"><code>scrcpy --no-audio</code><span>picture only</span></div><div class="ex"><code>scrcpy -e</code><span>a phone connected over Wi-Fi (adb tcpip)</span></div><div class="ex"><code>scrcpy --record=phone.mp4</code><span>record the screen while mirroring</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-m, --max-size=N</code></dt><dd>limit the longer side to N pixels</dd><dt><code>-b, --video-bit-rate=R</code></dt><dd>the video bit rate</dd><dt><code>--no-audio</code></dt><dd>no sound forwarding</dd><dt><code>-s, --serial=ID</code></dt><dd>choose a phone when several are connected</dd><dt><code>-e, --select-tcpip</code></dt><dd>use the phone connected over TCP/IP</dd><dt><code>--record=FILE</code></dt><dd>record while mirroring</dd></dl>
+<h4>Notes</h4><ul><li>"adb: no permissions" means the phone's USB device is not yours: the Android udev rules (an optional of scrcpy) give it to <code>plugdev</code>, and <code>copal-store access</code> adds you to that group.</li><li>The first connection must be accepted on the phone: "Allow USB debugging?".</li></ul>
+<p class="see">See also <a href="#c-waydroid"><code>waydroid</code></a>, <code>adb</code></p>
 </article>
 <article class="cmd" id="c-scrot" data-s="scrot take a screenshot on an x11 desktop: the screen, a window, or a region. tools scrot">
 <h3><a class="self" href="#c-scrot"><code>scrot</code></a> <span class="purpose">Take a screenshot on an X11 desktop: the screen, a window, or a region.</span></h3>
@@ -3421,11 +3511,16 @@ screen -r sessionowner/[[pid.]tty[.host]]</pre>
 <h4>Notes</h4><ul><li>On Wayland it saves a black or empty picture, or fails: it asks the X server for the screen, which only holds X programs. Use <code>grim</code> (the whole screen), <code>grim -g "$(slurp)"</code> (a region) or Super+Shift+S.</li><li><code>%Y</code>, <code>%m</code> and the other date codes in the file name come from strftime.</li></ul>
 <p class="see">See also <a href="#c-copal-shot"><code>copal-shot</code></a>, <a href="#c-tesseract"><code>tesseract</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-tldr" data-s="tldr very fast implementation of tldr in rust tools tealdeer">
-<h3><a class="self" href="#c-tldr"><code>tldr</code></a> <span class="purpose">Very fast implementation of tldr in Rust</span></h3>
+<article class="cmd" id="c-tldr" data-s="tldr short, practical examples for a command: the man page's answer to "just show me how". tools tealdeer">
+<h3><a class="self" href="#c-tldr"><code>tldr</code></a> <span class="purpose">Short, practical examples for a command: the man page's answer to "just show me how".</span></h3>
 <p class="facts">Tools · command-line tool · <b>tealdeer</b> 1.8.0 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="https://tealdeer-rs.github.io/tealdeer/">home</a></p>
 <p class="deps">needs libcrypto3, libssl3</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The store's quick reference (tealdeer): a handful of examples per command, for when a man page is too long -- the Terminal Guide's spirit, for commands it does not cover.</p>
+<h4>Use</h4><p>Fetch the pages once with <code>--update</code>; then <code>tldr COMMAND</code> prints its examples. The cache is local, so it works offline afterwards.</p>
+<h4>Examples</h4><div class="ex"><code>tldr --update</code><span>fetch the pages (first, and now and then)</span></div><div class="ex"><code>tldr tar</code><span>examples for tar</span></div><div class="ex"><code>tldr -p linux ip</code><span>the Linux page when platforms differ</span></div><div class="ex"><code>tldr --list | wc -l</code><span>how many pages there are</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-u, --update</code></dt><dd>refresh the local page cache</dd><dt><code>-l, --list</code></dt><dd>list every command with a page</dd><dt><code>-p, --platform P</code></dt><dd>linux, osx, windows, common</dd><dt><code>-L, --language L</code></dt><dd>pages in another language</dd></dl>
+<h4>Notes</h4><ul><li>Right after install there is no cache: every page says it is missing until <code>tldr --update</code> has run once, with a network.</li><li>The pages are written for GNU/Linux: an option BusyBox lacks will fail here. The man page (or this guide) says what the installed version takes.</li><li>It comes from Alpine's testing repository (<code>tealdeer@testing</code>).</li></ul>
+<p class="see">See also <code>man</code>, <code>apropos</code></p>
 </article>
 <article class="cmd" id="c-tmux" data-s="tmux several shells in one terminal, and sessions that outlive the connection. tools tmux">
 <h3><a class="self" href="#c-tmux"><code>tmux</code></a> <span class="purpose">Several shells in one terminal, and sessions that outlive the connection.</span></h3>
@@ -3454,10 +3549,11 @@ screen -r sessionowner/[[pid.]tty[.host]]</pre>
 </article>
 </section>
 <section class="sec" id="s-transfer"><h2>Transfer</h2>
-<article class="cmd facts-only" id="c-httrack" data-s="httrack offline browser : copy websites to a local directory transfer httrack">
-<h3><a class="self" href="#c-httrack"><code>httrack</code></a> <span class="purpose">offline browser : copy websites to a local directory</span></h3>
+<article class="cmd" id="c-httrack" data-s="httrack copy a website to disk, links rewritten, so it can be read offline. transfer httrack">
+<h3><a class="self" href="#c-httrack"><code>httrack</code></a> <span class="purpose">Copy a website to disk, links rewritten, so it can be read offline.</span></h3>
 <p class="facts">Transfer · command-line tool · <b>httrack</b> 3.49.21 · stage 18 · The Copal Store, and OpenShot compiled · on the Copal Apps shelf · <a href="man/httrack.html">man httrack(1)</a> · <a href="http://www.httrack.com/">home</a></p>
 <p class="deps">needs httrack-doc, pkgconfig, libcrypto3, libssl3, zlib</p>
+<p class="why"><b>On Copal:</b> The store's website copier: save a manual, a reference site or your own old site as a folder of files a browser opens from disk.</p>
 <pre class="syn">httrack [ url ]... [ -filter ]... [ +filter ]...  [ -O, --path ] [ -w, --mirror ] [ -W,
 --mirror-wizard ] [ -g, --get-files ] [ -i, --continue ] [ -Y, --mirrorlinks ] [ -P, --proxy
 ] [ -%f, --httpproxy-ftp[=0] ] [ -%b, --bind ] [ -rN, --depth[=N] ] [ -%eN, --ext-depth[=N] ]
@@ -3473,7 +3569,11 @@ screen -r sessionowner/[[pid.]tty[.host]]</pre>
 --generate-errors[=N] ] [ -X, --purge-old[=0] ] [ -%p, --preserve ] [ -%T,
 --utf8-conversion[=0] ] [ -bN, --cookies[=N] ] [ -%K, --cookies-file ] [ -%Y, --why ] [ -u,
 ...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Give it the address and a folder with <code>-O</code>; it follows links within the site, saves the pages and their images, and rewrites the links to point at the local copies. Limit the depth, or it may try to copy far more than you meant.</p>
+<h4>Examples</h4><div class="ex"><code>httrack https://example.org/docs/ -O ~/mirror/docs</code><span>copy a site's section</span></div><div class="ex"><code>httrack https://example.org/ -O ~/mirror/site --depth=3</code><span>three links deep at most</span></div><div class="ex"><code>httrack https://example.org/ -O ~/mirror/site --max-rate=100000</code><span>at most 100 kB/s</span></div><div class="ex"><code>httrack --update -O ~/mirror/docs</code><span>refresh an earlier copy</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-O, --path DIR</code></dt><dd>where the copy goes</dd><dt><code>--depth=N</code></dt><dd>how many links deep to follow</dd><dt><code>--ext-depth=N</code></dt><dd>how far into other sites (default 0: none)</dd><dt><code>--max-rate=N</code></dt><dd>bytes per second, at most</dd><dt><code>--sockets=N</code></dt><dd>parallel connections (default 4)</dd><dt><code>--update</code></dt><dd>update a copy made before</dd><dt><code>-v, --verbose</code></dt><dd>log on screen</dd></dl>
+<h4>Notes</h4><ul><li>Be kind to the site: a limited depth and a modest <code>--max-rate</code>; copy only what you are allowed to.</li><li>It does not run JavaScript: a site built by script copies as empty pages.</li><li>It comes from Alpine's testing repository (<code>httrack@testing</code>).</li></ul>
+<p class="see">See also <a href="#c-curl"><code>curl</code></a>, <a href="#c-lftp"><code>lftp</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-onionshare-cli" data-s="onionshare-cli share a file over tor hidden services anonymously and securely transfer onionshare">
 <h3><a class="self" href="#c-onionshare-cli"><code>onionshare-cli</code></a> <span class="purpose">Share a file over Tor Hidden Services anonymously and securely</span></h3>

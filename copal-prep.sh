@@ -30312,6 +30312,8 @@ py3-matplotlib|py3-matplotlib-gtk3 py3-matplotlib-tk
 python3|python3-tkinter python3-idle
 py3-lsp-server|py3-pyflakes py3-pycodestyle
 qpdf|qpdf-fix-qdf
+scrcpy|android-udev-rules
+qemu-system-x86_64|qemu-img
 redshift|gammastep hyprsunset
 ranger|highlight mediainfo atool ffmpegthumbnailer poppler-utils w3m-image
 screen|screen-message
@@ -30406,7 +30408,7 @@ optionals_installed() {
 
 # ACCESS. Some programs install fine and then cannot reach what they are
 # for, because Alpine gives the device or the shared files to a group the
-# account is not in: an SDR dongle (plugdev), packet capture (wireshark),
+# account is not in: an SDR dongle or an Android phone (plugdev), packet capture (wireshark),
 # ZAngband's and the BSD games' score files (users), a CD burner (cdrom), a
 # serial radio or instrument (dialout). This table says which installed
 # command wants which group; 'copal-store access' adds the account to each
@@ -30418,6 +30420,8 @@ access_table() {
     cat <<'ACCESS'
 rtl_test|plugdev
 hackrf_info|plugdev
+scrcpy|plugdev
+adb|plugdev
 dumpcap|wireshark
 zangband|users
 robots|users
@@ -30428,6 +30432,7 @@ cdw|cdrom
 rigctl|dialout
 direwolf|dialout
 radbeeper|dialout
+arduino-cli|dialout
 ACCESS
 }
 
