@@ -212,7 +212,29 @@
     r.addEventListener("contextmenu", function (e) { e.preventDefault(); favMenu(a, e); });
     list.appendChild(r); rows[a.id] = r;
   });
-  list.addEventListener("mouseleave", function () { showPeek(null); });
+  list.addEventListener("mouseleave", function () { showPeek(null); edgeStop(); });
+
+  // Scrolling by the edges, as copal-gui does: hover selects and never moves
+  // the list; a strip one row high at the top and at the bottom scrolls it at
+  // one steady speed while the pointer rests there. The rows between stay put,
+  // so a click lands on what was aimed at. The wheel scrolls as always.
+  var EDGE = 24, STEP = 3, edge = { dir: 0, t: 0, x: 0, y: 0 };
+  function edgeStop() { if (edge.t) clearInterval(edge.t); edge.t = 0; edge.dir = 0; }
+  function edgeTick() {
+    var before = list.scrollTop;
+    list.scrollTop = before + edge.dir * STEP;
+    if (list.scrollTop === before) { edgeStop(); return; }   // at the end
+    var r = document.elementFromPoint(edge.x, edge.y);
+    r = r && r.closest ? r.closest(".sim-app") : null;
+    if (r && r._app && state.sel !== r._app) select(r._app, false);
+  }
+  list.addEventListener("mousemove", function (e) {
+    var box = list.getBoundingClientRect(), k = box.height / list.clientHeight || 1;
+    var y = (e.clientY - box.top) / k;          // in the simulation's own pixels
+    var d = y < EDGE ? -1 : (y > list.clientHeight - EDGE ? 1 : 0);
+    edge.x = e.clientX; edge.y = e.clientY;
+    if (d !== edge.dir) { edgeStop(); edge.dir = d; if (d) edge.t = setInterval(edgeTick, 16); }
+  });
 
   function visible(a) {
     if (state.rank) return a.id in state.rank;

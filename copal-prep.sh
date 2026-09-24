@@ -23156,26 +23156,70 @@ def toggle_existing():
         return False
 
 
+# THE PANEL'S GROUND is the theme's menu ground, the one the keyboard menu
+# (Super+Z, wofi) and the launcher draw on: an opaque panel of its own rather
+# than the GTK window colour, which on a light theme was the colour of the
+# terminal behind it and the menu all but vanished. The tokens come from
+# ~/.config/copal/current/colors.css, which copal-theme rewrites; without
+# that file they fall back to the GTK theme's own colours.
+THEME_COLORS = os.path.expanduser("~/.config/copal/current/colors.css")
+FALLBACK = b"""
+@define-color menu-bg @theme_base_color;
+@define-color shadow shade(@theme_base_color, 0.92);
+@define-color highlight @theme_selected_bg_color;
+@define-color accent @theme_selected_fg_color;
+@define-color accent-dark alpha(@theme_fg_color, 0.35);
+@define-color text-light @theme_fg_color;
+"""
 CSS = b"""
 #backdrop, #backdrop > * { background: transparent; }
 #panel {
-    background: @theme_base_color;
-    border: 1px solid alpha(@theme_fg_color, 0.18);
+    background: @menu-bg;
+    color: @text-light;
+    border: 1px solid @accent-dark;
     border-radius: 8px;
+    box-shadow: 0 8px 28px alpha(black, 0.45);
+    margin: 0 14px 14px 0;            /* room for the shadow */
 }
+#panel label, #panel image { color: @text-light; }
 #sidebar {
-    background: alpha(@theme_fg_color, 0.05);
-    border-right: 1px solid alpha(@theme_fg_color, 0.10);
+    background: @shadow;
+    border-right: 1px solid @highlight;
     border-radius: 8px 0 0 8px;
     padding: 8px 4px;
 }
 #sidebar button { padding: 6px; margin: 1px 2px; }
+#sidebar button:hover { background: @highlight; }
+#panel entry {
+    background: @shadow;
+    color: @text-light;
+    caret-color: @accent;
+    border: 1px solid @accent-dark;
+    box-shadow: none;
+}
+#panel entry:focus { border-color: @accent; }
 #sections row { padding: 5px 10px; border-radius: 5px; }
 #apps row { padding: 3px 8px; border-radius: 5px; }
+#sections row:hover, #apps row:hover { background: alpha(@highlight, 0.6); }
+#sections row:selected, #apps row:selected { background: @highlight; }
+#sections row:selected label, #apps row:selected label { color: @accent; }
 #sections, #apps { background: transparent; }
+#panel separator { background: @highlight; }
 #appname { font-weight: bold; }
 #appdesc { opacity: 0.75; }
 """
+
+
+def menu_css():
+    """The fallback tokens, then the theme's, then the rules: a later
+    @define-color replaces an earlier one of the same name."""
+    theme = b""
+    try:
+        with open(THEME_COLORS, "rb") as f:
+            theme = f.read()
+    except OSError:
+        pass
+    return FALLBACK + theme + CSS
 
 
 def run_gui():
@@ -23199,7 +23243,7 @@ def run_gui():
     term = terminal()
 
     prov = Gtk.CssProvider()
-    prov.load_from_data(CSS)
+    prov.load_from_data(menu_css())
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), prov,
                                              Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
@@ -23414,13 +23458,62 @@ def run_gui():
     sections.add_events(Gdk.EventMask.POINTER_MOTION_MASK)
     sections.connect("motion-notify-event", on_sections_motion)
 
+    # SCROLLING BY THE EDGES. Hover selects the row under the pointer and
+    # never moves the list -- selecting a half-visible row made GTK scroll it
+    # into view, which put a new row under the pointer, which was selected
+    # and scrolled again: the list ran away fast from the bottom row and
+    # slower from the one above it. Now the rows between the edges stay
+    # still, so a click lands on what was aimed at, and the list moves only
+    # while the pointer rests in a strip one row high at the top or bottom,
+    # at one steady speed. The wheel and the scrollbar work as always.
+    EDGE, STEP, TICK = 24, 3, 16          # px of strip, px per tick, ms per tick
+    edge = {"dir": 0, "id": 0, "y": 0}
+
+    def edge_tick():
+        adj = scroll.get_vadjustment()
+        v = adj.get_value() + edge["dir"] * STEP
+        v = max(adj.get_lower(), min(v, adj.get_upper() - adj.get_page_size()))
+        if v == adj.get_value():
+            edge["id"] = 0
+            return False                  # at the end: stop until the pointer moves
+        adj.set_value(v)
+        # The row under the resting pointer changes as the list slides.
+        row = applist.get_row_at_y(int(v + edge["y"]))
+        if row is not None and row is not applist.get_selected_row():
+            select_still(row)
+        return True
+
+    def select_still(row):
+        adj = scroll.get_vadjustment()
+        v = adj.get_value()
+        applist.select_row(row)
+        adj.set_value(v)
+
     def on_apps_motion(_w, ev):
+        adj = scroll.get_vadjustment()
         row = applist.get_row_at_y(int(ev.y))
         if row is not None and row is not applist.get_selected_row():
-            applist.select_row(row)
+            select_still(row)
+        y = ev.y - adj.get_value()        # the pointer, within the visible part
+        d = -1 if y < EDGE else (1 if y > adj.get_page_size() - EDGE else 0)
+        edge["y"] = y
+        if d != edge["dir"] or (d and not edge["id"]):
+            if edge["id"]:
+                GLib.source_remove(edge["id"])
+                edge["id"] = 0
+            edge["dir"] = d
+            if d:
+                edge["id"] = GLib.timeout_add(TICK, edge_tick)
         return False
-    applist.add_events(Gdk.EventMask.POINTER_MOTION_MASK)
+
+    def on_apps_leave(*_a):
+        if edge["id"]:
+            GLib.source_remove(edge["id"])
+        edge["id"], edge["dir"] = 0, 0
+        return False
+    applist.add_events(Gdk.EventMask.POINTER_MOTION_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
     applist.connect("motion-notify-event", on_apps_motion)
+    applist.connect("leave-notify-event", on_apps_leave)
     applist.connect("row-selected", lambda _l, r: describe(r.app) if r else describe())
     applist.connect("row-activated", lambda _l, r: go(r.app))
 

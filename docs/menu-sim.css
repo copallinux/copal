@@ -12,8 +12,11 @@
 
 .sim {
   --bar: #121212; --bar-ink: #a79f8a; --bar-hot: #e9b86a;
-  --panel: #ffffff; --side: #f2f2f2; --line: #dedede;
-  --row-hot: #e8e8e8; --ink: #242424; --ink-soft: #5e5e5e;
+  /* The menu panel on the theme's menu ground, as copal-gui draws it now:
+     Antiquity (helios) -- menu-bg, shadow, highlight, text-light, accent. */
+  --panel: #181818; --side: #121212; --line: #333333;
+  --row-hot: #333333; --ink: #d0daed; --ink-soft: #9aa3b4;
+  --accent: #fccf8a; --accent-dark: #87704f;
   position: absolute; left: 0; top: 0; width: 1280px; height: 800px;
   transform-origin: 0 0; overflow: hidden; user-select: none;
   font: 15px/1.2 "Recia", "Inter", "Cantarell", system-ui, sans-serif;
@@ -54,8 +57,8 @@
 .sim-menu {
   position: absolute; left: 6px; top: 32px; width: 590px; height: 562px; z-index: 4;
   display: flex; background: var(--panel);
-  border: 1px solid rgba(0,0,0,.18); border-radius: 8px;
-  box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  border: 1px solid var(--accent-dark); border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.45);
 }
 .sim-menu[hidden] { display: none; }
 .sim-side {
@@ -73,12 +76,12 @@
 .sim-main { flex: 1; display: flex; flex-direction: column; padding: 10px 10px 8px; min-width: 0; }
 .sim-search {
   height: 34px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 10px;
-  border: 1px solid #b9c2cf; border-radius: 6px; background: #ececec;
+  border: 1px solid var(--accent-dark); border-radius: 6px; background: var(--side);
 }
-.sim-search.focus { border-color: #3584e4; box-shadow: 0 0 0 1px #3584e4 inset; background: #fff; }
+.sim-search.focus { border-color: var(--accent); box-shadow: none; background: var(--side); }
 .sim-search svg { flex: none; }
 .sim-search .q { flex: 1; white-space: pre; overflow: hidden; color: var(--ink); }
-.sim-search .q:empty::before { content: "Type to search"; color: #8a8a8a; }
+.sim-search .q:empty::before { content: "Type to search"; color: var(--ink-soft); }
 .sim-search.focus .caret {
   width: 1px; height: 18px; background: var(--ink); animation: sim-blink 1s steps(1) infinite;
 }
@@ -90,13 +93,13 @@
   height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 10px;
   border-radius: 5px; white-space: nowrap;
 }
-.sim-sec.on { background: var(--row-hot); }
+.sim-sec.on { background: var(--row-hot); color: var(--accent); }
 .sim-apps { flex: 1; overflow-y: auto; min-width: 0; scrollbar-width: thin; }
 .sim-app {
   height: 30px; display: flex; align-items: center; gap: 10px; padding: 0 8px;
   border-radius: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.sim-app.on { background: var(--row-hot); }
+.sim-app.on { background: var(--row-hot); color: var(--accent); }
 .sim-app .n { overflow: hidden; text-overflow: ellipsis; }
 .sim-app .t { margin-left: auto; font-size: 11px; color: var(--ink-soft); }
 

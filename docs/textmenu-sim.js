@@ -98,6 +98,16 @@
   head.appendChild(prompt); head.appendChild(query); head.appendChild(caret);
   var rowsBox = el("div", "tm-rows");
   menu.appendChild(head); menu.appendChild(rowsBox);
+  rowsBox.addEventListener("mouseleave", function () { edgeStop(); });
+  rowsBox.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    var n = shown().length, dir = e.deltaY > 0 ? 1 : -1;
+    var top = Math.max(0, Math.min(S.top + 3 * dir, n - ROWS));
+    if (top === S.top) return;
+    S.top = top;
+    S.sel = Math.max(S.top, Math.min(S.sel, S.top + ROWS - 1));
+    paint();
+  }, { passive: false });
   st.appendChild(menu);
 
   var card = el("div", "sim-peek tm-card");
@@ -130,6 +140,26 @@
     return "<  Back   [ " + (t ? t.label.slice(3, -3) : S.tag) + " ]";
   }
 
+  // Scrolling by the edges, as the real menus now do: hover selects and never
+  // moves the list; resting on the first or the last visible row moves it one
+  // row at a time, at a steady pace, and the rows between stay put. The wheel
+  // moves it too.
+  var edgeT = 0, edgeDir = 0;
+  function edgeStop() { if (edgeT) clearInterval(edgeT); edgeT = 0; edgeDir = 0; }
+  function edgeMove(dir) {
+    var n = shown().length, top = Math.max(0, Math.min(S.top + dir, n - ROWS));
+    if (top === S.top) return false;
+    S.top = top;
+    S.sel = dir > 0 ? S.top + ROWS - 1 : S.top;   // the row under the resting pointer
+    paint();
+    return true;
+  }
+  function edgeAt(dir) {
+    if (dir === edgeDir) return;
+    edgeStop(); edgeDir = dir;
+    if (dir) edgeT = setInterval(function () { if (!edgeMove(dir)) edgeStop(); }, 140);
+  }
+
   function paint() {
     prompt.textContent = S.q ? "" : promptText();
     query.textContent = S.q;
@@ -140,7 +170,10 @@
     rowsBox.innerHTML = "";
     v.slice(S.top, S.top + ROWS).forEach(function (r, k) {
       var i = S.top + k, d = el("div", "tm-row" + (i === S.sel ? " on" : ""), r.label);
-      d.addEventListener("mousemove", function () { if (S.sel !== i) { S.sel = i; paint(); } });
+      d.addEventListener("mousemove", function () {
+        if (S.sel !== i) { S.sel = i; paint(); }
+        edgeAt(k === 0 ? -1 : (k === ROWS - 1 ? 1 : 0));
+      });
       d.addEventListener("click", function (e) { e.stopPropagation(); S.sel = i; activate(); });
       rowsBox.appendChild(d);
     });
