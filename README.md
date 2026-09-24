@@ -7,6 +7,8 @@
 ██      ██    ██ ██      ██   ██ ██
  ██████  ██████  ██      ██   ██ ███████
 ```
+<img width="1102" height="1427" alt="image" src="https://github.com/user-attachments/assets/981843db-47fa-4959-811c-fda14517ea7d" />
+
 
 # copal-alpine-linux
 
