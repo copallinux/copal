@@ -1928,12 +1928,12 @@ except (ValueError, ImportError):
 # land a program there.  Checked top to bottom; first match wins.
 SECTIONS = [
     ("Preferences",    ("preferences-desktop", "preferences-system-symbolic"), {"Settings", "DesktopSettings", "Screensaver"}),
-    ("Games",          ("applications-games",), {"Game"}),
+    ("Games",          ("applications-games", "applications-games-symbolic"), {"Game"}),
     ("Programming",    ("applications-development", "utilities-terminal-symbolic"), {"Development"}),
     ("Office",         ("applications-office", "x-office-document-symbolic"), {"Office"}),
-    ("Graphics",       ("applications-graphics",), {"Graphics"}),
+    ("Graphics",       ("applications-graphics", "applications-graphics-symbolic"), {"Graphics"}),
     ("Education",      ("applications-education", "applications-science-symbolic"), {"Education", "Science"}),
-    ("Sound & Video",  ("applications-multimedia",), {"AudioVideo", "Audio", "Video"}),
+    ("Sound & Video",  ("applications-multimedia", "applications-multimedia-symbolic"), {"AudioVideo", "Audio", "Video"}),
     ("Internet",       ("applications-internet", "web-browser-symbolic"), {"Network"}),
     ("System Tools",   ("applications-system", "applications-system-symbolic"), {"System", "Monitor", "PackageManager"}),
     ("Accessories",    ("applications-accessories", "applications-utilities-symbolic"), {"Utility", "Accessibility"}),
