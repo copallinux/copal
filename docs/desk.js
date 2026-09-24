@@ -26,14 +26,11 @@
   if (!D || !root || !window.CopalMenus) return;
 
   var WORKSPACES = 5;
-  // The pages a window may frame: the site's own, by file stem. Nothing else
-  // is framed, so an address cannot put another site inside this one.
-  var PAGES = {
-    about: "About Copal", desktop: "The Desktop", install: "The Installer",
-    platforms: "Platforms", alpine: "Alpine Linux", software: "Software",
-    gallery: "Gallery", commands: "The Terminal Guide",
-    "terminal-guide-lab-report": "Writing a Command Reference Against the Machine"
-  };
+  // The pages a window may frame: the site's own, by file stem, as the menus'
+  // Copal section lists them (tools/copal-menu-sim.py's SITE). Nothing else is
+  // framed, so an address cannot put another site inside this one.
+  var PAGES = {};
+  (D.pages || []).forEach(function (p) { PAGES[p.page] = p.title; });
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -137,7 +134,12 @@
   }
 
   // ----- the menus -----
-  var desk = { launch: function (item) { open(appRoute(item.cmd), item); }, clock: function () { return hm.textContent; }, shot: shot };
+  var desk = {
+    // A page of the site, or a program.
+    launch: function (item) { if (item.page) open("page/" + item.page); else open(appRoute(item.cmd), item); },
+    clock: function () { return hm.textContent; },
+    shot: shot
+  };
   var gui = window.CopalMenus.gui(D, root, desk);
   var keys = window.CopalMenus.keys(D, root, desk);
   function closeMenus() { gui.close(); keys.close(); }

@@ -35,7 +35,7 @@ its guide entry, a page, a lab report.
 | A terminal program | foot | the entry in terminal type, the man page a click away |
 | A program the guide does not cover | the program's | picture + its menu description; home page link |
 | Copal ▸ a page (Install, Desktop, Platforms, Alpine, Software, Gallery) | the page's | the page itself, framed (same site) |
-| Copal ▸ Terminal Guide | the guide's | commands.html, framed; a search box in the title bar |
+| Copal ▸ Terminal Guide | the guide's | commands.html, framed, with its own search box (a second one in the title bar would only repeat it) |
 | Copal ▸ Lab reports | the report's | the report, framed |
 | Copal ▸ About (today's home text) | the welcome window | what Copal is, open at first visit |
 

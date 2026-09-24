@@ -25,7 +25,13 @@
   // layer: the desktop element to draw into. desk: { launch(app), clock() }.
   window.CopalMenus.gui = function (D, layer, desk) {
     var FAVKEY = "copal-sim-favourites";
-    var apps = D.apps, byId = {}, refs = D.refs || {};
+    // The site's own pages are the Copal section: rows like any program's,
+    // found by search, and kept out of All Applications, which is programs.
+    var pages = (D.pages || []).map(function (p) {
+      return { id: "page:" + p.page, name: p.title, section: "Copal", desc: p.desc, generic: "",
+               keywords: "copal site page", exec: "", icon: p.icon, page: p.page };
+    });
+    var apps = D.apps.concat(pages), byId = {}, refs = D.refs || {};
     apps.forEach(function (a) { byId[a.id] = a; });
 
     function el(tag, cls, text) {
@@ -109,6 +115,7 @@
       }
       pcap.innerHTML = "";
       pcap.appendChild(el("b", null, a.name));
+      if (a.page) { pcap.appendChild(document.createTextNode(" — " + a.desc + ". A page of this site: click to open it.")); peek.classList.add("on"); return; }
       pcap.appendChild(document.createTextNode(
         !u && refs[cmd] ? " — " + refs[cmd] + " Click to open it."
           : u ? " — what it opens to, from the gallery. Click to open it."
@@ -150,6 +157,7 @@
       r.appendChild(icon(a.icon, 24));
       r.appendChild(el("span", "n", a.name));
       if (a.terminal) r.appendChild(el("span", "t", "terminal"));
+      else if (a.page) r.appendChild(el("span", "t", "page"));
       r._app = a;
       r.addEventListener("mousemove", function () { if (state.sel !== a) select(a, false); });
       r.addEventListener("click", function () { launch(a); });
@@ -182,7 +190,7 @@
     function visible(a) {
       if (state.rank) return a.id in state.rank;
       var s = state.section;
-      return s === "All Applications" || (s === "Favourites" && favs.indexOf(a.id) >= 0) || a.section === s;
+      return (s === "All Applications" && !a.page) || (s === "Favourites" && favs.indexOf(a.id) >= 0) || a.section === s;
     }
     function ordered() {
       var v = apps.filter(visible);
@@ -303,6 +311,7 @@
     // Both menus hand the desktop the same thing: what to open, by command.
     function launch(a) {
       close();
+      if (a.page) { desk.launch({ page: a.page }); return; }
       desk.launch({ name: a.name, cmd: a.prog || a.exec, kind: a.terminal ? "term" : "run" });
     }
 

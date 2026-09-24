@@ -71,6 +71,16 @@
       sections[cur].push({ label: i < 0 ? line : line.slice(0, i), act: i < 0 ? "" : line.slice(i + 1) });
     });
 
+    // The site's own pages: a branch built the way copal-menu builds a
+    // category, reached from the top of both panes.
+    if (D.pages && D.pages.length) {
+      sections.site = [{ label: "<  Back", act: "^back()" }, { label: RULE + " This site " + RULE, act: "^sep" }]
+        .concat(D.pages.map(function (p) { return { label: p.title, act: "^page(" + p.page + ")", desc: p.desc }; }));
+      var into = { label: "This site  >", act: "^checkout(site)" };
+      sections[""].unshift(into);
+      if (sections.apps) sections.apps.splice(1, 0, into);
+    }
+
     // ----- the menu -----
     var menu = el("div", "tm-menu");
     menu.hidden = true;
@@ -157,6 +167,18 @@
 
     // The card: what the selected row opens to.
     function describe(r) {
+      if (r && r.desc && /^\^page\(/.test(r.act) && S.open) {
+        cshot.className = "shot none"; cshot.style.backgroundImage = ""; cshot.innerHTML = "";
+        var t = el("div", "tm-man");
+        t.appendChild(el("div", "k", "a page of this site"));
+        t.appendChild(el("div", "c", r.label));
+        t.appendChild(el("div", "p", r.desc));
+        cshot.appendChild(t);
+        ccap.innerHTML = ""; ccap.appendChild(el("b", null, r.label));
+        ccap.appendChild(document.createTextNode(" — Enter opens it as a window."));
+        card.classList.add("on");
+        return;
+      }
       if (!r || r.act === "^sep" || /^\^/.test(r.act) || !S.open) { card.classList.remove("on"); return; }
       var p = program(r.act), shot = desk.shot(p.cmd);
       cshot.className = "shot" + (shot ? "" : " none");
@@ -193,6 +215,8 @@
       if (!r || r.act === "^sep") return;
       if (/^\^checkout\(/.test(r.act)) return go(r.act.slice(10, -1));
       if (r.act === "^back()") return go("");
+      var pg = r.act.match(/^\^page\((.*)\)$/);
+      if (pg) { close(); desk.launch({ page: pg[1] }); return; }
       var p = program(r.act);
       close();
       desk.launch({ name: r.label, cmd: p.cmd, kind: p.kind });
