@@ -2672,7 +2672,7 @@ REPOFILE="$BOOT/copal-repos"
 # MACHINE holds, which is not the key copal-prep.sh puts on the card (that one
 # authorises you into the machine, not the machine out to GitHub). A clone that
 # works unattended is worth more than one that is ready to push; `git remote
-# set-url origin git@github.com:vonglurt/copal.git` once, on the machine, is
+# set-url origin git@github.com:copallinux/copal.git` once, on the machine, is
 # the whole of the difference.
 #
 # It is NOT written into copal-repos. The list in that file is the answer
@@ -2680,7 +2680,7 @@ REPOFILE="$BOOT/copal-repos"
 # under it. Keeping it out means "I said none" still records none, and means
 # `copal-code rm copal` cannot leave a machine unable to rebuild itself by
 # quietly removing the thing it is built from.
-COPAL_SELF_URL="https://github.com/vonglurt/copal.git"
+COPAL_SELF_URL="https://github.com/copallinux/copal.git"
 
 # Full-automatic install state. Deliberately on the FAT boot partition and
 # nowhere else: it is the one filesystem that exists at every point in this
@@ -25461,7 +25461,7 @@ STORE = os.environ.get("COPAL_STORE") or shutil.which("copal-store") or "/usr/lo
 EVENTS = os.environ.get("COPAL_EVENTS", "/var/log/copal/events")
 QUEUE = os.environ.get("COPAL_APPS_QUEUE", "/var/lib/copal/apps-queue")
 CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"), "copal-apps", "pictures")
-GALLERY = "https://raw.githubusercontent.com/vonglurt/copal/main/docs/img/gallery/%s.jpg"
+GALLERY = "https://raw.githubusercontent.com/copallinux/copal/main/docs/img/gallery/%s.jpg"
 STEPS = ("deps", "pre", "install", "post")
 MARK = {"ok": "✓", "failed": "✗", "start": "▸", None: "·"}
 PIC_W, PIC_H = 320, 200
@@ -33315,7 +33315,7 @@ install_frontdoor() {
 # pointless; edit copal-prep.sh instead.
 set -eu
 
-REPO="${COPAL_REPO:-vonglurt/copal}"
+REPO="${COPAL_REPO:-copallinux/copal}"
 VERFILE=/etc/copal/version
 
 have() { command -v "$1" >/dev/null 2>&1; }
@@ -33449,7 +33449,7 @@ fetch_init() {  # <ref> <destination>
 sha() { sha256sum "$1" 2>/dev/null | cut -d' ' -f1; }
 
 # Whatever the source was, in one string, for the messages and for
-# /etc/copal/version: "vonglurt/copal@main" or "/home/user/code/copal".
+# /etc/copal/version: "copallinux/copal@main" or "/home/user/code/copal".
 cmd_update() {  # <ref-or-path> <check-only 0|1> <from-a-checkout 0|1>
     _ref="${1:-main}"; _checkonly="${2:-0}"; _from="${3:-0}"
     _cur=$(find_init) || die "cannot find copal-init.sh -- is the boot partition mounted?"
