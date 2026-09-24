@@ -917,11 +917,11 @@ dxx_needs() { echo ""; }
 dxx_source() { echo "github dxx-rebirth/dxx-rebirth"; }
 
 # ---- playbooks/Games/endlesssky.sh
-# Endless Sky: the 2D space trading game, CMake. Stage 12 has built it since
-# before the store (build_endless_sky); this is the pinned, removable way. Its
+# Endless Sky: the 2D space trading game, CMake, in the starter set. Stage 12
+# built it too, unpinned, until this replaced it; this is the one way. Its
 # CMakeLists turns on link-time optimisation for Release, and GCC's LTO
 # cannot inline the fortified vsnprintf on Alpine, so that line is patched
-# off, as stage 12 does. SDL2 is found by its CMake package, which is
+# off. SDL2 is found by its CMake package, which is
 # sdl2-compat's and needs sdl2-compat-static (see DevilutionX). The binary
 # installs to $PREFIX/games, which is not on Alpine's PATH; a launcher in bin
 # runs it there. The game looks for its data only under /usr/local and /usr,
@@ -1768,8 +1768,8 @@ CLONES="ascitty birdshot codexofconquest copal-tm gonex orrery radbeeper statics
 # The bundles: named lists of program ids (playbooks/bundles/NAME.list).
 store_bundle() {
     case "$1" in
-        full-monty) echo "taisei naev endless-sky darktable focuswriter pencil2d ardour9 k3b czkawka_gui fdupes jdupes rdfind xsane skanlite" ;;
-        starter) echo "openshot-qt fastfetch btop keepassxc" ;;
+        full-monty) echo "taisei naev darktable focuswriter pencil2d ardour9 k3b czkawka_gui fdupes jdupes rdfind xsane skanlite" ;;
+        starter) echo "openshot-qt fastfetch btop keepassxc endless-sky" ;;
         *) return 1 ;;
     esac
 }

@@ -850,7 +850,10 @@ sync-agent:
 	@printf '  ok      tools/copal-fleet-agent -> $(PREP)\n'
 	@$(MAKE) --no-print-directory lint
 
-## sync-store: copy tools/copal-store into stage 18's heredoc in copal-prep.sh.
+## sync-store: copy tools/copal-store into stage 18's heredoc. The stage's body is
+## its playbook (playbooks/Stages/18-stage-store.sh), so the copy goes there and
+## copal-prep.sh is regenerated from it -- written into copal-prep.sh directly,
+## the next sync-playbooks would put the playbook's old copy back.
 ## sync-playbooks: playbooks/ into tools/copal-store, then on into copal-prep.sh.
 sync-playbooks:
 	@python3 tools/copal-playbooks.py sync
@@ -861,19 +864,21 @@ sync-store:
 	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
 	m="    cat > /usr/local/bin/copal-store <<\x27COPALSTORE\x27\n";\
 	i=s.index(m)+len(m);j=s.index("COPALSTORE\n",i);\
-	open(p,"w").write(s[:i]+prog.rstrip("\n")+"\n"+s[j:])' $(PREP) tools/copal-store
-	@printf '  ok      tools/copal-store -> $(PREP)\n'
+	open(p,"w").write(s[:i]+prog.rstrip("\n")+"\n"+s[j:])' playbooks/Stages/18-stage-store.sh tools/copal-store
+	@python3 tools/copal-playbooks.py sync > /dev/null
+	@printf '  ok      tools/copal-store -> playbooks/Stages/18-stage-store.sh -> $(PREP)\n'
 	@$(MAKE) --no-print-directory lint
 
-## sync-gui: copy tools/copal-gui (the Mint-style menu) into stage 4's heredoc in copal-prep.sh.
-## sync-apps: copy tools/copal-apps into stage 18's heredoc in copal-prep.sh.
+## sync-gui: copy tools/copal-gui (the Mint-style menu) into stage 4's heredoc, in its playbook.
+## sync-apps: copy tools/copal-apps into stage 18's heredoc, in its playbook.
 sync-apps:
 	@python3 -c 'import sys;\
 	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
 	m="    cat > /usr/local/bin/copal-apps <<\x27COPALAPPS\x27\n";\
 	i=s.index(m)+len(m);j=s.index("COPALAPPS\n",i);\
-	open(p,"w").write(s[:i]+prog.rstrip("\n")+"\n"+s[j:])' $(PREP) tools/copal-apps
-	@printf '  ok      tools/copal-apps -> $(PREP)\n'
+	open(p,"w").write(s[:i]+prog.rstrip("\n")+"\n"+s[j:])' playbooks/Stages/18-stage-store.sh tools/copal-apps
+	@python3 tools/copal-playbooks.py sync > /dev/null
+	@printf '  ok      tools/copal-apps -> playbooks/Stages/18-stage-store.sh -> $(PREP)\n'
 	@$(MAKE) --no-print-directory lint
 
 sync-gui:
@@ -881,8 +886,9 @@ sync-gui:
 	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
 	m="    cat > /usr/local/bin/copal-gui <<\x27COPALGUI\x27\n";\
 	i=s.index(m)+len(m);j=s.index("COPALGUI\n",i);\
-	open(p,"w").write(s[:i]+prog.rstrip("\n")+"\n"+s[j:])' $(PREP) tools/copal-gui
-	@printf '  ok      tools/copal-gui -> $(PREP)\n'
+	open(p,"w").write(s[:i]+prog.rstrip("\n")+"\n"+s[j:])' playbooks/Stages/04-stage-gui.sh tools/copal-gui
+	@python3 tools/copal-playbooks.py sync > /dev/null
+	@printf '  ok      tools/copal-gui -> playbooks/Stages/04-stage-gui.sh -> $(PREP)\n'
 	@$(MAKE) --no-print-directory lint
 
 ## sync-nats: copy tools/copal_nats.py into the heredoc in copal-prep.sh.

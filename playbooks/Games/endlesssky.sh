@@ -16,11 +16,11 @@
 #           alien empires: haul cargo, take jobs, fight, and follow the main story when you are
 #           ready. In the spirit of Escape Velocity.
 
-# Endless Sky: the 2D space trading game, CMake. Stage 12 has built it since
-# before the store (build_endless_sky); this is the pinned, removable way. Its
+# Endless Sky: the 2D space trading game, CMake, in the starter set. Stage 12
+# built it too, unpinned, until this replaced it; this is the one way. Its
 # CMakeLists turns on link-time optimisation for Release, and GCC's LTO
 # cannot inline the fortified vsnprintf on Alpine, so that line is patched
-# off, as stage 12 does. SDL2 is found by its CMake package, which is
+# off. SDL2 is found by its CMake package, which is
 # sdl2-compat's and needs sdl2-compat-static (see DevilutionX). The binary
 # installs to $PREFIX/games, which is not on Alpine's PATH; a launcher in bin
 # runs it there. The game looks for its data only under /usr/local and /usr,

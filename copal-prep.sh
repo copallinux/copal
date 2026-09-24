@@ -14247,58 +14247,11 @@ p2_growable() { [ "$(p2_free_sectors)" -gt 131072 ]; }
 # on the aarch64 bench without root (dev packages unpacked under the home
 # directory), so the quirks below are observed, not guessed.
 #
-# Endless Sky: a 350 MB source release (the game data is most of it), CMake,
-# links against SDL2, OpenAL, GLEW, libmad, libavif, FLAC, minizip. Its
-# CMakeLists turns on link-time optimisation for Release builds and that
-# fails on Alpine -- GCC's LTO cannot inline the fortified vsnprintf -- so the
-# one line is patched to FALSE. The LTO link also filled a 64 MB /tmp, which
-# is why TMPDIR points at the build directory. Two minutes on four cores.
-# Alpine's FLAC CMake package names /usr/bin/flac, the command-line program,
-# and CMake stops when it is absent; with that package skipped the
-# CMakeLists falls back to pkg-config's flac++. SDL2's CMake package is
-# sdl2-compat's and needs sdl2-compat-static. The binary installs to
-# /usr/local/games, which is not on Alpine's PATH, so it is linked into
-# /usr/local/bin; it resolves its real path and finds its data from there.
-# copal-store builds the same game as a pinned, removable recipe
-# (endlesssky@source).
-#
 # streamripper 1.64.6: 2008-era C. Its config.guess predates aarch64 (the
 # automake copies replace it), its bundled libmad has the same problem (the
 # system one is used), it declares libc functions K&R-style (GCC 15 needs
 # -std=gnu89) and it uses glibc's __uint32_t (defined away). After that it
 # builds and runs.
-build_endless_sky() {
-    say "Endless Sky -- built from source"
-    have_space_mb 2500 "the Endless Sky build (350 MB source, ~1 GB during the build)" \
-        || { note "Skipping Endless Sky."; return 0; }
-    confirm "Build Endless Sky from source now (350 MB download, a few minutes)?" || { note "Not built."; return 0; }
-    add_optional build-base cmake ninja pkgconf sdl2-dev sdl2-compat-static openal-soft-dev glew-dev libmad-dev \
-        libavif-dev flac-dev minizip-dev libpng-dev libjpeg-turbo-dev zlib-dev util-linux-dev mesa-dev
-    apk info -e sdl2-dev >/dev/null 2>&1 || { warn "development files missing -- cannot build Endless Sky"; return 1; }
-    SRCDIR=/usr/local/src; mkdir -p "$SRCDIR"
-    _es_ver=$(curl -fsSL --max-time 30 https://api.github.com/repos/endless-sky/endless-sky/releases/latest 2>/dev/null \
-        | sed -n 's/.*"tag_name": *"v\([0-9.]*\)".*/\1/p' | head -n1); _es_ver="${_es_ver:-0.11.2}"
-    _es_tar="$SRCDIR/endless-sky-$_es_ver.tar.gz"
-    [ -f "$_es_tar" ] || curl -fsSL --retry 3 -o "$_es_tar" "https://github.com/endless-sky/endless-sky/archive/refs/tags/v$_es_ver.tar.gz" \
-        || { rm -f "$_es_tar"; warn "could not download Endless Sky $_es_ver"; return 1; }
-    rm -rf "$SRCDIR/endless-sky-build"; mkdir -p "$SRCDIR/endless-sky-build/tmp"
-    tar -xzf "$_es_tar" -C "$SRCDIR/endless-sky-build" || { warn "the archive did not unpack"; return 1; }
-    _es_src="$SRCDIR/endless-sky-build/endless-sky-$_es_ver"
-    sed -i 's/^set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)/set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE FALSE)  # copal: LTO fails on Alpine/' "$_es_src/CMakeLists.txt"
-    say "Compiling (log: /var/log/endless-sky-build.log)"
-    if ! TMPDIR="$SRCDIR/endless-sky-build/tmp" cmake -S "$_es_src" -B "$SRCDIR/endless-sky-build/b" -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DES_USE_VCPKG=OFF \
-            -DES_USE_SYSTEM_LIBRARIES=ON -DBUILD_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_FLAC=ON \
-            > /var/log/endless-sky-build.log 2>&1 \
-       || ! TMPDIR="$SRCDIR/endless-sky-build/tmp" ninja -C "$SRCDIR/endless-sky-build/b" -j "$(nproc)" >> /var/log/endless-sky-build.log 2>&1 \
-       || ! ninja -C "$SRCDIR/endless-sky-build/b" install >> /var/log/endless-sky-build.log 2>&1; then
-        warn "the build failed -- the last lines of /var/log/endless-sky-build.log:"
-        tail -n 15 /var/log/endless-sky-build.log | sed 's/^/    /'; return 1
-    fi
-    ln -sfn /usr/local/games/endless-sky /usr/local/bin/endless-sky
-    rm -rf "$SRCDIR/endless-sky-build"
-    note "installed: /usr/local/bin/endless-sky (data in /usr/local/share/games/endless-sky)"
-}
 
 build_streamripper() {
     say "streamripper -- built from source"
@@ -14327,9 +14280,11 @@ build_streamripper() {
     note "installed: /usr/local/bin/streamripper   (streamripper URL -d ~/Music/rips)"
 }
 
+# Endless Sky was built here too, unpinned, until the store's recipe
+# (endlesssky@source, in the starter set) replaced it: built here first, it
+# made the store count the game as installed and skip the pinned build.
 offer_source_builds() {
     say "Not packaged by Alpine on any port, but buildable"
-    build_endless_sky
     build_streamripper
 }
 
@@ -30445,11 +30400,11 @@ dxx_needs() { echo ""; }
 dxx_source() { echo "github dxx-rebirth/dxx-rebirth"; }
 
 # ---- playbooks/Games/endlesssky.sh
-# Endless Sky: the 2D space trading game, CMake. Stage 12 has built it since
-# before the store (build_endless_sky); this is the pinned, removable way. Its
+# Endless Sky: the 2D space trading game, CMake, in the starter set. Stage 12
+# built it too, unpinned, until this replaced it; this is the one way. Its
 # CMakeLists turns on link-time optimisation for Release, and GCC's LTO
 # cannot inline the fortified vsnprintf on Alpine, so that line is patched
-# off, as stage 12 does. SDL2 is found by its CMake package, which is
+# off. SDL2 is found by its CMake package, which is
 # sdl2-compat's and needs sdl2-compat-static (see DevilutionX). The binary
 # installs to $PREFIX/games, which is not on Alpine's PATH; a launcher in bin
 # runs it there. The game looks for its data only under /usr/local and /usr,
@@ -31296,8 +31251,8 @@ CLONES="ascitty birdshot codexofconquest copal-tm gonex orrery radbeeper statics
 # The bundles: named lists of program ids (playbooks/bundles/NAME.list).
 store_bundle() {
     case "$1" in
-        full-monty) echo "taisei naev endless-sky darktable focuswriter pencil2d ardour9 k3b czkawka_gui fdupes jdupes rdfind xsane skanlite" ;;
-        starter) echo "openshot-qt fastfetch btop keepassxc" ;;
+        full-monty) echo "taisei naev darktable focuswriter pencil2d ardour9 k3b czkawka_gui fdupes jdupes rdfind xsane skanlite" ;;
+        starter) echo "openshot-qt fastfetch btop keepassxc endless-sky" ;;
         *) return 1 ;;
     esac
 }

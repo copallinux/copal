@@ -308,7 +308,7 @@ Each was launched and pictured (`docs/app-gallery.md`). What each taught:
   the same SHA-256 check -- and Ardour is its only user.
 - **Launch paths.** Endless Sky looks for its data only under `/usr/local`
   and `/usr`; the launcher names it. Stage 12's own Endless Sky build (the
-  unpinned one in `build_endless_sky`) was fixed the same day: the FLAC
+  unpinned one in `build_endless_sky`, since retired for this recipe) was fixed the same day: the FLAC
   package, `sdl2-compat-static`, and a link into `/usr/local/bin`, since the
   binary installs to `/usr/local/games`, which is not on Alpine's PATH.
 

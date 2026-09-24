@@ -15,7 +15,7 @@
 disk for a PC, or a virtual machine under UTM on an Apple Silicon Mac.**
 
 This is [Copal Linux](docs/copal-handbook.md) — the Raspberry Pi Zero installer
-— rebuilt as a *hybrid* installer. The same sixteen stages that turn a diskless
+— rebuilt as a *hybrid* installer. The same eighteen stages that turn a diskless
 Alpine into a persistent ext4 system with a tiling desktop now run on whichever
 of those three media you point them at, and the two UTM targets exist so that
 the other three can be verified without a card, a Pi, or a reboot cycle.
@@ -399,7 +399,7 @@ you are in tells you what your options are and which machine you are talking to:
 |---|---|---|---|
 | `./copal` | this Mac | which target, and whether to start at all | never — writes nothing |
 | `copal-prep.sh` | this Mac | who the admin user is, and what medium gets written | one step, twice confirmed |
-| `copal-init.sh` | the target | which of the sixteen stages run, and in what order | stage 3 reboots; the rest are re-runnable |
+| `copal-init.sh` | the target | which of the eighteen stages run, and in what order | stage 3 reboots; the rest are re-runnable |
 | `copal-menu`, `copal-center`, `copal-config` | the target's desktop | what is installed, and what to launch | no |
 
 ```mermaid
@@ -410,7 +410,7 @@ flowchart TD
     C -->|"answer <b>image</b>,<br/>or pass --image"| E["a .img file"]
     D --> F["put it in the Pi or the PC<br/>and power on"]
     E --> G["<b>copal-vm.sh</b> — QEMU, headless or serial<br/><b>utm/utm-vm.sh</b> — a registered UTM machine"]
-    F --> H["<b>copal-init.sh</b><br/>sixteen stages, on the target"]
+    F --> H["<b>copal-init.sh</b><br/>eighteen stages, on the target"]
     G --> H
     H --> I["stages 1, 2, 3 — a real root filesystem"]
     I --> J["stage 4 — X.Org and i3"]
@@ -421,7 +421,7 @@ flowchart TD
 Everything left of `copal-init.sh` happens on the Mac and takes about ten
 minutes. Everything right of it happens on the machine being built and takes
 between twenty minutes and several hours, depending entirely on how many of
-the sixteen stages you ask for. The split falls there because macOS cannot
+the eighteen stages you ask for. The split falls there because macOS cannot
 create an ext4 filesystem.
 
 ### Step 0 — ask the host what it can do
@@ -1102,20 +1102,28 @@ and there are four ways in:
 | `Super`+`Shift`+`g` | the other guides |
 | `Super`+`Return` / `Super`+`e` / `Super`+`t` | terminal / file manager / `htop` |
 
-#### The Copal Store — Pi-Apps, ported
+#### Copal Apps — the store, and the Pi-Apps port
 
-Stage 18 adds the **Copal Store**, `Super`+`Shift`+`c` on both desktops: a
-window of programs grouped by what they do, each with a sentence saying what
-it is, so a name you half remember can be found again. It lists the catalogue
-and a second shelf that nothing installs until you pick from it. Programs
-Alpine does not package are **compiled on the machine from their GitHub
-source**: OpenShot, LibreCAD, VeraCrypt, Amiberry, DDNet, Marathon, Descent,
-PyChess, Pixelorama and others, 19 recipes pinned by checksum. The rest are
-Alpine packages. Nothing comes from Flathub. `doas copal-store remove` takes
-away every file a build installed.
+Stage 18 adds **Copal Apps**, `Super`+`Shift`+`c` on both desktops: a window
+of programs grouped by what they do, each with two sentences saying what it
+is, where it comes from, what it needs and the steps its playbook takes, so a
+name you half remember can be found again. It lists the catalogue's graphical
+programs, the store's own shelf that nothing installs until you pick from it,
+and the Code shelf of `~/code` projects. Programs Alpine does not package are
+**compiled on the machine from their GitHub source**: darktable, Ardour,
+OpenShot, Naev, Taisei, Endless Sky, Konquest and the KDE games, LibreCAD,
+VeraCrypt, Amiberry, DDNet and others, 37 recipes pinned by checksum. The
+rest are Alpine packages; the store's shelf takes nothing from Flathub.
+Install and Remove run `doas copal-store`, and the window turns into a
+slideshow of the programs arriving, with a bar for the run, the program and
+the step. `doas copal-store remove` takes away every file a build installed.
 
-    copal-store                         the window
-    doas copal-store install openshot   or any id from 'copal-store list'
+    copal-apps                          the window
+    doas copal-store install darktable  or any id from 'copal-store list'
+    copal-store summary                 what each build did, and how long it took
+
+At the full level, stage 18 queues the full monty's thirteen programs for the
+first desktop login, where Copal Apps opens on the slideshow while they build.
 
 `docs/copal-store.md` has every Pi-Apps entry with where it went: 20 compiled
 here, 58 from Alpine, 36 already in Copal, and 146 not ported, each with its
@@ -1349,7 +1357,7 @@ WHAT IS IN THIS FOLDER
 
 **The images are sparse.** A 64g image reports 64 GB to `ls -lh` and occupies
 only what has actually been written to it — about 550 MB fresh, 15–25 GB after
-a full sixteen-stage run. Every size above is `du`, the real one. Reporting the
+a full eighteen-stage run. Every size above is `du`, the real one. Reporting the
 ceiling would make each of those numbers wrong by two orders of magnitude, and
 `ls -lh build/copal-vm.img` is why people think this repository eats their disk.
 
@@ -1431,7 +1439,7 @@ flowchart LR
     end
     subgraph TARGET["3 · THE MACHINE — runs, never writes cards"]
         direction TB
-        T1["<b>copal-init.sh</b><br/>sixteen stages, run as root"]
+        T1["<b>copal-init.sh</b><br/>eighteen stages, run as root"]
         T2["<b>/usr/local/bin/copal-*</b><br/>written BY the stages, for you"]
         T1 --> T2
     end
@@ -1459,7 +1467,7 @@ Everything on the Mac. None of it runs on the target.
 | Script | Runs where | Purpose |
 |---|---|---|
 | `copal` | Mac | The front door. A flow chart, a target menu, and a briefing per board — equipment, CPU, minimum requirements — shown *before* anything is erased. Writes nothing. |
-| `copal-prep.sh` | Mac | The whole distribution. Partitions the medium, fetches and SHA256-verifies the Alpine payload, lays down firmware and bootloader, and writes `copal-init.sh`. 23,463 lines, of which 20,729 are the heredoc. |
+| `copal-prep.sh` | Mac | The whole distribution. Partitions the medium, fetches and SHA256-verifies the Alpine payload, lays down firmware and bootloader, and writes `copal-init.sh`. 35,806 lines, of which 32,779 are the heredoc -- assembled from `playbooks/` by `make sync-playbooks`. |
 | `copal-vm.sh` | Mac | Boots an image under plain QEMU. `--check` boots headless, greps the serial log for a login prompt, exits non-zero if it never came up — the thing to run after changing the installer. |
 | `utm/utm-vm.sh` | Mac | Wraps an image in a registered UTM machine: NAT, SSH, a serial console, and the shared folder. |
 | `fetch-minivmac.sh` | Mac | Assembles the Mini vMac working set on demand, so no binaries are vendored. |
@@ -1470,7 +1478,7 @@ And the one that crosses:
 
 | Script | Runs where | Purpose |
 |---|---|---|
-| `copal-init.sh` | Target, as root | **Generated, never edited.** It exists only as a heredoc inside `copal-prep.sh` until a medium is written. Sixteen stages, run in any order, each idempotent enough to re-run. |
+| `copal-init.sh` | Target, as root | **Generated, never edited.** It exists only as a heredoc inside `copal-prep.sh` until a medium is written. Eighteen stages, run in any order, each idempotent enough to re-run. |
 
 That "generated, never edited" is why `make lint` extracts it and runs `sh -n`
 on the file it *becomes*: a syntax error inside a heredoc is invisible to every
@@ -1480,7 +1488,8 @@ check that reads the generator, and would land on the hardware instead.
 
 Roughly: 1–3 make it a computer, 4–6 make it usable, 7–15 make it yours,
 16 makes it one of several, 17 gives it the Antiquity desktop, and 18 opens
-the store.
+Copal Apps. The levels are lists of these stages: server runs 1–3, 5, 6, 8,
+13 and 16; medium adds the desktop and the software; full adds 17.
 
 | | Stage | What it settles |
 |---|---|---|
@@ -1501,7 +1510,7 @@ the store.
 | 15 | SD card care | what actually wears a card; log policy; a genuinely read-only root |
 | 16 | the fleet | join a named fleet: one certificate authority, an mDNS beacon, one console. **Skipped entirely on a card with no fleet named** |
 | 17 | the Antiquity desktop | Hyprland on Wayland with the Linux Antiquity theme — the full monty. `aarch64`/`x86_64` only |
-| 18 | the Copal Store | Pi-Apps, ported: programs by what they do, compiled from GitHub or taken from Alpine, none installed until picked. Offers a starter set with OpenShot, compiled |
+| 18 | Copal Apps | the store: programs by what they do, compiled from GitHub or taken from Alpine. Installs a starter set (OpenShot and Endless Sky compiled); at the full level, queues thirteen more for the first login |
 
 ### What the machine gains
 
@@ -1524,7 +1533,29 @@ these stay.
 | `copal-build` | Compile the checkouts in `~/code` and install what they make into `~/.local/bin`: cmake, cargo, npm and cc65 shapes, by shape rather than by name. Run by `copal-code` after every sync |
 | `copal-camera` | The camera application — birdshot, built from `~/code`, or `$CAMERA`. The Camera menu entry, Super+Shift+B and the `camera` desk role all ask it |
 | `copal-fonts` | The font sets — coding faces with and without ligatures, console/TTY, the IBM PC pack — and which font the text console uses |
+| `copal-store` · `copal-apps` | The store and its window: install, remove, the playbook behind each program, the events and the build summary |
 | `snapshot` · `mountdsk` | rsync snapshots; mount a disk image |
+
+### Playbooks — the one file, cut along its projects
+
+`copal-prep.sh` ships as one file and is no longer written as one. Every
+project it installs is a **playbook**, `playbooks/<shelf>/<name>.sh`: a
+header of data -- where it comes from, what it needs to build and to run,
+the programs it puts on the machine and two sentences on each -- and a body
+of up to three steps, `NAME_pre`, `NAME_install` and `NAME_post`.
+
+| Kind | How many | What `make sync-playbooks` does with it |
+|---|---|---|
+| store | 123 (36 compiled from GitHub, 86 from Alpine, 1 from its own site) | a row and a recipe in `tools/copal-store`, which stage 18 carries |
+| catalogue | 146, the graphical rows | its row rewritten in the catalogue, its `post` into `catalogue_posts` |
+| code | 10 `~/code` repositories, 14 programs | a row on the store's Code shelf; clone and build as your own account |
+| stage | 18, `playbooks/Stages/NN-stage-name.sh` | the stage function, the manifest, and which levels run it |
+
+`playbooks/bundles/` names the sets stage 18 installs (the starter set, the
+full monty's), and `playbooks/Stages/levels.list` what a level chooses that
+is not a stage: its browser. `make lint` fails if the assembled file has
+drifted from the playbooks, and `docs/playbooks-plan.md` is the record of
+the cut.
 
 ### Why one file, and not packages
 
@@ -1768,7 +1799,7 @@ utm/utm-vm.sh ip --target aarch64     # -> 192.168.64.7
 ssh root@192.168.64.7
 ```
 
-Either way the point is the same: once the guest is on the network, the sixteen
+Either way the point is the same: once the guest is on the network, the eighteen
 stages can be driven over SSH with real output and real scrollback instead of
 through a VM console window.
 
@@ -2049,7 +2080,7 @@ preference. It is written to be picked up cold.
 
 `IMAGE_SIZE` defaults to **128g**, which yields a 4 GB FAT boot partition and
 **~124 GiB of root**. The image is sparse — a fresh one is about 550 MB on disk
-and grows only as it is written, reaching 15–25 GB after a full sixteen-stage
+and grows only as it is written, reaching 15–25 GB after a full eighteen-stage
 run. The number is a ceiling, not an allocation. The default was 64g until a
 working machine — toolchains, checkouts, the store's builds — filled its
 ~60 GiB root.

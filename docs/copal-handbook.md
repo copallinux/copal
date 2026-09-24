@@ -15,7 +15,7 @@
 > **This is the original Copal Linux handbook**, carried forward from the
 > `arm-pi-zero` repository when Copal was merged into
 > **copal-alpine-linux**. Everything below about Alpine, the card layout, the
-> fifteen stages, the catalogue and the desktop still holds — it is the same
+> eighteen stages, the catalogue and the desktop still holds — it is the same
 > installer. What it does *not* yet describe is the UTM side of the merged
 > project: the `utm-aarch64` and `utm-x86_64` targets that verify the ARM and
 > PC code paths on an Apple Silicon Mac without a card or a Pi. For that, and
@@ -36,7 +36,7 @@ the card, without giving up any of the smallness that made it worth booting in
 the first place.
 
 Copal installs stock Alpine from sd-card in an embedded fashion 
-from Alpine's own mirrors and then walks you through fifteen optional,
+from Alpine's own mirrors and then walks you through eighteen optional,
 re-runnable stages — from a RAM-resident shell to a full ext4 root with a
 tiling desktop, 329 curated applications, emulators and a multi-language IDE. On a
 1 GHz single core with 512 MB of RAM, shared with the framebuffer.
@@ -46,7 +46,7 @@ Zero 2 W, Pi 2, 3, 4 and 5 — pass `MODEL=` to pick the board, because the
 architecture is not the same and the wrong one will not boot.
 
 It also builds for an **ordinary PC, laptop or Intel Mac**, 64-bit or 32-bit,
-via UEFI. Same installer, same fifteen stages, same catalogue — a different
+via UEFI. Same installer, same eighteen stages, same catalogue — a different
 bootloader and a different payload. See
 [Part II — PCs: x86 and x86_64](#pcs-x86-and-x86_64) for what changes, and for
 the one thing that is *not* supported (legacy BIOS) and why.
@@ -105,6 +105,7 @@ runs as the `user` account. The installer says so at every handover, and
 | `COPALBOOT/copal-git` | The name and email for git commits, asked in stage 1 and applied by stage 7. Plain `key=value`; editable from the Mac |
 | `lab-report.md` | The lab report (IEEE format) — procedure, results, findings |
 | `interface-report.md` | The design position (IEEE format) — simplifying the interface for capable users, and the twelve rules the desktop is built to |
+| `playbooks/` | One file per project: the store's programs, the catalogue's graphical ones, the `~/code` repositories and the eighteen stages. `make sync-playbooks` assembles them into `copal-prep.sh` |
 | `work/` | Scratch directory the script downloads and extracts into |
 
 The split matters: macOS cannot create ext4, so the card can only be taken so
@@ -116,12 +117,13 @@ be retyped at the Pi's console.
 
 | Command | What it does |
 |---|---|
-| `copal` | The installer. Fifteen stages, all optional, all re-runnable |
+| `copal` | The installer. Eighteen stages, all optional, all re-runnable |
 | `copal --auto` | Run every stage unattended, resuming across the reboot |
 | `copal-desk` | Lay the workspaces out the same way every time (**Super+Shift+D**) |
 | `copal-menu` | The menu, built from what is installed: applications on the left, categories/settings/session on the right (**Super+Space**, or **Super+Z** for the right side) |
 | `copal-center` | One window listing all 329 programs — run or install (**Super+C**) |
-| `copal-store` | Stage 18's store: the catalogue plus Pi-Apps' programs, ported — Alpine packages, or compiled here from GitHub; `copal-center` opens it once installed (**Super+Shift+C**) |
+| `copal-store` | Stage 18's store: the catalogue plus Pi-Apps' programs, ported — Alpine packages, or compiled here from GitHub. Each program is a playbook; `copal-store playbook ID` shows it, `copal-store summary` what each build did |
+| `copal-apps` | The store's window: every program with its two sentences, source, needs and steps; Install and Remove; the slideshow while a run is going (**Super+Shift+C**) |
 | `copal-guide` | Plain-text guides — eleven of them, on the machine, no network (**Super+Shift+G**) |
 | `copal-startx` | Starts the desktop, and refuses to do it as root |
 | `copal-morse` | Send, drill or print morse code (Alpine packages none) |
@@ -139,7 +141,7 @@ Three machines, and only one file crosses between them.
 flowchart LR
     A["<b>THE MAC</b><br/>copal · copal-prep.sh · utm-vm.sh<br/><i>writes, never runs</i>"]
     B["<b>THE MEDIUM</b><br/>COPALBOOT (FAT) + COPALROOT (ext4)<br/><b>copal-init.sh</b> lives here"]
-    C["<b>THE MACHINE</b><br/>fifteen stages, then /usr/local/bin/copal-*<br/><i>runs, never writes cards</i>"]
+    C["<b>THE MACHINE</b><br/>eighteen stages, then /usr/local/bin/copal-*<br/><i>runs, never writes cards</i>"]
     A ==>|"one shell script"| B ==>|"first boot"| C
 ```
 
@@ -703,7 +705,7 @@ reboot to take effect.
 
 Copal writes a bootable card for an ordinary PC, laptop or Intel Mac, 64-bit or
 32-bit. Everything above the bootloader is shared with the Pi — Alpine's diskless
-model is architecture-independent, so the same fifteen stages, the same
+model is architecture-independent, so the same eighteen stages, the same
 catalogue and the same desktop all apply.
 
 ```sh
@@ -945,7 +947,7 @@ what actually landed.
 copal --auto      # also starts it, and is what the resume hook calls
 ```
 
-## The fifteen stages
+## The eighteen stages
 
 | Stage | What it does | Needs |
 |---|---|---|
@@ -964,6 +966,9 @@ copal --auto      # also starts it, and is what the resume hook calls
 | 13 | Hands over root: locks the root password, `PermitRootLogin no`, leaving `user` + `doas`. Verifies the admin account first and declines if it is not ready | 1 |
 | 14 | The workshop: CAD and 3D printing for the Ender 3, KiCad with its templates, demos and plugin set, gerber export, ngspice, the ADI instrument stack (libiio and iiod, pyadi-iio, libm2k, the IIO oscilloscope, GNU Radio blocks — mostly compiled), LaTeX and maths (wxMaxima compiled from source), trackers and SID, a piano tutor built from source, and Windows programs under Wine in sandboxed boxes (`winebox`). Eight bundles, each stating what this port lacks before it installs | 3, network |
 | 15 | SD card and logs: log policy, syslog caps, and a genuinely read-only root via `overlaytmpfs`. **Not run unattended** — read-only root would discard everything the later stages did | 3 |
+| 16 | The fleet: a certificate, an mDNS beacon and one console for a room of Copal machines. **Does nothing on a card with no fleet named** | 1, network |
+| 17 | The Antiquity desktop: Hyprland on Wayland with the Linux Antiquity theme, made the session; X stays installed as the fallback. `aarch64` and `x86_64` only | 4, network |
+| 18 | Copal Apps: the store and its window, the starter set (OpenShot and Endless Sky compiled, fastfetch, btop, KeePassXC), and at the full level thirteen more queued for the first desktop login | 4, network |
 
 > **Stage 3 reboots the machine**, and must — `/` does not actually become
 > `COPALROOT` until it does. Afterwards the boot partition is mounted at
@@ -977,15 +982,83 @@ copal --auto      # also starts it, and is what the resume hook calls
 > stage 3 rewrites `/boot/grub/grub.cfg` instead of `cmdline.txt`, keeping
 > `grub.cfg.bak` so the diskless system is one file-copy away.
 
-Stages 1–3 are the system; 4–12 and 14 are everything on top; 13 closes the door behind you; 15 is the SD card policy, run by hand at the end. Stopping after 2 leaves
-a RAM-resident system with persistent packages — the gentlest option for the
-card, and enough for a TUI (`apk add tmux`).
+Stages 1–3 are the system; 4–12, 14, 17 and 18 are everything on top; 13 closes the door behind you; 15 is the SD card policy, run by hand at the end; 16 joins a fleet.
+
+The automatic install runs a **level**, and a level is a list of stages, in
+the order `1 2 3 8 5 6 4 17 7 10 12 14 18 9 16 13`:
+
+| Level | Stages |
+|---|---|
+| server | 1, 2, 3, 8, 5, 6, 16, 13 |
+| medium | server's, and 4, 7, 10, 12, 14, 18, 9 |
+| full | medium's, and 17: the full monty |
+
+11 and 15 are the menu's only. Each stage is a playbook,
+`playbooks/Stages/NN-stage-name.sh`, whose header names the levels that run
+it; see *Playbooks* below.
+
+Stopping after 2 leaves a RAM-resident system with persistent packages — the
+gentlest option for the card, and enough for a TUI (`apk add tmux`).
+
+## Playbooks
+
+The installer ships as one file and is written as many. Every project it
+installs is a playbook, `playbooks/<shelf>/<name>.sh`, named after the
+project. Its header is data; its body is up to three steps:
+
+```sh
+# playbook: darktable
+# source:   github darktable-org/darktable
+# build:    build-base cmake samurai gtk+3.0-dev exiv2-dev lensfun-dev …
+# runs:     iso-codes exiftool
+#
+# program:  darktable
+# label:    darktable (raw photo developer)
+# shelf:    Creative
+# install:  darktable@source
+# mode:     x
+# gate:     64
+# about:    A darkroom for camera raw files: exposure, colour, lens correction
+#           and masks, applied without touching the original. …
+
+darktable_pre()     { … }   # before: users, groups, paths
+darktable_install() { … }   # the pinned release, its SHA-256, the build
+darktable_post()    { … }   # after: first-run settings, menu entries
+```
+
+Four kinds, told apart by the header's `origin`:
+
+| Kind | Count | Where `make sync-playbooks` puts it |
+|---|---|---|
+| store (no `origin`) | 123 | a row and a recipe in `copal-store`; 37 compile from source, 86 are Alpine packages |
+| `catalogue` | 146 | its row in the catalogue, rewritten in place; a `post`, where it has one, run by stage 12 (`catalogue_posts`) and by the store when it installs the program (`catalogue_post_for`) |
+| `code` | 10 | a row on the store's Code shelf (`NAME@clone`), cloned into `~/code` and built by `copal-build` as your own account, never root |
+| `stage` | 18 | the stage function, the manifest the progress screen draws, and `stage_levels` |
+
+Beside them, `playbooks/bundles/*.list` are the sets stage 18 installs
+(`starter`, `full-monty`); `playbooks/Stages/order.list` is the order a level
+runs its stages in; and `playbooks/Stages/levels.list` is what a level chooses
+that is not a stage — the browser stage 4 installs unattended, and the ones
+stage 12 withholds.
+
+Edit the playbook, then `make sync-playbooks`: it regenerates the marked
+regions of `copal-prep.sh` and `tools/copal-store` and runs `make lint`, which
+fails if either has drifted from `playbooks/`. The tools embedded in a stage
+(`copal-store` and `copal-apps` in 18, `copal-gui` in 4) are copied into that
+stage's playbook by `make sync-store`, `sync-apps` and `sync-gui`.
+
+Every install writes one JSON line per step to `/var/log/copal/events` —
+the stages during the automatic install, and each program's `pre`,
+`install` and `post` — which is what Copal Apps' slideshow reads.
+`copal-store summary` is the per-program record: the result and time, what
+was installed and its size, the sources kept, and any optional feature a
+build could not find.
 
 ---
 
 # Part IV — The desktop
 
-## One catalogue, three front ends
+## One catalogue, four front ends
 
 Copal carries a table of **329 applications across 28 sections**, and three
 different things read the same table:
@@ -998,6 +1071,10 @@ different things read the same table:
 - **`copal-store`** (stage 18) shows it beside a second table, the store's,
   whose programs nothing installs until they are picked; some of those are
   compiled on the machine from GitHub. `docs/copal-store.md` is its record.
+- **Copal Apps** (`copal-apps`, Super+Shift+C) is the store's window: the
+  catalogue's graphical programs, the store's shelf and the `~/code`
+  projects, each with two sentences, where it comes from, what it needs and
+  its steps, and a slideshow while an install runs.
 
 Because there is one table, nothing can appear in a menu that is not
 installable, and nothing installable is missing from the menus.
