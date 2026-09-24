@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 290 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 136 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 143 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.</p>
 </header>
 <div class="finder">
@@ -807,20 +807,30 @@ strace --tips[=format]</pre>
 </article>
 </section>
 <section class="sec" id="s-discs"><h2>Discs</h2>
-<article class="cmd facts-only" id="c-7z" data-s="7z file archiver with a high compression ratio discs 7zip">
-<h3><a class="self" href="#c-7z"><code>7z</code></a> <span class="purpose">File archiver with a high compression ratio</span></h3>
+<article class="cmd" id="c-7z" data-s="7z 7-zip: pack and unpack .7z, zip, tar and more, and extract rar, iso and dozens of others. discs 7zip">
+<h3><a class="self" href="#c-7z"><code>7z</code></a> <span class="purpose">7-Zip: pack and unpack .7z, zip, tar and more, and extract rar, iso and dozens of others.</span></h3>
 <p class="facts">Discs · command-line tool · <b>7zip</b> 26.01 · stage 10 · Wireless, audio, capture and disks · <a href="https://7-zip.org/">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's universal archiver: the best compression of the common formats, strong encryption, and it opens nearly any archive someone sends you -- rar included.</p>
 <pre class="syn">Usage: 7zz &lt;command&gt; [&lt;switches&gt;...] &lt;archive_name&gt; [&lt;file_names&gt;...] [@listfile]
 &lt;Commands&gt;
   a : Add files to archive</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>A command letter, the archive, then files. <code>x</code> extracts with folders, <code>a</code> adds, <code>l</code> lists. It detects the format of what it opens.</p>
+<h4>Examples</h4><div class="ex"><code>7z x archive.rar</code><span>extract, keeping folders</span></div><div class="ex"><code>7z l archive.7z</code><span>list the contents</span></div><div class="ex"><code>7z a backup.7z ~/Documents</code><span>a new .7z of a folder</span></div><div class="ex"><code>7z a -p -mhe=on secret.7z plans/</code><span>encrypted, names hidden too</span></div><div class="ex"><code>7z x image.iso -oiso-files</code><span>the files inside an ISO</span></div><div class="ex"><code>7z t archive.zip</code><span>test it for damage</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>a</code></dt><dd>add to an archive (creating it)</dd><dt><code>x</code></dt><dd>extract with full paths</dd><dt><code>e</code></dt><dd>extract everything into one folder</dd><dt><code>l</code></dt><dd>list</dd><dt><code>t</code></dt><dd>test integrity</dd><dt><code>-o DIR</code></dt><dd>extract into DIR (written -oDIR, no space)</dd><dt><code>-p</code></dt><dd>set or ask for a password</dd><dt><code>-mx=N</code></dt><dd>compression level, 0 to 9 -m{...} other method settings: -mhe=on encrypts the file names too (.7z)</dd></dl>
+<h4>Notes</h4><ul><li>The command here is <a href="#c-7z"><code>7z</code></a>; guides that say <code>7za</code> or <code>7zr</code> mean the same program.</li><li><code>-o</code> takes its folder with no space: <code>-oout</code>, not <code>-o out</code>.</li><li>It reads rar archives but cannot create them.</li></ul>
+<p class="see">See also <a href="#c-zip"><code>zip</code></a>, <a href="#c-bsdtar"><code>bsdtar</code></a>, <a href="#c-unarj"><code>unarj</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-abcde" data-s="abcde grab an entire cd and compress it to ogg/vorbis, mp3, flac, ogg/speex, aac, wavpack, monkey's audio (ape), mpp/mp+(musepack), true audio (tta), mp2 format and/or aiff (audio interchange file format). discs abcde">
-<h3><a class="self" href="#c-abcde"><code>abcde</code></a> <span class="purpose">Grab an entire CD and compress it to Ogg/Vorbis, MP3, FLAC, Ogg/Speex, AAC, WavPack, Monkey's Audio (ape), MPP/MP+(Musepack), True Audio (tta), MP2 format and/or AIFF (Audio Interchange File Format).</span></h3>
+<article class="cmd" id="c-abcde" data-s="abcde a better cd encoder: rip a cd, look up its track names, encode and tag, in one command. discs abcde">
+<h3><a class="self" href="#c-abcde"><code>abcde</code></a> <span class="purpose">A Better CD Encoder: rip a CD, look up its track names, encode and tag, in one command.</span></h3>
 <p class="facts">Discs · command-line tool · <b>abcde</b> 2.9.3 · stage 12 · The application catalogue · <a href="man/abcde.html">man abcde(1)</a> · <a href="https://abcde.einval.com/">home</a></p>
 <p class="deps">needs bash, cd-discid, eyed3, perl-webservice-musicbrainz</p>
+<p class="why"><b>On Copal:</b> The catalogue's CD-to-music-library tool: cdparanoia to rip, a database lookup for the names, an encoder for FLAC, Ogg or MP3.</p>
 <pre class="syn">abcde [options] [tracks]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Insert the CD and run it. It looks up the disc, asks you to confirm the names, rips every track and encodes them into folders by artist and album.</p>
+<h4>Examples</h4><div class="ex"><code>abcde</code><span>rip and encode, with the defaults</span></div><div class="ex"><code>abcde -o flac</code><span>to FLAC</span></div><div class="ex"><code>abcde -o flac,ogg</code><span>two formats at once</span></div><div class="ex"><code>abcde -N -o flac</code><span>no questions (unattended)</span></div><div class="ex"><code>abcde -c ~/.abcde.conf</code><span>with your own settings</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-o FORMATS</code></dt><dd>output formats: flac, ogg, mp3, opus...</dd><dt><code>-N</code></dt><dd>non-interactive: accept the lookup's answer</dd><dt><code>-d DEV</code></dt><dd>the CD drive</dd><dt><code>-c FILE</code></dt><dd>another configuration file</dd><dt><code>-x</code></dt><dd>eject the CD when done</dd></dl>
+<h4>Notes</h4><ul><li>Settings go in <code>~/.abcde.conf</code>: <code>OUTPUTTYPE</code>, <code>OUTPUTDIR</code>, the naming pattern.</li><li>Each format needs its encoder. Its default, Ogg, needs <code>oggenc</code> (vorbis-tools), which abcde does not pull in: the catalogue row brings it and <code>flac</code> from 24 Sep 2026. MP3 needs <code>lame</code>.</li><li>Not on 32-bit ARMv7: its row is gated off there.</li></ul>
+<p class="see">See also <a href="#c-cdparanoia"><code>cdparanoia</code></a>, <a href="#c-cmus"><code>cmus</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-bsdtar" data-s="bsdtar manipulate tape archives discs libarchive-tools">
 <h3><a class="self" href="#c-bsdtar"><code>bsdtar</code></a> <span class="purpose">manipulate tape archives</span></h3>
@@ -832,16 +842,22 @@ tar {-r | -u} -f archive-file [options] [files | directories]
 tar {-t | -x} [options] [patterns]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-cdparanoia" data-s="cdparanoia an audio cd reading utility which includes extra data verification features discs cdparanoia">
-<h3><a class="self" href="#c-cdparanoia"><code>cdparanoia</code></a> <span class="purpose">an audio CD reading utility which includes extra data verification features</span></h3>
+<article class="cmd" id="c-cdparanoia" data-s="cdparanoia rip audio cds to wav files, correcting for scratches and drive errors. discs cdparanoia">
+<h3><a class="self" href="#c-cdparanoia"><code>cdparanoia</code></a> <span class="purpose">Rip audio CDs to WAV files, correcting for scratches and drive errors.</span></h3>
 <p class="facts">Discs · command-line tool · <b>cdparanoia</b> 10.2 · stage 12 · The application catalogue · <a href="man/cdparanoia.html">man cdparanoia(1)</a> · <a href="https://www.xiph.org/paranoia">home</a></p>
 <p class="deps">needs cdparanoia-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's CD ripper: it reads each sector until it is sure, which is what makes a rip from a worn disc sound like the disc.</p>
 <pre class="syn">cdparanoia [options] span [outfile]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>With a CD in the drive, rip every track, or chosen ones, to WAV files in the current folder. The progress line shows how hard it had to work.</p>
+<h4>Examples</h4><div class="ex"><code>cdparanoia -Q</code><span>the tracks on the disc</span></div><div class="ex"><code>cdparanoia -B</code><span>every track, as track01.cdda.wav...</span></div><div class="ex"><code>cdparanoia 3 song.wav</code><span>track 3 only</span></div><div class="ex"><code>cdparanoia -B -d /dev/sr1</code><span>from another drive</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-B</code></dt><dd>batch: every track, each to its own file</dd><dt><code>-Q</code></dt><dd>query the disc and print its table of contents</dd><dt><code>-d DEV</code></dt><dd>the drive to use</dd><dt><code>-X</code></dt><dd>abort on a skip rather than filling it in</dd><dt><code>-z</code></dt><dd>never skip: retry an unreadable sector forever</dd></dl>
+<h4>Notes</h4><ul><li>For MP3, FLAC or Ogg with names and tags, <a href="#c-abcde"><code>abcde</code></a> runs cdparanoia and an encoder together.</li><li>The drive needs the <code>cdrom</code> group.</li></ul>
+<p class="see">See also <a href="#c-abcde"><code>abcde</code></a>, <a href="#c-cdrdao"><code>cdrdao</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-cdrdao" data-s="cdrdao reads and writes cds in disc-at-once mode discs cdrdao">
-<h3><a class="self" href="#c-cdrdao"><code>cdrdao</code></a> <span class="purpose">reads and writes CDs in disc-at-once mode</span></h3>
+<article class="cmd" id="c-cdrdao" data-s="cdrdao write cds in disc-at-once mode: audio cds, gapless, from a toc or cue file. discs cdrdao">
+<h3><a class="self" href="#c-cdrdao"><code>cdrdao</code></a> <span class="purpose">Write CDs in disc-at-once mode: audio CDs, gapless, from a TOC or CUE file.</span></h3>
 <p class="facts">Discs · command-line tool · <b>cdrdao</b> 1.2.6 · stage 12 · The application catalogue · <a href="man/cdrdao.html">man cdrdao(1)</a> · <a href="https://cdrdao.sourceforge.net/index.html">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's audio CD writer: disc-at-once keeps the gaps between tracks exactly as described, which track-at-once cannot.</p>
 <pre class="syn">cdrdao
 {show-toc|toc-info|toc-size|read-toc|read-cd|read-cddb|show-data|read-test|disk-info|discid|msinfo|drive-info|unlock|scanbus|simulate|write|copy|blank}
 [--device device] [--source-device device] [--driver driver-id] [--source-driver driver-id]
@@ -851,14 +867,23 @@ tar {-t | -x} [options] [patterns]</pre>
 [--force] [--reload] [--keepimage] [--on-the-fly] [--paranoia-mode mode] [--with-cddb]
 [--cddb-servers server-list] [--cddb-timeout timeout] [--cddb-directory directory] [--tmpdir
 directory] [--keep] [--save] [-n] [-v verbose-level] toc-file</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Describe the disc in a table of contents (a <code>.toc</code> or <code>.cue</code> file) that lists the WAV files, then write it. It can also copy a whole CD.</p>
+<h4>Examples</h4><div class="ex"><code>cdrdao scanbus</code><span>the drives it can see</span></div><div class="ex"><code>cdrdao write --device /dev/sr0 disc.toc</code><span>burn from a TOC</span></div><div class="ex"><code>cdrdao write --device /dev/sr0 --speed 8 disc.cue</code><span>slower, from a CUE</span></div><div class="ex"><code>cdrdao read-cd --device /dev/sr0 copy.toc</code><span>read a whole CD to image + TOC</span></div><div class="ex"><code>cdrdao show-toc disc.toc</code><span>check a TOC before burning</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>write TOC</code></dt><dd>burn the disc described in TOC</dd><dt><code>read-cd TOC</code></dt><dd>read a CD into an image and a TOC</dd><dt><code>show-toc TOC</code></dt><dd>print what a TOC describes</dd><dt><code>scanbus</code></dt><dd>list drives</dd><dt><code>--device DEV</code></dt><dd>the drive (/dev/sr0)</dd><dt><code>--speed N</code></dt><dd>the writing speed</dd><dt><code>--eject</code></dt><dd>eject when done</dd></dl>
+<h4>Notes</h4><ul><li>A TOC file is plain text: one <code>TRACK AUDIO</code> block per track, each with <code>FILE "track01.wav" 0</code>.</li><li>Access to the drive is the <code>cdrom</code> group's.</li></ul>
+<p class="see">See also <a href="#c-cdparanoia"><code>cdparanoia</code></a>, <a href="#c-abcde"><code>abcde</code></a>, <a href="#c-xorriso"><code>xorriso</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-cdw" data-s="cdw front-end for cdrecord, mkisofs, growisofs, mkudffs and other tools discs cdw">
-<h3><a class="self" href="#c-cdw"><code>cdw</code></a> <span class="purpose">front-end for cdrecord, mkisofs, growisofs, mkudffs and other tools</span></h3>
+<article class="cmd" id="c-cdw" data-s="cdw a terminal front end for burning cds and dvds: data discs, iso images, erasing. discs cdw">
+<h3><a class="self" href="#c-cdw"><code>cdw</code></a> <span class="purpose">A terminal front end for burning CDs and DVDs: data discs, ISO images, erasing.</span></h3>
 <p class="facts">Discs · terminal program · <b>cdw</b> 0.8.1 · stage 12 · The application catalogue · <a href="man/cdw.html">man cdw(1)</a> · <a href="https://cdw.sourceforge.net/">home</a></p>
 <p class="deps">needs cdrkit, libburn, libcdio, libformw, libintl, libmenuw, libncursesw, libpanelw</p>
+<p class="why"><b>On Copal:</b> The catalogue's disc burner for a machine with no desktop, driving the command-line burning tools through menus.</p>
 <pre class="syn">cdw [--help] [--version] [--enable-dvd-rp-dl] [--escdelay=X]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Start it with a burner attached; pick files or an ISO image from the menus, and write them. It calls the underlying tools (xorriso and others) and shows what they report.</p>
+<h4>Examples</h4><div class="ex"><code>cdw</code><span>the menus</span></div><div class="ex"><code>lsblk -o NAME,TYPE,MODEL | grep rom</code><span>is there a drive (sr0)?</span></div><div class="ex"><code>F1  ?          (in cdw) help: the keys of the current window</code></div><div class="ex"><code>Enter          choose</code></div><div class="ex"><code>Q              quit</code></div>
+<h4>Options</h4><dl class="opts"></dl>
+<h4>Notes</h4><ul><li>Writing needs access to the drive, <code>/dev/sr0</code>, which the group <code>cdrom</code> owns: <code>doas adduser $USER cdrom</code>, then log in again.</li><li>Its settings, including which drive and which tools, are in its configuration window and <code>~/.cdw/cdw.conf</code>.</li></ul>
+<p class="see">See also <a href="#c-xorriso"><code>xorriso</code></a>, <a href="#c-cdrdao"><code>cdrdao</code></a>, <a href="#c-cdparanoia"><code>cdparanoia</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-dpkg" data-s="dpkg package manager for debian discs dpkg">
 <h3><a class="self" href="#c-dpkg"><code>dpkg</code></a> <span class="purpose">package manager for Debian</span></h3>
@@ -900,17 +925,23 @@ INSTALLING, UPGRADING, AND REMOVING PACKAGES:
 <p class="facts">Discs · command-line tool · <b>unarj</b> 2.65 · stage 12 · The application catalogue · <a href="http://www.arjsoftware.com">home</a></p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-xorriso" data-s="xorriso creates, loads, manipulates and writes iso 9660 filesystem images with rock ridge extensions. discs xorriso">
-<h3><a class="self" href="#c-xorriso"><code>xorriso</code></a> <span class="purpose">creates, loads, manipulates and writes ISO 9660 filesystem images with Rock Ridge extensions.</span></h3>
+<article class="cmd" id="c-xorriso" data-s="xorriso make iso 9660 images and burn them: data discs, bootable images, and updates to both. discs xorriso">
+<h3><a class="self" href="#c-xorriso"><code>xorriso</code></a> <span class="purpose">Make ISO 9660 images and burn them: data discs, bootable images, and updates to both.</span></h3>
 <p class="facts">Discs · command-line tool · <b>xorriso</b> 1.5.8 · stage 12 · The application catalogue · <a href="man/xorriso.html">man xorriso(1)</a> · <a href="https://dev.lovelyhq.com/libburnia/libisoburn">home</a></p>
 <p class="deps">needs libisoburn</p>
+<p class="why"><b>On Copal:</b> The catalogue's ISO tool, and the one that makes bootable images: its <code>-as mkisofs</code> mode takes the options of the classic mkisofs.</p>
 <pre class="syn">xorriso [settings|actions]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Build an image from a folder, burn an image to a disc, or list and extract what an image holds. <code>-as mkisofs</code> and <code>-as cdrecord</code> accept the older tools' options, which is what most recipes online use.</p>
+<h4>Examples</h4><div class="ex"><code>xorriso -as mkisofs -o backup.iso -J -R ~/Documents</code><span>an ISO from a folder</span></div><div class="ex"><code>xorriso -indev image.iso -ls /</code><span>what is in an image</span></div><div class="ex"><code>xorriso -osirrox on -indev image.iso -extract / out/</code><span>unpack it</span></div><div class="ex"><code>xorriso -as cdrecord -v dev=/dev/sr0 image.iso</code><span>burn it to a disc</span></div><div class="ex"><code>xorriso -devices</code><span>the burners it sees</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-as mkisofs</code></dt><dd>behave like mkisofs (-o OUT, -J, -R, -V LABEL)</dd><dt><code>-as cdrecord</code></dt><dd>behave like cdrecord (dev=, -v, blank=)</dd><dt><code>-indev FILE</code></dt><dd>read an existing image or disc</dd><dt><code>-outdev FILE</code></dt><dd>write to an image or disc</dd><dt><code>-ls PATH</code></dt><dd>list a folder inside the image</dd><dt><code>-extract A B</code></dt><dd>copy A from the image to B (with -osirrox on)</dd><dt><code>-devices</code></dt><dd>list optical drives</dd></dl>
+<h4>Notes</h4><ul><li><code>-J -R</code> add Joliet and Rock Ridge: long names for Windows and Unix. Without them names are cut to 8.3 capitals.</li><li>Burning needs the <code>cdrom</code> group, which owns <code>/dev/sr0</code>.</li></ul>
+<p class="see">See also <a href="#c-cdw"><code>cdw</code></a>, <a href="#c-cdrdao"><code>cdrdao</code></a>, <a href="#c-bsdtar"><code>bsdtar</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-zip" data-s="zip package and compress (archive) files discs zip">
-<h3><a class="self" href="#c-zip"><code>zip</code></a> <span class="purpose">package and compress (archive) files</span></h3>
+<article class="cmd" id="c-zip" data-s="zip make .zip archives -- and, with unzip, list and extract them. discs zip">
+<h3><a class="self" href="#c-zip"><code>zip</code></a> <span class="purpose">Make .zip archives -- and, with unzip, list and extract them.</span></h3>
 <p class="facts">Discs · command-line tool · <b>zip</b> 3.0 · stage 12 · The application catalogue · <a href="man/zip.html">man zip(1)</a> · <a href="http://www.info-zip.org/pub/infozip/Zip.html">home</a></p>
 <p class="deps">needs unzip</p>
+<p class="why"><b>On Copal:</b> The catalogue's zip pair: the archive format every other system opens without asking, for sending folders to Windows and Mac users.</p>
 <pre class="syn">zip [-aABcdDeEfFghjklLmoqrRSTuvVwXyz!@$] [--longoption ...] [-b path] [-n suffixes] [-t date]
 [-tt date] [zipfile [file ...]] [-xi list]
 
@@ -923,7 +954,11 @@ zipsplit (see separate man page)
 Note:  Command line processing in zip has been changed to support long options and handle all
 options and arguments more consistently.  Some old command lines that depend on command line
 inconsistencies may no longer work.</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>zip ARCHIVE FILES</code> adds files to an archive, creating it if needed; <code>-r</code> takes whole folders. <code>unzip</code> extracts, <code>unzip -l</code> lists.</p>
+<h4>Examples</h4><div class="ex"><code>zip -r photos.zip ~/Pictures/trip</code><span>a folder, recursively</span></div><div class="ex"><code>zip notes.zip *.txt</code><span>some files</span></div><div class="ex"><code>zip -e secret.zip plan.txt</code><span>with a password</span></div><div class="ex"><code>unzip -l photos.zip</code><span>what is inside</span></div><div class="ex"><code>unzip photos.zip -d ~/restore</code><span>extract into a folder</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-r</code></dt><dd>include folders, recursively</dd><dt><code>-e</code></dt><dd>encrypt, asking for a password</dd><dt><code>-9</code></dt><dd>best compression (-1 fastest)</dd><dt><code>-u</code></dt><dd>update: add only changed files</dd><dt><code>-x PATTERN</code></dt><dd>leave matching files out</dd><dt><code>-q</code></dt><dd>quiet</dd></dl>
+<h4>Notes</h4><ul><li>zip's own password encryption is weak. For real secrecy use <code>7z a -p -mhe=on</code>, which is AES-256 and hides the file names too.</li><li><code>zip -r</code> stores paths as given: <code>zip -r a.zip /home/you/x</code> stores the full path, so change into the folder first for short ones.</li></ul>
+<p class="see">See also <code>unzip</code>, <a href="#c-7z"><code>7z</code></a>, <a href="#c-bsdtar"><code>bsdtar</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-disks"><h2>Disks</h2>

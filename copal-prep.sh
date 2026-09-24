@@ -4210,7 +4210,7 @@ Discs|Xfburn (CD/DVD burner)|xfburn|xfburn|x|*
 Discs|xorriso (make and burn ISOs)|xorriso|xorriso|h|*
 Discs|cdrdao (audio CD burning)|cdrdao|cdrdao|h|*
 Discs|cdparanoia (CD ripper)|cdparanoia|cdparanoia|h|*
-Discs|abcde (rip and encode)|abcde|abcde|h|!v7
+Discs|abcde (rip and encode)|abcde vorbis-tools flac|abcde|h|!v7
 Discs|zip and unzip|zip unzip|zip|h|*
 Discs|7-Zip (7z, and reads rar)|7zip|7z|h|*
 Discs|unarj (.arj archives)|unarj|unarj|h|*
@@ -29856,6 +29856,8 @@ stage_store() {
 #   copal-store sections           the sections, and how many programs in each
 #   copal-store info ID            what it is, where it comes from, how it installs
 #   copal-store install ID...      install (root: doas is asked for)
+#   copal-store optionals [PKG...|--installed]  the plugins and helpers a package wants;
+#                                  with --installed, add them for everything installed
 #   copal-store remove ID...       and take it away again
 #   copal-store recipes            the programs built from GitHub source here
 #   copal-store playbook ID        one program in full: about, source, needs, steps, status, last build
@@ -30218,6 +30220,154 @@ apk_install() {  # <names...>
     case " $* " in *@testing*) enable_testing_tag ;; esac
     # shellcheck disable=SC2068
     apk add "$@"
+}
+
+# THE OPTIONALS. Alpine has no "recommends": a program arrives without the
+# plugins, codecs, helpers and data that make it whole -- abcde with no
+# encoder rips and stops, links has no graphical mode, ranger previews
+# nothing, zathura opens no PDF. This table names them, per package: a word
+# is a package, a word with * is a family resolved from the index at install
+# time (claws-mail-plugins-*). Installed with the program, quietly, and never
+# a reason for its install to fail; 'copal-store optionals --installed'
+# catches up everything already on the machine (stage 18 runs it). The last
+# rows are keyed on shared libraries rather than programs: every GTK viewer
+# reads images through gdk-pixbuf, every Qt one through its image plugins, so
+# one row there gives GIMP's neighbours, gThumb, Gwenview and the rest WebP,
+# AVIF, HEIF, JPEG XL and camera RAW at once.
+#
+# LEFT OUT ON PURPOSE: server modules (php83-*, samba-dc and winbind,
+# headless daemons such as qbittorrent-nox and vlc-daemon) -- each one widens
+# what a server exposes, and is a decision, not an extra; -systemd files
+# (this is OpenRC); firewall rule files (-nftrules); whole language library
+# ecosystems (perl-*, ruby-*, lua5.4-*, go-*, cargo-*); Vim plugins, which
+# would change the editor Copal configures; and giant data (KiCad's 3D
+# models, every Tesseract language). The security tools are left as they are.
+optionals_table() {
+    cat <<'OPTIONALS'
+abcde|lame opus-tools vorbis-tools flac
+abiword|abiword-plugin-*
+alacritty|alacritty-graphics
+aspell|aspell-en
+audacious|audacious-plugins
+claws-mail|claws-mail-plugins-*
+clang22|clang22-analyzer
+cmake|cmake-extras
+cppcheck|cppcheck-gui cppcheck-htmlreport
+fortune|fortune-alpine-tips
+gdb|gdb-dashboard gdb-multiarch
+geany|geany-plugins
+gedit|gedit-plugins
+gimp|gimp-plugin-gmic
+graphviz|graphviz-graphs
+gthumb|gthumb-extra-formats gthumb-raw-files gthumb-map-view gthumb-webalbums
+hackrf|hackrf-firmware
+helix|helix-tree-sitter-vendor
+hunspell|hunspell-en hunspell-en-gb
+inkscape|inkscape-tutorials
+irssi|irssi-otr irssi-perl irssi-xmpp
+krita|krita-kseexpr
+links|links-graphics
+mdbook|mdbook-admonish mdbook-katex mdbook-linkcheck mdbook-mermaid mdbook-plantuml
+meson|meson-tools
+micro|micro-tetris
+mpd|mpd-mpris
+mpv|mpv-mpris
+mupdf|mupdf-tools
+mypaint|mypaint-brushes
+nano|nano-syntax
+nnn|nnn-plugins mediainfo atool
+py3-matplotlib|py3-matplotlib-gtk3 py3-matplotlib-tk
+python3|python3-tkinter python3-idle
+qpdf|qpdf-fix-qdf
+ranger|highlight mediainfo atool ffmpegthumbnailer poppler-utils w3m-image
+screen|screen-message
+squashfs-tools|squashfs-tools-ng
+strace|strace-tui
+tesseract-ocr|tesseract-ocr-data-eng tesseract-ocr-data-osd
+thunar|thunar-archive-plugin thunar-media-tags-plugin thunar-gtkhash-plugin thunar-vcs-plugin-git thunar-volman
+tmux|tmux-resurrect
+valgrind|valgrind-scripts
+vim|vim-tutor
+w3m|w3m-image
+weechat|weechat-lua weechat-perl weechat-python weechat-spell weechat-matrix
+xfe|xfe-xfa xfe-xfi xfe-xfp xfe-xfw
+xscreensaver|xscreensaver-extras xscreensaver-gl-extras
+zathura|zathura-cb zathura-djvu zathura-ps
+gstreamer|gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
+gdk-pixbuf|glycin-loaders-all libopenraw-pixbuf-loader
+qt6-qtbase|qt6-qtimageformats kimageformats
+imagemagick|imagemagick-jxl imagemagick-webp
+libheif|libheif-plugins-all
+vips|vips-heif vips-jxl
+OPTIONALS
+}
+
+# The optionals of these packages that the index has and this machine lacks.
+optionals_of() {  # <apk names...>
+    _want=""
+    for _p in "$@"; do
+        _p=${_p%@*}
+        _l=$(optionals_table | awk -F'|' -v p="$_p" '$1 == p { print $2 }')
+        for _o in $_l; do
+            case "$_o" in
+                *\**) _want="$_want $(apk search -q "$_o" 2>/dev/null | grep -Ev -- '-(dev|dbg|doc|lang|static|systemd|nftrules|pyc)$')" ;;
+                *)    _want="$_want $_o" ;;
+            esac
+        done
+    done
+    [ -n "$_want" ] || return 0
+    # shellcheck disable=SC2086
+    _have=$(apk info -e $_want 2>/dev/null)
+    # shellcheck disable=SC2086
+    _want=$(printf '%s\n' $_want | sort -u | grep -vxF "$(printf '%s\n' $_have)")
+    [ -n "$_want" ] || return 0
+    # One query for all of them: the names the index has, NAME-VER-rN cut
+    # back to NAME. (One query each took a minute for a hundred names.)
+    # shellcheck disable=SC2086
+    _want=$(apk search -e $_want 2>/dev/null | sed 's/-[^-]*-r[0-9]*$//' | sort -u)
+    [ -n "$_want" ] || return 0
+    # A name only edge/testing carries is asked for as NAME@testing, as the
+    # man pages are: one untagged testing name makes apk refuse the batch.
+    # shellcheck disable=SC2086
+    apk policy $_want 2>/dev/null | awk '
+        / policy:$/ { if (n != "") print n (u ? "" : "@testing"); n = $1; sub(/:$/, "", n); u = 0; next }
+        /^    / && $1 !~ /^@/ { u = 1 }
+        END { if (n != "") print n (u ? "" : "@testing") }'
+}
+
+# Install them: one transaction, and one by one if that fails, so a single
+# missing or testing-only name costs only itself. Never a failure.
+optionals_for() {  # <apk names...>
+    _o=$(optionals_of "$@")
+    [ -n "$_o" ] || return 0
+    case " $(echo $_o) " in *@testing*) enable_testing_tag ;; esac
+    # shellcheck disable=SC2086
+    if apk add -q $_o >/dev/null 2>&1; then
+        _got=$(echo $_o)
+    else
+        _got=""
+        for _n in $_o; do
+            apk add -q "$_n" >/dev/null 2>&1 && _got="$_got $_n"
+        done
+    fi
+    [ -n "$_got" ] || return 0
+    note "optionals: $_got"
+    # The summary keeps it: what was added, for which packages.
+    { printf '\n== optionals  %s  for %s\n' "$(date '+%Y-%m-%d %H:%M')" "$(echo "$@")"
+      echo $_got | fold -s -w 64 | sed '1s/^/   added      /; 2,$s/^/              /'
+    } >> "$LOGDIR/summary.txt" 2>/dev/null
+    return 0
+}
+
+# Every installed package's optionals: what stage 18 runs once the programs
+# are in, and a way to catch up a machine installed before this table.
+optionals_installed() {
+    _keys=$(optionals_table | cut -d'|' -f1)
+    # shellcheck disable=SC2086
+    _inst=$(apk info -e $_keys 2>/dev/null)
+    [ -n "$_inst" ] || { note "nothing installed has optionals"; return 0; }
+    # shellcheck disable=SC2086
+    optionals_for $_inst
 }
 
 # A terminal program's man page comes with it: its package's -doc, when the
@@ -32258,6 +32408,27 @@ clone_recipe() {  # <name>
 # for a failure the last lines of its log. The full log is compressed beside
 # it as NAME.log.gz. Test frameworks and documentation tools are left out of
 # the absences: they are never wanted on the machine.
+#
+# And the other side of it, "with": what the build found and compiled in --
+# CMake's feature summary and its Found lines, Meson's dependencies. For an
+# editor or a player that is the answer to "which formats, which codecs":
+# OpenEXR, libheif, JPEG XL, FFmpeg, Lua... as this build has them.
+# The features a build log says were found, as one comma list: CMake's
+# FeatureSummary ("* Name, description" under "have been enabled"), its
+# "-- Found Name:" lines, and Meson's "Run-time dependency name found: YES".
+# The plumbing everything has -- threads, pkg-config, git -- is not news.
+store_with() {  # <log>
+    _e=$(printf '\033')
+    sed "s/${_e}\[[0-9;]*[mK]//g" "$1" 2>/dev/null | awk '
+        /features have been enabled:/ { on = 1; next }
+        /features have been disabled:|following (OPTIONAL|REQUIRED)/ { on = 0 }
+        on && /^ \* / { sub(/^ \* /, ""); sub(/,.*/, ""); print; next }
+        /^-- Found [A-Za-z]/ { n = $3; sub(/:.*/, "", n); print n; next }
+        /[Dd]ependency .* found: YES/ { for (i = 1; i < NF; i++) if ($i == "dependency") { print $(i + 1); break } }
+    ' | grep -v -i -E '^(threads|pkgconfig|pkg-config|git|python3?|perl|intl|m|dl|rt)$' \
+      | awk '!seen[tolower($0)]++' | head -n 40 | paste -sd, - | sed 's/,/, /g'
+}
+
 store_summary() {  # <recipe> <ok|failed> <seconds>
     _lg="$LOGDIR/$1.log"; _e=$(printf '\033')
     {
@@ -32275,6 +32446,7 @@ store_summary() {  # <recipe> <ok|failed> <seconds>
             | grep -E 'Not found: |Could NOT find [A-Za-z]|^-- .*[Nn]ot found *$' \
             | grep -v -i -E 'looking for|gtest|catch2|cppunit|doxygen|ruby|sphinx|po4a|luacheck' \
             | sed 's/^[- ]*//' | sort -u | head -n 8 | sed 's/^/   absent     /'
+        store_with "$_lg" | fold -s -w 64 | sed '1s/^/   with       /; 2,$s/^/              /'
         [ "$2" = ok ] || tail -n 15 "$_lg" | sed "s/${_e}\[[0-9;]*[mK]//g; s/^/   | /"
     } >> "$LOGDIR/summary.txt" 2>/dev/null
     gzip -9 -f "$_lg" 2>/dev/null || true
@@ -32358,6 +32530,8 @@ install_ids() {
                 case "$(printf '%s' "$_row" | cut -d'|' -f9)" in catalogue) catalogue_post "$_id" || _rc=1 ;; esac
                 # A terminal program, its manual.
                 case "$(printf '%s' "$_row" | cut -d'|' -f6)" in t|h) man_pages_for $_apks ;; esac
+                # Its plugins, codecs and helpers.
+                optionals_for $_apks
             else _rc=1; fi
         fi
         # Flathub rows belong to the catalogue, and copal-install knows them.
@@ -32587,6 +32761,12 @@ case "${1:-}" in
     sections) sections | awk -F'|' '{ printf "%-13s %3d programs, %d installed\n", $1, $2, $3 }' ;;
     info)     [ $# -ge 2 ] || die "info needs an id"; info_id "$2" ;;
     install)  shift; [ $# -gt 0 ] || die "install what?"; need_root install "$@"; install_ids "$@" ;;
+    optionals)
+              shift
+              if [ $# -eq 0 ]; then optionals_table | awk -F'|' '{ printf "%-16s %s\n", $1, $2 }'
+              else need_root optionals "$@"
+                   if [ "$1" = --installed ]; then optionals_installed; else optionals_for "$@"; fi
+              fi ;;
     playbook) [ $# -ge 2 ] || die "playbook of what?"; playbook_show "$2" ;;
     rows)     rows_status ;;
     pending)  shift; for _id in "$@"; do
@@ -33196,6 +33376,14 @@ MSG
         note "installed:${_ok:- nothing}"
     else
         note "Skipped. Open the store any time: copal-store"
+    fi
+    # The optionals of everything installed so far -- the catalogue from
+    # stage 12, the starter set just now: its plugins, codecs, image loaders
+    # and helpers (copal-store's optionals_table says which, and which are
+    # left out). What the store installs later brings its own.
+    if require_network; then
+        say "Optionals: plugins, codecs and helpers for what is installed"
+        /usr/local/bin/copal-store optionals --installed || warn "some optionals did not install -- 'doas copal-store optionals --installed' retries"
     fi
     if [ "$(copal_profile)" = full ]; then
         # QUEUED, NOT INSTALLED HERE. No desktop is running during the
