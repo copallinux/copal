@@ -1,16 +1,58 @@
 /* The desktop that is the site (desk.js): the bar's menu buttons, the tiled
    windows and what goes in them. The menus themselves are menus.css. */
 
-/* With the desktop drawn, the page underneath is its fallback: kept in the
-   document for anyone without JavaScript, a search engine and a screen
-   reader's list of links, and out of sight for everyone else. */
-html.desk-on, html.desk-on body { height: 100%; overflow: hidden; }
-html.desk-on .desk-fallback { display: none; }
+/* ----- the panel on the front page, and the whole screen ----- */
+/* Wider than the page's measure -- as wide as the screen allows, to 1440 px --
+   and tall enough to be a desktop rather than a picture of one. */
+#desk {
+  display: block; position: relative;
+  width: min(100vw - 2.5rem, 1440px); margin: 1rem 0 .75rem;
+  margin-left: calc(50% - min(50vw - 1.25rem, 720px));
+  height: min(72vh, 720px); min-height: 480px;
+  border: 1px solid var(--ink-key); box-shadow: 5px 5px 0 var(--ink-key);
+  background: #2b2b24;
+}
+#desk > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+#desk.full {
+  position: fixed; inset: 0; z-index: 1000; width: auto; height: auto; min-height: 0;
+  margin: 0; border: 0; box-shadow: none;
+}
+html.desk-full, html.desk-full body { overflow: hidden; }
+.desk-scroll { text-align: center; font: 600 1.35rem "Cormorant Garamond", Georgia, serif; color: var(--gold); margin: 2rem 0 0; }
+.desk-scroll b { display: block; font-size: 1.6rem; line-height: 1; animation: desk-nudge 1.6s ease-in-out infinite; }
+@keyframes desk-nudge { 50% { transform: translateY(6px); } }
+
+/* ----- the cues: what to do, until something is done ----- */
+.desk-cues { position: absolute; inset: 0; z-index: 9; pointer-events: none; opacity: 0; transition: opacity .3s; }
+.desk-cues.on { opacity: 1; }
+.desk-cues .cue {
+  position: absolute; display: flex; align-items: center; gap: 8px;
+  padding: 4px 12px 5px 6px; border-radius: 16px; background: rgba(18,18,18,.78);
+  color: #f4c27c; font: 600 21px/1.15 "Cormorant Garamond", Georgia, serif; white-space: nowrap;
+}
+.desk-cues .cue[hidden] { display: none; }
+.desk-cues .cue svg { width: 44px; height: 22px; flex: none; }
+.desk-cues .cue.full { flex-direction: column; align-items: flex-end; gap: 0; padding: 2px 10px 5px; }
+.desk-cues .cue.full svg { width: 22px; height: 34px; }
+.desk .sim-bar .grow.hint { color: #f4c27c; }
+/* The bar's two menu buttons glow until one is used. */
+.desk .sim-bar .desk-menu.pulse { animation: desk-glow 1.8s ease-in-out infinite; }
+@keyframes desk-glow { 50% { background: #5a4520; color: #fff2d0; box-shadow: 0 0 10px 2px rgba(233,184,106,.55); } }
+@media (prefers-reduced-motion: reduce) {
+  .desk .sim-bar .desk-menu.pulse, .desk-scroll b { animation: none; }
+  .desk .sim-bar .desk-menu.pulse { background: #5a4520; }
+}
 
 .desk .sim-bar .desk-menu {
   all: unset; cursor: pointer; padding: 0 7px; color: var(--bar-hot); font-size: 15px; line-height: 26px;
 }
 .desk .sim-bar .desk-menu.keys { font: 700 12px/26px "JetBrains Mono", monospace; }
+/* One line, centred: two glyphs in a narrow button wrapped on a phone and
+   were drawn above the bar. */
+.desk .sim-bar .desk-menu { display: grid; place-items: center; height: 26px; white-space: nowrap; }
+/* The buttons and workspaces keep their size; only the title gives way. */
+.desk .sim-bar > button, .desk .sim-bar .sim-ws, .desk .sim-bar .time { flex: none; }
+.desk .sim-bar .grow { min-width: 0; text-overflow: ellipsis; }
 .desk .sim-bar .desk-menu:hover, .desk .sim-bar .desk-menu:focus-visible { background: #2a2a2a; }
 /* A workspace with windows on it is marked, as Hyprland's bar marks it. */
 .desk .sim-ws span.used:not(.on) { color: #d9cfb6; }
@@ -118,3 +160,10 @@ html.desk-on .desk-fallback { display: none; }
 .desk-win:focus-visible { border-color: var(--bar-hot); box-shadow: 0 0 0 2px rgba(233,184,106,.45); }
 .desk .sim-ws span:focus-visible, .desk-head .shut:focus-visible { outline: 2px solid var(--bar-hot); outline-offset: -2px; }
 
+
+/* The line of help under the panel. */
+.desk-note { font-size: .8rem; color: var(--ink-dim); margin: 0 0 2rem; }
+.desk-note kbd {
+  font: .72rem "JetBrains Mono", monospace; padding: 0 .3rem;
+  border: 1px solid var(--ink-key); border-radius: 3px; background: var(--paper-raised);
+}

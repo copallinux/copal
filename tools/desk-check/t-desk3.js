@@ -7,6 +7,9 @@
   function wins() { return [].slice.call(document.querySelectorAll(".desk-win")); }
   function shownRows() { return [].slice.call(document.querySelectorAll(".sim-app")).filter(function (r) { return r.style.display !== "none"; }); }
   function key(k) { document.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true })); }
+  // A visitor who has already begun: the menu must not open by itself in the
+  // middle of these checks as the panel comes into view.
+  document.getElementById("desk").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
   (async function () {
     await wait(1200);
     document.querySelector(".desk-menu").click();

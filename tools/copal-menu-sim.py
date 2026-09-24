@@ -61,7 +61,7 @@ COLS = 16
 # frames only these): the page's file stem, its title, one line, and the
 # theme icons to try, in order.
 SITE = [
-    ("about", "About Copal", "What Copal is, what you get, and where it runs",
+    ("index", "About Copal", "What Copal is, what you get, and where it runs -- the front page",
      ("user-home", "help-about")),
     ("desktop", "The Desktop", "Hyprland, the Linux Antiquity theme and the two menus",
      ("user-desktop", "preferences-desktop")),

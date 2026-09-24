@@ -337,12 +337,21 @@
     }
 
     // ----- open, close -----
-    function open() {
+    // opts.quiet: open without taking the keyboard -- the menu opened by
+    // itself as the page scrolled to it, and must not steal the page's keys
+    // or raise a phone's keyboard. opts.section and opts.pick: open on that
+    // section with that program selected, its picture showing.
+    function open(opts) {
+      opts = opts || {};
       state.open = true; menu.hidden = false;
       setQuery("");
+      if (opts.section && D.sections.some(function (x) { return x.name === opts.section; })) {
+        state.section = opts.section; refilter(); paintSections();
+      }
       list.scrollTop = 0;
-      search.classList.add("focus");
-      q.focus({ preventScroll: true });
+      if (opts.pick && byId[opts.pick] && visible(byId[opts.pick])) select(byId[opts.pick], true);
+      search.classList.toggle("focus", !opts.quiet);
+      if (!opts.quiet) q.focus({ preventScroll: true });
     }
     function close() {
       state.open = false; menu.hidden = true;
@@ -382,7 +391,8 @@
     return {
       open: open, close: close, key: key,
       isOpen: function () { return state.open; },
-      toggle: function () { if (state.open) close(); else open(); }
+      toggle: function () { if (state.open) close(); else open(); },
+      el: menu
     };
   };
 })();

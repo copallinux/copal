@@ -272,6 +272,41 @@ onto `out` with `ok(name, condition, detail)` in the right `t-desk*.js`.
 - `tools/copal-gui` (synced into stage 4) — three section icons.
 - `tools/desk-check/` — the checks and their runner; `make desk-check`.
 
+## VIII. Addendum: the page first (24 September 2026)
+
+The live site met its first visitor, the author, the same evening, and the
+whole-screen desktop was reversed. It was too much at once, and it did not
+say what to do: nothing on it said "click". Three changes followed.
+
+**The page first, the desktop on scroll.** `index.html` is a page again, and
+the desktop is a panel in it, as wide as the screen allows. When the panel is
+half in view, copal-gui opens by itself on Favourites with Firefox ESR
+selected and its picture showing -- without taking the keyboard, so the page
+still scrolls and a phone does not raise its keyboard. Gold arrows point at
+the menu ("pick a program", "this site's pages are under Copal"), a line on
+the bar names the two menu buttons, and those buttons glow; all of it goes at
+the first click. The bar's corner button makes the desktop the whole screen,
+and a shared address opens straight into it.
+
+**Ctrl+Alt only.** The desktop took a lone Super tap as Hyprland does. Off a
+Copal machine Super is Cmd or the Windows key, and Cmd+Tab reaches a page as
+Cmd going down and up with nothing between: the menu opened by itself. The
+web desktop now answers only Copal's Ctrl+Alt fallbacks.
+
+**Versioned files.** GitHub Pages lets a browser keep a file for ten minutes,
+long enough to pair a new page with an old script. `tools/copal-stamp.py`
+versions `index.html`'s own files by their content, and lint checks it.
+
+![The front page scrolled to the desktop: copal-gui open on Firefox ESR with
+its picture, and gold arrows saying what to do](img/desk-lab/panel.jpg)
+
+*Fig. 6. The front page, scrolled to its desktop: the menu open by itself,
+the arrows, and the line on the bar.*
+
+The checks follow: 61 of them, the first page rewritten for the page, the
+arrival, the cues and the whole screen, and a second load at a shared
+address.
+
 ## References
 
 [1] Copal Linux, "Writing a Command Reference Against the Machine,"

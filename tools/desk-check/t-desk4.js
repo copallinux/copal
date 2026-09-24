@@ -15,6 +15,9 @@
   var CA = { ctrlKey: true, altKey: true };
   var guiOpen = function () { return !document.querySelector(".sim-menu").hidden; };
   var keysOpen = function () { return !document.querySelector(".tm-menu").hidden; };
+  // A visitor who has already begun: the menu must not open by itself in the
+  // middle of these checks as the panel comes into view.
+  document.getElementById("desk").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
   (async function () {
     await wait(1500);
     press(document, "a", "KeyA", CA);
@@ -48,7 +51,8 @@
     var ev = new KeyboardEvent("keydown", { key: "a", code: "KeyA", metaKey: true, bubbles: true, cancelable: true });
     document.dispatchEvent(ev);
     ok("Super+A (Cmd+A) is left to the browser", !ev.defaultPrevented && !guiOpen());
-    var f = wins()[0].querySelector("iframe");
+    location.hash = "#page/install"; await wait(1500);
+    var f = wins()[wins().length - 1].querySelector("iframe");
     press(f.contentDocument, "a", "KeyA", CA);
     ok("a shortcut pressed inside a framed page reaches the desktop", guiOpen());
     press(document, "Escape", "Escape");

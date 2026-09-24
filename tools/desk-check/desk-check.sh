@@ -72,6 +72,8 @@ shot() {  # <width,height> <out.png> <address suffix>
 if [ "${1:-}" = --shots ]; then
     out=${2:?--shots needs a directory}
     mkdir -p "$out"
+    shot 1400,900 "$out/panel.png" "?menu=panel"
+    shot 390,844 "$out/phone-panel.png" "?menu=panel"
     shot 1400,860 "$out/welcome.png" ""
     shot 1400,860 "$out/tiled.png" "?menu=split"
     shot 1400,860 "$out/gui.png" "?menu=gui"

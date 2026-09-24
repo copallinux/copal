@@ -5,6 +5,9 @@
   function ok(name, cond, extra) { out.push((cond ? "PASS " : "FAIL ") + name + (extra ? "  (" + extra + ")" : "")); }
   function wins() { return [].slice.call(document.querySelectorAll(".desk-win")); }
   function last() { var w = wins(); return w[w.length - 1]; }
+  // A visitor who has already begun: the menu must not open by itself in the
+  // middle of these checks as the panel comes into view.
+  document.getElementById("desk").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
   (async function () {
     await wait(1200);
     location.hash = "#app/rsync"; await wait(1500);

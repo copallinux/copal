@@ -365,6 +365,8 @@ html.framed .site-nav { display: none; }
 html.framed body { padding-bottom: 2rem; }
 html.framed header { padding-top: 2rem; }
 html.framed .page-head { padding-top: 1.5rem; }
+/* The front page framed as About Copal: no desktop inside the desktop. */
+html.framed #desk, html.framed .desk-scroll, html.framed .desk-note { display: none; }
 
 /* An inner page's heading: the wordmark's face, a size down, and a lede. */
 .page-head { padding: 3.5rem 0 .5rem; }

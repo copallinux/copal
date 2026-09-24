@@ -11,7 +11,7 @@
   --panel: #181818; --side: #121212; --line: #333333;
   --row-hot: #333333; --ink: #d0daed; --ink-soft: #9aa3b4;
   --accent: #fccf8a; --accent-dark: #87704f;
-  position: fixed; inset: 0; overflow: hidden; user-select: none;
+  position: relative; overflow: hidden; user-select: none;
   font: 15px/1.2 "Recia", "Inter", "Cantarell", system-ui, sans-serif;
   color: var(--ink); background: #6f7a55 center / cover no-repeat;
   cursor: default;

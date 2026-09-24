@@ -102,3 +102,24 @@ All five phases: `226ef89`, `4232e3c`, `2536692`, `216aa68`, and phase 5 —
 the checks in `tools/desk-check/` (`make desk-check`, 55 checks, headless)
 and the lab report, `docs/desktop-site-lab-report.md`, which records the
 method, the defects the checks and screenshots found, and what was not tested.
+
+## IX. Revised after the first visitor (24 September 2026)
+
+On the live site the whole-screen desktop was too much, and it said nothing
+about what to do: a visitor had to guess to click. The author's second
+decision reverses the first in section II:
+
+1. **The page first, the desktop on scroll.** `index.html` is a page again --
+   the old home text -- and the desktop is a panel in it, as wide as the
+   screen allows. `about.html` points at the front page.
+2. **It opens by itself as it arrives.** When the panel is half in view,
+   copal-gui opens on Favourites with Firefox ESR selected and its picture
+   showing, without taking the keyboard.
+3. **Cues until the first click:** gold arrows ("pick a program", "this
+   site's pages are under Copal", "the whole screen"), a line on the bar, and
+   a glow on the two menu buttons.
+4. **The whole screen on request:** the bar's corner button, or a shared
+   address, which opens straight into it with that window.
+
+Also: the web desktop answers Ctrl+Alt only (a Super tap opened the menu by
+itself off a Copal machine), and index.html's files are version-stamped.

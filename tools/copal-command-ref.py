@@ -791,7 +791,6 @@ GUIDE_PAGE = """<!doctype html>
 <nav class="site-nav" aria-label="Site">
   <a class="mark" href="./">Copal</a>
   <a class="key" href="./">Home</a>
-  <a class="key" href="about.html">About</a>
   <a class="key" href="desktop.html">Desktop</a>
   <a class="key" href="install.html">Install</a>
   <a class="key" href="software.html">Software</a>

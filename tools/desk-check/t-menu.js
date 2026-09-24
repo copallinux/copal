@@ -6,6 +6,15 @@
   var st = document.createElement("style"); st.textContent = "*{transition:none!important}"; document.head.appendChild(st);
   var m = (location.search.match(/menu=(\w+)/) || [])[1];
   function key(k) { document.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true })); }
+  if (m === "panel") {
+    // The front page as a visitor meets the desktop: arrived at, the text
+    // above it out of the frame.
+    var hide = document.createElement("style");
+    hide.textContent = ".site-nav, header, main > h2:first-of-type { display: none !important; } #desk { margin-top: .5rem; }";
+    document.head.appendChild(hide);
+    window.CopalDesk.arrive();
+    return;
+  }
   if (m === "gui") {
     document.querySelector(".desk-menu").click();
     [].slice.call(document.querySelectorAll(".sim-sec")).filter(function (r) { return r._name === "Copal"; })[0].click();

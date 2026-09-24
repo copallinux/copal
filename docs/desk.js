@@ -1,9 +1,12 @@
-/* The desktop that is the site (docs/splash-plan.md).
+/* The desktop on the site's front page (docs/splash-plan.md).
  *
- * index.html is Copal's Hyprland desktop, full screen: the bar, the clock,
- * the wallpaper, and the two menus -- copal-gui (Super+A, menu-gui.js) and
- * copal-menu (Super+Space and Super+Z, menu-keys.js). Everything on the site
- * opens from them as a window:
+ * index.html is a page, and in it, a panel wide as the screen, is Copal's
+ * Hyprland desktop, live: the bar, the clock, the wallpaper, and the two menus
+ * -- copal-gui (menu-gui.js) and copal-menu (menu-keys.js). When the panel
+ * scrolls into view copal-gui opens by itself on a program with a picture,
+ * gold arrows say what to do, and the bar's two menu buttons glow until one is
+ * used. The bar's last button makes the desktop the whole screen, and back.
+ * Everything on the site opens from the menus as a window:
  *
  *   #page/NAME   a page of the site, framed: about, install, commands ...
  *   #app/CMD     a program: its gallery picture beside its Terminal Guide
@@ -16,14 +19,18 @@
  * address, so it can be shared, and opening one is a step in the browser's
  * history: Back closes it again.
  *
- * Without JavaScript none of this runs, and index.html's own list of pages is
- * the page.
+ * An address opens straight into the full-screen desktop with that window.
+ * Without JavaScript none of this runs: the panel shows a picture of the
+ * desktop, and the page around it is the page.
  */
 (function () {
   "use strict";
   var D = window.COPAL_MENU;
   var root = document.getElementById("desk");
   if (!D || !root || !window.CopalMenus) return;
+  // Inside a window of the desktop -- this page framed as About Copal -- there
+  // is no second desktop: site.css hides the panel in a framed page.
+  if (window.self !== window.top) return;
 
   var WORKSPACES = 5;
   // The pages a window may frame: the site's own, by file stem, as the menus'
@@ -85,6 +92,7 @@
   }
 
   // ----- the desktop -----
+  root.textContent = "";          // the picture that stands in without JavaScript
   root.className = "desk";
   root.style.backgroundImage = "url(img/menu/wallpaper.jpg)";
   root.setAttribute("role", "application");
@@ -118,7 +126,10 @@
   var title = el("span", "grow", "");
   var stat = el("span", "stat", "c12%  m19%  d48%   eth up");
   var tbar = el("span", "time", "");
-  [bGui, bKeys, wsBox, title, stat, tbar].forEach(function (x) { bar.appendChild(x); });
+  // Four corners, drawn: the fonts on the page have no full-screen sign.
+  var bFull = el("button", "desk-menu full");
+  bFull.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
+  [bGui, bKeys, wsBox, title, stat, tbar, bFull].forEach(function (x) { bar.appendChild(x); });
   root.appendChild(bar);
 
   var clock = el("div", "sim-clock");
@@ -154,6 +165,84 @@
   function closeMenus() { gui.close(); keys.close(); }
   bGui.addEventListener("click", function (e) { e.stopPropagation(); keys.close(); gui.toggle(); });
   bKeys.addEventListener("click", function (e) { e.stopPropagation(); gui.close(); keys.toggle(); });
+
+  // ----- the whole screen, and back -----
+  // back: leaving by the button, so the panel is where the reader is left.
+  function setFull(on, back) {
+    root.classList.toggle("full", on);
+    document.documentElement.classList.toggle("desk-full", on);
+    bFull.title = on ? "Back to the page" : "The whole screen";
+    bFull.setAttribute("aria-label", bFull.title);
+    bFull.setAttribute("aria-pressed", on ? "true" : "false");
+    if (!on && back) root.scrollIntoView({ block: "center" });
+  }
+  bFull.addEventListener("click", function (e) { e.stopPropagation(); setFull(!root.classList.contains("full"), true); });
+
+  // ----- the cues: what to do, until something is done -----
+  // Gold arrows with a few words each, pointing at the open menu, its Copal
+  // section, and the bar's keyboard-menu button; and a glow on the bar's two
+  // menu buttons. All of it goes at the first click or key in the desktop.
+  // Beside the menu, pointing left at it, under the picture card; placed from
+  // where the menu and the card actually are. Where there is no room beside
+  // the menu (a phone, where it fills the panel) only the bar's line stays.
+  var LEFT = '<svg viewBox="0 0 48 24" aria-hidden="true"><path d="M46 12 C32 5 18 5 4 12 M4 12 l8 -6 M4 12 l8 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+  var UP = '<svg viewBox="0 0 24 40" aria-hidden="true"><path d="M12 38 C7 27 7 16 12 4 M12 4 l-6 8 M12 4 l6 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+  var cues = el("div", "desk-cues");
+  cues.setAttribute("aria-hidden", "true");
+  var cue = {};
+  [["pick", "pick a program: its picture, its guide entry", LEFT],
+   ["site", "this site's pages are under Copal", LEFT],
+   ["full", "the whole screen", UP]].forEach(function (c) {
+    var q = el("div", "cue " + c[0]);
+    q.innerHTML = c[2];
+    q.appendChild(el("span", null, c[1]));
+    cues.appendChild(q); cue[c[0]] = q;
+  });
+  root.appendChild(cues);
+  function placeCues() {
+    var r = root.getBoundingClientRect();
+    var m = gui.el.getBoundingClientRect();
+    var peek = root.querySelector(".sim-peek.on");
+    var pk = peek && peek.offsetParent ? peek.getBoundingClientRect() : null;
+    var fb = bFull.getBoundingClientRect();
+    var x = m.right - r.left + 10;
+    var y = pk ? pk.bottom - r.top + 18 : (m.top - r.top) + m.height * 0.45;
+    var room = !gui.el.hidden && r.right - m.right > 250 && y + 110 < r.height;
+    cue.pick.style.left = cue.site.style.left = x + "px";
+    cue.pick.style.top = y + "px";
+    cue.site.style.top = (y + 56) + "px";
+    cue.pick.hidden = cue.site.hidden = !room;
+    cue.full.style.right = (r.right - fb.right + 2) + "px"; cue.full.style.top = "30px";
+    cue.full.hidden = r.width < 760;    // on a phone it would sit on the search
+  }
+  function showCues() {
+    placeCues();
+    cues.classList.add("on");
+    title.textContent = "← ≡ and ❯_: the two menus";
+    title.classList.add("hint");
+  }
+  window.addEventListener("resize", function () { if (cues.classList.contains("on")) placeCues(); });
+  [bGui, bKeys].forEach(function (b) { b.classList.add("pulse"); });
+  var started = false;
+  function start() {
+    if (started) return;
+    started = true;
+    cues.classList.remove("on");
+    title.classList.remove("hint");
+    if (title.textContent.charAt(0) === "←") title.textContent = "";
+    [bGui, bKeys].forEach(function (b) { b.classList.remove("pulse"); });
+  }
+  root.addEventListener("pointerdown", start, true);
+  root.addEventListener("keydown", start, true);
+
+  // Open by itself the first time the panel is well in view, on a starter
+  // favourite with a picture -- unless the visitor has already begun.
+  var PICK = { section: "Favourites", pick: "firefox-esr.desktop", quiet: true };
+  function arrive() {
+    if (started || wins.length || gui.isOpen() || keys.isOpen()) return;
+    gui.open(PICK);
+    showCues();
+  }
   // The layer-shell backdrop: a click that misses a menu closes it.
   root.addEventListener("click", closeMenus);
   root.addEventListener("contextmenu", function (e) { if (e.target === root || e.target === tiles) e.preventDefault(); });
@@ -325,7 +414,7 @@
     var mm = u.pathname.match(/\/man\/([A-Za-z0-9][\w.+@-]*)\.html$/);
     if (mm) return { name: "man/" + mm[1], route: "man/" + mm[1] };
     var m = u.pathname.match(/\/([a-z0-9-]*)(?:\.html)?$/);
-    var name = m && m[1] ? m[1] : "about";   // the site's root is the desktop; its text is About
+    var name = m && m[1] ? m[1] : "index";   // the site's root is its front page
     if (!PAGES[name]) return null;
     var anchor = u.hash ? u.hash.slice(1) : "";
     return { name: name, route: "page/" + name + (anchor ? "/" + anchor : "") };
@@ -445,16 +534,26 @@
   }
   document.addEventListener("keydown", onKeyDown);
 
+  // For tools/desk-check: arrive as scrolling into view does, and the screen.
+  window.CopalDesk = { arrive: arrive, full: setFull };
+
   // ----- first light -----
   showWorkspace(1);
-  var start = location.hash.slice(1);
-  if (!start || !open(start, null, true)) {
-    // No address, or one that names nothing: the welcome window, so nobody
-    // lands on an empty desktop and has to guess -- and smaller than a tiled
-    // window would be, so the desktop it opened on is in sight beside it.
-    var w = open("page/about", null, true);
-    if (w) w.el.classList.add("intro");
-    history.replaceState(null, "", "#page/about");
-  }
   document.documentElement.classList.add("desk-on");
+  var start0 = location.hash.slice(1);
+  if (start0 && parse(start0)) {
+    // A shared address: straight into the desktop, with that window.
+    started = true;
+    [bGui, bKeys].forEach(function (b) { b.classList.remove("pulse"); });
+    setFull(true);
+    open(start0, null, true);
+  } else {
+    setFull(false);
+    if (window.IntersectionObserver) {
+      var seen = new IntersectionObserver(function (es) {
+        if (es[0].isIntersecting) { seen.disconnect(); arrive(); }
+      }, { threshold: 0.5 });
+      seen.observe(root);
+    } else arrive();
+  }
 })();
