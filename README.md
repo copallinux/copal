@@ -7,7 +7,6 @@
 ██      ██    ██ ██      ██   ██ ██
  ██████  ██████  ██      ██   ██ ███████
 ```
-<img width="418" height="214" alt="image" src="https://github.com/user-attachments/assets/4c7225e2-f9fd-4e79-a00b-7145d50f258b" />
 
 
 # copal-alpine-linux
@@ -25,6 +24,8 @@ the other three can be verified without a card, a Pi, or a reboot cycle.
 not yet stone. That is this system's whole trick. Alpine boots *diskless*: the
 root filesystem is a tmpfs that evaporates at power-off. Copal is what sets it,
 without giving up any of the smallness that made it worth booting.
+
+<img width="418" height="214" alt="image" src="https://github.com/user-attachments/assets/4c7225e2-f9fd-4e79-a00b-7145d50f258b" />
 
 Copal is an *aggregation* of Alpine — it downloads stock Alpine and calls
 Alpine's own tools — **not** a derivative work of it, and not a fork. It is not
