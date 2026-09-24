@@ -37,6 +37,15 @@
 # and home go into tools/copal-store (catalogue_abouts) for Copal Apps. A
 # graphical catalogue row with no playbook is an error.
 #
+# A STAGE playbook (origin: stage) is one of the installer's eighteen stages,
+# playbooks/Stages/NN-name.sh: its number, category, one-line step and
+# weight (the manifest the progress screens are drawn from), the levels
+# that run it, two sentences of summary, and its body -- the stage function,
+# named after the playbook (stage-gui -> stage_gui). They are generated back
+# into copal-prep.sh: the functions into one marked region, auto_manifest in
+# manifest order (the order a level runs in), and stage_levels, from which
+# seq_for_profile makes each level's sequence.
+#
 # A CODE playbook (origin: code, source: clone URL) is a project checked out
 # into ~/code and built there by copal-build. It is a row on the store's Code
 # shelf whose install field is NAME@clone; 'copal-store install' clones and
@@ -50,7 +59,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PB = os.path.join(ROOT, "playbooks")
 STORE = os.path.join(ROOT, "tools", "copal-store")
 PREP = os.path.join(ROOT, "copal-prep.sh")
-PROJECT_KEYS = ("playbook", "source", "origin", "build", "runs", "needs")
+PROJECT_KEYS = ("playbook", "source", "origin", "build", "runs", "needs",
+                "stage", "category", "step", "weight", "levels", "summary")
+LEVELS = ("server", "medium", "full")
 PROGRAM_KEYS = ("program", "label", "shelf", "install", "mode", "gate", "home", "about")
 GATE = re.compile(r"^(\*|64|!(v6|v7|x32|x64|a64))(,(64|!(v6|v7|x32|x64|a64)))*$")
 
@@ -128,12 +139,28 @@ def validate(books):
         if name in names:
             errs.append("%s: playbook %s twice" % (rel, name))
         names.add(name)
-        if os.path.basename(b["path"]) != name + ".sh":
+        if os.path.basename(b["path"]) != name + ".sh" and not (
+                p.get("origin") == "stage" and os.path.basename(b["path"]) == "%02d-%s.sh" % (int(p.get("stage", "0") or 0), name)):
             errs.append("%s: file is not named %s.sh" % (rel, name))
         if not p.get("source"):
             errs.append("%s: no source" % rel)
-        if not b["progs"]:
+        stage = p.get("origin") == "stage"
+        if not b["progs"] and not stage:
             errs.append("%s: no program" % rel)
+        if stage:
+            for k in ("stage", "category", "step", "weight", "summary"):
+                if not p.get(k):
+                    errs.append("%s: a stage has no %s" % (rel, k))
+            if not re.match(r"^[0-9]+$", p.get("stage", "")) or not re.match(r"^[0-9]+$", p.get("weight", "")):
+                errs.append("%s: stage and weight are numbers" % rel)
+            for lv in p.get("levels", "").split():
+                if lv not in LEVELS:
+                    errs.append("%s: level %r" % (rel, lv))
+            defined = shell_names(b["body"])
+            if defined != [fname(name)]:
+                errs.append("%s: a stage defines exactly %s, not %s" % (rel, fname(name), defined))
+            if b["progs"]:
+                errs.append("%s: a stage has no program blocks" % rel)
         cat = p.get("origin") == "catalogue"
         code = p.get("origin") == "code"
         if code and not p.get("source", "").startswith("clone https://"):
@@ -144,7 +171,7 @@ def validate(books):
             for n in shell_names(b["body"]):
                 if n not in (fname(name) + "_pre", fname(name) + "_post"):
                     errs.append("%s: a code playbook defines only %s_pre and %s_post, not %s" % (rel, fname(name), fname(name), n))
-        if p.get("origin") not in (None, "catalogue", "code"):
+        if p.get("origin") not in (None, "catalogue", "code", "stage"):
             errs.append("%s: origin %r" % (rel, p.get("origin")))
         for g in b["progs"]:
             for k in PROGRAM_KEYS:
@@ -162,12 +189,14 @@ def validate(books):
             if pid in ids:
                 errs.append("%s: program id %s also in %s" % (rel, pid, ids[pid]))
             ids[pid] = rel
+        if stage and os.path.basename(os.path.dirname(b["path"])) != "Stages":
+            errs.append("%s: a stage lives under playbooks/Stages" % rel)
         if b["progs"] and os.path.basename(os.path.dirname(b["path"])) != b["progs"][0].get("shelf"):
             errs.append("%s: lives under %s, its shelf is %s" % (rel, os.path.basename(os.path.dirname(b["path"])), b["progs"][0].get("shelf")))
         is_src = any((name + "@source") in g.get("install", "").split() for g in b["progs"])
         if is_src and not re.search(r"^" + re.escape(name) + r"_install\(\) \{", b["body"], re.M):
             errs.append("%s: builds from source but has no %s_install" % (rel, name))
-        if not is_src and not cat and not code and b["body"]:
+        if not is_src and not cat and not code and not stage and b["body"]:
             errs.append("%s: a store apk playbook with a body (the store runs none)" % rel)
         if cat and b["body"]:
             for n in shell_names(b["body"]):
@@ -176,7 +205,7 @@ def validate(books):
         # Every name the body defines is the project's own -- in the shell
         # itself, not in the files its heredocs write.
         for n in shell_names(b["body"]):
-            own = (n.startswith(name + "_") or n.startswith(fname(name) + "_")
+            own = (n.startswith(name + "_") or n.startswith(fname(name) + "_") or n == fname(name)
                    or n.startswith(name.upper().replace("-", "_") + "_") or n.startswith("patch_"))
             if not own:
                 errs.append("%s: defines %s, which is not %s's" % (rel, n, name))
@@ -229,7 +258,7 @@ def generate(books):
 
     # Recipes are the store's own source builds: a catalogue or code playbook's
     # body is its pre/post, which lives in copal-prep.sh, not here.
-    src = [b for b in books if b["body"] and b["proj"].get("origin") not in ("catalogue", "code")]
+    src = [b for b in books if b["body"] and b["proj"].get("origin") not in ("catalogue", "code", "stage")]
     code = []
     for b in sorted(src, key=lambda b: b["proj"]["playbook"]):
         n, p = b["proj"]["playbook"], b["proj"]
@@ -306,6 +335,30 @@ def code_steps(books):
                     key=lambda b: b["proj"]["playbook"]):
         code += ["# ---- " + os.path.relpath(b["path"], ROOT), b["body"], ""]
     return code
+
+
+def stages(books):
+    """The stage functions, the manifest in run order, and each stage's levels."""
+    st = [b for b in books if b["proj"].get("origin") == "stage"]
+    funcs = []
+    for b in sorted(st, key=lambda b: int(b["proj"]["stage"])):
+        funcs += ["# ---- " + os.path.relpath(b["path"], ROOT), b["body"], ""]
+    return st, funcs
+
+
+def manifest(books, order):
+    """auto_manifest, in the order given (the run order of the levels)."""
+    by = {b["proj"]["stage"]: b for b in books if b["proj"].get("origin") == "stage"}
+    out = ["auto_manifest() {", "    cat <<'MANIFEST'"]
+    for n in order:
+        p = by[n]["proj"]
+        out.append("%s|%s|%s|%s" % (n, p["category"], p["step"], p["weight"]))
+    out += ["MANIFEST", "}"]
+    levels = ["stage_levels() {  # N|the levels that run stage N", "    cat <<'LEVELS'"]
+    for n in order:
+        levels.append("%s|%s" % (n, by[n]["proj"].get("levels", "")))
+    levels += ["LEVELS", "}"]
+    return out, levels
 
 
 def catalogue_posts(books):
@@ -387,6 +440,14 @@ def main():
     newprep, cerrs = catalogue_rows(books, prep)
     newprep = splice(newprep, "catalogue-post", catalogue_posts(books))
     newprep = splice(newprep, "code-steps", code_steps(books))
+    st, funcs = stages(books)
+    if st:
+        # The run order: playbooks/Stages/order.list, one stage number per line.
+        order = [l.split()[0] for l in open(os.path.join(PB, "Stages", "order.list"))
+                 if l.strip() and not l.startswith("#")]
+        man, lev = manifest(books, order)
+        newprep = splice(newprep, "stages", funcs)
+        newprep = splice(newprep, "manifest", man + [""] + lev)
     if cerrs:
         for e in cerrs:
             print("error: " + e)

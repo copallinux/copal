@@ -141,10 +141,25 @@ Four slices, each checked before the next:
   **Left for 4d**: Brave and the default browser, which stage 4 chooses by
   level rather than by program, and the terminal and file-manager choices,
   which are the desktop's.
-- **4d: the stages as bundles**, checked the way the plan says: a full-monty
-  VM built from the assembled script matches today's -- package list,
-  `/usr/local` file list, menu audit. That check needs a fresh VM, built on
-  the Mac.
+- **4d, begun: the stages are playbooks.** Each of the eighteen stages is
+  `playbooks/Stages/NN-stage-name.sh`, `origin: stage`: its function and the
+  comment above it, verbatim, under a header giving its category, the step
+  line the slideshow shows, its weight, the levels that run it and two
+  sentences saying what it does. `playbooks/Stages/order.list` holds the
+  run order. `make sync-playbooks` gathers the bodies into the installer's
+  `stages` region and generates `auto_manifest` and `stage_levels` into its
+  `manifest` region; `seq_for_profile` now reads a level's stages from
+  `stage_levels` instead of lists of exclusions. Checked: all eighteen
+  bodies byte-identical to the functions they replaced (12,517 lines);
+  the manifest, and the server, medium and full sequences, identical; every
+  other line of code unchanged but `seq_for_profile`; lint clean, 53
+  embedded scripts parsing under busybox. One fault found on the way: lint
+  took the catalogue from every `catalogue()` in the file, and winebox has
+  one of its own, so it now stops at the first.
+  **Left**: the browser, terminal and file-manager choices as level data;
+  then the gate -- a full-monty VM built from the assembled script matches
+  today's (package list, `/usr/local` file list, menu audit). That check
+  needs a fresh VM, built on the Mac.
 
 ## Phase 3, done (23 Sep 2026)
 

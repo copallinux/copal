@@ -1062,7 +1062,7 @@ lint: | $(BUILDDIR)
 	    && printf '  ok      copal-store in $(PREP) matches tools/\n' \
 	    || { printf '\033[31merror:\033[0m copal-store in $(PREP) has drifted -- run: make sync-store\n'; \
 	         diff -u tools/copal-store $(BUILDDIR)/.store.lint.sh | head -20; exit 1; }
-	@sed -n "/^catalogue() {$$/,/^CATALOGUE$$/p" $(PREP) | sed '1,2d;$$d' \
+	@sed -n "/^catalogue() {$$/,/^CATALOGUE$$/{p;/^CATALOGUE$$/q;}" $(PREP) | sed '1,2d;$$d' \
 	    | awk -F'|' 'NF >= 6 { print $$1 "|" $$2 "|" $$3 "|" $$4 "|" $$5 }' > $(BUILDDIR)/.catalogue.lint
 	@COPAL_CATFILE=$(BUILDDIR)/.catalogue.lint sh $(BUILDDIR)/.store.lint.sh self-test \
 	    > $(BUILDDIR)/.store.selftest; _rc=$$?; sed 's/^/  /' $(BUILDDIR)/.store.selftest; \
