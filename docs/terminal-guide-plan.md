@@ -408,6 +408,19 @@ Each ends with a review of what it produced before the next begins.
   link ended by `ESC \`, which hid `-b` from the option check; the
   escape stripping handles it.
 
+### Phase 4, batch 9: Discs and Smallweb (24 Sep 2026)
+
+- **19 entries**: `cdw`, `xorriso`, `cdrdao`, `cdparanoia`, `abcde`, `zip`,
+  `7z`, `unarj`, `rpm`, `dpkg`, `bsdtar`, `mksquashfs`; `bombadillo`,
+  `amfora`, `clagrange`, `gmnlm`, `gmni`, `gemget`, `gmnisrv`.
+- **Found on the way**: abcde pulled in no encoder, so it ripped and stopped
+  (its row now brings vorbis-tools and flac, and the optionals lame and
+  opus-tools); optical drives belong to the group `cdrom`; rpm and dpkg are
+  for looking inside packages, never for installing on Alpine; gmnisrv
+  serves only `localhost` until a section for the host name is added.
+- **Beside it**: Copal Apps' optionals table and the build summary's
+  "with" line (b507fda).
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.

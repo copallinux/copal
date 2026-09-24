@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 290 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 143 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 155 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.</p>
 </header>
 <div class="finder">
@@ -832,15 +832,20 @@ strace --tips[=format]</pre>
 <h4>Notes</h4><ul><li>Settings go in <code>~/.abcde.conf</code>: <code>OUTPUTTYPE</code>, <code>OUTPUTDIR</code>, the naming pattern.</li><li>Each format needs its encoder. Its default, Ogg, needs <code>oggenc</code> (vorbis-tools), which abcde does not pull in: the catalogue row brings it and <code>flac</code> from 24 Sep 2026. MP3 needs <code>lame</code>.</li><li>Not on 32-bit ARMv7: its row is gated off there.</li></ul>
 <p class="see">See also <a href="#c-cdparanoia"><code>cdparanoia</code></a>, <a href="#c-cmus"><code>cmus</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-bsdtar" data-s="bsdtar manipulate tape archives discs libarchive-tools">
-<h3><a class="self" href="#c-bsdtar"><code>bsdtar</code></a> <span class="purpose">manipulate tape archives</span></h3>
+<article class="cmd" id="c-bsdtar" data-s="bsdtar libarchive's tar: reads almost any archive -- tar, zip, 7z, rar, iso, cpio, deb, rpm, xar. discs libarchive-tools">
+<h3><a class="self" href="#c-bsdtar"><code>bsdtar</code></a> <span class="purpose">libarchive's tar: reads almost any archive -- tar, zip, 7z, rar, iso, cpio, deb, rpm, xar.</span></h3>
 <p class="facts">Discs · command-line tool · <b>libarchive-tools</b> 3.8.7 · stage 12 · The application catalogue · <a href="man/bsdtar.html">man bsdtar(1)</a> · <a href="https://libarchive.org/">home</a></p>
 <p class="deps">needs acl-libs, libbz2, libcrypto3, libexpat, lz4-libs, xz-libs, zlib, zstd-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's universal unpacker. One command extracts whatever format someone sent, detecting it and its compression by itself.</p>
 <pre class="syn">tar [bundled-flags ⟨args⟩] [⟨file⟩ | ⟨pattern⟩ ...]
 tar {-c} [options] [files | directories]
 tar {-r | -u} -f archive-file [options] [files | directories]
 tar {-t | -x} [options] [patterns]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>The tar options, on any format: <code>-t</code> lists, <code>-x</code> extracts, <code>-c</code> creates. Compression is detected when reading; when creating, <code>-a</code> picks it from the file name.</p>
+<h4>Examples</h4><div class="ex"><code>bsdtar -tf archive.zip</code><span>list any archive</span></div><div class="ex"><code>bsdtar -xf image.iso -C out/</code><span>extract, here an ISO, into out/</span></div><div class="ex"><code>bsdtar -xf package.rpm</code><span>the files inside an .rpm</span></div><div class="ex"><code>bsdtar -caf backup.tar.zst ~/notes</code><span>create, compression from the name</span></div><div class="ex"><code>bsdtar -cf - folder | ssh pi 'bsdtar -xf - -C /tmp'</code><span>copy a tree over ssh</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-t</code></dt><dd>list the contents</dd><dt><code>-x</code></dt><dd>extract</dd><dt><code>-c</code></dt><dd>create</dd><dt><code>-f FILE</code></dt><dd>the archive (- for stdin or stdout)</dd><dt><code>-C DIR</code></dt><dd>change into DIR first</dd><dt><code>-a</code></dt><dd>with -c: compression from the suffix (.gz .xz .zst .zip ...)</dd><dt><code>-v</code></dt><dd>name each file</dd><dt><code>-z / -j / -J</code></dt><dd>gzip / bzip2 / xz, when creating without -a</dd></dl>
+<h4>Notes</h4><ul><li><code>tar</code> on Copal is GNU tar; <a href="#c-bsdtar"><code>bsdtar</code></a> is the one that also opens zip, 7z, ISO and rar.</li><li>It reads rar, but writes only the formats it lists in its manual: tar, zip, 7z, iso, cpio and others.</li></ul>
+<p class="see">See also <a href="#c-7z"><code>7z</code></a>, <a href="#c-zip"><code>zip</code></a>, <a href="#c-xorriso"><code>xorriso</code></a>, <a href="#c-rpm"><code>rpm</code></a>, <a href="#c-dpkg"><code>dpkg</code></a></p>
 </article>
 <article class="cmd" id="c-cdparanoia" data-s="cdparanoia rip audio cds to wav files, correcting for scratches and drive errors. discs cdparanoia">
 <h3><a class="self" href="#c-cdparanoia"><code>cdparanoia</code></a> <span class="purpose">Rip audio CDs to WAV files, correcting for scratches and drive errors.</span></h3>
@@ -885,24 +890,35 @@ directory] [--keep] [--save] [-n] [-v verbose-level] toc-file</pre>
 <h4>Notes</h4><ul><li>Writing needs access to the drive, <code>/dev/sr0</code>, which the group <code>cdrom</code> owns: <code>doas adduser $USER cdrom</code>, then log in again.</li><li>Its settings, including which drive and which tools, are in its configuration window and <code>~/.cdw/cdw.conf</code>.</li></ul>
 <p class="see">See also <a href="#c-xorriso"><code>xorriso</code></a>, <a href="#c-cdrdao"><code>cdrdao</code></a>, <a href="#c-cdparanoia"><code>cdparanoia</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-dpkg" data-s="dpkg package manager for debian discs dpkg">
-<h3><a class="self" href="#c-dpkg"><code>dpkg</code></a> <span class="purpose">package manager for Debian</span></h3>
+<article class="cmd" id="c-dpkg" data-s="dpkg look inside debian and ubuntu packages: list, inspect and unpack .deb files. discs dpkg">
+<h3><a class="self" href="#c-dpkg"><code>dpkg</code></a> <span class="purpose">Look inside Debian and Ubuntu packages: list, inspect and unpack .deb files.</span></h3>
 <p class="facts">Discs · command-line tool · <b>dpkg</b> 1.23.7 · stage 12 · The application catalogue · <a href="man/dpkg.html">man dpkg(1)</a> · <a href="https://wiki.debian.org/Teams/Dpkg">home</a></p>
 <p class="deps">needs tar, xz, libbz2, libmd, zlib</p>
+<p class="why"><b>On Copal:</b> The catalogue's way to open a .deb on Alpine, to see what it holds or take files out of it. Not for installing: Alpine's packages are apk's.</p>
 <pre class="syn">dpkg [option...] command</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>dpkg-deb</code> does the looking: <code>-c</code> lists the files, <code>-I</code> shows the package's information, <code>-x</code> extracts the files into a folder.</p>
+<h4>Examples</h4><div class="ex"><code>dpkg-deb -I package.deb</code><span>name, version, dependencies, description</span></div><div class="ex"><code>dpkg-deb -c package.deb</code><span>the files it contains</span></div><div class="ex"><code>dpkg-deb -x package.deb out/</code><span>extract the files into out/</span></div><div class="ex"><code>dpkg-deb -e package.deb ctl/</code><span>its control files and install scripts</span></div><div class="ex"><code>dpkg -c package.deb</code><span>the same as dpkg-deb -c</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-c, --contents</code></dt><dd>list the contents (as dpkg-deb -c)</dd><dt><code>-I, --info</code></dt><dd>show the package information</dd><dt><code>-x DIR</code></dt><dd>extract the files into DIR (with dpkg-deb)</dd><dt><code>-e DIR</code></dt><dd>extract the control files (with dpkg-deb)</dd></dl>
+<h4>Notes</h4><ul><li><code>dpkg -i</code> would install into a Debian database that nothing here reads: do not. The program inside is built for glibc and will not run on musl as it is.</li><li><code>bsdtar -xf package.deb</code> shows the layers: <code>control.tar.*</code> and <code>data.tar.*</code>, the second holding the files.</li></ul>
+<p class="see">See also <a href="#c-rpm"><code>rpm</code></a>, <a href="#c-bsdtar"><code>bsdtar</code></a>, <a href="#c-apk"><code>apk</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-mksquashfs" data-s="mksquashfs tool to create and append to squashfs filesystems discs squashfs-tools">
-<h3><a class="self" href="#c-mksquashfs"><code>mksquashfs</code></a> <span class="purpose">tool to create and append to squashfs filesystems</span></h3>
+<article class="cmd" id="c-mksquashfs" data-s="mksquashfs pack a folder into a squashfs image -- compressed, read-only, mountable -- and unsquashfs to unpack one. discs squashfs-tools">
+<h3><a class="self" href="#c-mksquashfs"><code>mksquashfs</code></a> <span class="purpose">Pack a folder into a SquashFS image -- compressed, read-only, mountable -- and unsquashfs to unpack one.</span></h3>
 <p class="facts">Discs · command-line tool · <b>squashfs-tools</b> 4.7.5 · stage 12 · The application catalogue · <a href="man/mksquashfs.html">man mksquashfs(1)</a> · <a href="https://github.com/plougher/squashfs-tools">home</a></p>
 <p class="deps">needs lz4-libs, xz-libs, lzo, zlib, zstd-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's SquashFS tools: the format of live systems and of Alpine's own boot images, and a way to keep a large folder compressed yet browsable.</p>
 <pre class="syn">mksquashfs source1 source2 ...  FILESYSTEM [OPTIONS] [-e list of exclude dirs/files]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>mksquashfs FOLDER IMAGE</code> writes a compressed image of the folder. Mount it read-only to use the files in place, or <code>unsquashfs</code> to get them back.</p>
+<h4>Examples</h4><div class="ex"><code>mksquashfs ~/photos photos.sqfs -comp zstd</code><span>an image, zstd-compressed</span></div><div class="ex"><code>unsquashfs -l photos.sqfs</code><span>list what is inside</span></div><div class="ex"><code>unsquashfs -d restored photos.sqfs</code><span>unpack into restored/</span></div><div class="ex"><code>doas mount -o loop,ro photos.sqfs /mnt</code><span>browse it in place</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-comp ALG</code></dt><dd>compression: gzip, xz, lz4, zstd, lzo</dd><dt><code>-b SIZE</code></dt><dd>block size (larger compresses better)</dd><dt><code>-e NAMES</code></dt><dd>exclude these files</dd><dt><code>-noappend</code></dt><dd>overwrite the image rather than add to it</dd><dt><code>-processors N</code></dt><dd>threads to use</dd></dl>
+<h4>Notes</h4><ul><li>Without <code>-noappend</code>, a second run adds to an existing image rather than replacing it.</li><li>The image is read-only by design; to change it, unpack, edit, and pack again.</li></ul>
+<p class="see">See also <a href="#c-bsdtar"><code>bsdtar</code></a>, <a href="#c-xorriso"><code>xorriso</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-rpm" data-s="rpm rpm package manager discs rpm">
-<h3><a class="self" href="#c-rpm"><code>rpm</code></a> <span class="purpose">RPM Package Manager</span></h3>
+<article class="cmd" id="c-rpm" data-s="rpm look inside red hat, fedora and suse packages: list, inspect and unpack .rpm files. discs rpm">
+<h3><a class="self" href="#c-rpm"><code>rpm</code></a> <span class="purpose">Look inside Red Hat, Fedora and SUSE packages: list, inspect and unpack .rpm files.</span></h3>
 <p class="facts">Discs · command-line tool · <b>rpm</b> 4.19.1.1 · stage 12 · The application catalogue · <a href="man/rpm.html">man rpm(8)</a> · <a href="https://rpm.org/">home</a></p>
 <p class="deps">needs rpm-scripts, acl-libs, libarchive, libbz2, libcap2, libcrypto3, libdw, libelf</p>
+<p class="why"><b>On Copal:</b> The catalogue's way to open a .rpm on Alpine -- to read what a package holds, or take one file out of it. Not for installing: Alpine's packages are apk's.</p>
 <pre class="syn">QUERYING AND VERIFYING PACKAGES:
     rpm {-q|--query} [select-options] [query-options]
 
@@ -918,12 +934,21 @@ INSTALLING, UPGRADING, AND REMOVING PACKAGES:
     rpm {-F|--freshen} [install-options] PACKAGE_FILE ...
 
 ...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Query a package file with <code>-qp</code> and a second letter for what to show. To unpack it, turn it into a cpio stream with rpm2cpio.</p>
+<h4>Examples</h4><div class="ex"><code>rpm -qpi package.rpm</code><span>name, version, description</span></div><div class="ex"><code>rpm -qpl package.rpm</code><span>the files it contains</span></div><div class="ex"><code>rpm -qp --scripts package.rpm</code><span>what it would run on install</span></div><div class="ex"><code>rpm2cpio package.rpm | cpio -idmv</code><span>unpack it into this folder</span></div><div class="ex"><code>bsdtar -xf package.rpm</code><span>the same, in one step</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-q, --query</code></dt><dd>query mode</dd><dt><code>-p, --package</code></dt><dd>query a package file (not an installed package)</dd><dt><code>-l, --list</code></dt><dd>list its files</dd><dt><code>-i</code></dt><dd>with -q: its information</dd><dt><code>--scripts</code></dt><dd>with -q: its install scripts</dd></dl>
+<h4>Notes</h4><ul><li><code>rpm -i</code> would try to install into an rpm database Alpine does not use: do not. A program packaged only as .rpm needs rebuilding for Alpine, or a Flatpak.</li><li>A .rpm is built for glibc; its binaries will not run on musl as they are.</li></ul>
+<p class="see">See also <a href="#c-dpkg"><code>dpkg</code></a>, <a href="#c-bsdtar"><code>bsdtar</code></a>, <a href="#c-apk"><code>apk</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-unarj" data-s="unarj extracting, testing and  viewing the contents of archives created with the arj archiver discs unarj">
-<h3><a class="self" href="#c-unarj"><code>unarj</code></a> <span class="purpose">Extracting, testing and  viewing the contents of archives created with the ARJ archiver</span></h3>
+<article class="cmd" id="c-unarj" data-s="unarj list, test and extract .arj archives -- the dos-era format. discs unarj">
+<h3><a class="self" href="#c-unarj"><code>unarj</code></a> <span class="purpose">List, test and extract .arj archives -- the DOS-era format.</span></h3>
 <p class="facts">Discs · command-line tool · <b>unarj</b> 2.65 · stage 12 · The application catalogue · <a href="http://www.arjsoftware.com">home</a></p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's key to old archives: software and files from the 1990s, BBS downloads and old disk images often arrive as .arj.</p>
+<h4>Use</h4><p>A command letter, then the archive. It only reads: it cannot make .arj files.</p>
+<h4>Examples</h4><div class="ex"><code>unarj l old.arj</code><span>list the contents</span></div><div class="ex"><code>unarj t old.arj</code><span>test it for damage</span></div><div class="ex"><code>unarj x old.arj</code><span>extract, keeping folders</span></div><div class="ex"><code>unarj e old.arj</code><span>extract everything into this folder</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>l ARCHIVE</code></dt><dd>list</dd><dt><code>t ARCHIVE</code></dt><dd>test</dd><dt><code>x ARCHIVE</code></dt><dd>extract with paths</dd><dt><code>e ARCHIVE</code></dt><dd>extract without paths</dd></dl>
+<h4>Notes</h4><ul><li>It is the free demonstration version: it reads ordinary archives but not multi-volume or password-protected ones. <code>7z x old.arj</code> handles more.</li><li>Names from DOS come in capitals and 8.3 form, as they were stored.</li></ul>
+<p class="see">See also <a href="#c-7z"><code>7z</code></a>, <a href="#c-bsdtar"><code>bsdtar</code></a>, <a href="#c-zip"><code>zip</code></a></p>
 </article>
 <article class="cmd" id="c-xorriso" data-s="xorriso make iso 9660 images and burn them: data discs, bootable images, and updates to both. discs xorriso">
 <h3><a class="self" href="#c-xorriso"><code>xorriso</code></a> <span class="purpose">Make ISO 9660 images and burn them: data discs, bootable images, and updates to both.</span></h3>
@@ -2755,45 +2780,80 @@ unison profilename [options]</pre>
 </article>
 </section>
 <section class="sec" id="s-smallweb"><h2>Smallweb</h2>
-<article class="cmd facts-only" id="c-amfora" data-s="amfora terminal browser for the gemini protocol smallweb amfora">
-<h3><a class="self" href="#c-amfora"><code>amfora</code></a> <span class="purpose">terminal browser for the Gemini protocol</span></h3>
+<article class="cmd" id="c-amfora" data-s="amfora a terminal browser for gemini, with tabs, bookmarks and colour. smallweb amfora">
+<h3><a class="self" href="#c-amfora"><code>amfora</code></a> <span class="purpose">A terminal browser for Gemini, with tabs, bookmarks and colour.</span></h3>
 <p class="facts">Smallweb · terminal program · <b>amfora</b> 1.11.0 · stage 12 · The application catalogue · <a href="https://github.com/makeworld-the-better-one/amfora">home</a></p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's fullest Gemini browser for the terminal: tabs, bookmarks, subscriptions to feeds, and pages that look designed.</p>
+<h4>Use</h4><p>Start it on an address, or open one with Space: the bottom bar takes a URL or a link number. Links are numbered on the page.</p>
+<h4>Examples</h4><div class="ex"><code>amfora</code><span>its start page</span></div><div class="ex"><code>amfora gemini://geminiprotocol.net/</code><span>a capsule</span></div><div class="ex"><code>Space          (in amfora) the bottom bar: type a URL or a link number</code></div><div class="ex"><code>1 2 3 ...      follow link N</code></div><div class="ex"><code>R              reload</code></div><div class="ex"><code>e              edit the current URL</code></div><div class="ex"><code>/              search the page</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>URL</code></dt><dd>open it -v, --version the version</dd></dl>
+<h4>Notes</h4><ul><li>Every key is set, and can be changed, in <code>~/.config/amfora/config.toml</code>, section <code>[keybindings]</code>; the defaults are listed there.</li><li>Web links open in a web browser as its config says; Gemini, Gopher over a proxy, and local files open in Amfora.</li></ul>
+<p class="see">See also <a href="#c-bombadillo"><code>bombadillo</code></a>, <a href="#c-clagrange"><code>clagrange</code></a>, <a href="#c-gmnlm"><code>gmnlm</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-bombadillo" data-s="bombadillo a non-web browser smallweb bombadillo">
-<h3><a class="self" href="#c-bombadillo"><code>bombadillo</code></a> <span class="purpose">a non-web browser</span></h3>
+<article class="cmd" id="c-bombadillo" data-s="bombadillo a browser for the small internet: gopher, gemini and finger, with vi keys. smallweb bombadillo">
+<h3><a class="self" href="#c-bombadillo"><code>bombadillo</code></a> <span class="purpose">A browser for the small internet: Gopher, Gemini and Finger, with vi keys.</span></h3>
 <p class="facts">Smallweb · terminal program · <b>bombadillo</b> 2.4.0 · stage 12 · The application catalogue · <a href="man/bombadillo.html">man bombadillo(1)</a> · <a href="https://bombadillo.colorfield.space/">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's all-in-one smallweb browser: one program for the three protocols the small internet lives on, in a terminal.</p>
 <pre class="syn">bombadillo [options] [url]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Open an address; links are numbered, and typing the number follows one. Commands start with <code>:</code>, as in vi. The web itself is not shown: web links can be handed to a web browser instead.</p>
+<h4>Examples</h4><div class="ex"><code>bombadillo</code><span>its home page</span></div><div class="ex"><code>bombadillo gemini://geminiprotocol.net/</code><span>a Gemini capsule</span></div><div class="ex"><code>bombadillo gopher://gopher.floodgap.com</code><span>a Gopher hole</span></div><div class="ex"><code>bombadillo finger://user@example.org</code><span>a finger record</span></div><div class="ex"><code>1 2 3 ...      (in bombadillo) follow link N</code></div><div class="ex"><code>j  k           scroll;  g  G  top / bottom</code></div><div class="ex"><code>b  f           back / forward</code></div><div class="ex"><code>B              bookmarks</code></div><div class="ex"><code>q              quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-t</code></dt><dd>set the terminal window's title to Bombadillo</dd><dt><code>-v</code></dt><dd>the version</dd><dt><code>-h</code></dt><dd>the usage</dd></dl>
+<h4>Notes</h4><ul><li>Settings are changed from inside with <code>:set</code>, and kept in <code>~/.config/bombadillo</code>.</li><li>Gemini uses trust on first use: the first certificate a capsule shows is remembered, and a changed one is questioned.</li></ul>
+<p class="see">See also <a href="#c-amfora"><code>amfora</code></a>, <a href="#c-clagrange"><code>clagrange</code></a>, <a href="#c-lynx"><code>lynx</code></a>, <a href="#c-elinks"><code>elinks</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-clagrange" data-s="clagrange beautiful gemini client smallweb lagrange">
-<h3><a class="self" href="#c-clagrange"><code>clagrange</code></a> <span class="purpose">Beautiful Gemini client</span></h3>
+<article class="cmd" id="c-clagrange" data-s="clagrange lagrange in the terminal: the well-known gemini browser, drawn with text. smallweb lagrange">
+<h3><a class="self" href="#c-clagrange"><code>clagrange</code></a> <span class="purpose">Lagrange in the terminal: the well-known Gemini browser, drawn with text.</span></h3>
 <p class="facts">Smallweb · terminal program · <b>lagrange</b> 1.21.1 · stage 12 · The application catalogue · <a href="https://gmi.skyjake.fi/lagrange">home</a></p>
 <p class="deps">needs sdl2, libcrypto3, fribidi, harfbuzz, mpg123-libs, libncursesw, opusfile, pcre2</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's terminal build of Lagrange. The same package has <code>lagrange</code>, its window; clagrange is the one for a board without a desktop, or for use over SSH.</p>
+<h4>Use</h4><p>Open addresses and files in tabs. It keeps Lagrange's features -- bookmarks, feeds, identities (client certificates) -- in a terminal. <code>--dump</code> prints a page as text and leaves, for scripts.</p>
+<h4>Examples</h4><div class="ex"><code>clagrange</code><span>the browser</span></div><div class="ex"><code>clagrange gemini://geminiprotocol.net/</code><span>open an address</span></div><div class="ex"><code>clagrange a.gmi b.gmi</code><span>several files, one tab each</span></div><div class="ex"><code>clagrange --dump gemini://geminiprotocol.net/</code><span>the page as text</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>URL / PATH</code></dt><dd>open it; several open in tabs</dd><dt><code>-d, --dump</code></dt><dd>print the contents of the URLs to stdout and quit</dd><dt><code>-I, --dump-identity ID</code></dt><dd>with --dump: use this client certificate</dd></dl>
+<h4>Notes</h4><ul><li>Its settings, bookmarks and identities are Lagrange's, shared with the window version.</li><li>The window build, <code>lagrange</code>, is in the catalogue as its own row.</li></ul>
+<p class="see">See also <a href="#c-amfora"><code>amfora</code></a>, <a href="#c-bombadillo"><code>bombadillo</code></a>, <a href="#c-gmnlm"><code>gmnlm</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-gemget" data-s="gemget command line downloader for the gemini protocol smallweb gemget">
-<h3><a class="self" href="#c-gemget"><code>gemget</code></a> <span class="purpose">command line downloader for the Gemini protocol</span></h3>
+<article class="cmd" id="c-gemget" data-s="gemget download files over gemini, one url or a list of them. smallweb gemget">
+<h3><a class="self" href="#c-gemget"><code>gemget</code></a> <span class="purpose">Download files over Gemini, one URL or a list of them.</span></h3>
 <p class="facts">Smallweb · command-line tool · <b>gemget</b> 1.9.0 · stage 12 · The application catalogue · <a href="https://github.com/makeworld-the-better-one/gemget">home</a></p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's Gemini downloader: wget's role, for saving pages, files or a list of them from capsules.</p>
+<h4>Use</h4><p>Give it URLs; each is saved under its own name in the current folder, with a progress bar. <code>-d</code> chooses the folder, <code>-o</code> names a single file.</p>
+<h4>Examples</h4><div class="ex"><code>gemget gemini://example.org/file.txt</code><span>save one file</span></div><div class="ex"><code>gemget -d ~/gemini gemini://a/x gemini://b/y</code><span>several, into a folder</span></div><div class="ex"><code>gemget -o index.gmi gemini://example.org/</code><span>a page, under a chosen name</span></div><div class="ex"><code>gemget -f urls.txt -d saved</code><span>every URL in a file</span></div><div class="ex"><code>gemget -e gemini://example.org/dir/</code><span>add .gmi to pages without one</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-o, --output PATH</code></dt><dd>the file name, for a single URL</dd><dt><code>-d, --directory DIR</code></dt><dd>the folder to save into</dd><dt><code>-f, --input-file FILE</code></dt><dd>read URLs from FILE, one a line</dd><dt><code>-e, --add-extension</code></dt><dd>add .gmi to pages that have no extension</dd><dt><code>-m, --max-size SIZE</code></dt><dd>skip anything larger</dd><dt><code>-q, --quiet</code></dt><dd>no progress bar</dd><dt><code>-i, --insecure</code></dt><dd>do not check the certificate</dd></dl>
+<h4>Notes</h4><ul><li>It fetches exactly the URLs given; it does not follow a page's links to mirror a whole capsule.</li></ul>
+<p class="see">See also <a href="#c-gmni"><code>gmni</code></a>, <a href="#c-curl"><code>curl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-gmni" data-s="gmni gemini client smallweb gmni">
-<h3><a class="self" href="#c-gmni"><code>gmni</code></a> <span class="purpose">Gemini client</span></h3>
+<article class="cmd" id="c-gmni" data-s="gmni fetch one gemini page and print it -- gemini's curl. smallweb gmni">
+<h3><a class="self" href="#c-gmni"><code>gmni</code></a> <span class="purpose">Fetch one Gemini page and print it -- Gemini's curl.</span></h3>
 <p class="facts">Smallweb · command-line tool · <b>gmni</b> 1.0 · stage 12 · The application catalogue · <a href="man/gmni.html">man gmni(1)</a> · <a href="https://git.sr.ht/~sircmpwn/gmni">home</a></p>
 <p class="deps">needs bearssl-libs</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's Gemini tool for scripts: read a capsule into a pipe, save a file, or check what a server answers.</p>
+<h4>Use</h4><p>Give it a URL; the page body goes to stdout. <code>-i</code> adds the response header, <code>-L</code> follows redirects, <code>-o</code> saves to a file.</p>
+<h4>Examples</h4><div class="ex"><code>gmni gemini://geminiprotocol.net/</code><span>print a page</span></div><div class="ex"><code>gmni -L gemini://example.org/old</code><span>follow redirects</span></div><div class="ex"><code>gmni -i gemini://example.org/</code><span>with the status and meta line</span></div><div class="ex"><code>gmni -o page.gmi gemini://example.org/</code><span>save it</span></div><div class="ex"><code>gmni -d 'search words' gemini://example.org/search</code><span>answer an input prompt</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-L</code></dt><dd>follow redirects</dd><dt><code>-i</code></dt><dd>print the status and meta line too</dd><dt><code>-I</code></dt><dd>print only the status and meta line</dd><dt><code>-o PATH</code></dt><dd>write the response to PATH</dd><dt><code>-d INPUT</code></dt><dd>answer the server's input request with INPUT</dd><dt><code>-j MODE</code></dt><dd>trust on first use: always, once or fail</dd></dl>
+<h4>Notes</h4><ul><li>Gemini URLs need their scheme: <code>gemini://</code>, not just the host.</li><li>It shares <a href="#c-gmnlm"><code>gmnlm</code></a>'s trust store, so a capsule trusted in one is trusted in the other.</li></ul>
+<p class="see">See also <a href="#c-gmnlm"><code>gmnlm</code></a>, <a href="#c-gemget"><code>gemget</code></a>, <a href="#c-curl"><code>curl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-gmnisrv" data-s="gmnisrv serve clients over the gemini protocol smallweb gmnisrv">
-<h3><a class="self" href="#c-gmnisrv"><code>gmnisrv</code></a> <span class="purpose">serve clients over the gemini protocol</span></h3>
+<article class="cmd" id="c-gmnisrv" data-s="gmnisrv serve your own gemini capsule from a folder. smallweb gmnisrv">
+<h3><a class="self" href="#c-gmnisrv"><code>gmnisrv</code></a> <span class="purpose">Serve your own Gemini capsule from a folder.</span></h3>
 <p class="facts">Smallweb · command-line tool · <b>gmnisrv</b> 1.0 · stage 12 · The application catalogue · <a href="man/gmnisrv.html">man gmnisrv(1)</a> · <a href="gemini://drewdevault.com/gmnisrv.gmi">home</a></p>
 <p class="deps">needs mailcap, libcrypto3, libssl3</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's Gemini server: publish a capsule from the Pi, with TLS certificates it makes for itself.</p>
+<h4>Use</h4><p>Put <code>.gmi</code> pages in the folder the configuration names, start the service, and the capsule is at <code>gemini://HOSTNAME/</code>. The configuration is <code>/etc/gmnisrv.ini</code>: listen address, certificate store, and one section per host name.</p>
+<h4>Examples</h4><div class="ex"><code>doas mkdir -p /srv/gemini</code><span>the default root for [localhost]</span></div><div class="ex"><code>echo '# Hello from Copal' | doas tee /srv/gemini/index.gmi</code></div><div class="ex"><code>doas rc-service gmnisrv start</code><span>start it</span></div><div class="ex"><code>gmni gemini://localhost/</code><span>see it</span></div><div class="ex"><code>doas rc-update add gmnisrv</code><span>at every boot</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-C PATH</code></dt><dd>another configuration file</dd></dl>
+<h4>Notes</h4><ul><li>Out of the box it listens on every address, port 1965, and serves only the host name <code>localhost</code>. For others to reach it, add a section named after the machine's host name, with its own <code>root=</code>.</li><li>Certificates are made on first use and kept in <code>/var/lib/gemini/certs</code>; clients remember them, so keep that folder.</li></ul>
+<p class="see">See also <a href="#c-gmni"><code>gmni</code></a>, <a href="#c-amfora"><code>amfora</code></a>, <a href="#c-darkhttpd"><code>darkhttpd</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-gmnlm" data-s="gmnlm gemini line-mode browser smallweb gmni">
-<h3><a class="self" href="#c-gmnlm"><code>gmnlm</code></a> <span class="purpose">Gemini line-mode browser</span></h3>
+<article class="cmd" id="c-gmnlm" data-s="gmnlm a line-mode gemini browser: print a page, read its numbered links, type a number. smallweb gmni">
+<h3><a class="self" href="#c-gmnlm"><code>gmnlm</code></a> <span class="purpose">A line-mode Gemini browser: print a page, read its numbered links, type a number.</span></h3>
 <p class="facts">Smallweb · terminal program · <b>gmni</b> 1.0 · stage 12 · The application catalogue · <a href="man/gmnlm.html">man gmnlm(1)</a> · <a href="https://git.sr.ht/~sircmpwn/gmni">home</a></p>
 <p class="deps">needs bearssl-libs</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's plainest Gemini client, from the gmni package: no full screen, so it works in any terminal, a pipe or a slow link.</p>
+<h4>Use</h4><p>It prints the page, pausing at each screenful, with the links numbered. At its prompt, a number follows a link and a few letters do the rest.</p>
+<h4>Examples</h4><div class="ex"><code>gmnlm gemini://geminiprotocol.net/</code><span>open a capsule</span></div><div class="ex"><code>gmnlm -W 72 gemini://example.org/</code><span>wrap at 72 columns</span></div><div class="ex"><code>3              (at the prompt) follow link 3</code></div><div class="ex"><code>b  f           back / forward</code></div><div class="ex"><code>m  M           save a bookmark / browse them</code></div><div class="ex"><code>|less          pipe the page into a program</code></div><div class="ex"><code>q              quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-W WIDTH</code></dt><dd>the width to wrap at</dd><dt><code>-j MODE</code></dt><dd>trust on first use: always, once or fail</dd><dt><code>-P</code></dt><dd>no paging</dd></dl>
+<h4>Notes</h4><ul><li>It trusts a capsule's certificate on first use and remembers it in <code>~/.local/share/gmni/known_hosts</code>.</li><li><a href="#c-gmni"><code>gmni</code></a> is its companion for scripts: one page, no browsing.</li></ul>
+<p class="see">See also <a href="#c-gmni"><code>gmni</code></a>, <a href="#c-amfora"><code>amfora</code></a>, <a href="#c-bombadillo"><code>bombadillo</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-system"><h2>System</h2>
