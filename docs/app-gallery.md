@@ -14,7 +14,7 @@ an aarch64 Copal guest under UTM with software OpenGL and a virtio sound
 card but no sound server — so anything that wants PulseAudio or JACK was
 refused, and anything that plays sound was silent.
 
-**203 programs pictured, 1.2 MB of pictures.**
+**212 programs pictured, 1.3 MB of pictures.**
 
 
 ## Audio (7)
@@ -75,6 +75,12 @@ refused, and anything that plays sound was silent.
 | ![Helix (terminal - modal, batteries in)](img/gallery/hx.jpg)<br>**Helix (terminal - modal, batteries in)**<br>`hx` · terminal · ok 1s (1 window), acted | ![Kate (KDE - LSP client built in)](img/gallery/kate.jpg)<br>**Kate (KDE - LSP client built in)**<br>`kate` · graphical · ok 2s (1 window), detached, acted | ![micro (terminal - modeless)](img/gallery/micro.jpg)<br>**micro (terminal - modeless)**<br>`micro` · terminal · ok 1s (1 window), acted |
 | ![Mousepad (small GUI editor)](img/gallery/mousepad.jpg)<br>**Mousepad (small GUI editor)**<br>`mousepad` · graphical · ok 1s (1 window), acted | ![nano (terminal - simplest)](img/gallery/nano.jpg)<br>**nano (terminal - simplest)**<br>`nano` · terminal · ok 2s (1 window), acted | ![vis (terminal - vi keys)](img/gallery/vis.jpg)<br>**vis (terminal - vi keys)**<br>`vis` · terminal · ok 1s (1 window), acted |
 
+## Emulation (1)
+
+| | | |
+|---|---|---|
+| ![KRetro (Libretro front end, early)](img/gallery/kretro.jpg)<br>**KRetro (Libretro front end, early)**<br>`kretro` · graphical · ok 1s (1 window), acted |  |  |
+
 ## Engineering (3)
 
 | | | |
@@ -89,7 +95,7 @@ refused, and anything that plays sound was silent.
 | ![nnn (terminal file manager)](img/gallery/nnn.jpg)<br>**nnn (terminal file manager)**<br>`nnn` · terminal · ok 1s (1 window) | ![PCManFM (file manager)](img/gallery/pcmanfm.jpg)<br>**PCManFM (file manager)**<br>`pcmanfm` · graphical · ok 1s (1 window) | ![ranger (terminal file manager)](img/gallery/ranger.jpg)<br>**ranger (terminal file manager)**<br>`ranger` · terminal · ok 1s (1 window) |
 | ![Thunar (file manager)](img/gallery/thunar.jpg)<br>**Thunar (file manager)**<br>`thunar` · graphical · ok 1s (1 window) | ![Xarchiver (zip/tar/7z)](img/gallery/xarchiver.jpg)<br>**Xarchiver (zip/tar/7z)**<br>`xarchiver` · graphical · ok 1s (1 window) | ![Xfe (two-pane file manager)](img/gallery/xfe.jpg)<br>**Xfe (two-pane file manager)**<br>`xfe` · graphical · ok 1s (1 window) |
 
-## Games (30)
+## Games (36)
 
 | | | |
 |---|---|---|
@@ -97,7 +103,9 @@ refused, and anything that plays sound was silent.
 | ![Brogue (roguelike)](img/gallery/brogue.jpg)<br>**Brogue (roguelike)**<br>`brogue` · terminal · ok 1s (2 windows) | ![Cataclysm DDA (survival roguelike)](img/gallery/cataclysm-tiles.jpg)<br>**Cataclysm DDA (survival roguelike)**<br>`cataclysm-tiles` · graphical · ok 1s (1 window) | ![Chess (XBoard + GNU Chess)](img/gallery/xboard.jpg)<br>**Chess (XBoard + GNU Chess)**<br>`xboard` · graphical · ok 1s (1 window) |
 | ![Chocolate Doom (faithful Doom, with Freedoom)](img/gallery/chocolate-doom.jpg)<br>**Chocolate Doom (faithful Doom, with Freedoom)**<br>`chocolate-doom` · graphical · ok 1s (1 window) | ![cmatrix](img/gallery/cmatrix.jpg)<br>**cmatrix**<br>`cmatrix` · terminal · ok 1s (1 window) | ![Colossal Cave Adventure](img/gallery/adventure.jpg)<br>**Colossal Cave Adventure**<br>`adventure` · terminal · ok 1s (1 window), acted |
 | ![Endless Sky (space trading)](img/gallery/endless-sky.jpg)<br>**Endless Sky (space trading)**<br>`endless-sky` · graphical · ok 1s (1 window), acted | ![Freeciv (SDL client - slow)](img/gallery/freeciv-sdl2.jpg)<br>**Freeciv (SDL client - slow)**<br>`freeciv-sdl2` · graphical · ok 1s (1 window) | ![GZDoom (Doom engine, with Freedoom)](img/gallery/gzdoom.jpg)<br>**GZDoom (Doom engine, with Freedoom)**<br>`gzdoom` · graphical · ok 2s (1 window) |
-| ![Hangman](img/gallery/hangman.jpg)<br>**Hangman**<br>`hangman` · terminal · ok 1s (1 window) | ![Klondike (cards)](img/gallery/klondike.jpg)<br>**Klondike (cards)**<br>`klondike` · terminal · ok 1s (1 window) | ![Luanti (Minetest - voxel sandbox)](img/gallery/luanti.jpg)<br>**Luanti (Minetest - voxel sandbox)**<br>`luanti` · graphical · ok 1s (1 window) |
+| ![Hangman](img/gallery/hangman.jpg)<br>**Hangman**<br>`hangman` · terminal · ok 1s (1 window) | ![Klondike (cards)](img/gallery/klondike.jpg)<br>**Klondike (cards)**<br>`klondike` · terminal · ok 1s (1 window) | ![KMahjongg (mahjong solitaire)](img/gallery/kmahjongg.jpg)<br>**KMahjongg (mahjong solitaire)**<br>`kmahjongg` · graphical · ok 1s (1 window), acted |
+| ![Konquest (galactic strategy)](img/gallery/konquest.jpg)<br>**Konquest (galactic strategy)**<br>`konquest` · graphical · ok 1s (1 window), acted | ![KReversi (Othello)](img/gallery/kreversi.jpg)<br>**KReversi (Othello)**<br>`kreversi` · graphical · ok 1s (2 windows), acted | ![KSnakeDuel (light-cycle duel)](img/gallery/ksnakeduel.jpg)<br>**KSnakeDuel (light-cycle duel)**<br>`ksnakeduel` · graphical · ok 2s (1 window), acted |
+| ![KSpaceDuel (space combat)](img/gallery/kspaceduel.jpg)<br>**KSpaceDuel (space combat)**<br>`kspaceduel` · graphical · ok 2s (1 window), acted | ![Kubrick (3D Rubik's Cube)](img/gallery/kubrick.jpg)<br>**Kubrick (3D Rubik's Cube)**<br>`kubrick` · graphical · ok 2s (1 window), acted | ![Luanti (Minetest - voxel sandbox)](img/gallery/luanti.jpg)<br>**Luanti (Minetest - voxel sandbox)**<br>`luanti` · graphical · ok 1s (1 window) |
 | ![Minesweeper](img/gallery/gnome-mines.jpg)<br>**Minesweeper**<br>`gnome-mines` · graphical · ok 1s (1 window), acted | ![Naev (space sandbox)](img/gallery/naev.jpg)<br>**Naev (space sandbox)**<br>`naev` · graphical · ok 1s (1 window), acted | ![NetHack (roguelike)](img/gallery/nethack.jpg)<br>**NetHack (roguelike)**<br>`nethack` · terminal · ok 1s (1 window), acted |
 | ![OpenMW (Morrowind engine - needs the game's data)](img/gallery/openmw-launcher.jpg)<br>**OpenMW (Morrowind engine - needs the game's data)**<br>`openmw-launcher` · graphical · WIZARD 1s (1 window) | ![OpenTTD (transport sim)](img/gallery/openttd.jpg)<br>**OpenTTD (transport sim)**<br>`openttd` · graphical · ok 1s (1 window) | ![Robots](img/gallery/robots.jpg)<br>**Robots**<br>`robots` · terminal · ok 1s (1 window) |
 | ![Snake](img/gallery/snake.jpg)<br>**Snake**<br>`snake` · terminal · ok 1s (1 window) | ![Solitaire](img/gallery/sol.jpg)<br>**Solitaire**<br>`sol` · graphical · ok 2s (1 window) | ![Sudoku](img/gallery/gnome-sudoku.jpg)<br>**Sudoku**<br>`gnome-sudoku` · graphical · ok 1s (1 window) |
@@ -184,13 +192,14 @@ refused, and anything that plays sound was silent.
 | ![DOSBox Staging (DOS)](img/gallery/dosbox.jpg)<br>**DOSBox Staging (DOS)**<br>`dosbox` · graphical · ok 1s (1 window) | ![FS-UAE (Amiga)](img/gallery/fs-uae.jpg)<br>**FS-UAE (Amiga)**<br>`fs-uae` · graphical · ok 1s (1 window) | ![RetroArch (many consoles)](img/gallery/retroarch.jpg)<br>**RetroArch (many consoles)**<br>`retroarch` · graphical · ok 1s (1 window) |
 | ![ScummVM (point-and-click adventures)](img/gallery/scummvm.jpg)<br>**ScummVM (point-and-click adventures)**<br>`scummvm` · graphical · ok 1s (1 window) | ![UR FINKEL (Plus/4, make run in xplus4)](img/gallery/urfinkel.jpg)<br>**UR FINKEL (Plus/4, make run in xplus4)**<br>`urfinkel` · graphical · ok 1s (1 window), acted | ![VICE (Commodore 64 - see stage 9)](img/gallery/x64sc.jpg)<br>**VICE (Commodore 64 - see stage 9)**<br>`x64sc` · graphical · ok 2s (1 window) |
 
-## Science (8)
+## Science (10)
 
 | | | |
 |---|---|---|
-| ![LyX (LaTeX with a document view)](img/gallery/lyx.jpg)<br>**LyX (LaTeX with a document view)**<br>`lyx` · graphical · ok 1s (1 window), acted | ![Maxima (computer algebra, solves systems)](img/gallery/maxima.jpg)<br>**Maxima (computer algebra, solves systems)**<br>`maxima` · terminal · ok 2s (1 window), acted | ![Octave (MATLAB-compatible maths)](img/gallery/octave.jpg)<br>**Octave (MATLAB-compatible maths)**<br>`octave` · terminal · ok 1s (1 window), acted |
-| ![PARI/GP (number theory)](img/gallery/gp.jpg)<br>**PARI/GP (number theory)**<br>`gp` · terminal · ok 1s (1 window), acted | ![Qalculate (unit-aware calculator)](img/gallery/qalculate-gtk.jpg)<br>**Qalculate (unit-aware calculator)**<br>`qalculate-gtk` · graphical · ok 1s (1 window), acted | ![R (statistics)](img/gallery/R.jpg)<br>**R (statistics)**<br>`R` · terminal · ok 1s (1 window), acted |
-| ![Singular (polynomial algebra)](img/gallery/Singular.jpg)<br>**Singular (polynomial algebra)**<br>`Singular` · terminal · ok 1s (1 window), acted | ![wxMaxima (built from source)](img/gallery/wxmaxima.jpg)<br>**wxMaxima (built from source)**<br>`wxmaxima` · graphical · ok 2s (2 windows), acted |  |
+| ![Fraqtive (Mandelbrot fractals)](img/gallery/fraqtive.jpg)<br>**Fraqtive (Mandelbrot fractals)**<br>`fraqtive` · graphical · ok 1s (1 window), acted | ![LyX (LaTeX with a document view)](img/gallery/lyx.jpg)<br>**LyX (LaTeX with a document view)**<br>`lyx` · graphical · ok 1s (1 window), acted | ![Maxima (computer algebra, solves systems)](img/gallery/maxima.jpg)<br>**Maxima (computer algebra, solves systems)**<br>`maxima` · terminal · ok 2s (1 window), acted |
+| ![Octave (MATLAB-compatible maths)](img/gallery/octave.jpg)<br>**Octave (MATLAB-compatible maths)**<br>`octave` · terminal · ok 1s (1 window), acted | ![PARI/GP (number theory)](img/gallery/gp.jpg)<br>**PARI/GP (number theory)**<br>`gp` · terminal · ok 1s (1 window), acted | ![Qalculate (unit-aware calculator)](img/gallery/qalculate-gtk.jpg)<br>**Qalculate (unit-aware calculator)**<br>`qalculate-gtk` · graphical · ok 1s (1 window), acted |
+| ![R (statistics)](img/gallery/R.jpg)<br>**R (statistics)**<br>`R` · terminal · ok 1s (1 window), acted | ![Singular (polynomial algebra)](img/gallery/Singular.jpg)<br>**Singular (polynomial algebra)**<br>`Singular` · terminal · ok 1s (1 window), acted | ![wxMaxima (built from source)](img/gallery/wxmaxima.jpg)<br>**wxMaxima (built from source)**<br>`wxmaxima` · graphical · ok 2s (2 windows), acted |
+| ![XaoS (fractal zoomer)](img/gallery/XaoS.jpg)<br>**XaoS (fractal zoomer)**<br>`XaoS` · graphical · ok 1s (1 window), acted |  |  |
 
 ## Security (2)
 
@@ -258,4 +267,4 @@ refused, and anything that plays sound was silent.
 | Yakuake (drop-down, F12 - KDE) | `yakuake` | NO WINDOW in 30s, process no (exit 139) |
 | Zutty (X11-native, very fast) | `zutty` | NO WINDOW in 30s, process no (exit 139) |
 
-*Generated 2026-09-23 20:00.*
+*Generated 2026-09-23 21:06.*

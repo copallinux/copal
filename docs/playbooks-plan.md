@@ -102,6 +102,46 @@ progress page, Naev's compile read as 884 of 992; `--follow` exiting with
 nothing queued and opening with a queue; `pending` returning only what was
 missing.
 
+## Phase 3, done (23 Sep 2026)
+
+**The catalogue's 146 graphical programs are playbooks**, marked
+`origin: catalogue`, each with two sentences (four corrected against the
+script before they stood). Their rows are rewritten in place in the
+catalogue, so stage 12 installs exactly what it did, in the same order; a
+graphical row with no playbook fails lint. Terminal and command-line rows
+stay plain catalogue rows.
+
+**Their first-run settings are their `post` steps.** Firefox ESR's
+policies, qBittorrent, Zim, Kate, Thunderbird and Claws Mail moved out of
+`seed_app_configs` into their playbooks; `make sync-playbooks` gathers them
+into a marked region of `copal-prep.sh`, and `catalogue_posts` runs each
+installed program's. The word-list link and Midnight Commander (a terminal
+program) stay in `seed_app_configs`.
+
+**Copal Apps lists them**, with their two sentences and status, beside the
+store's programs: their descriptions reach the store as `catalogue_abouts`.
+
+Crosschecked: the catalogue byte-for-byte identical (329 rows, same
+order); `seed_app_configs` old and new run side by side under stubs, with a
+mail address and without, seeding identical files (9 and 5) and the same
+note; the menu audit unchanged in kind (212 entries, all working).
+
+**Not yet moved:** stage 4 and 17's program fix-ups (Brave from Flathub and
+the default browser, the terminal and file-manager choices), and a
+catalogue program's `post` run by Copal Apps' Install -- today the posts
+run from stage 12, where the installer's answers are. Both are phase 4's.
+
+**Added the same day:** Konquest, KMahjongg, KReversi, KSnakeDuel,
+KSpaceDuel and Kubrick compiled from KDE Gear 26.04.3 (the series of
+Alpine's libkdegames); Naval Battle, Knights and Kapman from Alpine; XaoS
+4.3.8 and Fraqtive 0.4.8.1, fractal explorers; and KRetro 0.0.1, labelled
+early, as it is. Every compiled one built on the bench in 8 to 31 seconds and
+opened its window, and each is in the gallery on its main screen (KReversi
+with a game started). Kubrick's fixed-function 3D cube draws; Fraqtive's 3D
+view does not (Qt 5 for OpenGL ES), which its description says. XaoS needed
+its menu entry installed by hand (upstream's names the wrong command), and
+Fraqtive libGL and libGLU named at link time.
+
 ## I. A playbook
 
 One file per project, `playbooks/<category>/<project>.sh`, named after the

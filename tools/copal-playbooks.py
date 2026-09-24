@@ -13,7 +13,8 @@
 # Its header is data -- the lines up to the first blank line, '# key: value',
 # long values continued on '#' lines indented under them:
 #
-#   playbook, source, build, runs, needs        the project
+#   playbook, source, origin, build, runs,      the project; origin 'catalogue' for a
+#   needs                                       program stage 12 installs in bulk
 #   program, label, shelf, install, mode,       one block per program it puts on the
 #   gate, home, about                           machine; 'program' is its command
 #
@@ -26,12 +27,22 @@
 # with NAME_bdeps / NAME_rdeps / NAME_needs / NAME_source made from their
 # headers, RECIPES, and the bundles (playbooks/bundles/NAME.list). 'make
 # sync-store' then carries tools/copal-store into copal-prep.sh as before.
+#
+# A CATALOGUE playbook (origin: catalogue) is a graphical program from stage
+# 12's catalogue. Its row is rewritten in place in copal-prep.sh's catalogue,
+# so the catalogue keeps its order and stage 12 installs what it always did;
+# a new one goes in after the last row of its section. Its body is at most
+# NAME_post (hyphens as underscores), gathered into a marked region of
+# copal-prep.sh with catalogue_posts, which seed_app_configs runs; its about
+# and home go into tools/copal-store (catalogue_abouts) for Copal Apps. A
+# graphical catalogue row with no playbook is an error.
 import os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PB = os.path.join(ROOT, "playbooks")
 STORE = os.path.join(ROOT, "tools", "copal-store")
-PROJECT_KEYS = ("playbook", "source", "build", "runs", "needs")
+PREP = os.path.join(ROOT, "copal-prep.sh")
+PROJECT_KEYS = ("playbook", "source", "origin", "build", "runs", "needs")
 PROGRAM_KEYS = ("program", "label", "shelf", "install", "mode", "gate", "home", "about")
 GATE = re.compile(r"^(\*|64|!(v6|v7|x32|x64|a64))(,(64|!(v6|v7|x32|x64|a64)))*$")
 
@@ -115,10 +126,15 @@ def validate(books):
             errs.append("%s: no source" % rel)
         if not b["progs"]:
             errs.append("%s: no program" % rel)
+        cat = p.get("origin") == "catalogue"
+        if p.get("origin") not in (None, "catalogue"):
+            errs.append("%s: origin %r" % (rel, p.get("origin")))
         for g in b["progs"]:
             for k in PROGRAM_KEYS:
-                if not g.get(k):
+                if not g.get(k) and not (cat and k == "home"):
                     errs.append("%s: program %s has no %s" % (rel, g.get("program"), k))
+            if cat and (g.get("mode") != "x" or "@source" in g.get("install", "")):
+                errs.append("%s: a catalogue playbook is a graphical program from a package" % rel)
             if not re.match(r"^[A-Z][a-z]+$", g.get("shelf", "")):
                 errs.append("%s: shelf %r" % (rel, g.get("shelf")))
             if g.get("mode") not in ("x", "t", "h", "-"):
@@ -134,12 +150,17 @@ def validate(books):
         is_src = any((name + "@source") in g.get("install", "").split() for g in b["progs"])
         if is_src and not re.search(r"^" + re.escape(name) + r"_install\(\) \{", b["body"], re.M):
             errs.append("%s: builds from source but has no %s_install" % (rel, name))
-        if not is_src and b["body"]:
-            errs.append("%s: an apk playbook with a body (phase 1 runs none)" % rel)
+        if not is_src and not cat and b["body"]:
+            errs.append("%s: a store apk playbook with a body (the store runs none)" % rel)
+        if cat and b["body"]:
+            for n in shell_names(b["body"]):
+                if n != fname(name) + "_post":
+                    errs.append("%s: a catalogue playbook defines only %s_post, not %s" % (rel, fname(name), n))
         # Every name the body defines is the project's own -- in the shell
         # itself, not in the files its heredocs write.
         for n in shell_names(b["body"]):
-            own = n.startswith(name + "_") or n.startswith(name.upper().replace("-", "_") + "_") or n.startswith("patch_")
+            own = (n.startswith(name + "_") or n.startswith(fname(name) + "_")
+                   or n.startswith(name.upper().replace("-", "_") + "_") or n.startswith("patch_"))
             if not own:
                 errs.append("%s: defines %s, which is not %s's" % (rel, n, name))
     for bundle, members in bundles().items():
@@ -151,6 +172,11 @@ def validate(books):
             if n not in names:
                 errs.append("%s: needs %s, which is not a playbook" % (os.path.relpath(b["path"], ROOT), n))
     return errs
+
+
+def fname(name):
+    """A playbook's name as a shell function prefix: hyphens are not allowed there."""
+    return name.replace("-", "_").replace(".", "_").replace("+", "_")
 
 
 def shell_names(body):
@@ -177,12 +203,14 @@ def q(s):
 def generate(books):
     rows = []
     for b in books:
+        if b["proj"].get("origin") == "catalogue":
+            continue
         for g in b["progs"]:
             rows.append("|".join(g[k] for k in ("shelf", "label", "install", "program", "mode", "gate", "about", "home")))
     rows.sort(key=lambda r: (r.split("|")[0], r.split("|")[1].lower()))
     table = ["store_table() {", "    cat <<'STORETABLE'"] + rows + ["STORETABLE", "}"]
 
-    src = [b for b in books if b["body"]]
+    src = [b for b in books if b["body"] and b["proj"].get("origin") != "catalogue"]
     code = []
     for b in sorted(src, key=lambda b: b["proj"]["playbook"]):
         n, p = b["proj"]["playbook"], b["proj"]
@@ -198,7 +226,53 @@ def generate(books):
         code.append('        %s) echo "%s" ;;' % (name, " ".join(members)))
     code += ['        *) return 1 ;;', "    esac", "}",
              "store_bundles() { echo \"%s\"; }" % " ".join(bundles())]
+    cats = [b for b in books if b["proj"].get("origin") == "catalogue"]
+    code += ["", "# The catalogue's graphical programs: id|about|home, for Copal Apps (rows()).",
+             "catalogue_abouts() {", "    cat <<'CATABOUTS'"]
+    for b in sorted(cats, key=lambda b: b["proj"]["playbook"]):
+        for g in b["progs"]:
+            code.append("%s|%s|%s" % (g["program"], g["about"], g.get("home", "")))
+    code += ["CATABOUTS", "}"]
     return table, code
+
+
+def catalogue_rows(books, prep):
+    """The catalogue with every graphical row rewritten from its playbook, in place."""
+    cats = {g["program"]: g for b in books if b["proj"].get("origin") == "catalogue" for g in b["progs"]}
+    a = prep.index("    cat <<'CATALOGUE'\n") + len("    cat <<'CATALOGUE'\n")
+    z = prep.index("\nCATALOGUE\n", a)
+    lines = prep[a:z].split("\n")
+    out, seen, errs = [], set(), []
+    for l in lines:
+        f = l.split("|")
+        if len(f) == 6 and f[4] == "x":
+            g = cats.get(f[3])
+            if g is None:
+                errs.append("copal-prep.sh catalogue: %s is graphical and has no playbook" % f[3]); out.append(l); continue
+            seen.add(f[3])
+            l = "|".join(g[k] for k in ("shelf", "label", "install", "program", "mode", "gate"))
+        out.append(l)
+    for pid, g in cats.items():            # new programs: after their section's last row
+        if pid in seen:
+            continue
+        row = "|".join(g[k] for k in ("shelf", "label", "install", "program", "mode", "gate"))
+        at = max([i for i, l in enumerate(out) if l.split("|")[0] == g["shelf"]] or [len(out) - 1])
+        out.insert(at + 1, row)
+    return prep[:a] + "\n".join(out) + prep[z:], errs
+
+
+def catalogue_posts(books):
+    cats = [b for b in books if b["proj"].get("origin") == "catalogue" and b["body"]]
+    code = []
+    for b in sorted(cats, key=lambda b: b["proj"]["playbook"]):
+        code += ["# ---- " + os.path.relpath(b["path"], ROOT), b["body"], ""]
+    code += ["# Each graphical program's postconfiguration, when it is installed.",
+             "catalogue_posts() {"]
+    for b in sorted(cats, key=lambda b: b["proj"]["playbook"]):
+        g = b["progs"][0]
+        code.append("    if command -v %s >/dev/null 2>&1; then %s_post; fi" % (g["program"], fname(b["proj"]["playbook"])))
+    code += ["    return 0", "}"]
+    return code
 
 
 def wrap(key, value, width=100):
@@ -262,14 +336,25 @@ def main():
     table, code = generate(books)
     text = open(STORE).read()
     new = splice(splice(text, "table", table), "recipes", code)
+    prep = open(PREP).read()
+    newprep, cerrs = catalogue_rows(books, prep)
+    newprep = splice(newprep, "catalogue-post", catalogue_posts(books))
+    if cerrs:
+        for e in cerrs:
+            print("error: " + e)
+        return 1
     one = sum(1 for b in books for g in b["progs"] if len(re.findall(r"[.!?](\s|$)", g["about"])) < 2)
     if cmd == "sync":
         if new != text:
             open(STORE, "w").write(new)
+        if newprep != prep:
+            open(PREP, "w").write(newprep)
         print("  ok      playbooks: %d (%d programs) -> tools/copal-store" % (len(books), sum(len(b["progs"]) for b in books)))
         return 0
     if new != text:
         print("error: tools/copal-store differs from playbooks/ -- run: make sync-playbooks"); return 1
+    if newprep != prep:
+        print("error: copal-prep.sh's catalogue differs from playbooks/ -- run: make sync-playbooks"); return 1
     print("  ok      playbooks: %d, %d programs, headers and names valid, tools/copal-store in step" % (
         len(books), sum(len(b["progs"]) for b in books)))
     if one:

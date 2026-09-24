@@ -58,14 +58,16 @@ def store(*args):
 
 
 def load_rows():
-    """The store's programs: id, shelf, label, install, bin, mode, about, home, origin, status."""
+    """The programs: id, shelf, label, install, bin, mode, about, home, origin, status."""
     keys = ("id", "shelf", "label", "install", "bin", "mode", "about", "home", "origin", "status")
     rows = []
     for line in store("rows").splitlines():
         f = line.split("|")
         if len(f) == len(keys):
             r = dict(zip(keys, f))
-            if r["origin"] == "store":
+            # The store's programs, and the catalogue's graphical ones (the
+            # terminal and command-line tools stay lists, docs/playbooks-plan.md).
+            if r["origin"] == "store" or r["mode"] == "x":
                 rows.append(r)
     return rows
 

@@ -22895,20 +22895,58 @@ seed_home_if_absent() {  # <relative path> <source file>  -- root and the user
     done
 }
 
-seed_app_configs() {
-    say "First-run dialogs: seeding what a file can answer"
-    _t=$(mktemp /tmp/copal-seed.XXXXXX)
+# The graphical programs' own postconfiguration lives in their playbooks
+# (playbooks/<section>/NAME.sh, NAME_post) and is gathered here by 'make
+# sync-playbooks'; catalogue_posts runs each installed program's.
+# >>> playbooks: catalogue-post -- generated from playbooks/ by 'make sync-playbooks'; edit those, not this
+# ---- playbooks/Mail/claws-mail.sh
+# Claws Mail skips its wizard when accountrc exists. protocol 3 is
+# IMAP4, ssl_* 1 is TLS on connect, and the IMAP folder tree is
+# declared in folderlist.xml or the account has nowhere to appear.
+# Only when answers.txt names a mail address.
+claws_mail_post() {
+    [ -n "${PI_MAIL_ADDRESS:-}" ] || return 0
+    _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
+    _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
+    _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    cat > "$_t" <<CLAWS
+[Account: 1]
+account_name=$PI_MAIL_ADDRESS
+is_default=1
+name=$_mname
+address=$PI_MAIL_ADDRESS
+protocol=3
+receive_server=$_imap
+smtp_server=$_smtp
+user_id=$PI_MAIL_ADDRESS
+password=
+use_mail_command=0
+ssl_imap=1
+ssl_smtp=1
+use_smtp_auth=1
+smtp_user_id=$PI_MAIL_ADDRESS
+set_imapport=1
+imap_port=993
+set_smtpport=1
+smtp_port=465
+imap_directory=
+imap_subsonly=1
+CLAWS
+    seed_home_if_absent .claws-mail/accountrc "$_t"
+    cat > "$_t" <<FOLD
+<?xml version="1.0" encoding="UTF-8"?>
+<folderlist>
+  <folder type="imap" name="$PI_MAIL_ADDRESS" path="imapcache/$_imap/$PI_MAIL_ADDRESS" account_id="1" />
+  <folder type="mh" name="Mail" path="Mail" />
+</folderlist>
+FOLD
+    seed_home_if_absent .claws-mail/folderlist.xml "$_t"
+}
 
-    # The system word list. words-en installs /usr/share/dict/american-english
-    # and nothing named "words", which is the file hangman, look(1) and the
-    # other word games open (verified on the bench: "unable to open
-    # dictionary file /usr/share/dict/words"). Link it, once.
-    if [ -f /usr/share/dict/american-english ] && [ ! -e /usr/share/dict/words ]; then
-        ln -s american-english /usr/share/dict/words
-    fi
-
-    # Firefox ESR: no welcome tab, no "make me the default", no telemetry.
-    # A policies file in the distribution directory; read on every start.
+# ---- playbooks/Internet/firefox-esr.sh
+# Firefox ESR: no welcome tab, no "make me the default", no telemetry.
+# A policies file in the distribution directory; read on every start.
+firefox_esr_post() {
     if [ -d /usr/lib/firefox-esr ] && [ ! -f /usr/lib/firefox-esr/distribution/policies.json ]; then
         mkdir -p /usr/lib/firefox-esr/distribution
         cat > /usr/lib/firefox-esr/distribution/policies.json <<'POL'
@@ -22921,60 +22959,41 @@ seed_app_configs() {
 POL
         note "/usr/lib/firefox-esr/distribution/policies.json"
     fi
+}
 
-    # qBittorrent: the "Legal Notice" box on first start (verified), and no
-    # vanishing into the tray: on i3 the bar has no tray, so a window closed
-    # "to the tray" is simply gone until the process is killed.
-    if command -v qbittorrent >/dev/null 2>&1; then
-        printf '[LegalNotice]\nAccepted=true\n\n[Preferences]\nGeneral\\CloseToTray=false\nGeneral\\MinimizeToTray=false\nGeneral\\SystrayEnabled=false\n' > "$_t"
-        seed_home_if_absent .config/qBittorrent/qBittorrent.conf "$_t"
-    fi
+# ---- playbooks/Editors/kate.sh
+# Kate: its welcome view in every new window. Only when copal has not
+# already written a katerc (stage 7 does, with the LSP client); then the
+# line is added there instead.
+kate_post() {
+    printf '[General]\nShow welcome view for new window=false\n' > "$_t"
+    seed_home_if_absent .config/katerc "$_t"
+}
 
-    # Zim: without a notebook the first window is "Add Notebook". One in
-    # ~/Notebooks/Notes, registered as the default, and it opens on a page.
-    if command -v zim >/dev/null 2>&1; then
-        printf '[NotebookList]\nDefault=~/Notebooks/Notes\n\n[Notebook 1]\nuri=~/Notebooks/Notes\nname=Notes\n' > "$_t"
-        seed_home_if_absent .config/zim/notebooks.list "$_t"
-        printf '[Notebook]\nversion=0.4\nname=Notes\nhome=Home\n' > "$_t"
-        seed_home_if_absent Notebooks/Notes/notebook.zim "$_t"
-    fi
+# ---- playbooks/Internet/qbittorrent.sh
+# qBittorrent: the "Legal Notice" box on first start (verified), and no
+# vanishing into the tray: on i3 the bar has no tray, so a window closed
+# "to the tray" is simply gone until the process is killed.
+qbittorrent_post() {
+    printf '[LegalNotice]\nAccepted=true\n\n[Preferences]\nGeneral\\CloseToTray=false\nGeneral\\MinimizeToTray=false\nGeneral\\SystrayEnabled=false\n' > "$_t"
+    seed_home_if_absent .config/qBittorrent/qBittorrent.conf "$_t"
+}
 
-    # Kate: its welcome view in every new window. Only when copal has not
-    # already written a katerc (stage 7 does, with the LSP client); then the
-    # line is added there instead.
-    if command -v kate >/dev/null 2>&1; then
-        printf '[General]\nShow welcome view for new window=false\n' > "$_t"
-        seed_home_if_absent .config/katerc "$_t"
-    fi
-
-    # Midnight Commander: its default skin paints the panels in palette
-    # blue with cyan text, a dark island on the light terminal. sand256 is
-    # the skin mc ships for a sand ground, and it matches Copal Sand.
-    if command -v mc >/dev/null 2>&1; then
-        printf '[Midnight-Commander]\nskin=sand256\n' > "$_t"
-        seed_home_if_absent .config/mc/ini "$_t"
-    fi
-
-    # Audacity 3.7 is NOT seeded, deliberately: its "Welcome to Audacity!"
-    # dialog ignores /GUI/ShowSplashScreen (tested -- the key is dropped on
-    # the next save) and the preference it does honour could not be found in
-    # the binaries. Its "New Plugins" dialog needs nothing: it is the first
-    # scan, and the second start does not show it.
-
-    if [ -n "${PI_MAIL_ADDRESS:-}" ]; then
-        _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
-        _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
-        _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
-
-        # Thunderbird: an account is nothing but prefs. profiles.ini names a
-        # profile, user.js inside it declares IMAP (993, TLS), SMTP (465, TLS)
-        # and a Local Folders store; the first start opens on the Inbox and
-        # asks for the password once. The numeric codes are Thunderbird's:
-        # socketType 3 = SSL/TLS, authMethod 3 = normal password.
-        if command -v thunderbird >/dev/null 2>&1; then
-            printf '[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default\nIsRelative=1\nPath=copal.default\nDefault=1\n' > "$_t"
-            seed_home_if_absent .thunderbird/profiles.ini "$_t"
-            cat > "$_t" <<TB
+# ---- playbooks/Mail/thunderbird.sh
+# Thunderbird: an account is nothing but prefs. profiles.ini names a
+# profile, user.js inside it declares IMAP (993, TLS), SMTP (465, TLS)
+# and a Local Folders store; the first start opens on the Inbox and
+# asks for the password once. The numeric codes are Thunderbird's:
+# socketType 3 = SSL/TLS, authMethod 3 = normal password. Only when
+# answers.txt names a mail address; otherwise it keeps its wizard.
+thunderbird_post() {
+    [ -n "${PI_MAIL_ADDRESS:-}" ] || return 0
+    _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
+    _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
+    _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    printf '[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default\nIsRelative=1\nPath=copal.default\nDefault=1\n' > "$_t"
+    seed_home_if_absent .thunderbird/profiles.ini "$_t"
+    cat > "$_t" <<TB
 user_pref("mail.accountmanager.accounts", "account1,account2");
 user_pref("mail.accountmanager.defaultaccount", "account1");
 user_pref("mail.accountmanager.localfoldersserver", "server2");
@@ -23004,49 +23023,63 @@ user_pref("mail.smtpserver.smtp1.username", "$PI_MAIL_ADDRESS");
 user_pref("mail.shell.checkDefaultClient", false);
 user_pref("app.donation.eoy.version.viewed", 99);
 TB
-            seed_home_if_absent .thunderbird/copal.default/user.js "$_t"
-        fi
+    seed_home_if_absent .thunderbird/copal.default/user.js "$_t"
+}
 
-        # Claws Mail skips its wizard when accountrc exists. protocol 3 is
-        # IMAP4, ssl_* 1 is TLS on connect, and the IMAP folder tree is
-        # declared in folderlist.xml or the account has nowhere to appear.
-        if command -v claws-mail >/dev/null 2>&1; then
-            cat > "$_t" <<CLAWS
-[Account: 1]
-account_name=$PI_MAIL_ADDRESS
-is_default=1
-name=$_mname
-address=$PI_MAIL_ADDRESS
-protocol=3
-receive_server=$_imap
-smtp_server=$_smtp
-user_id=$PI_MAIL_ADDRESS
-password=
-use_mail_command=0
-ssl_imap=1
-ssl_smtp=1
-use_smtp_auth=1
-smtp_user_id=$PI_MAIL_ADDRESS
-set_imapport=1
-imap_port=993
-set_smtpport=1
-smtp_port=465
-imap_directory=
-imap_subsonly=1
-CLAWS
-            seed_home_if_absent .claws-mail/accountrc "$_t"
-            cat > "$_t" <<FOLD
-<?xml version="1.0" encoding="UTF-8"?>
-<folderlist>
-  <folder type="imap" name="$PI_MAIL_ADDRESS" path="imapcache/$_imap/$PI_MAIL_ADDRESS" account_id="1" />
-  <folder type="mh" name="Mail" path="Mail" />
-</folderlist>
-FOLD
-            seed_home_if_absent .claws-mail/folderlist.xml "$_t"
-        fi
-    else
-        note "no mail address in answers.txt -- Thunderbird and Claws Mail keep their account wizards"
+# ---- playbooks/Notes/zim.sh
+# Zim: without a notebook the first window is "Add Notebook". One in
+# ~/Notebooks/Notes, registered as the default, and it opens on a page.
+zim_post() {
+    printf '[NotebookList]\nDefault=~/Notebooks/Notes\n\n[Notebook 1]\nuri=~/Notebooks/Notes\nname=Notes\n' > "$_t"
+    seed_home_if_absent .config/zim/notebooks.list "$_t"
+    printf '[Notebook]\nversion=0.4\nname=Notes\nhome=Home\n' > "$_t"
+    seed_home_if_absent Notebooks/Notes/notebook.zim "$_t"
+}
+
+# Each graphical program's postconfiguration, when it is installed.
+catalogue_posts() {
+    if command -v claws-mail >/dev/null 2>&1; then claws_mail_post; fi
+    if command -v firefox-esr >/dev/null 2>&1; then firefox_esr_post; fi
+    if command -v kate >/dev/null 2>&1; then kate_post; fi
+    if command -v qbittorrent >/dev/null 2>&1; then qbittorrent_post; fi
+    if command -v thunderbird >/dev/null 2>&1; then thunderbird_post; fi
+    if command -v zim >/dev/null 2>&1; then zim_post; fi
+    return 0
+}
+# <<< playbooks: catalogue-post
+
+seed_app_configs() {
+    say "First-run dialogs: seeding what a file can answer"
+    _t=$(mktemp /tmp/copal-seed.XXXXXX)
+
+    # The system word list. words-en installs /usr/share/dict/american-english
+    # and nothing named "words", which is the file hangman, look(1) and the
+    # other word games open (verified on the bench: "unable to open
+    # dictionary file /usr/share/dict/words"). Link it, once.
+    if [ -f /usr/share/dict/american-english ] && [ ! -e /usr/share/dict/words ]; then
+        ln -s american-english /usr/share/dict/words
     fi
+
+    # Firefox ESR, qBittorrent, Zim, Kate, Thunderbird and Claws Mail: each
+    # program's first-run settings, from its playbook, when it is installed.
+    catalogue_posts
+
+    # Midnight Commander: its default skin paints the panels in palette
+    # blue with cyan text, a dark island on the light terminal. sand256 is
+    # the skin mc ships for a sand ground, and it matches Copal Sand.
+    if command -v mc >/dev/null 2>&1; then
+        printf '[Midnight-Commander]\nskin=sand256\n' > "$_t"
+        seed_home_if_absent .config/mc/ini "$_t"
+    fi
+
+    # Audacity 3.7 is NOT seeded, deliberately: its "Welcome to Audacity!"
+    # dialog ignores /GUI/ShowSplashScreen (tested -- the key is dropped on
+    # the next save) and the preference it does honour could not be found in
+    # the binaries. Its "New Plugins" dialog needs nothing: it is the first
+    # scan, and the second start does not show it.
+
+    [ -n "${PI_MAIL_ADDRESS:-}" ] \
+        || note "no mail address in answers.txt -- Thunderbird and Claws Mail keep their account wizards"
     rm -f "$_t"
 }
 
@@ -23443,6 +23476,7 @@ Crypto|Monero GUI|monero-gui@testing|monero-wallet-gui|x|!v6|The Monero project'
 Crypto|XMRig|xmrig|xmrig|h|*|A CPU miner for RandomX coins such as Monero. It runs from a terminal and reports its hash rate as it goes.|https://github.com/xmrig/xmrig
 Discs|K3b (CD/DVD/Blu-ray burner)|k3b|k3b|x|!v6|KDE's disc burner for CDs, DVDs and Blu-ray. Data discs, audio CDs from music files, disc copies and ISO images, verified after writing.|https://invent.kde.org/multimedia/k3b
 Documents|FocusWriter (distraction-free writing)|focuswriter@source|focuswriter|x|*|A full-screen writing window with nothing in it but the text: themes, daily goals, timers and alarms, typewriter sounds, and a spell checker. Opens and saves plain text, RTF, ODT and DOCX.|https://github.com/gottcode/focuswriter
+Emulation|KRetro (Libretro front end, early)|kretro@source|kretro|x|64|KDE's front end for Libretro emulator cores, with a game library for the desktop, a TV or a phone. It is its first release and a work in progress, so expect gaps.|https://invent.kde.org/games/kretro
 Emulation|QEMU (PC emulator)|qemu-system-x86_64 qemu-ui-gtk|qemu-system-x86_64|h|64|Emulates a whole x86_64 PC in a window. Boot another operating system from an ISO without leaving this one.|https://gitlab.com/qemu-project/qemu
 Emulation|Waydroid (Android)|waydroid|waydroid|h|!v6|Runs a full Android system in a container. Its apps open as ordinary windows on this desktop.|https://github.com/waydroid/waydroid
 Engineering|LibreCAD (2D CAD)|librecad@source|librecad|x|64|Precise 2D drawing: floor plans, parts and schematics, in layers and blocks. It reads and writes DXF, and reads DWG.|https://github.com/LibreCAD/LibreCAD
@@ -23469,10 +23503,19 @@ Games|FCEUX (NES emulator)|fceux@testing|fceux|x|!v6|A Nintendo Entertainment Sy
 Games|Friday Night Funkin' Rewritten (LOVE)|funkin@source|funkin-rewritten|x|*|The rhythm game where you out-sing your girlfriend's father, arrow keys to the beat. Rebuilt on the LOVE engine.|https://github.com/HTV04/funkin-rewritten
 Games|Godot (game engine)|godot@testing|godot|x|!v6|A complete engine and editor for 2D and 3D games, scripted in GDScript. The engine Pixelorama is written in.|https://github.com/godotengine/godot
 Games|Heroes 2 (fheroes2 engine)|fheroes2@testing|fheroes2|x|*|Heroes of Might and Magic II rebuilt as free software. Plays the free demo or the original game's data.|https://github.com/ihhub/fheroes2
+Games|Kapman (Pac-Man)|kapman|kapman|x|!v6|KDE's Pac-Man: eat every pill in the maze while four ghosts hunt you. An energiser turns the tables for a few seconds.|https://apps.kde.org/kapman/
+Games|KMahjongg (mahjong solitaire)|kmahjongg@source|kmahjongg|x|!v6|Mahjong solitaire: clear the board by matching pairs of free tiles. Dozens of layouts and tile sets, with a hint when you are stuck.|https://apps.kde.org/kmahjongg/
+Games|Knights (chess)|knights gnuchess|knights|x|!v6|KDE's chess board: play against a chess engine, a friend at the same machine, or opponents online. GNU Chess comes with it as the engine to play.|https://apps.kde.org/knights/
+Games|Konquest (galactic strategy)|konquest@source|konquest|x|!v6|KDE's galactic strategy game: send fleets from planet to planet and take the galaxy, against the computer or friends sharing one screen. Every planet you hold builds more ships each turn, so a game is a few minutes of planning and one good gamble.|https://apps.kde.org/konquest/
+Games|KReversi (Othello)|kreversi@source|kreversi|x|!v6|Reversi, also called Othello, against the computer at several levels. Outflank the other colour's stones to turn them to yours.|https://apps.kde.org/kreversi/
+Games|KSnakeDuel (light-cycle duel)|ksnakeduel@source|ksnakeduel|x|!v6|A snake duel in the spirit of Tron's light cycles: steer so the other runs into a wall or a trail first. Two players at one keyboard, or one against the computer.|https://apps.kde.org/ksnakeduel/
+Games|KSpaceDuel (space combat)|kspaceduel@source|kspaceduel|x|!v6|Two spaceships orbit a sun and fight it out while gravity pulls at everything. Thrust, turn and fire, for two players or one against the computer.|https://apps.kde.org/kspaceduel/
+Games|Kubrick (3D Rubik's Cube)|kubrick@source|kubrick|x|!v6|A Rubik's Cube in 3D: turn the faces with the mouse until every side is one colour. Cubes of other sizes and shapes, and demonstrations of the classic solutions.|https://apps.kde.org/kubrick/
 Games|Marathon (the free trilogy, Aleph One)|alephone@source|marathon|x|64|Bungie's 1990s first-person shooters Marathon, Marathon 2 and Marathon Infinity, released free and played on Aleph One, the engine built from Bungie's source. Three launchers: marathon, marathon2, marathon-infinity.|https://github.com/Aleph-One-Marathon/alephone
 Games|Minecraft Java (Prism Launcher)|prismlauncher|prismlauncher|x|*|Runs Minecraft: Java Edition, signed in with your own account. Each modpack gets its own separate instance.|https://github.com/PrismLauncher/PrismLauncher
 Games|Moon Buggy (terminal)|moon-buggy@testing|moon-buggy|t|*|Drive a buggy across the moon in the terminal, jumping the craters as they come. Space jumps.|https://www.seehuhn.de/pages/moon-buggy.html
 Games|Naev (space sandbox)|naev@source|naev|x|64|A 2D space trading and combat game with a large written story: fly, trade, take missions and join factions across hundreds of systems. Inspired by Escape Velocity.|https://github.com/naev/naev
+Games|Naval Battle (battleships)|knavalbattle|knavalbattle|x|!v6|KDE's Naval Battle, the game of battleships: hide your fleet and sink the other side's by calling shots on a grid. Play the computer, or a friend over the network.|https://apps.kde.org/knavalbattle/
 Games|OpenRCT2 (RollerCoaster Tycoon 2)|openrct2|openrct2|x|*|Builds theme parks and their rollercoasters, rebuilt as free software with bigger parks and online play. Needs the original RollerCoaster Tycoon 2 files (GOG or Steam).|https://github.com/OpenRCT2/OpenRCT2
 Games|OpenTyrian (Tyrian 2000)|opentyrian@source|opentyrian|x|64|The 1995 vertical shooter Tyrian, freeware since 2004, on its open-source engine: a story campaign, an arcade mode, and ship upgrades bought between levels. Arrow keys to fly, Space to fire.|https://github.com/opentyrian/opentyrian
 Games|Pac-Man (SDL clone)|pacman@source|pacman-game|x|64|A faithful Pac-Man for the desktop: eat the dots, dodge the four ghosts. Arrow keys.|https://github.com/ebuc99/pacman
@@ -23505,6 +23548,8 @@ Programming|GitHub CLI|github-cli|gh|h|*|GitHub from the command line: pull requ
 Programming|GNOME Builder|gnome-builder|gnome-builder|x|*|GNOME's IDE, for C, Rust, Python and Vala projects. Builds, runs and debugging are a click away.|https://gitlab.gnome.org/GNOME/gnome-builder
 Programming|Node.js|nodejs npm|node|t|*|The JavaScript runtime outside the browser. npm comes with it to fetch packages.|https://github.com/nodejs/node
 Programming|Thonny (Python IDE)|thonny|thonny|x|*|A Python editor for beginners. Step through code one line at a time and watch the variables change.|https://github.com/thonny/thonny
+Science|Fraqtive (Mandelbrot fractals)|fraqtive@source|fraqtive|x|!v6|A fast generator of Mandelbrot-family fractals, with presets, colour gradients and high-resolution image export. Its 3D view needs desktop OpenGL, so on ARM boards it stays black; the 2D view is the program.|https://fraqtive.mimec.org/
+Science|XaoS (fractal zoomer)|xaos@source|XaoS|x|!v6|A real-time fractal zoomer: fly smoothly into the Mandelbrot set and dozens of other fractals. Built-in tutorials explain the mathematics as you go.|https://xaos-project.github.io/
 System|BleachBit (clean up disk space)|bleachbit@source|bleachbit|x|*|Frees disk space and privacy by deleting caches, logs, thumbnails and browser history. It works program by program, with a preview first.|https://github.com/bleachbit/bleachbit
 System|btop++|btop|btop|t|*|A resource monitor in the terminal: CPU, memory, disks, network and processes. Everything is drawn as live graphs.|https://github.com/aristocratos/btop
 System|Fastfetch|fastfetch|fastfetch|h|*|Prints the machine's logo and its specs in the terminal. OS, kernel, CPU, memory and desktop at a glance.|https://github.com/fastfetch-cli/fastfetch
@@ -23550,9 +23595,13 @@ store_arch() {
 # The store's rows are gated here exactly as catalogue_available gates the
 # catalogue's; the catalogue file on disk is already gated.
 rows() {
-    { store_table | sed 's/^/S|/'
+    # The catalogue's graphical programs have their two sentences and home
+    # page in their playbooks; catalogue_abouts carries them here (A rows).
+    { catalogue_abouts | sed 's/^/A|/'
+      store_table | sed 's/^/S|/'
       [ -f "$CATFILE" ] && sed 's/^/C|/' "$CATFILE"
     } | awk -F'|' -v OFS='|' -v a="$(store_arch)" '
+        $1 == "A" { about[$2] = $3; homes[$2] = $4; next }
         $1 == "S" {
             keep = 1; n = split($7, g, ",")
             for (i = 1; i <= n; i++) {
@@ -23566,7 +23615,7 @@ rows() {
         }
         $1 == "C" {
             if ($2 == "" || substr($2, 1, 1) == "#") next
-            sec = $2; label = $3; inst = $4; bin = $5; mode = $6; desc = ""; home = ""; o = "catalogue"
+            sec = $2; label = $3; inst = $4; bin = $5; mode = $6; desc = about[$5]; home = homes[$5]; o = "catalogue"
         }
         {
             id = bin
@@ -24300,6 +24349,28 @@ focuswriter_rdeps() { echo "hunspell-en"; }
 focuswriter_needs() { echo ""; }
 focuswriter_source() { echo "github gottcode/focuswriter"; }
 
+# ---- playbooks/Science/fraqtive.sh
+# Fraqtive, a Mandelbrot-family fractal generator, at its last release,
+# 0.4.8.1. qmake over Qt 5, with Qt's OpenGL module for its 3D view of the set
+# as a landscape. On aarch64 Alpine's Qt 5 is built for OpenGL ES, and the 3D
+# view draws only black there (seen on the bench, 23 Sep 2026); the 2D view,
+# drawn by the CPU, is the program, and works.
+FRAQTIVE_VER=0.4.8.1
+fraqtive_install() {
+    _s=$(gh_source mimecorg/fraqtive "v$FRAQTIVE_VER" \
+         f3e152e15072f6cbecf100d748f21e4e7a48eace77b93d7daf837ea86491b46b) || return 1
+    mkdir -p "$W/build"
+    # LIBS: its 3D view calls desktop GL (glRotated and the rest), which Qt 5
+    # built for OpenGL ES does not link in; libGL and libGLU are named.
+    (cd "$W/build" && qmake-qt5 "$_s/fraqtive.pro" PREFIX="$PREFIX" CONFIG+=release \
+        QMAKE_LFLAGS+="-Wl,-z,stack-size=8388608" LIBS+="-lGL -lGLU" \
+       && nice -n 10 make -j "$JOBS" && make INSTALL_ROOT="$DEST" install) || return 1
+}
+fraqtive_bdeps() { echo "build-base qt5-qtbase-dev mesa-dev glu-dev"; }
+fraqtive_rdeps() { echo ""; }
+fraqtive_needs() { echo ""; }
+fraqtive_source() { echo "github mimecorg/fraqtive"; }
+
 # ---- playbooks/Games/funkin.sh
 # Friday Night Funkin' Rewritten, a LOVE game: its source tree, zipped, is the
 # game file LOVE runs. The release's images are already in the tree.
@@ -24321,6 +24392,172 @@ funkin_bdeps() { echo "zip"; }
 funkin_rdeps() { echo "love"; }
 funkin_needs() { echo ""; }
 funkin_source() { echo "github HTV04/funkin-rewritten"; }
+
+# ---- playbooks/Games/kmahjongg.sh
+# KMahjongg, from KDE's own repository (the GitHub mirror of invent.kde.org), at
+# KDE Gear 26.04.3 -- the release series of Alpine's libkdegames, so the game
+# and the games library it links are one series. Built like Konquest: its data
+# goes under share/ and the launcher puts the store's share/ at the head of
+# XDG_DATA_DIRS, so it is found under any prefix.
+# Its tiles and layouts come from libkmahjongg, which Alpine packages.
+KMAHJONGG_VER=26.04.3
+kmahjongg_install() {
+    _s=$(gh_source KDE/kmahjongg "v$KMAHJONGG_VER" \
+         891b17cae420fd5d7b07efac7a4bbf5883c17a5a35d027d0fab8eb3897ebcf22) || return 1
+    cmake_stage "$_s" -DBUILD_TESTING=OFF || return 1
+    mkdir -p "$DEST$PREFIX/lib/copal-store/kmahjongg"
+    mv "$DEST$PREFIX/bin/kmahjongg" "$DEST$PREFIX/lib/copal-store/kmahjongg/kmahjongg"
+    launcher kmahjongg <<EOF
+export XDG_DATA_DIRS="$PREFIX/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+exec "$PREFIX/lib/copal-store/kmahjongg/kmahjongg" "\$@"
+EOF
+}
+kmahjongg_bdeps() { echo "build-base cmake samurai extra-cmake-modules gettext-dev qt6-qtbase-dev qt6-qtsvg-dev kconfig-dev kcoreaddons-dev kcrash-dev kdbusaddons-dev kdoctools-dev ki18n-dev kxmlgui-dev libkdegames-dev knewstuff-dev libkmahjongg-dev"; }
+kmahjongg_rdeps() { echo "libkdegames libkmahjongg"; }
+kmahjongg_needs() { echo ""; }
+kmahjongg_source() { echo "github KDE/kmahjongg"; }
+
+# ---- playbooks/Games/konquest.sh
+# Konquest, from KDE's own repository (the GitHub mirror of invent.kde.org), at
+# the KDE Gear release that matches Alpine's libkdegames -- 26.04 -- so the
+# game and the games library it links are one release series. Alpine packages
+# libkdegames and every KDE Framework it needs, but not the game: the whole
+# of kdegames is absent from v3.24 but for its library.
+#
+# StateMachine is Qt's SCXML module (qt6-qtscxml); ColorScheme is
+# kcolorscheme. The handbook is built by kdoctools and installed with it, and
+# the game's data goes under share/, where KDE programs look for it through
+# XDG_DATA_DIRS -- which the launcher puts the store's prefix at the head of,
+# so it is found under any prefix, not only /usr/local.
+KONQUEST_VER=26.04.3
+konquest_install() {
+    _s=$(gh_source KDE/konquest "v$KONQUEST_VER" \
+         b7451664cc8fe01f6596d150f24ac01e290fb7ea38020180cb5f451fdd060db2) || return 1
+    cmake_stage "$_s" -DBUILD_TESTING=OFF || return 1
+    mkdir -p "$DEST$PREFIX/lib/copal-store/konquest"
+    mv "$DEST$PREFIX/bin/konquest" "$DEST$PREFIX/lib/copal-store/konquest/konquest"
+    launcher konquest <<EOF
+export XDG_DATA_DIRS="$PREFIX/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+exec "$PREFIX/lib/copal-store/konquest/konquest" "\$@"
+EOF
+}
+konquest_bdeps() { echo "build-base cmake samurai extra-cmake-modules gettext-dev qt6-qtbase-dev qt6-qtsvg-dev qt6-qtscxml-dev kcolorscheme-dev kconfig-dev kcoreaddons-dev kcrash-dev kdbusaddons-dev kdoctools-dev kguiaddons-dev ki18n-dev kwidgetsaddons-dev kxmlgui-dev libkdegames-dev"; }
+konquest_rdeps() { echo "libkdegames"; }
+konquest_needs() { echo ""; }
+konquest_source() { echo "github KDE/konquest"; }
+
+# ---- playbooks/Emulation/kretro.sh
+# KRetro, KDE's front end for Libretro emulator cores, at its first release,
+# v0.0.1: a work in progress, as its own README says. Kirigami and Qt Quick,
+# with SDL3 for controllers. It plays games through Libretro cores, which it
+# does not bring; RetroArch, in the catalogue, is the finished way to play.
+KRETRO_VER=0.0.1
+kretro_install() {
+    _s=$(gh_source KDE/kretro "v$KRETRO_VER" \
+         7adc6b56c512acf911040f8501b98c0f052425413266e33222ea8e756e2ffae0) || return 1
+    cmake_stage "$_s" -DBUILD_TESTING=OFF || return 1
+}
+kretro_bdeps() { echo "build-base cmake samurai extra-cmake-modules gettext-dev qt6-qtbase-dev qt6-qtdeclarative-dev qt6-qtsvg-dev qt6-qtmultimedia-dev kirigami-dev kirigami-addons-dev kcoreaddons-dev kconfig-dev ki18n-dev sdl3-dev"; }
+kretro_rdeps() { echo "kirigami kirigami-addons"; }
+kretro_needs() { echo ""; }
+kretro_source() { echo "github KDE/kretro"; }
+
+# ---- playbooks/Games/kreversi.sh
+# KReversi, from KDE's own repository (the GitHub mirror of invent.kde.org), at
+# KDE Gear 26.04.3 -- the release series of Alpine's libkdegames, so the game
+# and the games library it links are one series. Built like Konquest: its data
+# goes under share/ and the launcher puts the store's share/ at the head of
+# XDG_DATA_DIRS, so it is found under any prefix.
+# Its board is drawn in Qt Quick, so it needs Qt's QML modules to build.
+KREVERSI_VER=26.04.3
+kreversi_install() {
+    _s=$(gh_source KDE/kreversi "v$KREVERSI_VER" \
+         67f41e49cf6f6b30b989d7d1b4a7feea5241c70584085902fb78976ffb6c6702) || return 1
+    cmake_stage "$_s" -DBUILD_TESTING=OFF || return 1
+    mkdir -p "$DEST$PREFIX/lib/copal-store/kreversi"
+    mv "$DEST$PREFIX/bin/kreversi" "$DEST$PREFIX/lib/copal-store/kreversi/kreversi"
+    launcher kreversi <<EOF
+export XDG_DATA_DIRS="$PREFIX/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+exec "$PREFIX/lib/copal-store/kreversi/kreversi" "\$@"
+EOF
+}
+kreversi_bdeps() { echo "build-base cmake samurai extra-cmake-modules gettext-dev qt6-qtbase-dev qt6-qtsvg-dev kconfig-dev kcoreaddons-dev kcrash-dev kdbusaddons-dev kdoctools-dev ki18n-dev kxmlgui-dev libkdegames-dev qt6-qtdeclarative-dev kcolorscheme-dev kconfigwidgets-dev kiconthemes-dev kjobwidgets-dev kio-dev kwidgetsaddons-dev"; }
+kreversi_rdeps() { echo "libkdegames"; }
+kreversi_needs() { echo ""; }
+kreversi_source() { echo "github KDE/kreversi"; }
+
+# ---- playbooks/Games/ksnakeduel.sh
+# KSnakeDuel, from KDE's own repository (the GitHub mirror of invent.kde.org), at
+# KDE Gear 26.04.3 -- the release series of Alpine's libkdegames, so the game
+# and the games library it links are one series. Built like Konquest: its data
+# goes under share/ and the launcher puts the store's share/ at the head of
+# XDG_DATA_DIRS, so it is found under any prefix.
+KSNAKEDUEL_VER=26.04.3
+ksnakeduel_install() {
+    _s=$(gh_source KDE/ksnakeduel "v$KSNAKEDUEL_VER" \
+         552fc2b130327738d75003b6e6c46118fabf5c726b880e8c32290845a35b5e33) || return 1
+    cmake_stage "$_s" -DBUILD_TESTING=OFF || return 1
+    mkdir -p "$DEST$PREFIX/lib/copal-store/ksnakeduel"
+    mv "$DEST$PREFIX/bin/ksnakeduel" "$DEST$PREFIX/lib/copal-store/ksnakeduel/ksnakeduel"
+    launcher ksnakeduel <<EOF
+export XDG_DATA_DIRS="$PREFIX/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+exec "$PREFIX/lib/copal-store/ksnakeduel/ksnakeduel" "\$@"
+EOF
+}
+ksnakeduel_bdeps() { echo "build-base cmake samurai extra-cmake-modules gettext-dev qt6-qtbase-dev qt6-qtsvg-dev kconfig-dev kcoreaddons-dev kcrash-dev kdbusaddons-dev kdoctools-dev ki18n-dev kxmlgui-dev libkdegames-dev kcompletion-dev kconfigwidgets-dev kguiaddons-dev kiconthemes-dev kwidgetsaddons-dev"; }
+ksnakeduel_rdeps() { echo "libkdegames"; }
+ksnakeduel_needs() { echo ""; }
+ksnakeduel_source() { echo "github KDE/ksnakeduel"; }
+
+# ---- playbooks/Games/kspaceduel.sh
+# KSpaceDuel, from KDE's own repository (the GitHub mirror of invent.kde.org), at
+# KDE Gear 26.04.3 -- the release series of Alpine's libkdegames, so the game
+# and the games library it links are one series. Built like Konquest: its data
+# goes under share/ and the launcher puts the store's share/ at the head of
+# XDG_DATA_DIRS, so it is found under any prefix.
+KSPACEDUEL_VER=26.04.3
+kspaceduel_install() {
+    _s=$(gh_source KDE/kspaceduel "v$KSPACEDUEL_VER" \
+         d62c62684f12b6c4d78fbba84c8572e9379a3aa04fb032297dabd01afc63d659) || return 1
+    cmake_stage "$_s" -DBUILD_TESTING=OFF || return 1
+    mkdir -p "$DEST$PREFIX/lib/copal-store/kspaceduel"
+    mv "$DEST$PREFIX/bin/kspaceduel" "$DEST$PREFIX/lib/copal-store/kspaceduel/kspaceduel"
+    launcher kspaceduel <<EOF
+export XDG_DATA_DIRS="$PREFIX/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+exec "$PREFIX/lib/copal-store/kspaceduel/kspaceduel" "\$@"
+EOF
+}
+kspaceduel_bdeps() { echo "build-base cmake samurai extra-cmake-modules gettext-dev qt6-qtbase-dev qt6-qtsvg-dev kconfig-dev kcoreaddons-dev kcrash-dev kdbusaddons-dev kdoctools-dev ki18n-dev kxmlgui-dev libkdegames-dev kconfigwidgets-dev"; }
+kspaceduel_rdeps() { echo "libkdegames"; }
+kspaceduel_needs() { echo ""; }
+kspaceduel_source() { echo "github KDE/kspaceduel"; }
+
+# ---- playbooks/Games/kubrick.sh
+# Kubrick, from KDE's own repository (the GitHub mirror of invent.kde.org), at
+# KDE Gear 26.04.3 -- the release series of Alpine's libkdegames, so the game
+# and the games library it links are one series. Built like Konquest: its data
+# goes under share/ and the launcher puts the store's share/ at the head of
+# XDG_DATA_DIRS, so it is found under any prefix.
+# Kubrick draws with fixed-function OpenGL (GL/gl.h, GLU) inside a Qt
+# OpenGL widget. Alpine's aarch64 Qt is built for OpenGL ES, which stopped
+# OpenToonz and blanks Fraqtive's 3D view -- but Kubrick's cube draws, shaded,
+# front and back (seen on the bench, 23 Sep 2026).
+KUBRICK_VER=26.04.3
+kubrick_install() {
+    _s=$(gh_source KDE/kubrick "v$KUBRICK_VER" \
+         105f00cf36916abba2666db37a65302e835996eaf6788059917796726d20b68b) || return 1
+    cmake_stage "$_s" -DBUILD_TESTING=OFF || return 1
+    mkdir -p "$DEST$PREFIX/lib/copal-store/kubrick"
+    mv "$DEST$PREFIX/bin/kubrick" "$DEST$PREFIX/lib/copal-store/kubrick/kubrick"
+    launcher kubrick <<EOF
+export XDG_DATA_DIRS="$PREFIX/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+exec "$PREFIX/lib/copal-store/kubrick/kubrick" "\$@"
+EOF
+}
+kubrick_bdeps() { echo "build-base cmake samurai extra-cmake-modules gettext-dev qt6-qtbase-dev qt6-qtsvg-dev kconfig-dev kcoreaddons-dev kcrash-dev kdbusaddons-dev kdoctools-dev ki18n-dev kxmlgui-dev libkdegames-dev kconfigwidgets-dev kwidgetsaddons-dev glu-dev mesa-dev"; }
+kubrick_rdeps() { echo "libkdegames glu"; }
+kubrick_needs() { echo ""; }
+kubrick_source() { echo "github KDE/kubrick"; }
 
 # ---- playbooks/Engineering/librecad.sh
 # LibreCAD: 2D CAD, CMake over Qt 5, with muParser in its own tree. Its crash
@@ -24829,7 +25066,29 @@ veracrypt_rdeps() { echo "fuse3 doas-sudo-shim"; }
 veracrypt_needs() { echo ""; }
 veracrypt_source() { echo "github veracrypt/VeraCrypt"; }
 
-RECIPES="alephone amiberry ardour astromenace bleachbit browsh ccleste darktable ddnet devilutionx dxx endlesssky ffconverter focuswriter funkin librecad naev ohmyposh openshot opentyrian pacman pencil2d persepolis pixelorama pychess smc taisei veracrypt"
+# ---- playbooks/Science/xaos.sh
+# XaoS, the real-time fractal zoomer, from its own release. CMake over Qt 6
+# Widgets; its OpenGL renderer is an option and stays off, so it draws in
+# software and runs the same on every board. Its tutorials and the catalogue
+# of formulae are data it installs beside it; its command is 'XaoS'.
+XAOS_VER=4.3.8
+xaos_install() {
+    _s=$(gh_source xaos-project/XaoS "release-$XAOS_VER" \
+         509f0b9d8f7f36a8f93613415efac3d55f23c9d108a7a0ca900f2ef7550564cc) || return 1
+    cmake_stage "$_s" -DOPENGL=OFF -DMOBILE_UI=OFF || return 1
+    # Its menu entry and icon are in xdg/, which the CMake install leaves out,
+    # and the entry runs 'xaos' where the binary is 'XaoS'.
+    mkdir -p "$DEST$PREFIX/share/applications" "$DEST$PREFIX/share/pixmaps"
+    sed 's/^Exec=xaos/Exec=XaoS/' "$_s/xdg/io.github.xaos_project.XaoS.desktop" \
+        > "$DEST$PREFIX/share/applications/io.github.xaos_project.XaoS.desktop"
+    cp "$_s/xdg/xaos.png" "$DEST$PREFIX/share/pixmaps/xaos.png"
+}
+xaos_bdeps() { echo "build-base cmake samurai qt6-qtbase-dev qt6-qttools-dev"; }
+xaos_rdeps() { echo ""; }
+xaos_needs() { echo ""; }
+xaos_source() { echo "github xaos-project/XaoS"; }
+
+RECIPES="alephone amiberry ardour astromenace bleachbit browsh ccleste darktable ddnet devilutionx dxx endlesssky ffconverter focuswriter fraqtive funkin kmahjongg konquest kretro kreversi ksnakeduel kspaceduel kubrick librecad naev ohmyposh openshot opentyrian pacman pencil2d persepolis pixelorama pychess smc taisei veracrypt xaos"
 
 # The bundles: named lists of program ids (playbooks/bundles/NAME.list).
 store_bundle() {
@@ -24840,6 +25099,158 @@ store_bundle() {
     esac
 }
 store_bundles() { echo "full-monty starter"; }
+
+# The catalogue's graphical programs: id|about|home, for Copal Apps (rows()).
+catalogue_abouts() {
+    cat <<'CATABOUTS'
+FreeCAD|Parametric 3D CAD for real parts and assemblies. Powerful and heavy, with drawings, meshes and simulation.|
+abiword|A light word processor that opens and saves Word documents. Enough for letters and reports without an office suite's weight.|
+alacritty|A fast terminal drawn by the GPU. Minimal and configured in one file, and it needs OpenGL.|
+arandr|Arranges your monitors: drag the screens, set resolutions and save the layout. For the X desktop.|
+audacious|A light music player that plays from playlists, in the spirit of Winamp and XMMS. It can even wear a Winamp skin.|
+audacity|The audio editor: record, cut, clean and mix sound. Noise removal, effects and every common format.|
+badwolf|A minimal browser on the modern WebKit engine, so today's sites work. It is built to be small and private, and starts in a moment.|
+baobab|Shows what is filling the disk as a ring chart. Find the big folders and clear space.|
+blender|The 3D suite: modelling, animation, rendering and video editing. Very demanding on memory and graphics.|
+blueman-manager|The Bluetooth manager: pair headphones, keyboards and phones. Sends files too.|
+brave|A Chromium-based browser that blocks ads and trackers by itself. Installed from Flathub, and the full monty's default browser.|
+calibre|The ebook library: organise, convert between formats and send books to a reader. It also edits EPUBs and fetches metadata and covers.|
+cataclysm-tiles|Cataclysm: Dark Days Ahead, a survival roguelike in a ruined world. Scavenge, build and try to last, drawn in tiles.|
+cherrytree|A hierarchical notebook: notes in a tree, with rich text, images and code. Everything is kept in one file you can carry about.|
+chocolate-doom|Chocolate Doom plays Doom exactly as it was in 1993. Freedoom comes with it, so there is a game to play at once.|
+chromium|The open-source browser Chrome is built on, with every modern web feature. Heavy on memory, and the one to reach for when a site insists.|
+claws-mail|A fast, light mail client from the Sylpheed lineage. Copal can set up your account from the installer's answers.|
+codeblocks|Code::Blocks, a C and C++ IDE with GDB debugging and breakpoints. Light for an IDE.|
+codium|VSCodium, Visual Studio Code built without Microsoft's telemetry. The editor and its extensions, without the tracking.|
+cool-retro-term|A terminal that looks like an old CRT, glow and scanlines included. Convincing, and fun.|
+cura|Ultimaker's slicer, which turns 3D models into the G-code a printer follows. It carries profiles for common printers, the Creality Ender 3 among them.|
+deadbeef|A small, fast audio player for large music libraries. Plays nearly every format, including tracker modules and chiptunes.|
+dillo|A tiny, fast web browser that starts in a blink. It renders plain HTML and CSS and runs no JavaScript, which is exactly right for documentation and old sites.|
+dosbox|DOSBox Staging, a modern DOS emulator for old games and programs. Mount a folder as a drive and run the DOS classics.|
+drawing|A simple paint program for quick sketches and edits. Crop, resize, annotate and save, with nothing to learn.|
+emacs|The extensible editor, with Eglot for language servers built in. Run emacs -nw to use it in a terminal.|
+evince|GNOME's document viewer for PDF, PostScript, DjVu and comic books. Search, annotations and a sidebar of thumbnails.|
+feh|A command-line image viewer that also sets the wallpaper. Slideshows, montages and thumbnails from the terminal.|
+filezilla|An FTP and SFTP client in two panes, local and remote. Drag files between them.|
+firefox-esr|Mozilla's Firefox on its extended-support branch: security fixes without monthly changes. Copal sets it up with no welcome tab and no telemetry.|
+foliate|A handsome ebook reader for EPUB and more. Themes, a book library, and a clean page to read on.|
+freeciv-sdl2|Freeciv, the empire-building strategy game in the tradition of Civilization. Found cities, research and conquer, against the computer or online.|
+fs-uae|An Amiga emulator focused on games, with a friendly launcher. It needs Kickstart ROMs for most software.|
+galculator|A scientific calculator: algebraic or RPN, in decimal, hex, octal or binary. Small and quick.|
+geany|A light programmer's editor that is almost an IDE: build and run with a key. Starts instantly and supports dozens of languages.|
+gedit|GNOME's text editor: clean, tabbed, with syntax colours and plugins. A good default for anyone new.|
+ghex|GNOME's hex editor for binary files. Edit bytes, search and inspect.|
+ghostwriter|A distraction-free Markdown editor with a live preview beside the text. Hemingway mode and focus mode keep you writing.|
+gimp|The GNU image editor: retouching, compositing and photo editing. Powerful, and it will use every byte of memory it can find.|
+gitk|git-gui to stage and commit, and gitk to browse history as a graph. Git's own graphical tools.|
+gnome-disks|GNOME's disk utility: format, partition, image and check SMART health. The simple way to prepare a USB stick.|
+gnome-mines|Minesweeper, GNOME's clean version of the classic. Clear the field without touching a mine.|
+gnome-sudoku|Sudoku puzzles at four difficulties, with hints and pencil marks. Print a page of them if you prefer paper.|
+gnote|Quick notes that link to each other like a small wiki. Type a note's title in another note and it becomes a link.|
+gnumeric|A fast, accurate spreadsheet that reads Excel files. Its statistics functions are trusted by people who check them.|
+gnuradio-companion|GNU Radio Companion: build software radios by wiring blocks together. Design and run signal processing on a live SDR.|
+gparted|The partition editor: create, resize, move and copy partitions. Work with any disk that is not in use.|
+gpicview|A tiny, fast image viewer. Opens instantly, and flips through a folder with the arrow keys.|
+gqrx|An SDR receiver with a waterfall display. Tune in AM, FM and SSB with an RTL-SDR or HackRF.|
+gthumb|An image browser and organiser: browse, tag, rotate and lightly edit photos. It imports from cameras too.|
+gtkwave|A viewer for digital waveforms from simulations. Open VCD files from Verilog or VHDL.|
+guake|A drop-down terminal on F12, for GNOME. It slides down from the top of the screen.|
+gzdoom|GZDoom, a modern Doom engine with mouse look and high resolutions. Freedoom is installed with it, so it plays without the original data.|
+hydrogen|A drum machine and pattern sequencer. Build beats from sampled kits and chain the patterns into a song.|
+inkscape|The professional vector drawing program: logos, diagrams and illustrations. It works in SVG and exports PDF and PNG.|
+kate|KDE's advanced text editor with language servers built in, so completion and errors appear as you type. Copal skips its welcome page.|
+kdevelop|KDE's IDE for C, C++ and Python, with deep code understanding. Debugging with GDB and breakpoints built in.|
+kdiff3|Three-way comparison and merging of files and folders. It resolves merge conflicts line by line.|
+kicad|Electronics design: draw the schematic, lay out the circuit board, and export Gerbers for manufacture. The standard free tool.|
+kitty|A featureful GPU terminal: tabs, splits, images and ligatures. It needs OpenGL.|
+kmail|KDE's mail client, powerful and deeply integrated with the KDE desktop. It brings the Akonadi storage service with it, so it is heavy.|
+kompare|KDE's visual diff viewer. Shows the differences between files and applies patches.|
+koreader|An ebook reader built for e-ink devices, excellent for PDFs and scanned books. It reflows columns and crops margins so pages fit the screen.|
+krename|Batch-renames files by rules: numbering, patterns, dates and tags. Preview every name before anything changes.|
+krita|A professional digital painting program, made by artists. Brushes, layers and animation, and it wants a real machine.|
+krusader|A powerful two-pane file manager for KDE. Archives, remote connections, synchronising folders and batch renaming.|
+ktouch|A typing tutor with a keyboard map on screen. Lessons from home row to full speed.|
+lagrange|A beautiful browser for Gemini, the small web. Also reads Gopher and Finger.|
+lapce|A modern, fast code editor written in Rust. Language servers, a built-in terminal and remote editing.|
+lbreakout2|A breakout game with power-ups, bonus levels and a level editor. Smash every brick with the ball and the paddle.|
+libreoffice|LibreOffice Writer, the full office word processor. Opens and saves Word documents with their layout intact, and needs the memory to match.|
+libresprite|A pixel-art editor and sprite animator, the free fork of Aseprite. Layers, frames and onion skins for game art.|
+liferea|A desktop feed reader for RSS and Atom. Subscribe to sites and read new posts in one window, even offline.|
+lmms|A music workstation for making songs from patterns, synthesisers and samples. Free, and in the tracker tradition.|
+luanti|Luanti, formerly Minetest, an open voxel sandbox. Build, mine and explore, alone or on servers, with thousands of mods.|
+lxterminal|LXDE's terminal: light, with tabs. Starts quickly on small machines.|
+lyx|A document processor over LaTeX: write in a document view and get LaTeX typesetting. Ideal for papers and theses with maths.|
+meld|Compare files and folders side by side, and merge the differences. Works with git too.|
+mgba-qt|mGBA, an accurate Game Boy Advance emulator. It also plays Game Boy and Game Boy Color games.|
+milkytracker|A music tracker in the style of Fasttracker II. Compose modules in patterns of notes, as the demo scene did.|
+minuet|Music theory and ear training: intervals, chords and scales. Hear them, then name them.|
+mousepad|A small, quick text editor for everyday files. Tabs, syntax colours and nothing to configure.|
+mpv|A minimal, powerful video and audio player with no interface until you need one. Keyboard-driven, and plays everything.|
+mscore|MuseScore, for writing sheet music. Enter notes, hear them played back, and print or export the score.|
+mupdf|The fastest PDF viewer there is, and among the smallest. Also reads EPUB and XPS.|
+mypaint|A painting program that feels like paper, with an endless canvas. Its brushes respond to a pen's pressure.|
+netsurf|A small web browser with its own layout engine, written for slow machines. Pages that do not need JavaScript look right and load quickly.|
+nm-applet|The network applet: choose wifi networks and VPNs from the tray. NetworkManager's own.|
+nsxiv|A minimal, keyboard-driven image viewer with a thumbnail grid. Scriptable, and quick on large folders.|
+openmw-launcher|OpenMW, a modern engine for The Elder Scrolls III: Morrowind. It needs the game's original data files, which it does not include.|
+openttd|OpenTTD, the transport tycoon: build railways, roads, ships and airlines. Carry goods between towns and industries, for decades of game time.|
+pavucontrol|The volume control for PulseAudio and PipeWire. Set levels for each program and choose the output.|
+pcmanfm|A light, fast file manager with tabs. It can also draw the desktop.|
+pingus|A puzzle game in the style of Lemmings, with penguins. Give them jobs so the flock reaches the exit safely.|
+pinta|A paint program in the style of Paint.NET: layers, effects and unlimited undo. Simpler than GIMP, more capable than Paint.|
+pulseview|The sigrok logic analyser and oscilloscope viewer. Capture and decode digital signals from cheap USB analysers.|
+qalculate-gtk|A calculator that understands units and currencies. 5 km/h to mph, or a whole equation, typed as you would say it.|
+qbittorrent|A full-featured BitTorrent client with search, RSS feeds and scheduling. Copal accepts its legal notice for you and keeps it out of the tray, which the i3 bar lacks.|
+qspectrumanalyzer|A spectrum analyser on an SDR dongle. Watch the airwaves across a whole band.|
+qsstv|Receives and sends slow-scan television, pictures over ham radio. Also does digital image modes.|
+qterminal|A light Qt terminal with tabs, splits and a drop-down mode. From the LXQt desktop.|
+remmina|A remote desktop client for RDP, VNC and SSH. Keeps a list of your connections, one click each.|
+retroarch|One front end for dozens of console emulators, each a core it loads. Shaders, save states and controller settings work the same for all of them.|
+ristretto|Xfce's image viewer: quick, simple, with a thumbnail bar. Good for looking through a folder of photos.|
+sakura|A small GTK terminal with tabs. Simple and light.|
+schismtracker|A music tracker modelled on Impulse Tracker. The keyboard-driven way to write .it modules.|
+scummvm|Plays classic point-and-click adventures: Monkey Island, Day of the Tentacle and hundreds more. Bring the games' data, or try the freeware ones.|
+sdrangel|An SDR transceiver for many modes and devices. Powerful and heavy.|
+simple-scan|Scanning made simple: press Scan, crop, and save as PDF or an image. Multi-page documents come out as one file.|
+sol|AisleRiot, GNOME's collection of more than eighty solitaire games. Klondike, Spider, FreeCell and dozens more.|
+solvespace|A parametric 2D and 3D CAD program, tiny and quick. Constrain sketches, extrude parts, and export STL for printing.|
+speedcrunch|A fast, high-precision calculator with history. Works in binary, octal and hex too.|
+sqlitebrowser|DB Browser for SQLite: open a database, browse its tables and run queries. Edit data without writing SQL.|
+st|The suckless terminal: the smallest and quickest there is. Configured by editing its source.|
+supertux2|SuperTux, a classic side-scrolling platformer with Tux the penguin. It needs a GPU to run smoothly.|
+terminator|A terminal that splits into a grid of panes. Type into several at once.|
+thunar|Xfce's file manager: quick and simple, with bulk rename. Plugins add archives and more.|
+thunderbird|Mozilla's mail client, with calendars and contacts built in. Copal can set up your account from the installer's answers, so it opens on your inbox.|
+tilda|A drop-down terminal that slides down on F1. Light, and always one key away.|
+transmission-gtk|A simple BitTorrent client that does its job and stays out of the way. Add a torrent or magnet link and it downloads in the background.|
+tuxpaint|A drawing program for children, with sounds, stamps and big buttons. Nothing to break, and a lot to try.|
+umbrello6|KDE's UML modeller: class, sequence and activity diagrams. It can also generate code from them.|
+urxvt|rxvt-unicode, a light and fast terminal. Copal's default on the X desktop.|
+vlc|The media player that plays anything: files, discs and network streams. It converts between formats too.|
+vsid|VICE's player for Commodore 64 SID music. Load a tune from the High Voltage SID Collection and hear the C64's sound chip.|
+welle-io|A DAB and DAB+ digital radio receiver for SDR dongles. Tune the stations and read their slideshows.|
+wesnoth|The Battle for Wesnoth, turn-based fantasy strategy on a hex map. Long campaigns and online play, and it wants a capable machine.|
+wezterm|A GPU terminal with a multiplexer built in: tabs, panes and SSH domains. Configured in Lua.|
+widelands|A settlers-like economic strategy game. Build a slow, detailed economy of roads and workshops, then defend it.|
+wireshark|The network protocol analyser: capture traffic and inspect every packet. It decodes hundreds of protocols.|
+x64sc|VICE's Commodore 64 emulator, cycle-exact. Stage 9 sets it up with disk images and launchers.|
+xarchiver|A light archive manager for zip, tar, 7z and more. Open an archive, browse it and extract it.|
+xboard|XBoard, the classic chess board, with GNU Chess to play against. It also connects to internet chess servers.|
+xfburn|A simple disc burner for CDs and DVDs: data, audio and ISO images. Light, from Xfce.|
+xfce4-taskmanager|A light task manager: processes, CPU and memory at a glance. End a stuck program with a click.|
+xfce4-terminal|Xfce's terminal: tabs, colours, transparency and a drop-down mode. Featureful without being heavy.|
+xfe|A two-pane file manager in the style of Norton Commander, with a mouse. Fast on small machines.|
+xfig|The classic vector drawing program for diagrams and figures. Old, precise, and tiny.|
+xpad|Sticky notes for the desktop. Each note is its own little window, and they come back after a reboot.|
+xpdf|The classic PDF viewer for X. Plain and dependable, with a few tools for text and images alongside.|
+xscreensaver|Screen locking and a collection of screensavers for X. Hundreds of hacks, from the classic to the absurd.|
+xterm|The original X terminal. Always there, and always works.|
+yakuake|KDE's drop-down terminal on F12, built on Konsole. Tabs and splits too.|
+zathura|A keyboard-driven PDF viewer with vim-style keys. Small, fast, and nothing on screen but the page.|
+zim|A desktop wiki: notes as linked pages, saved as plain text files. Copal creates a first notebook so it opens straight onto a page.|
+zutty|A very fast X11 terminal drawn with the GPU. Accurate and minimal.|
+CATABOUTS
+}
 # <<< playbooks: recipes
 
 # ------------------------------------------------------------ recipe driver ---
@@ -25477,14 +25888,16 @@ def store(*args):
 
 
 def load_rows():
-    """The store's programs: id, shelf, label, install, bin, mode, about, home, origin, status."""
+    """The programs: id, shelf, label, install, bin, mode, about, home, origin, status."""
     keys = ("id", "shelf", "label", "install", "bin", "mode", "about", "home", "origin", "status")
     rows = []
     for line in store("rows").splitlines():
         f = line.split("|")
         if len(f) == len(keys):
             r = dict(zip(keys, f))
-            if r["origin"] == "store":
+            # The store's programs, and the catalogue's graphical ones (the
+            # terminal and command-line tools stay lists, docs/playbooks-plan.md).
+            if r["origin"] == "store" or r["mode"] == "x":
                 rows.append(r)
     return rows
 
