@@ -539,7 +539,6 @@ graphical (x); unmarked ones are command-line tools.
 - **Appearance** (2): `oh-my-posh`, `starship`
 - **Browsers** (1): `browsh` (t)
 - **Code** (8): `ascitty` (t), `birdshot`, `copal-tm` (t), `orrery` (t), `radbeeper` (t), `sstr`, `sstr-workspace` (t), `ytq` (t)
-- **Crypto** (1): `xmrig`
 - **Emulation** (2): `qemu-system-x86_64`, `waydroid`
 - **Files** (3): `fdupes`, `jdupes`, `rdfind`
 - **Games** (1): `moon-buggy` (t)

@@ -52,8 +52,8 @@ CODE = os.path.expanduser("~/code")
 # Each command's --help, as the installed version printed it: with the site's
 # man pages, what check reads on a machine that is not a Copal install.
 HELPDIR = os.path.join(ROOT, "docs", "commands", "help")
-# Programs that do something other than print on --help: mine, serve, boot.
-NO_HELP = {"xmrig", "ollama", "waydroid", "asciiquarium", "sl", "cmatrix"}
+# Programs that do something other than print on --help: serve, boot, animate.
+NO_HELP = {"ollama", "waydroid", "asciiquarium", "sl", "cmatrix"}
 # Colours, cursor codes, and OSC 8 links -- coreutils 9.11 wraps each option
 # in one, ended by BEL or by ESC \.
 ANSI = re.compile(r"\x1b(\[[0-9;?]*[a-zA-Z]|[()][A-Z0-9]|\][^\x07\x1b]*(\x07|\x1b\\)|[=>])")

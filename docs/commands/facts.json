@@ -32,7 +32,7 @@
    ],
    "section": "Discs",
    "label": "abcde (rip and encode)",
-   "packages": "abcde",
+   "packages": "abcde vorbis-tools flac",
    "mode": "h",
    "gate": "!v7",
    "stage": 12,
@@ -7103,32 +7103,6 @@
    "man": "man1/xmp.1.gz",
    "man_name": "xmp - Extended Module Player",
    "synopsis": "xmp [-a, --amplify factor] [-A, --amiga] [-b, --bits bits] [-C, --show-comments] [-c,\n--stdout] [-D device-specific parameters] [-d, --driver driver] [-e, --player-mode mode] [-F,\n--nofilter] [-f, --frequency rate] [--fix-sample-loop] [-h, --help] [-I, --instrument-path]\n[-i, --interpolation type] [--load-only] [-L, --list-formats] [-l, --loop] [--loop-all] [-M,\n--mute channel-list] [-m, --mono] [--mixer_voices num] [-N, --null] [--nocmd] [-o,\n--output-file filename] [-P, --pan num] [-p, --default-pan num] [--probe-only] [-q, --quiet]\n[-R, --random] [-S, --solo channel-list] [-s, --start pos] [-t, --time time] [-u, --unsigned]\n[--vblank] [-V, --version] [-v, --verbose] [-Z, --all-sequences] [-z, --sequence num] modules",
-   "gallery": false
-  },
-  {
-   "cmd": "xmrig",
-   "origins": [
-    "store"
-   ],
-   "section": "Crypto",
-   "label": "XMRig",
-   "packages": "xmrig",
-   "mode": "h",
-   "gate": "*",
-   "stage": 18,
-   "origin": "store",
-   "installed": false,
-   "package": "xmrig",
-   "version": "6.26.0-r0",
-   "description": "XMRig is a high performance Monero (XMR) miner",
-   "webpage": "https://xmrig.com/",
-   "source_package": "xmrig",
-   "deps": [
-    "libcrypto3",
-    "hwloc",
-    "libssl3",
-    "libuv"
-   ],
    "gallery": false
   },
   {

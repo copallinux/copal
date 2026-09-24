@@ -787,7 +787,6 @@ The entries under the categories of Pi-Apps' own list, plus three that are in it
 | Ducopanel | not ported | Duino-Coin panel, glibc binaries |
 | Feather Wallet | Alpine package, in the store | feather-wallet (edge/testing) |
 | Monero GUI | Alpine package, in the store | monero-gui (edge/testing) |
-| XMRig | Alpine package, in the store | xmrig |
 
 ### Tools/Emulation
 
