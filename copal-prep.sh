@@ -6392,17 +6392,18 @@ done
 #
 # ROTATION IS DONE FIRST, not last. A session that ends by the machine losing
 # power never reaches any cleanup at the end, so cleaning up on the way in is
-# the only version that actually runs. Five sessions is enough to compare a
-# working boot with a broken one and small enough never to be noticed.
-# OFF BY DEFAULT, and the default is the point: on a working machine this is
-# spending SD-card writes on evidence for a problem nobody has. What stays on
-# unconditionally is ONE log -- the last session -- because a machine that has
-# just failed to start its desktop and kept no record of it is a machine that
-# has to be broken a second time before it can be looked at. One file of a few
-# kilobytes is not a log collection; it is the minimum that makes the FIRST
-# failure diagnosable instead of the second.
+# the only version that actually runs.
+# THE COLLECTION IS OFF BY DEFAULT, and the default is the point: on a working
+# machine it is spending SD-card writes on evidence for a problem nobody has.
+# What stays on unconditionally is TWO logs -- the latest session and the one
+# before it -- because a machine that has just failed to start its desktop and
+# kept no record of it has to be broken a second time before it can be looked
+# at, and the one before is the working start to compare it with. Two files of
+# a few kilobytes are not a log collection; they are the minimum that makes the
+# FIRST failure diagnosable instead of the second. copal-logs reads the same
+# two numbers.
 #
-# Debug mode is what turns it into a collection: ten sessions instead of one,
+# Debug mode is what turns it into a collection: ten sessions instead of two,
 # Xorg's own log copied in beside each, and /var/log/copal refreshed so all of
 # it is readable over ssh from one directory.
 if [ -f /etc/copal/debug ]; then COPAL_DEBUG="${COPAL_DEBUG:-1}"; fi
@@ -6415,8 +6416,9 @@ LOGDIR="${XDG_STATE_HOME:-$HOME/.local/state}/copal"
 mkdir -p "$LOGDIR" 2>/dev/null || true
 if [ -d "$LOGDIR" ]; then
     # -t is newest first, so everything past the newest KEEP-1 goes: this run
-    # is about to add one back.
-    ls -1t "$LOGDIR"/xsession-*.log 2>/dev/null | tail -n +"$KEEP" | while read -r _old; do
+    # is about to add one back. [0-9]* and not *: xsession-latest.log is the
+    # link to the newest, not a session, and counting it cost one.
+    ls -1t "$LOGDIR"/xsession-[0-9]*.log 2>/dev/null | tail -n +"$KEEP" | while read -r _old; do
         rm -f "$_old"
     done
     LOG="$LOGDIR/xsession-$(date +%Y%m%d-%H%M%S).log"
@@ -15023,8 +15025,13 @@ case "${1:-save}" in
         if command -v rsync >/dev/null 2>&1; then
             rsync -a --delete "$SRC"/ "$DST"/ 2>/dev/null || exit 0
         else
-            # cp -a plus a prune, so a deleted log does not live forever.
+            # cp -a plus a prune, so a deleted log does not live forever:
+            # anything in the copy that is gone from RAM goes too, deepest
+            # first so a directory is emptied before it is looked at.
             cp -a "$SRC"/. "$DST"/ 2>/dev/null || exit 0
+            ( cd "$DST" && find . -depth ! -name . ) | while IFS= read -r _f; do
+                [ -e "$SRC/$_f" ] || [ -L "$SRC/$_f" ] || rm -rf "${DST:?}/$_f"
+            done
         fi
         sync ;;
     restore)
@@ -35858,12 +35865,21 @@ copal-logs -- see the logs, and throw the old ones away.
   copal-logs clean      delete old desktop sessions and stale .bak files
   copal-logs clean --all  the above, and rotate the install transcript
 
-Desktop sessions are written by copal-startx, five deep, rotated on the way
-in. The install transcript is never deleted by clean without --all.
+Desktop sessions are written by copal-startx: the latest two, or ten while
+copal-debug is on, rotated on the way in. The install transcript is never deleted by clean without --all.
 USAGE
 }
 
-sessions() { ls -1t "$LOGDIR"/xsession-*.log 2>/dev/null || true; }
+# Dated names only: xsession-latest.log is a link to the newest, not a second copy.
+sessions() { ls -1t "$LOGDIR"/xsession-[0-9]*.log 2>/dev/null || true; }
+
+# How many copal-startx keeps, worked out the way it works it out: ten while
+# debug is on (the flag file, or COPAL_DEBUG), two otherwise.
+keep() {
+    _d="${COPAL_DEBUG:-}"
+    [ -z "$_d" ] && [ -f /etc/copal/debug ] && _d=1
+    case "$_d" in 1|yes|on|true) echo 10 ;; *) echo 2 ;; esac
+}
 
 nth_session() {  # <n>
     _n="${1:-1}"
@@ -35909,10 +35925,10 @@ cmd_clean() {
     _all="${1:-}"
     _found=0
 
-    # Desktop sessions beyond the newest five. copal-startx prunes on the way
-    # in, so this is only ever mopping up after a change of KEEP or a machine
+    # Desktop sessions beyond what copal-startx keeps. It prunes on the way
+    # in, so this is only ever mopping up after debug is switched off or a machine
     # that has not started X since.
-    _old=$(sessions | tail -n +6)
+    _old=$(sessions | tail -n +"$(( $(keep) + 1 ))")
     if [ -n "$_old" ]; then
         echo "Old desktop sessions:"
         echo "$_old" | while read -r f; do printf '  %s\n' "$(basename "$f")"; done

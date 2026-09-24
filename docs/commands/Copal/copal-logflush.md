@@ -22,8 +22,8 @@ restore    /var/log.persist -> /var/log (at boot)
 - It does nothing unless `/var/log` is a tmpfs, so it cannot double the
   writes on a machine logging straight to the card.
 - A power cut loses up to an hour of logs; a clean shutdown loses none.
-- With rsync, a log deleted from RAM is deleted from the copy too.
-  Without it the copy uses `cp -a`, which only adds, so a deleted log
-  stays in `/var/log.persist`.
+- A log deleted from RAM is deleted from the copy too, by rsync's
+  `--delete` where rsync is installed, and by a prune after `cp -a`
+  where it is not.
 - The hooks are `/etc/periodic/hourly/copal-logflush` and
   `/etc/local.d/copal-logflush.start` and `.stop`.

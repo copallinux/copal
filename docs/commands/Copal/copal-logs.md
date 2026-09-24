@@ -25,12 +25,13 @@ x [N], session [N]   a desktop session log; N counts back, 1 the newest
 list            every desktop session log, newest first
 errors          the error and warning lines from the newest session
 install         the install transcript (copal.log on the boot partition)
-clean           delete old session logs and stale .bak files
+clean           delete session logs beyond what copal-startx keeps, and stale .bak files
 clean --all     the same, and rotate the install transcript to .1
 
 ## Notes
 - The session logs are the X11 desktop's, written by copal-startx into
-  `~/.local/state/copal`; a Hyprland session keeps its own log under
+  `~/.local/state/copal`: the latest two, or ten while copal-debug is on,
+  which is also what `clean` keeps; a Hyprland session keeps its own log under
   `$XDG_RUNTIME_DIR/hypr`, which this does not read.
 - `clean` removes `/etc/inittab.bak`, `/boot/copal-init.sh.bak` and
   `/etc/apk/world.bak`, but only where the original is beside them. Run it
