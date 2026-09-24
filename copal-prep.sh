@@ -21997,6 +21997,15 @@ fi
 # shellcheck disable=SC2086 -- deliberate word splitting, these are names
 if [ -n "$APKS" ] && ! apk add $APKS; then ok=0; fi
 if [ "$ok" = 1 ]; then
+    # Its manual and its optionals -- plugins, codecs, helpers -- as Copal
+    # Apps would bring them (copal-store's man_pages_for and optionals
+    # table). Where the store is not installed, the program alone.
+    if [ -n "$APKS" ] && command -v copal-store >/dev/null 2>&1; then
+        # shellcheck disable=SC2086
+        copal-store manpages $APKS
+        # shellcheck disable=SC2086
+        copal-store optionals $APKS
+    fi
     printf '\n\nDone. The menu will show it next time you open it.\n'
     # The menu opens from a cached list; rebuild it now, as the person who
     # asked (doas hands their name over in DOAS_USER), so the new program is
@@ -29856,6 +29865,7 @@ stage_store() {
 #   copal-store sections           the sections, and how many programs in each
 #   copal-store info ID            what it is, where it comes from, how it installs
 #   copal-store install ID...      install (root: doas is asked for)
+#   copal-store manpages PKG...    the man pages of these packages (their origins' -doc)
 #   copal-store optionals [PKG...|--installed]  the plugins and helpers a package wants;
 #                                  with --installed, add them for everything installed
 #   copal-store remove ID...       and take it away again
@@ -32761,6 +32771,8 @@ case "${1:-}" in
     sections) sections | awk -F'|' '{ printf "%-13s %3d programs, %d installed\n", $1, $2, $3 }' ;;
     info)     [ $# -ge 2 ] || die "info needs an id"; info_id "$2" ;;
     install)  shift; [ $# -gt 0 ] || die "install what?"; need_root install "$@"; install_ids "$@" ;;
+    manpages) shift; [ $# -gt 0 ] || die "man pages for what?"; need_root manpages "$@"
+              man_pages_for "$@" ;;
     optionals)
               shift
               if [ $# -eq 0 ]; then optionals_table | awk -F'|' '{ printf "%-16s %s\n", $1, $2 }'

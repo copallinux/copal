@@ -903,6 +903,15 @@ fi
 # shellcheck disable=SC2086 -- deliberate word splitting, these are names
 if [ -n "$APKS" ] && ! apk add $APKS; then ok=0; fi
 if [ "$ok" = 1 ]; then
+    # Its manual and its optionals -- plugins, codecs, helpers -- as Copal
+    # Apps would bring them (copal-store's man_pages_for and optionals
+    # table). Where the store is not installed, the program alone.
+    if [ -n "$APKS" ] && command -v copal-store >/dev/null 2>&1; then
+        # shellcheck disable=SC2086
+        copal-store manpages $APKS
+        # shellcheck disable=SC2086
+        copal-store optionals $APKS
+    fi
     printf '\n\nDone. The menu will show it next time you open it.\n'
     # The menu opens from a cached list; rebuild it now, as the person who
     # asked (doas hands their name over in DOAS_USER), so the new program is
