@@ -89,6 +89,8 @@
   root.setAttribute("aria-label", "The Copal desktop. Its menus open every page of the site as a window.");
 
   var bar = el("div", "sim-bar");
+  bar.setAttribute("role", "toolbar");
+  bar.setAttribute("aria-label", "The bar: menus and workspaces");
   var bGui = el("button", "desk-menu", "≡");
   bGui.title = "Applications — copal-gui (Super+A)";
   bGui.setAttribute("aria-label", bGui.title);
@@ -101,8 +103,13 @@
     (function (n) {
       var s = el("span", "", String(n));
       s.setAttribute("role", "button");
-      s.title = "Workspace " + n;
+      s.tabIndex = 0;
+      s.title = "Workspace " + n + " (Super+" + n + ", Ctrl+Alt+" + n + ")";
+      s.setAttribute("aria-label", "Workspace " + n);
       s.addEventListener("click", function (e) { e.stopPropagation(); showWorkspace(n); });
+      s.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); showWorkspace(n); }
+      });
       wsBox.appendChild(s); wsTabs.push(s);
     })(n);
   }
@@ -166,7 +173,10 @@
   }
   function paintBar() {
     wsTabs.forEach(function (t, i) {
-      t.className = (i + 1 === current ? "on" : "") + (onSpace(i + 1).length ? " used" : "");
+      var used = onSpace(i + 1).length;
+      t.className = (i + 1 === current ? "on" : "") + (used ? " used" : "");
+      t.setAttribute("aria-current", i + 1 === current ? "true" : "false");
+      t.setAttribute("aria-label", "Workspace " + (i + 1) + (used ? ", " + used + (used > 1 ? " windows" : " window") : ", empty"));
     });
     title.textContent = focused ? focused.title : "";
   }
@@ -175,6 +185,9 @@
     focused = x;
     if (x && x.ws !== current) { showWorkspace(x.ws); return; }
     if (x && !quiet && location.hash !== "#" + x.route) history.replaceState(null, "", "#" + x.route);
+    // The keyboard, and a screen reader, follow the window with focus -- but
+    // never out of an open menu's field.
+    if (x && !quiet && !gui.isOpen() && !keys.isOpen() && !x.el.contains(document.activeElement)) x.el.focus({ preventScroll: true });
     paintBar();
   }
   // Where a new window goes: here if there is room, else the next workspace
@@ -216,6 +229,10 @@
       });
       // Clicking inside a frame is clicking the window.
       doc.addEventListener("mousedown", function () { closeMenus(); focus(x); });
+      // A key pressed in a framed page never reaches this document, so the
+      // desktop's shortcuts listen there too.
+      doc.addEventListener("keydown", onKeyDown);
+      doc.addEventListener("keyup", onKeyUp);
     });
     x.body.appendChild(f);
   }
@@ -346,6 +363,7 @@
       ws: placeFor()
     };
     x.el = el("section", "desk-win");
+    x.el.tabIndex = -1;
     x.el.setAttribute("aria-label", x.title);
     var head = el("header", "desk-head");
     x.name = el("span", "name", x.title);
@@ -398,11 +416,38 @@
   });
 
   // ----- keys -----
-  document.addEventListener("keydown", function (e) {
+  // Copal's own shortcuts, with Super and with the Ctrl+Alt fallbacks it binds
+  // for machines where Super is taken (hyprland.conf): A copal-gui, Space
+  // copal-menu, Z its System pane, Q close the window, 1-5 a workspace. Super
+  // alone toggles copal-gui when it is let go without another key, as a tap
+  // does in Hyprland -- so Super+A does not open the menu and then toggle it.
+  // A browser keeps some Super combinations for itself (Cmd+Q quits it on a
+  // Mac), which is what the Ctrl+Alt ones are for.
+  var superTap = false;
+  function shortcut(e) {
+    var mod = (e.ctrlKey && e.altKey && !e.metaKey) || (e.metaKey && !e.ctrlKey && !e.altKey);
+    if (!mod) return false;
+    var c = e.code || "";
+    if (c === "KeyA") { keys.close(); gui.toggle(); return true; }
+    if (c === "Space") { gui.close(); keys.toggle("apps"); return true; }
+    if (c === "KeyZ") { gui.close(); keys.toggle("system"); return true; }
+    if (c === "KeyQ") { closeMenus(); if (focused) close(focused); return true; }
+    var n = c.match(/^Digit([1-5])$/);
+    if (n) { closeMenus(); showWorkspace(+n[1]); return true; }
+    return false;
+  }
+  function onKeyDown(e) {
+    if (e.key === "Meta" || e.key === "OS") { superTap = true; return; }
+    superTap = false;
+    if (shortcut(e)) { e.preventDefault(); return; }
     if (gui.isOpen()) { if (gui.key(e)) e.preventDefault(); return; }
-    if (keys.isOpen()) { if (keys.key(e)) e.preventDefault(); return; }
-    if (e.key === "Meta" || e.key === "OS") { gui.toggle(); e.preventDefault(); }
-  });
+    if (keys.isOpen()) { if (keys.key(e)) e.preventDefault(); }
+  }
+  function onKeyUp(e) {
+    if ((e.key === "Meta" || e.key === "OS") && superTap) { superTap = false; keys.close(); gui.toggle(); }
+  }
+  document.addEventListener("keydown", onKeyDown);
+  document.addEventListener("keyup", onKeyUp);
 
   // ----- first light -----
   showWorkspace(1);

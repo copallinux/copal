@@ -69,13 +69,26 @@
     var main = el("div", "sim-main");
     var search = el("div", "sim-search");
     search.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4.8" fill="none" stroke="#333" stroke-width="1.7"/><path d="M10 10l4.2 4.2" stroke="#333" stroke-width="1.9" stroke-linecap="round"/></svg>';
-    var q = el("span", "q"), caret = el("span", "caret");
-    search.appendChild(q); search.appendChild(caret);
+    // A real field, so a phone raises its keyboard and a screen reader hears
+    // a search box; copal-gui's own is a GtkSearchEntry too.
+    var q = el("input", "q");
+    q.type = "search"; q.placeholder = "Type to search"; q.autocomplete = "off"; q.spellcheck = false;
+    q.setAttribute("aria-label", "Search programs and pages");
+    q.setAttribute("aria-controls", "gui-list");
+    q.addEventListener("input", function () { setQuery(q.value); });
+    search.appendChild(q);
     var body = el("div", "sim-body");
     var secs = el("div", "sim-secs"), list = el("div", "sim-apps");
+    list.id = "gui-list";
+    list.setAttribute("role", "listbox");
+    list.setAttribute("aria-label", "Programs");
+    secs.setAttribute("role", "tablist");
+    secs.setAttribute("aria-label", "Sections");
     body.appendChild(secs); body.appendChild(list);
     var foot = el("div", "sim-foot");
     var fname = el("div", "n"), fdesc = el("div", "d");
+    // What is selected, said aloud as it changes.
+    foot.setAttribute("aria-live", "polite");
     foot.appendChild(fname); foot.appendChild(fdesc);
     main.appendChild(search); main.appendChild(body); main.appendChild(foot);
     menu.appendChild(side); menu.appendChild(main);
@@ -127,6 +140,7 @@
     var secRows = [];
     D.sections.forEach(function (s) {
       var r = el("div", "sim-sec");
+      r.setAttribute("role", "tab");
       r.appendChild(icon(s.icon, 24));
       r.appendChild(el("span", null, s.name));
       r._name = s.name;
@@ -141,7 +155,10 @@
       secs.appendChild(r); secRows.push(r);
     });
     function paintSections() {
-      secRows.forEach(function (r) { r.classList.toggle("on", r._name === state.section); });
+      secRows.forEach(function (r) {
+        r.classList.toggle("on", r._name === state.section);
+        r.setAttribute("aria-selected", r._name === state.section ? "true" : "false");
+      });
     }
     function selectSection(name) {
       if (state.section === name && state.rank === null) return;
@@ -154,6 +171,9 @@
     // ----- the programs -----
     apps.forEach(function (a) {
       var r = el("div", "sim-app");
+      r.id = "gui-" + a.id.replace(/[^\w-]/g, "_");
+      r.setAttribute("role", "option");
+      r.setAttribute("aria-selected", "false");
       r.appendChild(icon(a.icon, 24));
       r.appendChild(el("span", "n", a.name));
       if (a.terminal) r.appendChild(el("span", "t", "terminal"));
@@ -210,9 +230,10 @@
       return v;
     }
     function paintSel(a) {
-      if (state.sel) rows[state.sel.id].classList.remove("on");
+      if (state.sel) { rows[state.sel.id].classList.remove("on"); rows[state.sel.id].setAttribute("aria-selected", "false"); }
       state.sel = a;
-      if (a) rows[a.id].classList.add("on");
+      if (a) { rows[a.id].classList.add("on"); rows[a.id].setAttribute("aria-selected", "true"); q.setAttribute("aria-activedescendant", rows[a.id].id); }
+      else q.removeAttribute("aria-activedescendant");
     }
     function select(a, scroll) {
       paintSel(a);
@@ -229,7 +250,7 @@
     // ----- search: GIO's word-prefix match first, then copal-gui's substring -----
     function setQuery(t) {
       state.query = t;
-      q.textContent = t;
+      if (q.value !== t) q.value = t;
       var s = t.trim();
       if (!s) state.rank = null;
       else {
@@ -321,18 +342,23 @@
       setQuery("");
       list.scrollTop = 0;
       search.classList.add("focus");
+      q.focus({ preventScroll: true });
     }
     function close() {
       state.open = false; menu.hidden = true;
       showPeek(null); ctx.classList.remove("on"); search.classList.remove("focus"); edgeStop();
+      if (document.activeElement === q) q.blur();
     }
     menu.addEventListener("click", function (e) { e.stopPropagation(); ctx.classList.remove("on"); });
     menu.addEventListener("mouseleave", function () { showPeek(null); });
 
     // ----- keys, while the menu is open -----
+    // Typing and Backspace belong to the field when it has the focus; the
+    // rest -- arrows, Enter, Esc -- are the menu's wherever the focus is.
     function key(e) {
       if (veil.classList.contains("on")) { veil.classList.remove("on"); open(); return true; }
       if (!state.open) return false;
+      if (e.target === q && (e.key.length === 1 || e.key === "Backspace")) return false;
       var v = ordered(), i = state.sel ? v.indexOf(state.sel) : -1;
       if (e.key === "Escape") {
         if (state.query) setQuery(""); else close();

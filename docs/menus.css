@@ -74,12 +74,12 @@
 }
 .sim-search.focus { border-color: var(--accent); box-shadow: none; background: var(--side); }
 .sim-search svg { flex: none; }
-.sim-search .q { flex: 1; white-space: pre; overflow: hidden; color: var(--ink); }
-.sim-search .q:empty::before { content: "Type to search"; color: var(--ink-soft); }
-.sim-search.focus .caret {
-  width: 1px; height: 18px; background: var(--ink); animation: sim-blink 1s steps(1) infinite;
+.sim-search .q {
+  flex: 1; min-width: 0; padding: 0; border: 0; outline: 0; background: transparent;
+  color: var(--ink); font: inherit; -webkit-appearance: none; appearance: none;
 }
-@keyframes sim-blink { 50% { opacity: 0; } }
+.sim-search .q::placeholder { color: var(--ink-soft); }
+.sim-search .q::-webkit-search-cancel-button { display: none; }
 
 .sim-body { flex: 1; display: flex; gap: 8px; min-height: 0; margin-top: 10px; }
 .sim-secs { width: 162px; flex: none; }
@@ -154,8 +154,11 @@
   height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 10px;
   background: #111; color: #8e8778; cursor: pointer; white-space: pre;
 }
-.tm-q { color: #efe6d2; }
-.tm-head.focus .tm-caret { width: 8px; height: 17px; background: #c49a52; animation: sim-blink 1s steps(1) infinite; }
+.tm-q {
+  flex: 1; min-width: 2ch; padding: 0; border: 0; outline: 0; background: transparent;
+  color: #efe6d2; font: inherit; caret-color: #c49a52; -webkit-appearance: none; appearance: none;
+}
+.tm-q::-webkit-search-cancel-button { display: none; }
 .tm-rows { padding-top: 0; }
 .tm-row {
   height: 28px; line-height: 28px; padding: 0 10px; white-space: nowrap; overflow: hidden;
@@ -172,3 +175,20 @@
 .tm-man .c { color: #e9b86a; font-size: 22px; margin: 12px 0 10px; }
 .tm-man .p { color: #efe6d2; }
 .sim-peek .cap a { color: #8a6320; font-weight: 700; }
+
+/* ----- a phone: each menu a sheet under the bar ----- */
+@media (max-width: 759px) {
+  .sim-menu {
+    left: 0; right: 0; top: 26px; bottom: 0; width: auto; height: auto;
+    border-radius: 0; border-width: 1px 0 0;
+  }
+  .sim-side { width: 48px; border-radius: 0; }
+  .sim-ib { width: 36px; height: 36px; }
+  .sim-secs { width: 132px; }
+  .sim-sec { padding: 0 6px; gap: 7px; font-size: 14px; }
+  .sim-sec span:last-child { overflow: hidden; text-overflow: ellipsis; }
+  .sim-app { height: 36px; }   /* a finger, not a pointer */
+  .tm-menu { left: 0; right: 0; top: 26px; bottom: 0; width: auto; max-height: none; border-radius: 0; }
+  .tm-row { height: 34px; line-height: 34px; }
+}
+

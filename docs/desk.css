@@ -112,3 +112,9 @@ html.desk-on .desk-fallback { display: none; }
 /* Narrow: the picture above the words. */
 @container (max-width: 640px) { .desk-win.app.pictured .desk-body { grid-template-columns: minmax(0, 1fr); } }
 .desk-win.app { container-type: inline-size; }
+
+/* The keyboard's place, always visible: a window with focus, a bar button. */
+.desk-win:focus { outline: none; }
+.desk-win:focus-visible { border-color: var(--bar-hot); box-shadow: 0 0 0 2px rgba(233,184,106,.45); }
+.desk .sim-ws span:focus-visible, .desk-head .shut:focus-visible { outline: 2px solid var(--bar-hot); outline-offset: -2px; }
+

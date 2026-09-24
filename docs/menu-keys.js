@@ -88,9 +88,20 @@
     menu.setAttribute("aria-label", "copal-menu (Super+Space, Super+Z)");
     var head = el("div", "tm-head");
     head.innerHTML = '<svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4.8" fill="none" stroke="#c49a52" stroke-width="1.7"/><path d="M10 10l4.2 4.2" stroke="#c49a52" stroke-width="1.9" stroke-linecap="round"/></svg>';
-    var prompt = el("span", "tm-prompt"), query = el("span", "tm-q"), caret = el("span", "tm-caret");
-    head.appendChild(prompt); head.appendChild(query); head.appendChild(caret);
+    // wofi's entry, as a real field: a phone raises its keyboard for it and a
+    // screen reader hears a search box. The prompt stands in front of it
+    // until something is typed, as wofi's does.
+    var prompt = el("span", "tm-prompt"), query = el("input", "tm-q");
+    query.type = "search"; query.autocomplete = "off"; query.spellcheck = false;
+    query.setAttribute("aria-label", "Filter the menu");
+    query.setAttribute("aria-controls", "keys-list");
+    query.addEventListener("input", function () { S.q = query.value; S.sel = 0; S.top = 0; paint(); });
+    query.addEventListener("click", function (e) { e.stopPropagation(); });
+    head.appendChild(prompt); head.appendChild(query);
     var rowsBox = el("div", "tm-rows");
+    rowsBox.id = "keys-list";
+    rowsBox.setAttribute("role", "listbox");
+    rowsBox.setAttribute("aria-label", "copal-menu");
     menu.appendChild(head); menu.appendChild(rowsBox);
     rowsBox.addEventListener("mouseleave", function () { edgeStop(); });
     rowsBox.addEventListener("wheel", function (e) {
@@ -146,7 +157,7 @@
 
     function paint() {
       prompt.textContent = S.q ? "" : promptText();
-      query.textContent = S.q;
+      if (query.value !== S.q) query.value = S.q;
       var v = shown();
       if (S.sel >= v.length) S.sel = Math.max(0, v.length - 1);
       if (S.sel < S.top) S.top = S.sel;
@@ -154,6 +165,10 @@
       rowsBox.innerHTML = "";
       v.slice(S.top, S.top + ROWS).forEach(function (r, k) {
         var i = S.top + k, d = el("div", "tm-row" + (i === S.sel ? " on" : ""), r.label);
+        d.id = "keys-row-" + i;
+        d.setAttribute("role", r.act === "^sep" ? "presentation" : "option");
+        d.setAttribute("aria-selected", i === S.sel ? "true" : "false");
+        if (i === S.sel) query.setAttribute("aria-activedescendant", d.id);
         d.addEventListener("mousemove", function () {
           if (S.sel !== i) { S.sel = i; paint(); }
           edgeAt(k === 0 ? -1 : (k === ROWS - 1 ? 1 : 0));
@@ -226,21 +241,30 @@
     function open(pane) {
       S.open = true; menu.hidden = false; head.classList.add("focus");
       go(pane === "system" ? "" : "apps");
+      query.focus({ preventScroll: true });
     }
     function close() {
       S.open = false; menu.hidden = true; card.classList.remove("on"); head.classList.remove("focus"); edgeStop();
+      if (document.activeElement === query) query.blur();
     }
 
     menu.addEventListener("click", function (e) { e.stopPropagation(); });
-    head.addEventListener("click", function (e) {
+    prompt.addEventListener("click", function (e) {
       // The two tabs in the prompt: the half you click is the pane you get.
-      var r = head.getBoundingClientRect();
+      var r = prompt.getBoundingClientRect();
       side((e.clientX - r.left) < r.width / 2 ? "left" : "right");
+      query.focus({ preventScroll: true });
     });
 
+    // Typing and Backspace belong to the field when it has the focus, and so
+    // do Left and Right once there is text in it to move through.
     function key(e) {
       if (!S.open) return false;
       if (e.ctrlKey || e.metaKey || e.altKey) return false;
+      if (e.target === query) {
+        if (e.key.length === 1 || e.key === "Backspace") return false;
+        if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && S.q) return false;
+      }
       var v = shown();
       switch (e.key) {
         case "Escape": close(); break;
