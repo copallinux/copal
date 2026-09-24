@@ -36,6 +36,12 @@
 # copal-prep.sh with catalogue_posts, which seed_app_configs runs; its about
 # and home go into tools/copal-store (catalogue_abouts) for Copal Apps. A
 # graphical catalogue row with no playbook is an error.
+#
+# A CODE playbook (origin: code, source: clone URL) is a project checked out
+# into ~/code and built there by copal-build. It is a row on the store's Code
+# shelf whose install field is NAME@clone; 'copal-store install' clones and
+# builds it as the person, never as root. It has no body: its system setup is
+# in the stage that needs it until phase 4 moves it.
 import os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -127,7 +133,14 @@ def validate(books):
         if not b["progs"]:
             errs.append("%s: no program" % rel)
         cat = p.get("origin") == "catalogue"
-        if p.get("origin") not in (None, "catalogue"):
+        code = p.get("origin") == "code"
+        if code and not p.get("source", "").startswith("clone https://"):
+            errs.append("%s: a code playbook's source is 'clone https://...'" % rel)
+        if code and any(g.get("install") != name + "@clone" for g in b["progs"]):
+            errs.append("%s: a code playbook installs as %s@clone" % (rel, name))
+        if code and b["body"]:
+            errs.append("%s: a code playbook has no body yet" % rel)
+        if p.get("origin") not in (None, "catalogue", "code"):
             errs.append("%s: origin %r" % (rel, p.get("origin")))
         for g in b["progs"]:
             for k in PROGRAM_KEYS:
@@ -220,6 +233,15 @@ def generate(books):
                  '%s_needs() { echo "%s"; }' % (n, q(p.get("needs", ""))),
                  '%s_source() { echo "%s"; }' % (n, q(p.get("source", "")))]
     code += ["", 'RECIPES="%s"' % " ".join(sorted(b["proj"]["playbook"] for b in src)), ""]
+    clones = sorted((b for b in books if b["proj"].get("origin") == "code"), key=lambda b: b["proj"]["playbook"])
+    code += ["# The ~/code projects: cloned and built by copal-build, as the person."]
+    for b in clones:
+        n, p = b["proj"]["playbook"], b["proj"]
+        f = fname(n)
+        code += ['%s_bdeps() { echo "%s"; }' % (f, q(p.get("build", ""))),
+                 '%s_rdeps() { echo "%s"; }' % (f, q(p.get("runs", ""))),
+                 '%s_source() { echo "%s"; }' % (f, q(p.get("source", "")))]
+    code += ['CLONES="%s"' % " ".join(b["proj"]["playbook"] for b in clones), ""]
     code += ["# The bundles: named lists of program ids (playbooks/bundles/NAME.list).",
              "store_bundle() {", '    case "$1" in']
     for name, members in bundles().items():

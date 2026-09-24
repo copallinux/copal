@@ -94,6 +94,20 @@ Browsers|LibreWolf (private Firefox)|librewolf|librewolf|x|!v6,!x32|Firefox with
 Chat|Caprine (Facebook Messenger)|caprine@testing|caprine|x|64|An unofficial desktop app for Facebook Messenger. It has a dark mode and none of the Facebook feed around it.|https://github.com/sindresorhus/caprine
 Chat|Signal|signal-desktop@testing|signal-desktop|x|64|End-to-end encrypted messages and calls. Link it to the Signal app on your phone.|https://github.com/signalapp/Signal-Desktop
 Chat|Telegram|telegram-desktop|Telegram|x|*|The official Telegram desktop client. Chats, channels and file transfers of any size, in step with your phone.|https://github.com/telegramdesktop/tdesktop
+Code|ASCITTY (raytraced ASCII city)|ascitty@clone|ascitty|t|*|A raytraced city built entirely of typeable characters, rendered in real time on a colour terminal. A taxi game is inside it, and the same city runs on a Commodore Plus/4.|https://github.com/vonglurt/ascitty
+Code|birdshot (bird and sky camera)|birdshot@clone|birdshot-gui|x|*|Bird and sky capture for the Raspberry Pi HQ Camera: a C++17 camera pipeline with a Qt window over it. Copal's camera command uses it first when it is there.|https://github.com/vonglurt/birdshot
+Code|birdshot (camera, command line)|birdshot@clone|birdshot|h|*|The birdshot pipeline without its window, for capture from a script or over SSH. The same program the window drives.|https://github.com/vonglurt/birdshot
+Code|Codex of Conquest (adventure RPG)|codexofconquest@clone|codexofconquest|x|*|A whole adventure RPG in one HTML file: combat, a world map, quests, saves and eight acts of story. Here it is served from the checkout and opened in the browser.|https://github.com/vonglurt/codexofconquest
+Code|copal-tm (task manager)|copal-tm@clone|copal-tm|t|*|An instrument panel and a process browser in one terminal window. The task manager for Copal's full install, one Rust crate with no dependencies.|https://github.com/vonglurt/copal-tm
+Code|Gonex (Team Yodacon's game)|gonex@clone|gonex|x|*|Team Yodacon's game, written in Go on the Ebitengine engine. A port of the 2005 Konex engine, built from its own checkout.|https://github.com/yodacon/gonex
+Code|orrery (the fleet's console)|orrery@clone|orrery|t|*|The console for a fleet of Copal machines: the wall, the seat and the museum interface. It sees every machine in the room and acts on them.|https://github.com/vonglurt/orrery
+Code|radbeeper (Geiger counter panel)|radbeeper@clone|radbeeper-gui|x|*|The instrument panel for a GQ GMC-320 Plus Geiger counter: two dials, a live chart and a log, from one or two tubes at once. It also pulls the history the counter recorded while unattended.|https://github.com/vonglurt/radbeeper
+Code|radbeeper (Geiger counter, terminal)|radbeeper@clone|radbeeper|t|*|The same counter in a terminal: probe finds it, watch shows five time constants at once, and log pull downloads its stored history. The command the panel is built on.|https://github.com/vonglurt/radbeeper
+Code|sstr (record and replay streams)|staticstream@clone|sstr|h|*|Records a stream into a .sstr file with its order, pace and damage tolerance intact, and plays it back. sstr export turns a folder of them into ordinary files.|https://github.com/vonglurt/staticstream
+Code|sstr-workspace (stream archive)|staticstream@clone|sstr-workspace|t|*|The terminal Workspace over the archive and the download queue in one browser. Play, verify, export and read a capture on one key each.|https://github.com/vonglurt/staticstream
+Code|UR FINKEL (the Royal Game of Ur)|urfinkel@clone|urfinkel|x|*|The Royal Game of Ur for the Commodore Plus/4, written in C and 6502 assembly. It runs here in VICE's Plus/4 emulator.|https://github.com/vonglurt/urfinkel
+Code|Yodacon (the plugin, the suites, the engines)|yodacon@clone|-|-|*|Team Yodacon's centre: the 1997 ConEx plugin, its exporters and test suites, with the game and the 2005 engine it ports as submodules. Its Makefile round-trips the plugin and builds the game.|https://github.com/yodacon/yodacon
+Code|ytq (download queue)|staticstream@clone|ytq|t|*|A download queue that watches the clipboard: Super+Shift+Y queues the copied link, and ytq run fetches it. What it downloads is kept as Static Stream.|https://github.com/vonglurt/staticstream
 Creative|darktable (raw photo developer)|darktable@source|darktable|x|64|A darkroom for camera raw files: exposure, colour, lens correction and masks, applied without touching the original. Its lighttable sorts, rates and tags a whole shoot.|https://github.com/darktable-org/darktable
 Creative|Kolourpaint (simple paint)|kolourpaint|kolourpaint|x|!v6|KDE's paint program, in the spirit of MS Paint. Draw, crop, resize and save, with nothing to learn first.|https://invent.kde.org/graphics/kolourpaint
 Creative|Pencil2D (hand-drawn animation)|pencil2d@source|pencil2d|x|64|Traditional frame-by-frame animation with onion skins, in bitmap or vector layers, with sound, exported to video or GIF. Simple enough to start in five minutes.|https://github.com/pencil2d/pencil
@@ -1718,6 +1732,39 @@ xaos_source() { echo "github xaos-project/XaoS"; }
 
 RECIPES="alephone amiberry ardour astromenace bleachbit browsh ccleste darktable ddnet devilutionx dxx endlesssky ffconverter focuswriter fraqtive funkin kmahjongg konquest kretro kreversi ksnakeduel kspaceduel kubrick librecad naev ohmyposh openshot opentyrian pacman pencil2d persepolis pixelorama pychess smc taisei veracrypt xaos"
 
+# The ~/code projects: cloned and built by copal-build, as the person.
+ascitty_bdeps() { echo "git rust cargo"; }
+ascitty_rdeps() { echo ""; }
+ascitty_source() { echo "clone https://github.com/vonglurt/ascitty.git"; }
+birdshot_bdeps() { echo "git build-base cmake samurai pkgconf qt6-qtbase-dev"; }
+birdshot_rdeps() { echo ""; }
+birdshot_source() { echo "clone https://github.com/vonglurt/birdshot.git"; }
+codexofconquest_bdeps() { echo "git nodejs npm"; }
+codexofconquest_rdeps() { echo "nodejs"; }
+codexofconquest_source() { echo "clone https://github.com/vonglurt/codexofconquest.git"; }
+copal_tm_bdeps() { echo "git rust cargo"; }
+copal_tm_rdeps() { echo ""; }
+copal_tm_source() { echo "clone https://github.com/vonglurt/copal-tm.git"; }
+gonex_bdeps() { echo "git go build-base pkgconf make cmake alsa-lib-dev libx11-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev mesa-dev glu-dev"; }
+gonex_rdeps() { echo ""; }
+gonex_source() { echo "clone https://github.com/yodacon/gonex.git"; }
+orrery_bdeps() { echo "git rust cargo"; }
+orrery_rdeps() { echo ""; }
+orrery_source() { echo "clone https://github.com/vonglurt/orrery.git"; }
+radbeeper_bdeps() { echo "git rust cargo"; }
+radbeeper_rdeps() { echo ""; }
+radbeeper_source() { echo "clone https://github.com/vonglurt/radbeeper.git"; }
+staticstream_bdeps() { echo "git rust cargo"; }
+staticstream_rdeps() { echo ""; }
+staticstream_source() { echo "clone https://github.com/vonglurt/staticstream.git"; }
+urfinkel_bdeps() { echo "git"; }
+urfinkel_rdeps() { echo "vice@testing"; }
+urfinkel_source() { echo "clone https://github.com/vonglurt/urfinkel.git"; }
+yodacon_bdeps() { echo "git go build-base pkgconf make cmake alsa-lib-dev libx11-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev mesa-dev glu-dev"; }
+yodacon_rdeps() { echo ""; }
+yodacon_source() { echo "clone https://github.com/yodacon/yodacon.git"; }
+CLONES="ascitty birdshot codexofconquest copal-tm gonex orrery radbeeper staticstream urfinkel yodacon"
+
 # The bundles: named lists of program ids (playbooks/bundles/NAME.list).
 store_bundle() {
     case "$1" in
@@ -1884,6 +1931,7 @@ CATABOUTS
 # ------------------------------------------------------------ recipe driver ---
 
 is_recipe() { case " $RECIPES " in *" $1 "*) return 0 ;; esac; return 1; }
+is_clone()  { case " $CLONES " in *" $1 "*) return 0 ;; esac; return 1; }
 
 missing_apks() {  # <names...> -- the ones apk's database does not have
     awk -v want="$*" '
@@ -2036,7 +2084,11 @@ build_recipe() {  # <recipe>
 # Is it on the machine? Its command resolves, or, for a font (no command),
 # its first package is installed.
 installed_id() {  # <bin> <install field>
-    if [ "$1" != "-" ]; then have "$1"; else apk info -e "${2%%[@ ]*}" >/dev/null 2>&1; fi
+    if [ "$1" != "-" ]; then have "$1"
+    else case "$2" in
+        *@clone) [ -d "$HOME/code/${2%@clone}" ] ;;    # a checkout with no command of its own
+        *)       apk info -e "${2%%[@ ]*}" >/dev/null 2>&1 ;;
+    esac; fi
 }
 
 # Every row with its status last, for a window to read: the rows() fields
@@ -2072,6 +2124,11 @@ EOF
                 _steps="deps"
                 for _f in pre install post; do type "${_r}_$_f" >/dev/null 2>&1 && _steps="$_steps, $_f"; done
                 ;;
+            *@clone)
+                _f=$(printf '%s' "${_p%@clone}" | tr -- '-.+' '___')
+                printf '  %-10s %s\n' playbook "${_p%@clone}" source "$("${_f}_source")"
+                printf '  %-10s %s\n' build "$("${_f}_bdeps")" runs "$("${_f}_rdeps")"
+                _steps="${_steps:+$_steps, }deps, clone into ~/code, copal-build ${_p%@clone}" ;;
             *@flathub) _steps="${_steps:+$_steps, }flatpak install ${_p%@flathub}" ;;
             *)  _steps="${_steps:+$_steps, }apk add $_p" ;;
         esac
@@ -2096,6 +2153,57 @@ store_event() {
         "$(date +%s)" "$1" "${COPAL_PROGRAM:-$1}" "$2" "$3" "${4:+,$4}" >> "$EVENTS" 2>/dev/null || true
 }
 
+# A ~/CODE PROJECT: cloned into ~/code and built by copal-build, as the person
+# who asked -- never as root, since a checkout is somebody's working tree.
+# Its build and run dependencies are installed first (or were, in a batch);
+# its URL joins copal-code's list, so 'copal-code' keeps it current; a
+# checkout already there is left exactly as it is and only built.
+clone_recipe() {  # <name>
+    _r="$1"; _f=$(printf '%s' "$_r" | tr -- '-.+' '___')
+    _url=$("${_f}_source"); _url=${_url#clone }
+    _u="${DOAS_USER:-${SUDO_USER:-$(id -un)}}"
+    if [ "$_u" = root ]; then
+        warn "$_r is a checkout, and a checkout belongs to a person: run 'doas copal-store install $_r' from your own account"
+        return 1
+    fi
+    mkdir -p "$STATE" "$LOGDIR" || die "cannot create $STATE or $LOGDIR"
+    _log="$LOGDIR/$_r.log"
+    say "$_r: cloned into ~$_u/code and built there"
+    _b=$("${_f}_bdeps"); _rt=$("${_f}_rdeps")
+    if [ "${COPAL_STORE_NODEPS:-0}" != 1 ]; then
+        store_event "$_r" deps start
+        case " $_b $_rt " in *@testing*) enable_testing_tag ;; esac
+        # shellcheck disable=SC2086
+        [ -z "$_rt" ] || apk add -t "copal-store-$_r" $_rt || { warn "could not install what $_r needs to run"; return 1; }
+        # shellcheck disable=SC2086
+        [ -z "$_b" ] || [ "${COPAL_STORE_BATCH:-0}" = 1 ] \
+            || apk add -t ".copal-store-build-$_r" $_b || { warn "could not install what $_r needs to build"; return 1; }
+        store_event "$_r" deps ok
+    fi
+    have copal-code && [ "$(id -u)" = 0 ] && copal-code add "$_url" >/dev/null 2>&1 || true
+    _t0=$(date +%s)
+    store_event "$_r" install start "\"log\":\"$_log\""
+    say "Cloning and building -- 'tail -f $_log' in another terminal to watch"
+    _cmd="PATH=/usr/local/bin:\$HOME/.local/bin:\$PATH; mkdir -p \$HOME/code && cd \$HOME/code \
+          && { [ -d '$_r' ] || git clone --recurse-submodules '$_url' '$_r'; } \
+          && if command -v copal-build >/dev/null 2>&1; then copal-build '$_r'; \
+             else echo 'copal-build is not here: cloned, not built'; fi"
+    if [ "$(id -u)" = 0 ]; then su - "$_u" -c "$_cmd" > "$_log" 2>&1; else sh -c "$_cmd" > "$_log" 2>&1; fi
+    _rc=$?; _secs=$(( $(date +%s) - _t0 ))
+    W="$WORK/$_r"; DEST="$W/stage"; mkdir -p "$W"
+    printf '%s -> ~%s/code/%s\n' "$_url" "$_u" "$_r" > "$W/.sources"   # the summary's source line
+    if [ $_rc -ne 0 ]; then
+        warn "$_r did not clone or build. The last lines of $_log:"
+        tail -n 20 "$_log" | sed 's/^/      /' >&2
+        store_summary "$_r" failed "$_secs"; store_event "$_r" install failed "\"secs\":$_secs"
+        rm -rf "$W"; drop_build_deps "$_r"; return 1
+    fi
+    note "cloned and built in $_secs s"
+    store_event "$_r" install ok "\"secs\":$_secs"
+    store_summary "$_r" ok "$_secs"
+    rm -rf "$W"; drop_build_deps "$_r"
+}
+
 # THE INSTALL SUMMARY. One entry per build in $LOGDIR/summary.txt: the
 # result and time, what was installed and how large, the source files kept
 # in the cache, the optional features the build said it could not find, and
@@ -2106,8 +2214,11 @@ store_summary() {  # <recipe> <ok|failed> <seconds>
     _lg="$LOGDIR/$1.log"; _e=$(printf '\033')
     {
         printf '\n== %s  %s  %s in %s s\n' "$1" "$(date '+%Y-%m-%d %H:%M')" "$2" "$3"
-        if [ "$2" = ok ]; then
-            printf '   installed  %s files, %s MB under %s\n' "$(wc -l < "$W/files" 2>/dev/null || echo '?')" \
+        # A staged build has its file list; a clone (built into ~/.local/bin by
+        # copal-build) has none. Tested, not redirected: busybox runs wc as a
+        # builtin, and a failed redirection there ends the whole script.
+        if [ "$2" = ok ] && [ -f "$W/files" ]; then
+            printf '   installed  %s files, %s MB under %s\n' "$(wc -l < "$W/files")" \
                 "$(( $(du -sk "$DEST$PREFIX" 2>/dev/null | cut -f1) / 1024 ))" "$PREFIX"
         fi
         [ -s "$W/.sources" ] && sort -u "$W/.sources" | sed 's/^/   source     /; s/$/  (kept)/'
@@ -2157,12 +2268,13 @@ install_ids() {
     _recs=""
     for _id in "$@"; do
         for _p in $(row_for "$_id" | cut -d'|' -f4); do
-            case "$_p" in *@source) _recs="$_recs ${_p%@source}" ;; esac
+            case "$_p" in *@source) _recs="$_recs ${_p%@source}" ;; *@clone) _recs="$_recs ${_p%@clone}" ;; esac
         done
     done
     _batch=0
     if [ "$(echo $_recs | wc -w)" -gt 1 ] && [ "${COPAL_STORE_NODEPS:-0}" != 1 ]; then
-        _all=$(for _r in $_recs; do is_recipe "$_r" && { "${_r}_bdeps"; "${_r}_rdeps"; }; done | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' ' ')
+        _all=$(for _r in $_recs; do _f=$(printf '%s' "$_r" | tr -- '-.+' '___')
+                   { is_recipe "$_r" || is_clone "$_r"; } && { "${_f}_bdeps"; "${_f}_rdeps"; }; done | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' ' ')
         say "Build prerequisites for$_recs, installed once"
         case " $_all " in *@testing*) enable_testing_tag ;; esac
         # shellcheck disable=SC2086
@@ -2186,6 +2298,7 @@ install_ids() {
         for _p in $_inst; do
             case "$_p" in
                 *@source)  build_recipe "${_p%@source}" || _rc=1 ;;
+                *@clone)   clone_recipe "${_p%@clone}" || _rc=1 ;;
                 *@flathub) _flat="$_flat $_p" ;;
                 *)         _apks="$_apks $_p" ;;
             esac
@@ -2218,6 +2331,7 @@ remove_ids() {
         for _p in $_inst; do
             case "$_p" in
                 *@source)  remove_recipe "${_p%@source}" || _rc=1 ;;
+                *@clone)   note "${_p%@clone} is a checkout in ~/code, and is left alone: deleting somebody's work is not a list's job" ;;
                 *@flathub) have flatpak && flatpak uninstall -y "${_p%@flathub}" || _rc=1 ;;
                 *)         _apks="$_apks ${_p%@testing}" ;;
             esac

@@ -330,7 +330,10 @@ class Progress(Gtk.Box):
         self.title.set_markup("<big><b>%s</b></big>" % GLib.markup_escape_text(p["label"]))
         self.about.set_text(r.get("about", ""))
         src = r.get("install", "")
-        if src.endswith("@source"):
+        if src.endswith("@clone"):
+            info = load_playbook(pid)
+            self.source.set_text("Cloned into ~/code from " + info.get("source", "").replace("clone ", "", 1))
+        elif src.endswith("@source"):
             info = load_playbook(pid)
             self.source.set_text("Compiled here from " + info.get("source", "its source"))
         elif src:
@@ -382,7 +385,13 @@ class Details(Gtk.ScrolledWindow):
             self.grid.remove(c)
         info = load_playbook(r["id"])
         rows = []
-        if r["install"].endswith("@source"):
+        if r["install"].endswith("@clone"):
+            rows.append(("Source", "cloned into ~/code from " + info.get("source", "").replace("clone ", "", 1)
+                         + ", and built there by copal-build"))
+            rows.append(("To build", info.get("build", "") or "nothing more"))
+            if info.get("runs"):
+                rows.append(("To run", info["runs"]))
+        elif r["install"].endswith("@source"):
             rows.append(("Source", "compiled here from " + info.get("source", "")))
             rows.append(("To build", info.get("build", "") or "nothing more"))
             rows.append(("To run", info.get("runs", "") or "only what the build links against"))
@@ -400,7 +409,10 @@ class Details(Gtk.ScrolledWindow):
                 val.get_style_context().add_class("monospace")
             self.grid.attach(val, 1, i, 1, 1)
         self.show_all()
-        self.b_install.set_visible(not installed); self.b_remove.set_visible(installed)
+        # A ~/code checkout is never removed by the store (it is somebody's
+        # work), so it has no Remove button to promise that it would be.
+        self.b_install.set_visible(not installed)
+        self.b_remove.set_visible(installed and not r["install"].endswith("@clone"))
         self.b_open.set_visible(installed and r["mode"] == "x"); self.b_web.set_visible(bool(r["home"]))
 
 

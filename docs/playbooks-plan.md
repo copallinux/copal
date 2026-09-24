@@ -102,6 +102,40 @@ progress page, Naev's compile read as 884 of 992; `--follow` exiting with
 nothing queued and opening with a queue; `pending` returning only what was
 missing.
 
+## Phase 4, in progress
+
+Four slices, each checked before the next:
+
+- **4a, done (23 Sep 2026): the ~/code projects are playbooks.** The ten
+  repositories stage 1 proposes -- urfinkel, ascitty, codexofconquest,
+  birdshot, orrery, copal-tm, staticstream, radbeeper, yodacon, gonex -- are
+  `playbooks/Code/NAME.sh`, `origin: code`, `source: clone URL`, with their
+  build and run dependencies and every program each puts on the machine, 14
+  in all, each with two sentences. They are rows on the store's Code shelf,
+  `install: NAME@clone`. `copal-store install NAME` installs their
+  dependencies, adds the URL to copal-code's list, and clones and builds the
+  project as the person who asked -- `su` to the doas user, never root; a
+  checkout already there is only built, never moved. Remove declines: a
+  checkout is somebody's work. Copal Apps shows the Code shelf, the
+  repository each came from, and no Remove button for them. Checked on the
+  bench: a clone into a scratch home (cloned; its build's failure reported
+  as a failure, all the way to the run's end), and a rebuild of copal-tm in
+  the real home (13 s, every event, the checkout left clean). Two faults
+  found and fixed on the way: a build failure that read as success, and a
+  summary that ended the script for a build with no file list.
+- **4b: a catalogue program's `post` from Copal Apps**, not only from stage
+  12 -- which needs the installer's answers (the mail account) where the
+  store can read them.
+- **4c: the program fix-ups in stages 4, 10 and 17 into `pre` and `post`**:
+  radbeeper's serial group, udev rule, boot service and VM kernel (stage 10),
+  ytq's settings, Brave and the default browser, the terminal and
+  file-manager choices -- each moved with the side-by-side check phase 3
+  used.
+- **4d: the stages as bundles**, checked the way the plan says: a full-monty
+  VM built from the assembled script matches today's -- package list,
+  `/usr/local` file list, menu audit. That check needs a fresh VM, built on
+  the Mac.
+
 ## Phase 3, done (23 Sep 2026)
 
 **The catalogue's 146 graphical programs are playbooks**, marked
