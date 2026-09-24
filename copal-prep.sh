@@ -3870,8 +3870,8 @@ flathub_shim() {  # <app id>
 # burner means a powered hub and a USB enclosure. The software side works
 # fine; xorriso is the pick because it both authors and burns ISOs, and
 # because it does NOT collide with cdrkit -- both ship /usr/bin/mkisofs, and
-# apk will refuse to install the pair. k3b is KDE and not packaged; xfburn is
-# the light GTK burner and is.
+# apk will refuse to install the pair. xfburn is the light GTK burner; K3b,
+# KDE's, is packaged on every port but armhf and offered by copal-store.
 #
 # THE 'bin' FIELD MUST BE A COMMAND ON $PATH, not a package name and not a file
 # path. Everything downstream decides "is this installed?" with
@@ -7304,6 +7304,15 @@ DESKTOPSW
 #
 # Written by copal-init.sh. -f means "this account is already authenticated",
 # which is the whole trick; getty was started with -n so no name was asked for.
+#
+# The limits an audio program asks for, raised here because nothing else
+# can: Copal's logins do not go through PAM, so /etc/security/limits.d is
+# read by nobody, and only root may raise a hard limit. The desktop session
+# inherits them from this shell. Locked memory keeps Ardour's and JACK's
+# buffers out of swap (Ardour warns at start without it); rtprio lets their
+# audio threads run in real time. The autologin user is the one in 'audio'.
+ulimit -l unlimited 2>/dev/null
+ulimit -r 95 2>/dev/null
 exec /bin/login -f $PI_USER
 AUTOLOGIN
     chmod 0755 /usr/local/bin/copal-autologin
@@ -9572,7 +9581,7 @@ except (ValueError, ImportError):
 # each carries a symbolic one it does have -- and the Categories= words that
 # land a program there.  Checked top to bottom; first match wins.
 SECTIONS = [
-    ("Preferences",    ("preferences-desktop", "preferences-system-symbolic"), {"Settings", "DesktopSettings"}),
+    ("Preferences",    ("preferences-desktop", "preferences-system-symbolic"), {"Settings", "DesktopSettings", "Screensaver"}),
     ("Games",          ("applications-games",), {"Game"}),
     ("Programming",    ("applications-development", "utilities-terminal-symbolic"), {"Development"}),
     ("Office",         ("applications-office", "x-office-document-symbolic"), {"Office"}),
@@ -22786,6 +22795,14 @@ p2_growable() { [ "$(p2_free_sectors)" -gt 131072 ]; }
 # fails on Alpine -- GCC's LTO cannot inline the fortified vsnprintf -- so the
 # one line is patched to FALSE. The LTO link also filled a 64 MB /tmp, which
 # is why TMPDIR points at the build directory. Two minutes on four cores.
+# Alpine's FLAC CMake package names /usr/bin/flac, the command-line program,
+# and CMake stops when it is absent; with that package skipped the
+# CMakeLists falls back to pkg-config's flac++. SDL2's CMake package is
+# sdl2-compat's and needs sdl2-compat-static. The binary installs to
+# /usr/local/games, which is not on Alpine's PATH, so it is linked into
+# /usr/local/bin; it resolves its real path and finds its data from there.
+# copal-store builds the same game as a pinned, removable recipe
+# (endlesssky@source).
 #
 # streamripper 1.64.6: 2008-era C. Its config.guess predates aarch64 (the
 # automake copies replace it), its bundled libmad has the same problem (the
@@ -22797,7 +22814,7 @@ build_endless_sky() {
     have_space_mb 2500 "the Endless Sky build (350 MB source, ~1 GB during the build)" \
         || { note "Skipping Endless Sky."; return 0; }
     confirm "Build Endless Sky from source now (350 MB download, a few minutes)?" || { note "Not built."; return 0; }
-    add_optional build-base cmake ninja pkgconf sdl2-dev openal-soft-dev glew-dev libmad-dev \
+    add_optional build-base cmake ninja pkgconf sdl2-dev sdl2-compat-static openal-soft-dev glew-dev libmad-dev \
         libavif-dev flac-dev minizip-dev libpng-dev libjpeg-turbo-dev zlib-dev util-linux-dev mesa-dev
     apk info -e sdl2-dev >/dev/null 2>&1 || { warn "development files missing -- cannot build Endless Sky"; return 1; }
     SRCDIR=/usr/local/src; mkdir -p "$SRCDIR"
@@ -22813,12 +22830,14 @@ build_endless_sky() {
     say "Compiling (log: /var/log/endless-sky-build.log)"
     if ! TMPDIR="$SRCDIR/endless-sky-build/tmp" cmake -S "$_es_src" -B "$SRCDIR/endless-sky-build/b" -G Ninja \
             -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DES_USE_VCPKG=OFF \
-            -DES_USE_SYSTEM_LIBRARIES=ON -DBUILD_TESTING=OFF > /var/log/endless-sky-build.log 2>&1 \
+            -DES_USE_SYSTEM_LIBRARIES=ON -DBUILD_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_FLAC=ON \
+            > /var/log/endless-sky-build.log 2>&1 \
        || ! TMPDIR="$SRCDIR/endless-sky-build/tmp" ninja -C "$SRCDIR/endless-sky-build/b" -j "$(nproc)" >> /var/log/endless-sky-build.log 2>&1 \
        || ! ninja -C "$SRCDIR/endless-sky-build/b" install >> /var/log/endless-sky-build.log 2>&1; then
         warn "the build failed -- the last lines of /var/log/endless-sky-build.log:"
         tail -n 15 /var/log/endless-sky-build.log | sed 's/^/    /'; return 1
     fi
+    ln -sfn /usr/local/games/endless-sky /usr/local/bin/endless-sky
     rm -rf "$SRCDIR/endless-sky-build"
     note "installed: /usr/local/bin/endless-sky (data in /usr/local/share/games/endless-sky)"
 }
@@ -23287,6 +23306,18 @@ MSG
 # themselves on day one. A board the set does not suit (OpenShot is 64-bit
 # only) simply gets the rest; the store says which rows exist for it.
 STORE_STARTER="openshot-qt fastfetch btop keepassxc"
+#
+# THE FULL MONTY SET is installed as well, at that level only, and without
+# asking: the programs the full desktop is meant to arrive with. Games
+# (Taisei, Naev, Endless Sky), photography (darktable), writing
+# (FocusWriter), animation (Pencil2D), recording
+# (Ardour), discs (K3b), scanning (XSane, Skanlite) and duplicate finders
+# (Czkawka, fdupes, jdupes, rdfind). Most are compiled here: on four cores
+# of this VM about 40 minutes, on a Pi 4 two to four hours, Ardour being
+# the long one. Each is its row's id; a failed build is
+# reported and the rest carry on, and the store can retry it any time.
+STORE_FULL="taisei naev endless-sky darktable focuswriter pencil2d ardour9
+            k3b czkawka_gui fdupes jdupes rdfind xsane skanlite"
 
 stage_store() {
     say "Stage 18: the Copal Store"
@@ -23309,6 +23340,8 @@ stage_store() {
 #   copal-store install ID...      install (root: doas is asked for)
 #   copal-store remove ID...       and take it away again
 #   copal-store recipes            the programs built from GitHub source here
+#   copal-store summary            what each build did: result, size, sources, absences
+#   copal-store log ID             one build's full log
 #   copal-store section NAME       the window for one section
 #   copal-store show ID            the window for one program, to link to
 #
@@ -23373,9 +23406,15 @@ Appearance|Caskaydia Cove NF (Cascadia Code, Nerd cut)|font-cascadia-code-nerd|-
 Appearance|Color Emoji font (Noto)|font-noto-emoji|-|-|*|Colour emoji for every program, so a chat message or a web page shows faces instead of empty boxes.|https://github.com/googlefonts/noto-emoji
 Appearance|Oh My Posh (prompt themes)|ohmyposh@source|oh-my-posh|h|*|Over a hundred ready-made prompt themes for bash, zsh and fish, showing git state, battery, time and more. Themes are in /usr/local/share/oh-my-posh/themes; pair it with Caskaydia Cove NF.|https://github.com/JanDeDobbeleer/oh-my-posh
 Appearance|Starship (shell prompt)|starship|starship|h|*|A fast prompt for any shell showing the git branch, the language version and how long the last command took. The maintained successor to Powerline-Shell.|https://github.com/starship/starship
+Creative|darktable (raw photo developer)|darktable@source|darktable|x|64|A darkroom for camera raw files: exposure, colour, lens correction and masks, applied without touching the original, and a lighttable to sort and rate a shoot.|https://github.com/darktable-org/darktable
 Creative|Kolourpaint (simple paint)|kolourpaint|kolourpaint|x|!v6|KDE's paint program in the spirit of MS Paint: draw, crop, resize and save, with nothing to learn first.|https://invent.kde.org/graphics/kolourpaint
+Creative|Pencil2D (hand-drawn animation)|pencil2d@source|pencil2d|x|64|Traditional frame-by-frame animation with onion skins, in bitmap or vector layers, with sound, exported to video or GIF. Simple enough to start in five minutes.|https://github.com/pencil2d/pencil
 Creative|Pixelorama (pixel art)|pixelorama@source|pixelorama|x|!v6|Draws pixel art and animates sprites: layers, onion skinning, tile mode and palettes, exporting to PNG, GIF and sprite sheets.|https://github.com/Orama-Interactive/Pixelorama
 Creative|Shotwell (photo library)|shotwell|shotwell|x|*|Imports photos from a camera or a folder, sorts them by date and event, and does quick fixes: crop, straighten, red-eye.|https://gitlab.gnome.org/GNOME/shotwell
+Files|Czkawka (find duplicates)|czkawka-gui czkawka|czkawka_gui|x|*|Finds duplicate files, empty folders, big files, similar images and videos, and broken files, then deletes or moves the ones you tick. czkawka_cli does the same from a terminal.|https://github.com/qarmin/czkawka
+Files|fdupes (find duplicates)|fdupes|fdupes|h|*|Finds duplicate files by size, then checksum, then byte by byte: fdupes -r ~/Pictures lists them, and -d asks which copy of each to keep.|https://github.com/adrianlopezroche/fdupes
+Files|jdupes (faster fdupes)|jdupes@testing|jdupes|h|*|A faster fork of fdupes with the same options, which can also replace duplicates with hard links, reclaiming the space without deleting a name.|https://codeberg.org/jbruchon/jdupes
+Files|rdfind (duplicates across folders)|rdfind|rdfind|h|*|Finds duplicates across several folders, ranks which copy is the original, and reports the rest or replaces them with links: rdfind -makehardlinks true ~/a ~/b.|https://github.com/pauldreik/rdfind
 Games|AstroMenace (3D space shooter)|astromenace@source|astromenace|x|64|A hardcore 3D shoot-'em-up: fifteen levels of enemies and bosses, with the money you collect spent on weapons and armour between them.|https://github.com/viewizard/astromenace
 Engineering|LibreCAD (2D CAD)|librecad@source|librecad|x|64|Precise 2D drawings -- floor plans, parts, schematics -- in layers and blocks, read and written as DXF and read from DWG.|https://github.com/LibreCAD/LibreCAD
 Engineering|OpenSCAD (programmer's 3D CAD)|openscad|openscad|x|!v6,!v7,!a64|Solid 3D models written as code -- cubes, cylinders, unions and differences -- for 3D printing. Alpine builds it for x86 only.|https://github.com/openscad/openscad
@@ -23384,6 +23423,9 @@ Games|Celeste Classic (PICO-8 platformer)|ccleste@source|ccleste|x|64|The origin
 Games|Pac-Man (SDL clone)|pacman@source|pacman-game|x|64|A faithful Pac-Man for the desktop: eat the dots, dodge the four ghosts. Arrow keys.|https://github.com/ebuc99/pacman
 Games|OpenTyrian (Tyrian 2000)|opentyrian@source|opentyrian|x|64|The 1995 vertical shooter Tyrian, freeware since 2004, on its open-source engine: a story campaign, an arcade mode, and ship upgrades bought between levels. Arrow keys to fly, Space to fire.|https://github.com/opentyrian/opentyrian
 Games|DevilutionX (Diablo)|devilutionx@source|devilutionx|x|64|Diablo, the 1996 dungeon crawler, on its reconstructed engine: widescreen, controller support and quality-of-life fixes. Plays the free shareware episode as installed; copy DIABDAT.MPQ from the CD or GOG into ~/.local/share/diasurgical/devilution for the whole game.|https://github.com/diasurgical/devilutionX
+Games|Endless Sky (space trading)|endlesssky@source|endless-sky|x|64|Start with a small ship and a little money in a galaxy of trade routes, pirates and alien empires: haul cargo, take jobs, fight, and follow the main story when you are ready. In the spirit of Escape Velocity.|https://github.com/endless-sky/endless-sky
+Games|Naev (space sandbox)|naev@source|naev|x|64|A 2D space trading and combat game with a large written story: fly, trade, take missions and join factions across hundreds of systems. Inspired by Escape Velocity.|https://github.com/naev/naev
+Games|Taisei (bullet hell)|taisei@source|taisei|x|64|A Touhou Project fan game: a vertical shoot-'em-up of dense, patterned bullet storms, six stages with a story, and practice modes. Arrow keys, Z to shoot, X for a bomb, Shift to focus.|https://github.com/taisei-project/taisei
 Games|DDNet (DDraceNetwork)|ddnet@source|DDNet|x|64|Cooperative Teeworlds: a team of tiny gunners hooks, jumps and freezes its way through thousands of puzzle maps together, online or on a LAN.|https://github.com/ddnet/ddnet
 Games|Descent 1 (shareware, DXX-Rebirth)|dxx@source|d1x-rebirth|x|64|The 1995 shooter flown in six degrees of freedom through mines taken over by robots. The shareware episode; copy the full game's files into ~/.d1x-rebirth to play the rest.|https://github.com/dxx-rebirth/dxx-rebirth
 Games|Descent 2 (demo, DXX-Rebirth)|dxx@source|d2x-rebirth|x|64|Descent's sequel: more robots, a guide-bot, afterburners. The demo levels; the full game's files go in ~/.d2x-rebirth. Installed together with Descent 1.|https://github.com/dxx-rebirth/dxx-rebirth
@@ -23412,7 +23454,10 @@ Games|VCMI (Heroes 3 engine)|vcmi@testing|vcmilauncher|x|64|Heroes of Might and 
 Games|Warzone 2100 (real-time strategy)|warzone2100@testing|warzone2100|x|64|A 3D real-time strategy game after a nuclear war: research 400 technologies and design your own units from them. Campaign, skirmish and online play.|https://github.com/Warzone2100/warzone2100
 Games|X-Moto (motocross physics)|xmoto@testing|xmoto|x|*|A 2D motocross game where the physics is the point: lean, brake and flip the bike to reach every strawberry and the flower.|https://github.com/xmoto/xmoto
 Games|Xonotic (arena shooter)|xonotic-sdl|xonotic-sdl|x|!v6|A fast arena first-person shooter in the Quake tradition, with bots for playing offline. About 1.2 GB installed.|https://gitlab.com/xonotic/xonotic
+Graphics|Skanlite (scanner)|skanlite|skanlite|x|!v6|KDE's scanner program: preview, pick the area, and save the scan as an image. A current stand-in for QuiteInsane, the Qt front end to SANE.|https://invent.kde.org/graphics/skanlite
+Graphics|XSane (scanner, every SANE option)|xsane@testing|xsane|x|*|The classic front end to SANE: every option the scanner has, batch scans, colour correction, and save, copy, fax or email the result.|http://www.xsane.org
 Internet|SpeedTest-CLI|speedtest-cli|speedtest-cli|h|*|Measures the connection's download and upload speed and ping against the nearest speedtest.net server.|https://github.com/sivel/speedtest-cli
+Audio|Ardour (recording studio)|ardour@source|ardour9|x|64|A full digital audio workstation: record many tracks at once, edit and mix them with plugins and automation, and master the result. MIDI and virtual instruments too.|https://ardour.org
 Browsers|Epiphany (GNOME Web)|epiphany|epiphany|x|*|A clean WebKit browser that turns any site into its own app window.|https://gitlab.gnome.org/GNOME/epiphany
 Browsers|Firefox (rapid release)|firefox|firefox|x|!v6|Mozilla's current Firefox, updated every four weeks. The catalogue carries Firefox ESR, the slower-moving branch.|https://github.com/mozilla-firefox/firefox
 Browsers|LibreWolf (private Firefox)|librewolf|librewolf|x|!v6,!x32|Firefox with telemetry removed and uBlock Origin built in, private by default.|https://codeberg.org/librewolf
@@ -23465,6 +23510,8 @@ Tools|tldr (tealdeer)|tealdeer@testing|tldr|h|*|Short, example-first help pages:
 Crypto|Feather Wallet (Monero)|feather-wallet@testing|feather|x|*|A small, fast Monero wallet.|https://github.com/feather-wallet/feather
 Crypto|Monero GUI|monero-gui@testing|monero-wallet-gui|x|!v6|The Monero project's own wallet, able to run a full node.|https://github.com/monero-project/monero-gui
 Crypto|XMRig|xmrig|xmrig|h|*|A CPU miner for RandomX coins such as Monero.|https://github.com/xmrig/xmrig
+Discs|K3b (CD/DVD/Blu-ray burner)|k3b|k3b|x|!v6|KDE's disc burner: data discs, audio CDs from music files, copies of a disc, and ISO images written to disc, with a verify pass afterwards.|https://invent.kde.org/multimedia/k3b
+Documents|FocusWriter (distraction-free writing)|focuswriter@source|focuswriter|x|*|A full-screen writing window with nothing in it but the text: themes, daily goals, timers and alarms, typewriter sounds, and a spell checker. Opens and saves plain text, RTF, ODT and DOCX.|https://github.com/gottcode/focuswriter
 Emulation|QEMU (PC emulator)|qemu-system-x86_64 qemu-ui-gtk|qemu-system-x86_64|h|64|Emulates a whole x86_64 PC in a window, to boot another operating system from an ISO.|https://gitlab.com/qemu-project/qemu
 Emulation|Waydroid (Android)|waydroid|waydroid|h|!v6|Runs a full Android system in a container, its apps as windows on this desktop.|https://github.com/waydroid/waydroid
 STORETABLE
@@ -23646,6 +23693,7 @@ gh_source() {  # <owner/repo> <tag or commit> <sha256>
             && mv "$_f.part" "$_f" || { rm -f "$_f.part"; warn "could not download $1 $2"; return 1; }
     fi
     verify_sum "$_f" "$3" || return 1
+    printf '%s\n' "$_f" >> "$W/.sources" 2>/dev/null || true
     _d="$W/src-$_repo"; rm -rf "$_d"; mkdir -p "$_d"
     tar -xzf "$_f" -C "$_d" || { warn "$_f did not unpack"; return 1; }
     printf '%s\n' "$_d"/*
@@ -23661,6 +23709,23 @@ gh_asset() {  # <owner/repo> <tag> <file> <sha256>
             && mv "$_f.part" "$_f" || { rm -f "$_f.part"; warn "could not download $3"; return 1; }
     fi
     verify_sum "$_f" "$4" || return 1
+    printf '%s\n' "$_f" >> "$W/.sources" 2>/dev/null || true
+    printf '%s\n' "$_f"
+}
+
+# One file from a project's own site, verified -- for the rare project whose
+# GitHub archive cannot be built (Ardour's is a README saying so). Cached
+# under its own name.
+url_asset() {  # <url> <sha256>
+    _f="$CACHE/${1##*/}"
+    mkdir -p "$CACHE"
+    if [ ! -s "$_f" ]; then
+        note "downloading $1" >&2
+        curl -fL --retry 3 -o "$_f.part" "$1" >&2 \
+            && mv "$_f.part" "$_f" || { rm -f "$_f.part"; warn "could not download $1"; return 1; }
+    fi
+    verify_sum "$_f" "$2" || return 1
+    printf '%s\n' "$_f" >> "$W/.sources" 2>/dev/null || true
     printf '%s\n' "$_f"
 }
 
@@ -23755,7 +23820,7 @@ OPENSHOT_VER=1.0.0
 OPENSHOT_QT_VER=4.0.0
 openshot_bdeps() {
     echo build-base cmake samurai swig python3-dev qt6-qtbase-dev qt6-qtsvg-dev \
-         ffmpeg-dev zeromq-dev cppzmq jsoncpp-dev alsa-lib-dev
+         ffmpeg-dev zeromq-dev cppzmq jsoncpp-dev alsa-lib-dev babl-dev
 }
 openshot_rdeps() {
     echo py3-qt6 py3-pyzmq py3-requests py3-defusedxml qt6-qtsvg ffmpeg-libavcodec \
@@ -23804,6 +23869,133 @@ openshot_seed() {
 EOF
 }
 
+
+# darktable: a raw photo developer, CMake over GTK 3. Compiled here rather
+# than taken from Alpine (5.4.1) at the owner's wish, and newer for it. The
+# release archive carries its submodules -- rawspeed, LibRaw, libxcf,
+# whereami -- which GitHub's tag archive does not; every other library is
+# Alpine's, Lua 5.4 included (its in-tree Lua stays off).
+#
+# Everything useful is on: OpenMP, Lua 5.4 with the bundled lua-scripts and
+# script manager, the map view, printing, tethering (gphoto2), MIDI
+# controllers (PortMidi), GraphicsMagick import, and the JPEG XL, HEIF, AVIF, WebP, OpenEXR and JPEG
+# 2000 formats. Exiv2 is Alpine's, built with ISOBMFF, so Canon CR3 metadata
+# reads. exiftool comes along for the Lua scripts that call it, and
+# iso-codes names the interface languages in preferences (its pkg-config
+# file is in -dev). Lensfun's lens database arrives with the library.
+#
+# Left out: OpenCL (no GPU compute on a Pi or under UTM, and its build-time
+# test compiles need clang), G'MIC (Alpine has it only in edge/testing, and
+# a stable-branch program linked to an edge library breaks when edge moves
+# on; it adds only the LUT 3D module's compressed .gmz packs -- .cube and
+# PNG LUTs work without it), colord (a system daemon with polkit, only for
+# reading the monitor profile automatically -- an ICC file can be chosen in
+# preferences instead), KWallet (no KDE desktop), and the tests.
+#
+# rawspeed learns the CPU's page size by compiling a probe that tests
+# _POSIX_C_SOURCE, which glibc defines by default and musl does not, so on
+# Alpine the probe is an #error and configuring stops. The size is given
+# instead, from getconf -- this machine's, since a Pi 5 kernel may use 16 KB
+# pages -- and rawspeed then skips its probe. Its L1d cache-line probe fails
+# the same way (it asks sysconf for a name only glibc has), so the line size
+# is read from sysfs, or is rawspeed's own fallback of 64 where the kernel
+# does not say, as under UTM. Every 64-bit core a Pi has uses 64.
+DARKTABLE_VER=5.6.1
+darktable_bdeps() {
+    echo build-base cmake samurai pkgconf gettext-dev intltool libxslt perl gtk+3.0-dev glib-dev \
+         libxml2-dev potrace-dev libgphoto2-dev imath-dev openexr-dev libjxl-dev libwebp-dev \
+         libavif-dev libheif-dev lensfun-dev sqlite-dev curl-dev libarchive-dev exiv2-dev \
+         portmidi-dev openjpeg-dev libsecret-dev graphicsmagick-dev icu-dev lua5.4-dev pugixml-dev \
+         osm-gps-map-dev cups-dev json-glib-dev lcms2-dev libjpeg-turbo-dev tiff-dev librsvg-dev \
+         libpng-dev zlib-dev sdl2-dev iso-codes-dev
+}
+darktable_rdeps() { echo iso-codes exiftool; }
+darktable_build() {
+    _t=$(gh_asset darktable-org/darktable "release-$DARKTABLE_VER" "darktable-$DARKTABLE_VER.tar.xz" \
+         e8b84ac98b0b689a244e4036c4b56394c1d58ce2d9abc05e0a060ef9f756dc36) || return 1
+    tar -xJf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
+    _cl=$(cat /sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size 2>/dev/null) || _cl=""
+    cmake_stage "$W/darktable-$DARKTABLE_VER" -DBUILD_TESTING=OFF -DUSE_OPENCL=OFF \
+        -DTESTBUILD_OPENCL_PROGRAMS=OFF -DUSE_COLORD=OFF -DUSE_KWALLET=OFF -DUSE_GMIC=OFF \
+        -DUSE_XMLLINT=OFF -DBUILD_CMSTEST=OFF -DRAWSPEED_PAGESIZE="$(getconf PAGESIZE)" \
+        -DRAWSPEED_CACHELINESIZE="${_cl:-64}" || return 1
+}
+# darktable opens a "Welcome to darktable!" dialog over its first window, once
+# per home. A darktablerc holding only that flag spares it; darktable fills in
+# every other setting from its defaults on the first run.
+darktable_seed() {
+    printf 'ui/show_welcome_screen=FALSE\n' | seed_homes .config/darktable/darktablerc
+}
+
+# FocusWriter: a full-screen writing program, CMake over Qt 6 and Hunspell.
+# Nothing to repair; Alpine has every library, KDSingleApplication included.
+FOCUSWRITER_VER=1.9.1
+focuswriter_bdeps() {
+    echo build-base cmake samurai pkgconf qt6-qtbase-dev qt6-qttools-dev qt6-qtmultimedia-dev \
+         hunspell-dev kdsingleapplication-dev zlib-dev
+}
+focuswriter_rdeps() { echo hunspell-en; }
+focuswriter_build() {
+    _s=$(gh_source gottcode/focuswriter "v$FOCUSWRITER_VER" \
+         ca83cade13158111e19eeba86d0a043bb45be4f32bd82f43da2bb910c0edd32d) || return 1
+    cmake_stage "$_s" || return 1
+}
+
+# Pencil2D: frame-by-frame 2D animation, qmake over Qt 6. Its movie export
+# runs ffmpeg by name, so ffmpeg is a runtime dependency no ELF header shows.
+PENCIL2D_VER=0.7.2
+pencil2d_bdeps() { echo build-base qt6-qtbase-dev qt6-qtsvg-dev qt6-qtmultimedia-dev qt6-qttools-dev; }
+pencil2d_rdeps() { echo ffmpeg; }
+pencil2d_build() {
+    _s=$(gh_source pencil2d/pencil "v$PENCIL2D_VER" \
+         22af8bf304cd18ae5d7a84e66d80ea2a21a53963476ffabb60d1d5f37f091a0c) || return 1
+    mkdir -p "$W/build"
+    (cd "$W/build" && qmake6 "$_s/pencil2d.pro" PREFIX="$PREFIX" CONFIG+=release CONFIG+=NO_TESTS \
+         QMAKE_LFLAGS+="-Wl,-z,stack-size=8388608" \
+       && nice -n 10 make -j "$JOBS" && make INSTALL_ROOT="$DEST" install) || return 1
+}
+
+
+
+# Ardour: the digital audio workstation, built with waf. Its GitHub archives
+# hold only a README: the build takes its version from 'git describe' or from
+# libs/ardour/revision.cc, which only ardour.org's own source tarball has --
+# so that tarball is the source here, pinned by SHA-256 like the rest.
+#
+# Backends: ALSA, PulseAudio (which PipeWire answers) and the dummy one. JACK
+# is left out, so installing Ardour does not bring a JACK server with it;
+# PipeWire's JACK layer is there for anyone who wants it. No phone-home
+# check for updates, and no LRDF (LADSPA metadata nobody ships any more).
+# Ardour is written against the glibmm-2.4 API series, which Alpine packages
+# as glibmm2.66, cairomm1.14 and pangomm2.46; glibmm-dev is the newer 2.68.
+#
+# Its bundled GTK 2 (libs/tk/ytk and ydk) ships a fixed config.h that
+# declares HAVE_GNU_FTW, glibc's nftw() extension -- FTW_ACTIONRETVAL and
+# the FTW_STOP / FTW_SKIP_SUBTREE / FTW_CONTINUE returns, which musl does not
+# have. With the two lines gone GTK takes its own portable path, a plain
+# nftw walk, which is what it does on every non-glibc system.
+ARDOUR_VER=9.8.0
+ardour_bdeps() {
+    echo build-base python3 pkgconf gettext-dev itstool boost-dev glibmm2.66-dev libsndfile-dev libsamplerate-dev \
+         liblo-dev taglib-dev vamp-sdk-dev rubberband-dev aubio-dev lv2-dev lilv-dev serd-dev sord-dev \
+         sratom-dev suil-dev fftw-dev libarchive-dev curl-dev libusb-dev cairomm1.14-dev pangomm2.46-dev \
+         pango-dev alsa-lib-dev pulseaudio-dev libxml2-dev libwebsockets-dev readline-dev \
+         libxrandr-dev libxinerama-dev
+}
+ardour_rdeps() { echo; }
+ardour_build() {
+    _t=$(url_asset "https://community.ardour.org/src/Ardour-$ARDOUR_VER.tar.bz2" \
+         1f1a0ae658fb3b10e3fa6f9cab952ab6500955594c3773c5e9421f5e42b23d59) || return 1
+    tar -xjf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
+    _s="$W/Ardour-$ARDOUR_VER"
+    sed -i '/#define HAVE_GNU_FTW 1/d' "$_s/libs/tk/ytk/config.h" "$_s/libs/tk/ydk/config.h"
+    _a=""; [ "$(uname -m)" = aarch64 ] && _a="--arm64"
+    (cd "$_s" && LINKFLAGS="-Wl,-z,stack-size=8388608" python3 ./waf configure --prefix="$PREFIX" \
+            --optimize --with-backends=alsa,pulseaudio,dummy --no-phone-home --no-lrdf \
+            --freedesktop $_a \
+        && nice -n 10 python3 ./waf build -j "$JOBS" \
+        && python3 ./waf install --destdir="$DEST") || return 1
+}
 
 # Celeste Classic, the PICO-8 original of Celeste, in lemon32767's C port:
 # the cart's logic transcribed to C over SDL2, its graphics and sounds in
@@ -23923,6 +24115,112 @@ EOF
 }
 
 
+# Endless Sky: the 2D space trading game, CMake. Stage 12 has built it since
+# before the store (build_endless_sky); this is the pinned, removable way. Its
+# CMakeLists turns on link-time optimisation for Release, and GCC's LTO
+# cannot inline the fortified vsnprintf on Alpine, so that line is patched
+# off, as stage 12 does. SDL2 is found by its CMake package, which is
+# sdl2-compat's and needs sdl2-compat-static (see DevilutionX). The binary
+# installs to $PREFIX/games, which is not on Alpine's PATH; a launcher in bin
+# runs it there. The game looks for its data only under /usr/local and /usr,
+# so the launcher names it: under any other prefix it would stop at once,
+# "Unable to find the resource directories!".
+# Alpine's FLAC CMake package names /usr/bin/flac, the command-line program,
+# and CMake stops when that file is absent -- which it is unless flac itself
+# is installed. With the package skipped, the CMakeLists takes its own
+# fallback, pkg-config's flac++, and needs nothing more.
+ENDLESSSKY_VER=0.11.2
+endlesssky_bdeps() {
+    echo build-base cmake samurai pkgconf sdl2-dev sdl2-compat-static libpng-dev libjpeg-turbo-dev \
+         libavif-dev glew-dev openal-soft-dev flac-dev zlib-dev minizip-dev util-linux-dev mesa-dev
+}
+endlesssky_rdeps() { echo; }
+endlesssky_build() {
+    _s=$(gh_source endless-sky/endless-sky "v$ENDLESSSKY_VER" \
+         066b4c171fa7756b4c538a81e9926d4d7686cdbbe44fb5ab2c83e137a7493278) || return 1
+    sed -i 's/^set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)/set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE FALSE)/' \
+        "$_s/CMakeLists.txt"
+    cmake_stage "$_s" -DES_USE_VCPKG=OFF -DBUILD_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_FLAC=ON || return 1
+    launcher endless-sky <<EOF
+exec "$PREFIX/games/endless-sky" --resources "$PREFIX/share/games/endless-sky" "\$@"
+EOF
+}
+
+# Naev: 2D space trading and combat with a long written story, meson. The
+# release's source archive carries the game's data (most of its 444 MB).
+# Every library comes from Alpine -- LuaJIT, SuiteSparse, GLPK and OpenBLAS
+# for its fleet physics and economy among them -- except the file dialog,
+# nativefiledialog-extended, which Alpine does not package and meson would
+# fetch from its wrap while configuring. Instead both of that wrap's files
+# come from wrapdb's own GitHub release through gh_asset, pinned by the
+# hashes Naev's .wrap names, and are put in subprojects/packagecache, where
+# meson finds them with downloads switched off. Its portal backend is used
+# (D-Bus to xdg-desktop-portal) rather than GTK 3, which it would otherwise
+# pull in whole for one dialog. Naev finds SuiteSparse's libraries but not its
+# headers, which Alpine keeps in their own directory; pkg-config knows which.
+# Linked for glibc-sized thread stacks, as cmake_stage does: Naev loads its
+# textures on worker threads, and under Mesa's software renderer the first
+# upload JIT-compiles a shader there, which overflowed musl's 128 KB.
+NAEV_VER=0.12.6
+NFDE_WRAP=nativefiledialog-extended_1.2.1-1
+naev_bdeps() {
+    echo build-base meson samurai pkgconf sdl2-dev sdl2_image-dev enet-dev pcre2-dev libunibreak-dev \
+         cmark-dev yaml-dev libxml2-dev physfs-dev freetype-dev libpng-dev libwebp-dev luajit-dev \
+         glpk-dev suitesparse-dev openblas-dev openal-soft-dev libvorbis-dev libogg-dev gettext-dev \
+         dbus-dev py3-yaml
+}
+naev_rdeps() { echo; }
+naev_build() {
+    _t=$(gh_asset naev/naev "v$NAEV_VER" "naev-$NAEV_VER-source.tar.xz" \
+         e81c0e25630146f3a709a540679a75c0af4983f858184130ebac5c6ba7d4592a) || return 1
+    _n=$(gh_asset mesonbuild/wrapdb "$NFDE_WRAP" nativefiledialog-extended-1.2.1.tar.gz \
+         443697a857c4efacbe08cdaf5182724fa9d9b9a79b8feff2a1601bde1df46b07) || return 1
+    _p=$(gh_asset mesonbuild/wrapdb "$NFDE_WRAP" "${NFDE_WRAP}_patch.zip" \
+         044a2e881d874d55a892b61cf553aa7678d1c0f06cfaeb39a1b43f34ca976b09) || return 1
+    tar -xJf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
+    _s="$W/naev-$NAEV_VER"
+    mkdir -p "$_s/subprojects/packagecache"
+    cp "$_n" "$_s/subprojects/packagecache/nativefiledialog-extended-1.2.1.tar.gz"
+    cp "$_p" "$_s/subprojects/packagecache/${NFDE_WRAP}_patch.zip"
+    LDFLAGS="${LDFLAGS:-} -Wl,-z,stack-size=8388608" \
+    meson setup "$W/build" "$_s" --prefix="$PREFIX" --buildtype=release --wrap-mode=nodownload \
+        -Dc_args="$(pkg-config --cflags-only-I CHOLMOD)" -Dluajit=enabled -Ddocs_c=disabled -Ddocs_lua=disabled \
+        -Dnativefiledialog-extended:xdg-desktop-portal=enabled
+    meson compile -C "$W/build" -j "$JOBS"
+    DESTDIR="$DEST" meson install -C "$W/build"
+}
+
+# Taisei: a Touhou fan game, a bullet-hell shooter in C over SDL3, meson. The
+# release archive is the one to build from: it carries the submodules that
+# GitHub's tag archive leaves out. Its fallbacks are .wrap files that meson
+# would download, so downloads are off and every library is Alpine's. Only
+# the OpenGL 3.3 renderer is built: the SDL_GPU and GLES ones need shaders
+# cross-compiled by glslang and SPIRV-Cross at build time, and GL 3.3 is what
+# the Pi's V3D and the VM's virgl both offer. The allocator is musl's own;
+# mimalloc would be a subproject. The game's assets are installed as files,
+# not packed into zips: the packer compresses with Python's zstd module,
+# which Alpine's Python 3.14 is built without. Its threads get glibc-sized
+# stacks, as Naev's do (see there).
+TAISEI_VER=1.4.6
+taisei_bdeps() {
+    echo build-base meson samurai pkgconf sdl3-dev freetype-dev libwebp-dev zlib-dev zstd-dev \
+         cglm-dev libunibreak-dev opusfile-dev libpng-dev openssl-dev
+}
+taisei_rdeps() { echo; }
+taisei_build() {
+    _t=$(gh_asset taisei-project/taisei "v$TAISEI_VER" "taisei-$TAISEI_VER.tar.xz" \
+         18d03c67dcc8c7faff22e8defdafc3a734b46c591618d1a678e6e914846889d9) || return 1
+    tar -xJf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
+    _s="$W/taisei-$TAISEI_VER"
+    LDFLAGS="${LDFLAGS:-} -Wl,-z,stack-size=8388608" \
+    meson setup "$W/build" "$_s" --prefix="$PREFIX" --buildtype=release --wrap-mode=nodownload \
+        -Dallocator=libc -Dpackage_data=disabled -Dr_default=gl33 -Dr_gles30=disabled -Dr_sdlgpu=disabled \
+        -Dshader_transpiler=disabled -Ddocs=disabled -Dtests=disabled -Dgamemode=disabled
+    meson compile -C "$W/build" -j "$JOBS"
+    DESTDIR="$DEST" meson install -C "$W/build"
+}
+
+
 # AstroMenace: a 3D shoot-'em-up, CMake over SDL2, OpenAL and ALUT. The build
 # packs the raw game data into gamedata.vfs by running the binary it just
 # made (--pack), and the game looks for that file in DATADIR.
@@ -23957,7 +24255,7 @@ AMIBERRY_VER=8.3.0
 amiberry_bdeps() {
     echo build-base cmake samurai pkgconf sdl3-dev sdl3_image-dev@testing flac-dev mpg123-dev \
          libpng-dev zlib-dev curl-dev nlohmann-json libpcap-dev zstd-dev libmpeg2-dev \
-         portmidi-dev enet-dev libserialport-dev@testing mesa-dev dbus-dev wayland-dev
+         portmidi-dev enet-dev libserialport-dev@testing mesa-dev dbus-dev wayland-dev wayland-protocols
 }
 amiberry_rdeps() {
     echo sdl3 sdl3_image@testing flac-libs mpg123-libs libpng libcurl libpcap zstd-libs \
@@ -23973,6 +24271,19 @@ amiberry_build() {
     # musl's C++ NULL is nullptr, which no static_cast turns into an address;
     # glibc's is an integer. The intent is zero.
     sed -i 's|static_cast<uaecptr>(NULL)|static_cast<uaecptr>(0)|g' "$_s/src/custom.cpp"
+    # Native file dialogs: nativefiledialog-extended is a git submodule, which
+    # GitHub's archive leaves as an empty directory, so the build turned them
+    # off. Release 1.4.0 fills it -- the first with the Wayland window API
+    # (NFD_SetWaylandDisplay) Amiberry calls; 1.2.1, which Naev pins, lacks
+    # it. Amiberry builds it for xdg-desktop-portal, which needs only D-Bus.
+    _n=$(gh_source btzy/nativefiledialog-extended v1.4.0 \
+         38116050495cd7de77a91d6d8d59c1aa0a0848c56daa60029bd5b59f3c897229) || return 1
+    rmdir "$_s/external/nativefiledialog-extended" && cp -r "$_n" "$_s/external/nativefiledialog-extended"
+    # ...which has a submodule of its own, the Wayland protocol files, left
+    # empty the same way. Alpine's wayland-protocols is that repository.
+    _wp=$(pkg-config --variable=pkgdatadir wayland-protocols)
+    rm -rf "$_s/external/nativefiledialog-extended/3ps/wayland-protocols"
+    ln -s "$_wp" "$_s/external/nativefiledialog-extended/3ps/wayland-protocols"
     cmake_stage "$_s" -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DUSE_DBUS=OFF -DUSE_GPIOD=OFF
 }
 
@@ -23983,8 +24294,15 @@ amiberry_build() {
 # (about 90 MB between them) and each gets its own launcher.
 ALEPHONE_VER=20250829
 alephone_bdeps() {
+    # libvpx, libyuv, libebml and libmatroska: film export (recording a game
+    # or a replay to video) and video playback; miniupnpc: hosting a network
+    # game through a home router. All five were absent from the first build.
+    # Film export blits with glBlitFramebufferEXT, a name Alpine's libGL
+    # (glvnd) does not export; the core glBlitFramebuffer it does export has
+    # the same signature, so the one is defined as the other.
     echo build-base boost-dev asio-dev sdl2-dev sdl2_ttf-dev sdl2_image-dev openal-soft-dev \
-         libsndfile-dev glu-dev mesa-dev zlib-dev libpng-dev curl-dev zziplib-dev libvorbis-dev
+         libsndfile-dev glu-dev mesa-dev zlib-dev libpng-dev curl-dev zziplib-dev libvorbis-dev \
+         libvpx-dev libyuv-dev libebml-dev libmatroska-dev miniupnpc-dev
 }
 alephone_rdeps() { echo; }
 alephone_build() {
@@ -23992,7 +24310,8 @@ alephone_build() {
          e7c447034aa35dd85ca6836dd8367034c4f4512aa0d14e9781d7033946098806) || return 1
     mkdir -p "$W/src" && tar -xjf "$_t" -C "$W/src"
     _s=$(printf '%s\n' "$W"/src/*)
-    (cd "$_s" && ./configure --prefix="$PREFIX" && nice -n 10 make -j "$JOBS" && make DESTDIR="$DEST" install)
+    (cd "$_s" && ./configure --prefix="$PREFIX" CXXFLAGS="-g -O2 -DglBlitFramebufferEXT=glBlitFramebuffer" \
+        && nice -n 10 make -j "$JOBS" && make DESTDIR="$DEST" install)
     _data="$PREFIX/share/alephone"
     mkdir -p "$DEST$_data"
     for _g in "Marathon:644fa202a8df19fd5c36b8c4bc3777c33afd291e2874669defc1819d8e132620:marathon:Marathon" \
@@ -24472,7 +24791,7 @@ PATCH
 }
 
 # ------------------------------------------------------------ recipe driver ---
-RECIPES="openshot ccleste pacman opentyrian devilutionx astromenace amiberry alephone dxx pychess bleachbit persepolis ffconverter smc funkin librecad veracrypt ohmyposh ddnet pixelorama browsh"
+RECIPES="openshot darktable focuswriter pencil2d ardour ccleste pacman opentyrian devilutionx endlesssky naev taisei astromenace amiberry alephone dxx pychess bleachbit persepolis ffconverter smc funkin librecad veracrypt ohmyposh ddnet pixelorama browsh"
 
 is_recipe() { case " $RECIPES " in *" $1 "*) return 0 ;; esac; return 1; }
 
@@ -24506,10 +24825,16 @@ build_recipe() {  # <recipe>
         # shellcheck disable=SC2086
         [ -z "$_rt" ] || apk add -t "copal-store-$_r" $_rt || { warn "could not install what $_r needs to run"; return 1; }
         # shellcheck disable=SC2086
-        [ -z "$_b" ] || apk add -t ".copal-store-build-$_r" $_b || { warn "could not install what $_r needs to build"; return 1; }
+        # In a batch (install_ids, several recipes) every build dependency is
+        # already in place under .copal-store-build-batch.
+        [ -z "$_b" ] || [ "${COPAL_STORE_BATCH:-0}" = 1 ] \
+            || apk add -t ".copal-store-build-$_r" $_b || { warn "could not install what $_r needs to build"; return 1; }
     fi
 
-    rm -rf "$W"; mkdir -p "$DEST"
+    # TMPDIR inside the work tree: a compiler's temporary files, an LTO link's
+    # especially, go to disk rather than a small tmpfs /tmp, and leave with
+    # the tree.
+    rm -rf "$W"; mkdir -p "$DEST" "$W/tmp"
     _t0=$(date +%s)
     say "Compiling -- 'tail -f $_log' in another terminal to watch"
     # IN A NEW SHELL, not a subshell. A recipe relies on set -e to stop at
@@ -24519,16 +24844,25 @@ build_recipe() {  # <recipe>
     # the bench: cmake failed, and the recipe carried on and installed a
     # launcher for a binary that was never built. A fresh 'sh' starts with
     # set -e in force.
-    W="$W" DEST="$DEST" JOBS="$JOBS" PREFIX="$PREFIX" CACHE="$CACHE" \
+    W="$W" DEST="$DEST" JOBS="$JOBS" PREFIX="$PREFIX" CACHE="$CACHE" TMPDIR="$W/tmp" \
         sh "$0" __build "$_r" > "$_log" 2>&1
     if [ $? -ne 0 ]; then
         warn "$_r did not build. The last lines of $_log:"
         tail -n 20 "$_log" | sed 's/^/      /' >&2
-        note "the build tree is left in $W for a look; the system is unchanged"
+        store_summary "$_r" failed "$(( $(date +%s) - _t0 ))"
+        # The tree goes, the record stays: the summary has the failure and
+        # the compressed log has the whole of it. Keep it to look inside.
+        if [ "${COPAL_STORE_KEEP_WORK:-0}" = 1 ]; then
+            note "the build tree is kept in $W; the system is unchanged"
+        else
+            rm -rf "$W"
+            note "the system is unchanged; the full log is $_log.gz (COPAL_STORE_KEEP_WORK=1 keeps the build tree)"
+        fi
         drop_build_deps "$_r"
         return 1
     fi
-    note "built in $(( $(date +%s) - _t0 )) s"
+    _secs=$(( $(date +%s) - _t0 ))
+    note "built in $_secs s"
 
     # WHAT IT LINKS AGAINST, asked of the binaries rather than written down.
     # Every NEEDED library of every ELF file staged, less the ones the recipe
@@ -24589,9 +24923,35 @@ build_recipe() {  # <recipe>
 
     if type "${_r}_seed" >/dev/null 2>&1; then "${_r}_seed"; fi
     have update-desktop-database && update-desktop-database -q "$PREFIX/share/applications" 2>/dev/null
+    store_summary "$_r" ok "$_secs"
     rm -rf "$W"
     drop_build_deps "$_r"
-    note "installed: $(wc -l < "$_old") files under $PREFIX"
+    note "installed: $(wc -l < "$_old") files under $PREFIX -- 'copal-store summary' for the record"
+}
+
+# THE INSTALL SUMMARY. One entry per build in $LOGDIR/summary.txt: the
+# result and time, what was installed and how large, the source files kept
+# in the cache, the optional features the build said it could not find, and
+# for a failure the last lines of its log. The full log is compressed beside
+# it as NAME.log.gz. Test frameworks and documentation tools are left out of
+# the absences: they are never wanted on the machine.
+store_summary() {  # <recipe> <ok|failed> <seconds>
+    _lg="$LOGDIR/$1.log"; _e=$(printf '\033')
+    {
+        printf '\n== %s  %s  %s in %s s\n' "$1" "$(date '+%Y-%m-%d %H:%M')" "$2" "$3"
+        if [ "$2" = ok ]; then
+            printf '   installed  %s files, %s MB under %s\n' "$(wc -l < "$W/files" 2>/dev/null || echo '?')" \
+                "$(( $(du -sk "$DEST$PREFIX" 2>/dev/null | cut -f1) / 1024 ))" "$PREFIX"
+        fi
+        [ -s "$W/.sources" ] && sort -u "$W/.sources" | sed 's/^/   source     /; s/$/  (kept)/'
+        printf '   log        %s.gz\n' "$_lg"
+        sed "s/${_e}\[[0-9;]*[mK]//g" "$_lg" 2>/dev/null \
+            | grep -E 'Not found: |Could NOT find [A-Za-z]|^-- .*[Nn]ot found *$' \
+            | grep -v -i -E 'looking for|gtest|catch2|cppunit|doxygen|ruby|sphinx|po4a|luacheck' \
+            | sed 's/^[- ]*//' | sort -u | head -n 8 | sed 's/^/   absent     /'
+        [ "$2" = ok ] || tail -n 15 "$_lg" | sed "s/${_e}\[[0-9;]*[mK]//g; s/^/   | /"
+    } >> "$LOGDIR/summary.txt" 2>/dev/null
+    gzip -9 -f "$_lg" 2>/dev/null || true
 }
 
 needed_sonames() {  # <staging dir> -- NEEDED libraries not provided by the stage itself
@@ -24604,6 +24964,7 @@ needed_sonames() {  # <staging dir> -- NEEDED libraries not provided by the stag
 
 drop_build_deps() {
     [ "${COPAL_STORE_NODEPS:-0}" = 1 ] && return 0
+    [ "${COPAL_STORE_BATCH:-0}" = 1 ] && return 0
     [ "${COPAL_STORE_KEEP_BUILD_DEPS:-0}" = 1 ] && return 0
     apk del -q ".copal-store-build-$1" >/dev/null 2>&1 || true
 }
@@ -24621,6 +24982,29 @@ remove_recipe() {  # <recipe>
 # ------------------------------------------------------------ verbs ---
 install_ids() {
     _rc=0
+    # PREREQUISITES FIRST, for a batch. With more than one recipe named, the
+    # build and run dependencies of all of them go in with one apk call before
+    # any compiling starts, and come out with one after: the full monty's
+    # recipes share most of a Qt, an SDL and a GTK, and installing and
+    # removing those for each program in turn costs more than the builds.
+    _recs=""
+    for _id in "$@"; do
+        for _p in $(row_for "$_id" | cut -d'|' -f4); do
+            case "$_p" in *@source) _recs="$_recs ${_p%@source}" ;; esac
+        done
+    done
+    _batch=0
+    if [ "$(echo $_recs | wc -w)" -gt 1 ] && [ "${COPAL_STORE_NODEPS:-0}" != 1 ]; then
+        _all=$(for _r in $_recs; do is_recipe "$_r" && { "${_r}_bdeps"; "${_r}_rdeps"; }; done | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' ' ')
+        say "Build prerequisites for$_recs, installed once"
+        case " $_all " in *@testing*) enable_testing_tag ;; esac
+        # shellcheck disable=SC2086
+        if apk add -t .copal-store-build-batch $_all; then
+            _batch=1; export COPAL_STORE_BATCH=1
+        else
+            warn "the combined set did not install -- each program installs its own instead"
+        fi
+    fi
     for _id in "$@"; do
         _row=$(row_for "$_id"); [ -n "$_row" ] || { warn "nothing called '$_id'"; _rc=1; continue; }
         _inst=$(printf '%s' "$_row" | cut -d'|' -f4)
@@ -24640,6 +25024,10 @@ install_ids() {
         # shellcheck disable=SC2086
         [ -z "$_flat" ] || { have copal-install && copal-install $_flat; } || _rc=1
     done
+    if [ "$_batch" = 1 ]; then
+        unset COPAL_STORE_BATCH
+        [ "${COPAL_STORE_KEEP_BUILD_DEPS:-0}" = 1 ] || apk del -q .copal-store-build-batch >/dev/null 2>&1 || true
+    fi
     refresh_menu
     return $_rc
 }
@@ -24853,6 +25241,11 @@ case "${1:-}" in
     sections) sections | awk -F'|' '{ printf "%-13s %3d programs, %d installed\n", $1, $2, $3 }' ;;
     info)     [ $# -ge 2 ] || die "info needs an id"; info_id "$2" ;;
     install)  shift; [ $# -gt 0 ] || die "install what?"; need_root install "$@"; install_ids "$@" ;;
+    summary)  if [ -s "$LOGDIR/summary.txt" ]; then cat "$LOGDIR/summary.txt"; else note "no builds recorded yet"; fi ;;
+    log)      [ -n "${2:-}" ] || die "log of what?"
+              if [ -f "$LOGDIR/$2.log.gz" ]; then zcat "$LOGDIR/$2.log.gz"
+              elif [ -f "$LOGDIR/$2.log" ]; then cat "$LOGDIR/$2.log"
+              else die "no build log for $2 in $LOGDIR"; fi ;;
     remove)   shift; [ $# -gt 0 ] || die "remove what?"; need_root remove "$@"; remove_ids "$@" ;;
     recipes)  for _r in $RECIPES; do printf '%s\n' "$_r"; done ;;
     self-test) self_test ;;
@@ -24912,6 +25305,31 @@ MSG
         note "installed:${_ok:- nothing}"
     else
         note "Skipped. Open the store any time: copal-store"
+    fi
+    if [ "$(copal_profile)" = full ]; then
+        say "The full monty's programs"
+        note "$(echo $STORE_FULL)"
+        note "(most are compiled -- two to four hours on a Pi 4; 'tail -f /var/log/copal-store/NAME.log')"
+        if require_network; then
+            # One call for the whole set: the store then installs every build
+            # prerequisite once, before the first compile, and removes them
+            # once after the last, instead of per program.
+            _ids=""
+            for _id in $STORE_FULL; do
+                if /usr/local/bin/copal-store info "$_id" >/dev/null 2>&1; then _ids="$_ids $_id"
+                else note "$_id is not offered for this board -- skipped"; fi
+            done
+            _sum=/var/log/copal-store/summary.txt
+            _n0=$(wc -l < "$_sum" 2>/dev/null || echo 0)
+            # shellcheck disable=SC2086
+            /usr/local/bin/copal-store install $_ids \
+                || warn "not everything installed -- the summary below says which; 'copal-store install NAME' retries one"
+            say "Install summary"
+            tail -n "+$(( _n0 + 1 ))" "$_sum" 2>/dev/null | sed 's/^/    /'
+            note "kept: $_sum, each build's full log beside it (NAME.log.gz), the sources in /var/cache/copal-store"
+        else
+            warn "no network -- the full monty's programs wait in the store"
+        fi
     fi
     say "Stage 18 complete."
     commit_reminder

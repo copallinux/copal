@@ -271,8 +271,119 @@ the CPack block, so CPack stays on. It built in under three minutes on four
 cores and played the intro from `spawn.mpq`; every library resolves from
 `/usr/lib`. ZeroTier online play is left out; LAN play over TCP remains.
 
-Taisei, Naev and Endless Sky are next: 300-600 MB of source each, waiting on a
-larger bench disk (`make utm-grow`).
+### 2026-09-23, afternoon: games, photography, animation, audio, and tools
+
+The bench's disk was grown to 128 GiB (`make utm-grow`, then stage 8, which
+had to learn sfdisk first -- 8c19a19) and the queue behind it was built. The
+times are this bench's, four cores, dependencies already cached.
+
+| Recipe | Program | Upstream, pinned | Build | What it needed |
+|---|---|---|---|---|
+| `taisei` | Taisei 1.4.6 | release tarball (submodules in it) | 47 s | assets as files, not zstd zips (Alpine's Python has no `_zstd`); GL 3.3 only; 8 MB thread stacks |
+| `naev` | Naev 0.12.6 | release source (444 MB, data included) | 40 s | SuiteSparse headers via pkg-config; the file-dialog wrap fed from wrapdb's GitHub release into `packagecache`; 8 MB thread stacks |
+| `endlesssky` | Endless Sky 0.11.2 | tag archive | 2 min 35 s | LTO off; FLAC's CMake package skipped; `--resources` in the launcher |
+| `darktable` | darktable 5.6.1 | release tarball (rawspeed, LibRaw in it) | 4 min 20 s | page size and cache-line size given to rawspeed; welcome dialog seeded away |
+| `focuswriter` | FocusWriter 1.9.1 | tag archive | 42 s | nothing |
+| `pencil2d` | Pencil2D 0.7.2 | tag archive | 58 s | qmake6, `NO_TESTS`; ffmpeg at run time |
+| `ardour` | Ardour 9.8.0 | ardour.org's source tarball | 24 min | the glibmm-2.4 series; `HAVE_GNU_FTW` removed from its bundled GTK |
+
+Each was launched and pictured (`docs/app-gallery.md`). What each taught:
+
+- **musl's threads get 128 KB of stack.** `cmake_stage` has linked every CMake
+  recipe for glibc's 8 MB since DDNet; the meson and waf recipes now pass the
+  same `-z stack-size`. Naev was the case: it loads textures on worker
+  threads, and under Mesa's software renderer the first upload JIT-compiles
+  a shader there, deep in LLVM, which overflowed and crashed at start.
+- **Probes that test glibc's macros, not the feature.** rawspeed's page-size
+  probe checks `_POSIX_C_SOURCE`, which glibc defines by default and musl does
+  not, and its cache-line probe asks `sysconf` for a glibc-only name. Both
+  values are given instead: `getconf PAGESIZE` (a Pi 5 kernel may use 16 KB
+  pages) and sysfs's line size, or rawspeed's own 64 where the kernel does
+  not say, as under UTM. Ardour's bundled GTK hard-codes `HAVE_GNU_FTW`.
+- **A GitHub archive is not always the source.** Taisei's and darktable's tag
+  archives lack their submodules, so their release tarballs are used.
+  Ardour's GitHub archive is a README saying it cannot be built, by design:
+  its version comes from `git describe` or a file only its own tarball has.
+  `url_asset` is `gh_asset` for such a project's own site -- the same cache,
+  the same SHA-256 check -- and Ardour is its only user.
+- **Launch paths.** Endless Sky looks for its data only under `/usr/local`
+  and `/usr`; the launcher names it. Stage 12's own Endless Sky build (the
+  unpinned one in `build_endless_sky`) was fixed the same day: the FLAC
+  package, `sdl2-compat-static`, and a link into `/usr/local/bin`, since the
+  binary installs to `/usr/local/games`, which is not on Alpine's PATH.
+
+- **Audio limits.** Ardour warned at start that locked memory was capped.
+  Copal's logins do not use PAM, so `/etc/security/limits.d` (where the
+  usual `@audio memlock` line would go, and where PipeWire's own file sits)
+  is read by nobody. `copal-autologin`, which runs as root just before
+  `login -f`, now raises `memlock` to unlimited and `rtprio` to 95, and the
+  desktop session inherits both.
+
+Left out on purpose: Ardour's JACK backend (so a JACK server is not pulled
+in; ALSA, PulseAudio -- which PipeWire answers -- and dummy are built), and
+from darktable OpenCL (no GPU compute here), colord (a system daemon, only to
+read the monitor profile automatically), and G'MIC, which Alpine has only in
+edge/testing -- a stable program linked to an edge library breaks when edge
+moves on, for the sake of the LUT 3D module's `.gmz` packs alone.
+
+**From Alpine, no compiling:** K3b (the disc burner, every port but armhf),
+Czkawka (duplicates, similar images, empty folders -- the window), fdupes,
+rdfind and, from edge/testing, jdupes (the terminal duplicate finders), XSane
+(edge/testing) and Skanlite for scanning, the latter in place of QuiteInsane,
+a Qt 3 front end abandoned twenty years ago.
+
+**Asked for and not portable:** two animation programs, for one reason:
+Alpine builds Qt 5 and Qt 6 on aarch64 for OpenGL ES (`QT_OPENGL_ES_2`), and
+both need a Qt built for desktop OpenGL. Anime Effects' renderer is
+`QOpenGLFunctions_4_0_Core` throughout (and no Pi's GPU offers GL 4.0).
+OpenToonz 1.8.0 draws with some four hundred fixed-function desktop GL calls;
+six builds on the bench got it past musl (`execinfo.h` stubs), GCC 15 (it
+used `int64_t` without `<cstdint>`) and its own libtiff 4.0.3 (a 2008
+`config.guess`), and a desktop `gl.h` force-included beside Qt's GLES headers
+compiled most of it -- until its effects module, which uses GLEW, refused
+`gl.h` before `glew.h`, and GLEW before Qt's GLES headers cannot work either.
+Both recipes were removed. On x86_64, where Alpine's Qt is desktop GL, both
+would likely build; they are not offered there because a row goes in only
+after its recipe has built and run, and the bench is aarch64. FireAlpaca is closed and Windows or
+macOS only. StimuWrite is a Godot program sold on itch.io with an x86_64
+glibc binary and no source.
+
+**The full monty installs all of them** at stage 18 (`STORE_FULL` in
+`copal-prep.sh`), after the starter set: roughly 40 minutes on this bench and
+two to four hours on a Pi 4, Ardour (24 minutes here) the long one. A failed
+build is reported and the rest carry on.
+
+**Features the logs showed missing, now built in.** The store's own logs,
+read for what each build said it could not find, gave three:
+
+- **Aleph One** records a game or a replay to video (libvpx, libyuv,
+  libebml, libmatroska) and hosts network games through a home router
+  (miniupnpc). Film export calls `glBlitFramebufferEXT`, which Alpine's
+  glvnd libGL does not export; it is defined as the core
+  `glBlitFramebuffer`, which it does.
+- **Amiberry** has native file dialogs: its nativefiledialog-extended
+  submodule, empty in GitHub's archive, is filled with release 1.4.0 (the
+  first with the Wayland window API it calls), and that release's own
+  submodule, the Wayland protocol files, is Alpine's `wayland-protocols`.
+- **OpenShot** links babl. Resvg, which it also looks for, is only in
+  edge/testing and stays out, as G'MIC does from darktable.
+
+Absences left alone: test frameworks (GTest, Catch2, CppUnit), documentation
+tools, Aleph One's native file dialog and Naev's METIS -- none is something a
+person using the program would notice.
+
+**Bench findings.** Three fixes went into `tools/copal-store-bench.sh`:
+libraries one directory down (`lua5.4/liblua.so -> ../liblua-5.4.so.0`) are
+re-aimed at `/usr/lib`, or the linker takes the static archive beside them
+and a shared object fails to link; a dev package newer than the installed
+library (libheif-dev 1.23.4 against 1.23.0) gets its versioned name aimed at
+the installed soname; and a package installed for real since it was unpacked
+removes its sysroot copy, whose stale CMake files would otherwise be found
+first. qmake cannot be pointed at a sysroot at all, and Qt's own CMake
+package finds its modules only beside itself, so the Qt 5 and Qt 6 recipes
+were built against real dev packages, installed under `.copal-bench` and
+`.copal-bench-qt5` for removal. And editing `tools/copal-store` while a
+build runs from it breaks that build -- the shell reads a script as it goes.
 
 ## VIII. Using it
 
@@ -282,10 +393,46 @@ larger bench disk (`make utm-grow`).
     doas copal-store install openshot
     doas copal-store remove openshot
     copal-store show pixelorama     open one program's page -- a link target
+    doas copal-store install taisei naev darktable     several at once: prerequisites installed once
+    copal-store summary             every build: result, size, sources kept, features absent
+    copal-store log darktable       one build's full log
 
 In the window: pick a section, double-click a program, then Install, Remove,
 Open or Website. Install and Remove run in a terminal window so the apk or
 compiler output can be read, and the list is redrawn afterwards.
+
+**What a build leaves behind.** Each build works in its own tree under
+`/usr/local/src/copal-store/NAME`, with `TMPDIR` pointed inside it, so a
+compiler's temporary files go to disk and not to a small tmpfs `/tmp`. The
+tree is removed when the build ends, succeeded or failed
+(`COPAL_STORE_KEEP_WORK=1` keeps a failed one to look inside; the bench sets
+it). What stays:
+
+- the **sources**, in `/var/cache/copal-store`, so a rebuild or a reinstall
+  downloads nothing;
+- the **record**, `/var/log/copal-store/summary.txt`, one entry per build --
+  the result and time, the files and megabytes installed, the source files
+  kept, the optional features the build said it could not find, and for a
+  failure the last lines of its log;
+- the **full log**, compressed beside it as `NAME.log.gz` (a few KB to a few
+  hundred), which `copal-store log NAME` reads.
+
+An entry looks like this:
+
+    == pacman  2026-09-23 16:49  ok in 12 s
+       installed  80 files, 2 MB under /usr/local
+       source     /var/cache/copal-store/pacman-v0.9.tar.gz  (kept)
+       log        /var/log/copal-store/pacman.log.gz
+
+**Prerequisites first.** Given several programs, `install` puts the build and
+run dependencies of all of them in with one apk call, under
+`.copal-store-build-batch`, before the first compile, and takes the build
+ones out with one call after the last; each program still records its own
+runtime dependencies (`copal-store-NAME`) for `remove`. The full monty's
+stage 18 installs its set this way and prints the summary's new entries at
+the end, into `/boot/copal.log` with the rest of the transcript. Tried with
+`apk` and `id` stood in by logging shims: one add, per-program runtime
+records, one delete.
 
 **Adding a recipe.** Write the four functions beside the others in
 `tools/copal-store` and add the name to `RECIPES`. Add one table row whose

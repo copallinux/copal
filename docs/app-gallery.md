@@ -14,21 +14,28 @@ an aarch64 Copal guest under UTM with software OpenGL and a virtio sound
 card but no sound server — so anything that wants PulseAudio or JACK was
 refused, and anything that plays sound was silent.
 
-**192 programs pictured, 1.2 MB of pictures.**
+**203 programs pictured, 1.2 MB of pictures.**
 
 
-## Audio (6)
+## Audio (7)
 
 | | | |
 |---|---|---|
-| ![Audacity (audio editor)](img/gallery/audacity.jpg)<br>**Audacity (audio editor)**<br>`audacity` · graphical · WIZARD 1s (2 windows) | ![Hydrogen (drum machine)](img/gallery/hydrogen.jpg)<br>**Hydrogen (drum machine)**<br>`hydrogen` · graphical · ok 3s (3 windows) | ![LMMS (DAW - tracker lineage)](img/gallery/lmms.jpg)<br>**LMMS (DAW - tracker lineage)**<br>`lmms` · graphical · ok 2s (1 window) |
-| ![MuseScore (music notation)](img/gallery/mscore.jpg)<br>**MuseScore (music notation)**<br>`mscore` · graphical · WIZARD 2s (2 windows) | ![Schism Tracker (Impulse Tracker style)](img/gallery/schismtracker.jpg)<br>**Schism Tracker (Impulse Tracker style)**<br>`schismtracker` · graphical · ok 1s (1 window) | ![VICE vsid (Commodore 64 SID player)](img/gallery/vsid.jpg)<br>**VICE vsid (Commodore 64 SID player)**<br>`vsid` · graphical · ok 2s (1 window) |
+| ![Ardour (recording studio)](img/gallery/ardour9.jpg)<br>**Ardour (recording studio)**<br>`ardour9` · graphical · ok 1s (2 windows), acted | ![Audacity (audio editor)](img/gallery/audacity.jpg)<br>**Audacity (audio editor)**<br>`audacity` · graphical · WIZARD 1s (2 windows) | ![Hydrogen (drum machine)](img/gallery/hydrogen.jpg)<br>**Hydrogen (drum machine)**<br>`hydrogen` · graphical · ok 3s (3 windows) |
+| ![LMMS (DAW - tracker lineage)](img/gallery/lmms.jpg)<br>**LMMS (DAW - tracker lineage)**<br>`lmms` · graphical · ok 2s (1 window) | ![MuseScore (music notation)](img/gallery/mscore.jpg)<br>**MuseScore (music notation)**<br>`mscore` · graphical · WIZARD 2s (2 windows) | ![Schism Tracker (Impulse Tracker style)](img/gallery/schismtracker.jpg)<br>**Schism Tracker (Impulse Tracker style)**<br>`schismtracker` · graphical · ok 1s (1 window) |
+| ![VICE vsid (Commodore 64 SID player)](img/gallery/vsid.jpg)<br>**VICE vsid (Commodore 64 SID player)**<br>`vsid` · graphical · ok 2s (1 window) |  |  |
 
 ## Control (3)
 
 | | | |
 |---|---|---|
 | ![Bluetooth manager](img/gallery/blueman-manager.jpg)<br>**Bluetooth manager**<br>`blueman-manager` · graphical · ok 2s (1 window) | ![Display layout](img/gallery/arandr.jpg)<br>**Display layout**<br>`arandr` · graphical · ok 1s (1 window) | ![Volume control (PulseAudio)](img/gallery/pavucontrol.jpg)<br>**Volume control (PulseAudio)**<br>`pavucontrol` · graphical · ok 1s (1 window) |
+
+## Creative (2)
+
+| | | |
+|---|---|---|
+| ![darktable (raw photo developer)](img/gallery/darktable.jpg)<br>**darktable (raw photo developer)**<br>`darktable` · graphical · ok 1s (1 window), acted | ![Pencil2D (hand-drawn animation)](img/gallery/pencil2d.jpg)<br>**Pencil2D (hand-drawn animation)**<br>`pencil2d` · graphical · ok 1s (1 window), acted |  |
 
 ## Design (8)
 
@@ -45,19 +52,20 @@ refused, and anything that plays sound was silent.
 | ![cgdb (GDB with a source window)](img/gallery/cgdb.jpg)<br>**cgdb (GDB with a source window)**<br>`cgdb` · terminal · ok 2s (1 window), acted | ![Code::Blocks (IDE - GDB breakpoints)](img/gallery/codeblocks.jpg)<br>**Code::Blocks (IDE - GDB breakpoints)**<br>`codeblocks` · graphical · ok 1s (1 window) | ![GDB (the debugger everything uses)](img/gallery/gdb.jpg)<br>**GDB (the debugger everything uses)**<br>`gdb` · terminal · ok 1s (1 window), acted |
 | ![KDevelop (IDE - GDB breakpoints)](img/gallery/kdevelop.jpg)<br>**KDevelop (IDE - GDB breakpoints)**<br>`kdevelop` · graphical · ok 1s (1 window) | ![Lapce (modern GUI editor, Rust)](img/gallery/lapce.jpg)<br>**Lapce (modern GUI editor, Rust)**<br>`lapce` · graphical · ok 1s (1 window), detached | ![LLDB (the Clang debugger)](img/gallery/lldb.jpg)<br>**LLDB (the Clang debugger)**<br>`lldb` · terminal · ok 1s (1 window), acted |
 
-## Discs (2)
+## Discs (3)
 
 | | | |
 |---|---|---|
-| ![cdw (CD/DVD burner - terminal)](img/gallery/cdw.jpg)<br>**cdw (CD/DVD burner - terminal)**<br>`cdw` · terminal · ok 1s (1 window) | ![Xfburn (CD/DVD burner)](img/gallery/xfburn.jpg)<br>**Xfburn (CD/DVD burner)**<br>`xfburn` · graphical · ok 1s (1 window) |  |
+| ![cdw (CD/DVD burner - terminal)](img/gallery/cdw.jpg)<br>**cdw (CD/DVD burner - terminal)**<br>`cdw` · terminal · ok 1s (1 window) | ![K3b (CD/DVD/Blu-ray burner)](img/gallery/k3b.jpg)<br>**K3b (CD/DVD/Blu-ray burner)**<br>`k3b` · graphical · ok 1s (2 windows), acted | ![Xfburn (CD/DVD burner)](img/gallery/xfburn.jpg)<br>**Xfburn (CD/DVD burner)**<br>`xfburn` · graphical · ok 1s (1 window) |
 
-## Documents (9)
+## Documents (10)
 
 | | | |
 |---|---|---|
-| ![AbiWord (word processor)](img/gallery/abiword.jpg)<br>**AbiWord (word processor)**<br>`abiword` · graphical · ok 1s (1 window), acted | ![Evince (PDF - full featured)](img/gallery/evince.jpg)<br>**Evince (PDF - full featured)**<br>`evince` · graphical · ok 1s (1 window) | ![Foliate (ebook reader)](img/gallery/foliate.jpg)<br>**Foliate (ebook reader)**<br>`foliate` · graphical · ok 2s (1 window) |
-| ![Gnumeric (spreadsheet)](img/gallery/gnumeric.jpg)<br>**Gnumeric (spreadsheet)**<br>`gnumeric` · graphical · ok 2s (1 window), acted | ![KOReader (ebook reader)](img/gallery/koreader.jpg)<br>**KOReader (ebook reader)**<br>`koreader` · graphical · ok 1s (1 window) | ![MuPDF (PDF - fastest)](img/gallery/mupdf.jpg)<br>**MuPDF (PDF - fastest)**<br>`mupdf` · graphical · ok 1s (1 window) |
-| ![sc-im (spreadsheet - terminal)](img/gallery/sc-im.jpg)<br>**sc-im (spreadsheet - terminal)**<br>`sc-im` · terminal · ok 1s (1 window), acted | ![xpdf (PDF)](img/gallery/xpdf.jpg)<br>**xpdf (PDF)**<br>`xpdf` · graphical · ok 1s (1 window) | ![Zathura (PDF)](img/gallery/zathura.jpg)<br>**Zathura (PDF)**<br>`zathura` · graphical · ok 1s (1 window) |
+| ![AbiWord (word processor)](img/gallery/abiword.jpg)<br>**AbiWord (word processor)**<br>`abiword` · graphical · ok 1s (1 window), acted | ![Evince (PDF - full featured)](img/gallery/evince.jpg)<br>**Evince (PDF - full featured)**<br>`evince` · graphical · ok 1s (1 window) | ![FocusWriter (distraction-free writing)](img/gallery/focuswriter.jpg)<br>**FocusWriter (distraction-free writing)**<br>`focuswriter` · graphical · ok 1s (1 window), acted |
+| ![Foliate (ebook reader)](img/gallery/foliate.jpg)<br>**Foliate (ebook reader)**<br>`foliate` · graphical · ok 2s (1 window) | ![Gnumeric (spreadsheet)](img/gallery/gnumeric.jpg)<br>**Gnumeric (spreadsheet)**<br>`gnumeric` · graphical · ok 2s (1 window), acted | ![KOReader (ebook reader)](img/gallery/koreader.jpg)<br>**KOReader (ebook reader)**<br>`koreader` · graphical · ok 1s (1 window) |
+| ![MuPDF (PDF - fastest)](img/gallery/mupdf.jpg)<br>**MuPDF (PDF - fastest)**<br>`mupdf` · graphical · ok 1s (1 window) | ![sc-im (spreadsheet - terminal)](img/gallery/sc-im.jpg)<br>**sc-im (spreadsheet - terminal)**<br>`sc-im` · terminal · ok 1s (1 window), acted | ![xpdf (PDF)](img/gallery/xpdf.jpg)<br>**xpdf (PDF)**<br>`xpdf` · graphical · ok 1s (1 window) |
+| ![Zathura (PDF)](img/gallery/zathura.jpg)<br>**Zathura (PDF)**<br>`zathura` · graphical · ok 1s (1 window) |  |  |
 
 ## Editors (9)
 
@@ -73,35 +81,35 @@ refused, and anything that plays sound was silent.
 |---|---|---|
 | ![FreeCAD (parametric 3D CAD - heavy)](img/gallery/FreeCAD.jpg)<br>**FreeCAD (parametric 3D CAD - heavy)**<br>`FreeCAD` · graphical · ok 4s (1 window) | ![KiCad (schematic + PCB + gerbers)](img/gallery/kicad.jpg)<br>**KiCad (schematic + PCB + gerbers)**<br>`kicad` · graphical · ok 2s (1 window) | ![SolveSpace (parametric CAD, exports STL)](img/gallery/solvespace.jpg)<br>**SolveSpace (parametric CAD, exports STL)**<br>`solvespace` · graphical · ok 1s (2 windows) |
 
-## Files (8)
+## Files (9)
 
 | | | |
 |---|---|---|
-| ![Krusader (two-pane - powerful)](img/gallery/krusader.jpg)<br>**Krusader (two-pane - powerful)**<br>`krusader` · graphical · ok 1s (1 window) | ![Midnight Commander](img/gallery/mc.jpg)<br>**Midnight Commander**<br>`mc` · terminal · ok 1s (1 window) | ![nnn (terminal file manager)](img/gallery/nnn.jpg)<br>**nnn (terminal file manager)**<br>`nnn` · terminal · ok 1s (1 window) |
-| ![PCManFM (file manager)](img/gallery/pcmanfm.jpg)<br>**PCManFM (file manager)**<br>`pcmanfm` · graphical · ok 1s (1 window) | ![ranger (terminal file manager)](img/gallery/ranger.jpg)<br>**ranger (terminal file manager)**<br>`ranger` · terminal · ok 1s (1 window) | ![Thunar (file manager)](img/gallery/thunar.jpg)<br>**Thunar (file manager)**<br>`thunar` · graphical · ok 1s (1 window) |
-| ![Xarchiver (zip/tar/7z)](img/gallery/xarchiver.jpg)<br>**Xarchiver (zip/tar/7z)**<br>`xarchiver` · graphical · ok 1s (1 window) | ![Xfe (two-pane file manager)](img/gallery/xfe.jpg)<br>**Xfe (two-pane file manager)**<br>`xfe` · graphical · ok 1s (1 window) |  |
+| ![Czkawka (find duplicates)](img/gallery/czkawka_gui.jpg)<br>**Czkawka (find duplicates)**<br>`czkawka_gui` · graphical · ok 4s (1 window), acted | ![Krusader (two-pane - powerful)](img/gallery/krusader.jpg)<br>**Krusader (two-pane - powerful)**<br>`krusader` · graphical · ok 1s (1 window) | ![Midnight Commander](img/gallery/mc.jpg)<br>**Midnight Commander**<br>`mc` · terminal · ok 1s (1 window) |
+| ![nnn (terminal file manager)](img/gallery/nnn.jpg)<br>**nnn (terminal file manager)**<br>`nnn` · terminal · ok 1s (1 window) | ![PCManFM (file manager)](img/gallery/pcmanfm.jpg)<br>**PCManFM (file manager)**<br>`pcmanfm` · graphical · ok 1s (1 window) | ![ranger (terminal file manager)](img/gallery/ranger.jpg)<br>**ranger (terminal file manager)**<br>`ranger` · terminal · ok 1s (1 window) |
+| ![Thunar (file manager)](img/gallery/thunar.jpg)<br>**Thunar (file manager)**<br>`thunar` · graphical · ok 1s (1 window) | ![Xarchiver (zip/tar/7z)](img/gallery/xarchiver.jpg)<br>**Xarchiver (zip/tar/7z)**<br>`xarchiver` · graphical · ok 1s (1 window) | ![Xfe (two-pane file manager)](img/gallery/xfe.jpg)<br>**Xfe (two-pane file manager)**<br>`xfe` · graphical · ok 1s (1 window) |
 
-## Games (28)
+## Games (30)
 
 | | | |
 |---|---|---|
 | ![Air Traffic Control](img/gallery/atc.jpg)<br>**Air Traffic Control**<br>`atc` · terminal · ok 1s (1 window) | ![Angband (roguelike)](img/gallery/angband.jpg)<br>**Angband (roguelike)**<br>`angband` · terminal · ok 1s (2 windows) | ![Asciiquarium](img/gallery/asciiquarium.jpg)<br>**Asciiquarium**<br>`asciiquarium` · terminal · ok 2s (1 window) |
 | ![Brogue (roguelike)](img/gallery/brogue.jpg)<br>**Brogue (roguelike)**<br>`brogue` · terminal · ok 1s (2 windows) | ![Cataclysm DDA (survival roguelike)](img/gallery/cataclysm-tiles.jpg)<br>**Cataclysm DDA (survival roguelike)**<br>`cataclysm-tiles` · graphical · ok 1s (1 window) | ![Chess (XBoard + GNU Chess)](img/gallery/xboard.jpg)<br>**Chess (XBoard + GNU Chess)**<br>`xboard` · graphical · ok 1s (1 window) |
 | ![Chocolate Doom (faithful Doom, with Freedoom)](img/gallery/chocolate-doom.jpg)<br>**Chocolate Doom (faithful Doom, with Freedoom)**<br>`chocolate-doom` · graphical · ok 1s (1 window) | ![cmatrix](img/gallery/cmatrix.jpg)<br>**cmatrix**<br>`cmatrix` · terminal · ok 1s (1 window) | ![Colossal Cave Adventure](img/gallery/adventure.jpg)<br>**Colossal Cave Adventure**<br>`adventure` · terminal · ok 1s (1 window), acted |
-| ![Endless Sky (built from source)](img/gallery/endless-sky.jpg)<br>**Endless Sky (built from source)**<br>`endless-sky` · graphical · ok 1s (1 window) | ![Freeciv (SDL client - slow)](img/gallery/freeciv-sdl2.jpg)<br>**Freeciv (SDL client - slow)**<br>`freeciv-sdl2` · graphical · ok 1s (1 window) | ![GZDoom (Doom engine, with Freedoom)](img/gallery/gzdoom.jpg)<br>**GZDoom (Doom engine, with Freedoom)**<br>`gzdoom` · graphical · ok 2s (1 window) |
+| ![Endless Sky (space trading)](img/gallery/endless-sky.jpg)<br>**Endless Sky (space trading)**<br>`endless-sky` · graphical · ok 1s (1 window), acted | ![Freeciv (SDL client - slow)](img/gallery/freeciv-sdl2.jpg)<br>**Freeciv (SDL client - slow)**<br>`freeciv-sdl2` · graphical · ok 1s (1 window) | ![GZDoom (Doom engine, with Freedoom)](img/gallery/gzdoom.jpg)<br>**GZDoom (Doom engine, with Freedoom)**<br>`gzdoom` · graphical · ok 2s (1 window) |
 | ![Hangman](img/gallery/hangman.jpg)<br>**Hangman**<br>`hangman` · terminal · ok 1s (1 window) | ![Klondike (cards)](img/gallery/klondike.jpg)<br>**Klondike (cards)**<br>`klondike` · terminal · ok 1s (1 window) | ![Luanti (Minetest - voxel sandbox)](img/gallery/luanti.jpg)<br>**Luanti (Minetest - voxel sandbox)**<br>`luanti` · graphical · ok 1s (1 window) |
-| ![Minesweeper](img/gallery/gnome-mines.jpg)<br>**Minesweeper**<br>`gnome-mines` · graphical · ok 1s (1 window), acted | ![NetHack (roguelike)](img/gallery/nethack.jpg)<br>**NetHack (roguelike)**<br>`nethack` · terminal · ok 1s (1 window), acted | ![OpenMW (Morrowind engine - needs the game's data)](img/gallery/openmw-launcher.jpg)<br>**OpenMW (Morrowind engine - needs the game's data)**<br>`openmw-launcher` · graphical · WIZARD 1s (1 window) |
-| ![OpenTTD (transport sim)](img/gallery/openttd.jpg)<br>**OpenTTD (transport sim)**<br>`openttd` · graphical · ok 1s (1 window) | ![Robots](img/gallery/robots.jpg)<br>**Robots**<br>`robots` · terminal · ok 1s (1 window) | ![Snake](img/gallery/snake.jpg)<br>**Snake**<br>`snake` · terminal · ok 1s (1 window) |
-| ![Solitaire](img/gallery/sol.jpg)<br>**Solitaire**<br>`sol` · graphical · ok 2s (1 window) | ![Sudoku](img/gallery/gnome-sudoku.jpg)<br>**Sudoku**<br>`gnome-sudoku` · graphical · ok 1s (1 window) | ![SuperTux (platformer - needs a GPU)](img/gallery/supertux2.jpg)<br>**SuperTux (platformer - needs a GPU)**<br>`supertux2` · graphical · ok 1s (1 window) |
-| ![TTY Solitaire](img/gallery/ttysolitaire.jpg)<br>**TTY Solitaire**<br>`ttysolitaire` · terminal · ok 1s (1 window) | ![Wesnoth (heavy - turn-based strategy)](img/gallery/wesnoth.jpg)<br>**Wesnoth (heavy - turn-based strategy)**<br>`wesnoth` · graphical · ok 1s (1 window) | ![Widelands (settlers-like)](img/gallery/widelands.jpg)<br>**Widelands (settlers-like)**<br>`widelands` · graphical · ok 1s (1 window) |
-| ![ZAngband (roguelike)](img/gallery/zangband.jpg)<br>**ZAngband (roguelike)**<br>`zangband` · terminal · ok 1s (1 window) |  |  |
+| ![Minesweeper](img/gallery/gnome-mines.jpg)<br>**Minesweeper**<br>`gnome-mines` · graphical · ok 1s (1 window), acted | ![Naev (space sandbox)](img/gallery/naev.jpg)<br>**Naev (space sandbox)**<br>`naev` · graphical · ok 1s (1 window), acted | ![NetHack (roguelike)](img/gallery/nethack.jpg)<br>**NetHack (roguelike)**<br>`nethack` · terminal · ok 1s (1 window), acted |
+| ![OpenMW (Morrowind engine - needs the game's data)](img/gallery/openmw-launcher.jpg)<br>**OpenMW (Morrowind engine - needs the game's data)**<br>`openmw-launcher` · graphical · WIZARD 1s (1 window) | ![OpenTTD (transport sim)](img/gallery/openttd.jpg)<br>**OpenTTD (transport sim)**<br>`openttd` · graphical · ok 1s (1 window) | ![Robots](img/gallery/robots.jpg)<br>**Robots**<br>`robots` · terminal · ok 1s (1 window) |
+| ![Snake](img/gallery/snake.jpg)<br>**Snake**<br>`snake` · terminal · ok 1s (1 window) | ![Solitaire](img/gallery/sol.jpg)<br>**Solitaire**<br>`sol` · graphical · ok 2s (1 window) | ![Sudoku](img/gallery/gnome-sudoku.jpg)<br>**Sudoku**<br>`gnome-sudoku` · graphical · ok 1s (1 window) |
+| ![SuperTux (platformer - needs a GPU)](img/gallery/supertux2.jpg)<br>**SuperTux (platformer - needs a GPU)**<br>`supertux2` · graphical · ok 1s (1 window) | ![Taisei (bullet hell)](img/gallery/taisei.jpg)<br>**Taisei (bullet hell)**<br>`taisei` · graphical · ok 1s (1 window), acted | ![TTY Solitaire](img/gallery/ttysolitaire.jpg)<br>**TTY Solitaire**<br>`ttysolitaire` · terminal · ok 1s (1 window) |
+| ![Wesnoth (heavy - turn-based strategy)](img/gallery/wesnoth.jpg)<br>**Wesnoth (heavy - turn-based strategy)**<br>`wesnoth` · graphical · ok 1s (1 window) | ![Widelands (settlers-like)](img/gallery/widelands.jpg)<br>**Widelands (settlers-like)**<br>`widelands` · graphical · ok 1s (1 window) | ![ZAngband (roguelike)](img/gallery/zangband.jpg)<br>**ZAngband (roguelike)**<br>`zangband` · terminal · ok 1s (1 window) |
 
-## Graphics (4)
+## Graphics (6)
 
 | | | |
 |---|---|---|
 | ![GPicView (image viewer)](img/gallery/gpicview.jpg)<br>**GPicView (image viewer)**<br>`gpicview` · graphical · ok 1s (1 window) | ![gThumb (browse and tag photos)](img/gallery/gthumb.jpg)<br>**gThumb (browse and tag photos)**<br>`gthumb` · graphical · ok 1s (1 window) | ![Ristretto (image viewer)](img/gallery/ristretto.jpg)<br>**Ristretto (image viewer)**<br>`ristretto` · graphical · ok 1s (1 window) |
-| ![Simple Scan (scanner)](img/gallery/simple-scan.jpg)<br>**Simple Scan (scanner)**<br>`simple-scan` · graphical · ok 2s (1 window) |  |  |
+| ![Simple Scan (scanner)](img/gallery/simple-scan.jpg)<br>**Simple Scan (scanner)**<br>`simple-scan` · graphical · ok 2s (1 window) | ![Skanlite (scanner)](img/gallery/skanlite.jpg)<br>**Skanlite (scanner)**<br>`skanlite` · graphical · ok 2s (1 window), acted | ![XSane (scanner, every SANE option)](img/gallery/xsane.jpg)<br>**XSane (scanner, every SANE option)**<br>`xsane` · graphical · ok 2s (4 windows), acted |
 
 ## Instruments (5)
 
@@ -114,7 +122,7 @@ refused, and anything that plays sound was silent.
 
 | | | |
 |---|---|---|
-| ![Brave (Flatpak)](img/gallery/brave.jpg)<br>**Brave (Flatpak)**<br>`brave` · graphical · ok 2s (1 window), acted | ![ELinks (text web + gopher)](img/gallery/elinks.jpg)<br>**ELinks (text web + gopher)**<br>`elinks` · terminal · ok 1s (1 window) | ![Firefox ESR (full browser)](img/gallery/firefox-esr.jpg)<br>**Firefox ESR (full browser)**<br>`firefox-esr` · graphical · ok 1s (1 window), acted |
+| ![Brave (ad and tracker blocking)](img/gallery/brave.jpg)<br>**Brave (ad and tracker blocking)**<br>`brave` · graphical · ok 2s (1 window), acted | ![ELinks (text web + gopher)](img/gallery/elinks.jpg)<br>**ELinks (text web + gopher)**<br>`elinks` · terminal · ok 1s (1 window) | ![Firefox ESR (full browser)](img/gallery/firefox-esr.jpg)<br>**Firefox ESR (full browser)**<br>`firefox-esr` · graphical · ok 1s (1 window), acted |
 | ![lftp (FTP - terminal)](img/gallery/lftp.jpg)<br>**lftp (FTP - terminal)**<br>`lftp` · terminal · ok 1s (1 window), acted | ![Links (text/graphics web)](img/gallery/links.jpg)<br>**Links (text/graphics web)**<br>`links` · terminal · ok 2s (1 window) | ![Lynx (text web + gopher)](img/gallery/lynx.jpg)<br>**Lynx (text web + gopher)**<br>`lynx` · terminal · ok 1s (1 window) |
 | ![qBittorrent (torrents)](img/gallery/qbittorrent.jpg)<br>**qBittorrent (torrents)**<br>`qbittorrent` · graphical · ok 1s (1 window) | ![retawq (tiny text browser)](img/gallery/retawq.jpg)<br>**retawq (tiny text browser)**<br>`retawq` · terminal · ok 1s (1 window) | ![Transmission (torrents)](img/gallery/transmission-gtk.jpg)<br>**Transmission (torrents)**<br>`transmission-gtk` · graphical · ok 1s (1 window) |
 | ![w3m (text web)](img/gallery/w3m.jpg)<br>**w3m (text web)**<br>`w3m` · terminal · ok 1s (1 window) |  |  |
@@ -133,13 +141,13 @@ refused, and anything that plays sound was silent.
 |---|---|---|
 | ![GNU Typist (touch typing course)](img/gallery/gtypist.jpg)<br>**GNU Typist (touch typing course)**<br>`gtypist` · terminal · ok 1s (1 window) | ![KTouch (typing tutor with a keyboard map)](img/gallery/ktouch.jpg)<br>**KTouch (typing tutor with a keyboard map)**<br>`ktouch` · graphical · ok 1s (1 window) | ![Minuet (music theory and ear training)](img/gallery/minuet.jpg)<br>**Minuet (music theory and ear training)**<br>`minuet` · graphical · ok 1s (1 window) |
 
-## Mail (8)
+## Mail (9)
 
 | | | |
 |---|---|---|
 | ![aerc (terminal)](img/gallery/aerc.jpg)<br>**aerc (terminal)**<br>`aerc` · terminal · ok 1s (1 window) | ![Alpine (pine - terminal)](img/gallery/alpine.jpg)<br>**Alpine (pine - terminal)**<br>`alpine` · terminal · ok 1s (1 window) | ![Claws Mail (GUI - Sylpheed lineage)](img/gallery/claws-mail.jpg)<br>**Claws Mail (GUI - Sylpheed lineage)**<br>`claws-mail` · graphical · WIZARD 1s (1 window) |
 | ![irssi (IRC)](img/gallery/irssi.jpg)<br>**irssi (IRC)**<br>`irssi` · terminal · ok 1s (1 window), acted | ![KMail (KDE mail - heavy, pulls in Akonadi)](img/gallery/kmail.jpg)<br>**KMail (KDE mail - heavy, pulls in Akonadi)**<br>`kmail` · graphical · ok 2s (1 window) | ![Mutt (terminal)](img/gallery/mutt.jpg)<br>**Mutt (terminal)**<br>`mutt` · terminal · ok 1s (1 window) |
-| ![Profanity (XMPP)](img/gallery/profanity.jpg)<br>**Profanity (XMPP)**<br>`profanity` · terminal · ok 1s (1 window) | ![WeeChat (IRC)](img/gallery/weechat.jpg)<br>**WeeChat (IRC)**<br>`weechat` · terminal · ok 1s (1 window), acted |  |
+| ![Profanity (XMPP)](img/gallery/profanity.jpg)<br>**Profanity (XMPP)**<br>`profanity` · terminal · ok 1s (1 window) | ![Thunderbird (full mail client)](img/gallery/thunderbird.jpg)<br>**Thunderbird (full mail client)**<br>`thunderbird` · graphical · ok 3s (1 window), acted | ![WeeChat (IRC)](img/gallery/weechat.jpg)<br>**WeeChat (IRC)**<br>`weechat` · terminal · ok 1s (1 window), acted |
 
 ## Media (6)
 
@@ -250,4 +258,4 @@ refused, and anything that plays sound was silent.
 | Yakuake (drop-down, F12 - KDE) | `yakuake` | NO WINDOW in 30s, process no (exit 139) |
 | Zutty (X11-native, very fast) | `zutty` | NO WINDOW in 30s, process no (exit 139) |
 
-*Generated 2026-09-02 19:05.*
+*Generated 2026-09-23 17:28.*

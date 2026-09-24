@@ -166,6 +166,40 @@ git add docs/app-gallery.md docs/img/gallery && git commit
 A program that already has a line in the log is simply re-probed; the
 gallery and the plan take the latest line per name.
 
+**The gallery survives a new bench.** `copal-app-gallery.py` reads the
+verdicts already written in `docs/app-gallery.md` first and lets the log's
+lines override them, so a rebuilt VM with an empty `~/copal-apps/log.txt`
+regenerates the whole gallery rather than one page of today's probes. It
+reads the store's rows as well as the catalogue's -- a store program appears
+once it has a picture -- and a program with an `ok` verdict but no picture
+(probed without `--gallery`) is left out rather than listed as "no window".
+
+**Main screens, not first-run dialogs.** A picture is of the program's main
+window, so a dialog in front of it is dealt with first, and never by
+changing the person's own settings:
+
+| Program | What stands in front | How the picture gets past it |
+|---|---|---|
+| K3b | "no optical drive" notice | `--act`: focus the dialog by title, Return |
+| Thunderbird | account setup | a throwaway `--profile` whose `user.js` sets `mail.provider.suppress_dialog_on_startup` |
+| Ardour | first-run welcome, then no session | a throwaway `XDG_CONFIG_HOME` holding `ardour9/.a9`; a session made with `ardour9-new_session`; `--act` dismisses the memory-lock warning |
+| XSane, Skanlite | no scanner | SANE's test backend, through a private `SANE_CONFIG_DIR` (`dll.conf`: `test`; `test.conf`: `number_of_devices 1`) |
+| darktable | "Welcome to darktable!" | none needed: the store's seed turns it off |
+
+## 4b. Every menu entry: the audit
+
+```sh
+tools/copal-menu-audit.py              # every entry: its copal-gui section, and whether its command exists
+tools/copal-menu-audit.py --missing    # only the broken ones; exits 1 if there are any
+XDG_DATA_DIRS=~/.cache/copal-store/prefix/share:$XDG_DATA_DIRS \
+    tools/copal-store-bench.sh run x tools/copal-menu-audit.py      # with the bench's store programs
+```
+
+It asks GIO for the same list `copal-gui` shows and files each entry with
+the `SECTIONS` read out of `tools/copal-gui`'s own source, so it cannot
+disagree with the menu. On 23 Sep 2026: 211 entries, every command found,
+none left in "Other" once `Screensaver` was filed under Preferences.
+
 ## 5. Reporting while it runs
 
 The agent, or anyone watching, reads the sweep log and looks at pictures as
@@ -209,6 +243,7 @@ The rules that follow from it:
 | `tools/copal-app-sweep.sh` | runs the list, one probe at a time |
 | `tools/copal-app-gallery.py` | `docs/app-gallery.md` |
 | `tools/copal-app-plan.py` | `docs/app-integration-plan.md` |
+| `tools/copal-menu-audit.py` | every copal-gui menu entry: section, and whether its command runs |
 | `~/copal-apps/log.txt` | one line per probe run, appended; the source of both documents |
 | `~/copal-apps/NAME.png`, `NAME.log` | the full screenshot and the program's output, latest run |
 | `docs/img/gallery/NAME.jpg` | the gallery picture, 320x200 |

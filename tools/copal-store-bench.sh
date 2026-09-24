@@ -35,6 +35,9 @@ export COPAL_STORE_CACHE="$B/cache"
 export COPAL_STORE_WORK="$B/work"
 export COPAL_STORE_LOGDIR="$B/logs"
 export COPAL_STORE_NODEPS=1
+# A failed build's tree is kept here to look inside; on a machine it is
+# removed, and the summary and the compressed log are the record.
+export COPAL_STORE_KEEP_WORK=1
 export PKG_CONFIG_PATH="$R/usr/lib/pkgconfig:$R/usr/share/pkgconfig:$COPAL_STORE_PREFIX/lib/pkgconfig"
 export CMAKE_PREFIX_PATH="$R/usr"
 export QT_ADDITIONAL_PACKAGES_PREFIX_PATH="$R/usr"
@@ -51,6 +54,16 @@ export PYTHONPATH="$R/usr/lib/$_pyv/site-packages:$R/usr/lib/$_pyv:$R/usr/lib/$_
 
 sysroot_add() {  # <apk names...> -- with their dependencies, only what is not installed
     mkdir -p "$R" "$B/apks"
+    # A package installed for real since it was unpacked here supersedes the
+    # copy: CMAKE_PREFIX_PATH and PKG_CONFIG_PATH search the sysroot first,
+    # so its stale files would be found instead. Seen with Qt 6 Multimedia,
+    # whose sysroot CMake package named a plugin the sysroot never had.
+    for _d in "$R"/usr/lib/cmake/*/; do
+        [ -d "/usr/lib/cmake/$(basename "$_d")" ] && rm -rf "$_d"
+    done
+    for _f in "$R"/usr/lib/pkgconfig/*.pc; do
+        [ -e "/usr/lib/pkgconfig/${_f##*/}" ] && rm -f "$_f"
+    done
     for _t in "$@"; do
         _p=${_t%@testing}
         apk info -e "$_p" >/dev/null 2>&1 && continue
@@ -90,6 +103,27 @@ sysroot_add() {  # <apk names...> -- with their dependencies, only what is not i
         for _v in /usr/lib/"$_n".*; do
             [ -e "$_v" ] && [ ! -e "$R/usr/lib/${_v##*/}" ] && ln -s "$_v" "$R/usr/lib/${_v##*/}"
         done
+    done
+    # A link one directory down, aimed back up: lua5.4-dev's lua5.4/liblua.so
+    # is ../liblua-5.4.so.0. Left dangling, the linker quietly takes the
+    # static liblua.a beside it, which is not position-independent, and a
+    # shared object (darktable's) fails to link.
+    for _l in "$R"/usr/lib/*/lib*.so; do
+        [ -L "$_l" ] && [ ! -e "$_l" ] || continue
+        _t=$(readlink "$_l"); _sub=${_l%/*}; _sub=${_sub##*/}
+        case "$_t" in /*) _abs="$_t" ;; *) _abs=$(realpath -m "/usr/lib/$_sub/$_t") ;; esac
+        [ -e "$_abs" ] && ln -sfn "$_abs" "$_l"
+    done
+    # A dev package newer than the installed library: libheif-dev 1.23.4's
+    # CMake file names libheif.so.1.23.4 while the machine has 1.23.0. On a
+    # card apk would upgrade the library with it; here the name is aimed at
+    # the installed library of the same soname, which is ABI-compatible by
+    # that soname's promise.
+    grep -rhoE "\\\$\\{_IMPORT_PREFIX\\}/lib/lib[A-Za-z0-9_+-]+\\.so\\.[0-9.]+|$R/usr/lib/lib[A-Za-z0-9_+-]+\\.so\\.[0-9.]+" \
+        "$R"/usr/lib/cmake 2>/dev/null | sed 's|.*/||' | sort -u | while read -r _f; do
+        [ -e "$R/usr/lib/$_f" ] && continue
+        _so=$(printf '%s' "$_f" | sed 's/^\(lib[^.]*\.so\.[0-9]*\).*/\1/')
+        [ -e "/usr/lib/$_so" ] && ln -sfn "$(realpath "/usr/lib/$_so")" "$R/usr/lib/$_f"
     done
     return 0
 }

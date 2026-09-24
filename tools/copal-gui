@@ -70,7 +70,7 @@ except (ValueError, ImportError):
 # each carries a symbolic one it does have -- and the Categories= words that
 # land a program there.  Checked top to bottom; first match wins.
 SECTIONS = [
-    ("Preferences",    ("preferences-desktop", "preferences-system-symbolic"), {"Settings", "DesktopSettings"}),
+    ("Preferences",    ("preferences-desktop", "preferences-system-symbolic"), {"Settings", "DesktopSettings", "Screensaver"}),
     ("Games",          ("applications-games",), {"Game"}),
     ("Programming",    ("applications-development", "utilities-terminal-symbolic"), {"Development"}),
     ("Office",         ("applications-office", "x-office-document-symbolic"), {"Office"}),
