@@ -169,6 +169,14 @@ relax:
    because somebody looked at it in March is the failure this prevents.
 4. **logs both ends** to `/var/log/copal-fleet.log`, so `log tail` shows who
    asked and when it stopped.
+5. **asks for the fleet's screen password** (VNC). `COPAL_FLEET_REMOTE_PASSWORD`
+   is set by `make answers`, the same on every card; stage 16 keeps it in
+   `/etc/copal/remote/passwd`, root only, and x11vnc reads it from there. The
+   first design ran `x11vnc -nopw`, which let anyone on the LAN watch and
+   drive a shared screen; orrery's seat now answers VNC's DES challenge with
+   the same answer, read from the console's `answers.txt`. With no password
+   in the answers, stage 16 writes the mode `off`: the node is not set up to
+   share its screen at all, over VNC or RDP.
 
 And it refuses outright when `COPAL_FLEET_REMOTE=off` in the answers file, which
 is the setting for a node in a public space that should never be viewable.

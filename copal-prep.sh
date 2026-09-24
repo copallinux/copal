@@ -480,6 +480,7 @@ CFG_FLEET_TAGS="${CFG_FLEET_TAGS:-${COPAL_FLEET_TAGS:-}}"
 CFG_FLEET_DISCOVERY="${CFG_FLEET_DISCOVERY:-${COPAL_FLEET_DISCOVERY:-}}"
 CFG_FLEET_REMOTE="${CFG_FLEET_REMOTE:-${COPAL_FLEET_REMOTE:-}}"
 CFG_FLEET_REMOTE_MINUTES="${CFG_FLEET_REMOTE_MINUTES:-${COPAL_FLEET_REMOTE_MINUTES:-}}"
+CFG_FLEET_REMOTE_PASSWORD="${CFG_FLEET_REMOTE_PASSWORD:-${COPAL_FLEET_REMOTE_PASSWORD:-}}"
 CFG_FLEET_PSK="${CFG_FLEET_PSK:-${COPAL_FLEET_PSK:-}}"
 CFG_FLEET_TOKEN="${CFG_FLEET_TOKEN:-${COPAL_FLEET_TOKEN:-}}"
 # A PATH on this Mac, not a key. The key itself is copied onto the card beside
@@ -2073,6 +2074,9 @@ COPAL_FLEET_DISCOVERY='${CFG_FLEET_DISCOVERY}'
 # where copal-remote reads them -- the console never sends either.
 COPAL_FLEET_REMOTE='${CFG_FLEET_REMOTE}'
 COPAL_FLEET_REMOTE_MINUTES='${CFG_FLEET_REMOTE_MINUTES}'
+# The VNC password for this screen, the same on every card, and the one the
+# console answers with. Stage 16 keeps it in /etc/copal/remote/passwd, root only.
+COPAL_FLEET_REMOTE_PASSWORD='${CFG_FLEET_REMOTE_PASSWORD}'
 # A filename on THIS card, not the path the Mac knew it by. The public half of
 # the fleet certificate authority is copied here as fleet_ca.pub, and stage 16
 # installs it as the authority sshd trusts for user certificates and the one
@@ -17404,7 +17408,11 @@ fleet_remote_tools() {
 # X11 node, hypr-rdp for a Wayland one. The console asks for a screen; a verb
 # that took a server name would be a verb that took configuration text.
 #
-# FOUR BOUNDS, ALL OF THEM HERE:
+# FIVE BOUNDS, ALL OF THEM HERE:
+#
+#   0. a password: the fleet's, from answers.txt, which stage 16 keeps in
+#      /etc/copal/remote/passwd and the console answers with (VNC; hypr-rdp
+#      brings its own login). No password, no VNC;
 #
 #   1. the LAN address only, never 0.0.0.0 and never a loopback-plus-tunnel
 #      arrangement -- the fleet account has AllowTcpForwarding no and a tunnel
@@ -17449,7 +17457,10 @@ running() {
 }
 
 start() {
-    [ "$(mode)" = off ] && { echo "refused: this node is set never to be viewable" >&2; exit 3; }
+    if [ "$(mode)" = off ]; then
+        [ -s "$CONF/passwd" ] || { echo "refused: screen sharing is off here -- no screen password was set ('make answers')" >&2; exit 3; }
+        echo "refused: this node is set never to be viewable" >&2; exit 3
+    fi
     _addr=$(lan_address) || { echo "refused: this machine has no LAN address" >&2; exit 3; }
     if running >/dev/null; then
         arm_deadline
@@ -17460,10 +17471,19 @@ start() {
     case "$(session)" in
         x11)
             command -v x11vnc >/dev/null 2>&1 || { echo "refused: no x11vnc installed" >&2; exit 3; }
+            # THE FLEET'S PASSWORD. Without one, anyone on the LAN could
+            # watch and drive the screen for as long as it was shared. It is
+            # handed to x11vnc as a root-only file, never on the command line,
+            # where ps would show it to every account on the machine.
+            [ -s "$CONF/passwd" ] || {
+                echo "refused: no screen password -- set one with 'make answers' and rewrite the card" >&2
+                exit 3
+            }
             # -localhost is deliberately NOT used: there is no tunnel to come
-            # through. -once and the deadline below are what bound it instead.
-            setsid x11vnc -display :0 -rfbport 5900 -listen "$_addr" -nopw -forever \
-                -quiet >>"$LOG" 2>&1 &
+            # through. The password, the LAN address and the deadline below
+            # are what bound it instead; -forever only lets a viewer reconnect.
+            setsid x11vnc -display :0 -rfbport 5900 -listen "$_addr" \
+                -passwdfile "$CONF/passwd" -forever -quiet >>"$LOG" 2>&1 &
             printf '%s' "$!" > "$STATE/pid"
             ;;
         wayland)
@@ -17563,9 +17583,26 @@ exit 0
 COPALNOTIFY
     chmod 0755 /usr/local/bin/copal-notify
 
-    # The answers file's two keys land here, where copal-remote reads them.
+    # The answers file's keys land here, where copal-remote reads them. The
+    # password root-only: x11vnc reads it as root, and nobody else need.
+    #
+    # NO PASSWORD, NO SCREEN. A node whose answers set none is not set up to
+    # share its screen at all: the mode is written 'off', so copal-remote
+    # refuses every start, whichever server the session would have used.
+    # 'make answers' sets a password and a rewritten card turns it back on.
+    _remote_mode="${CFG_FLEET_REMOTE:-auto}"
     mkdir -p /etc/copal/remote
-    printf '%s\n' "${CFG_FLEET_REMOTE:-auto}"          > /etc/copal/remote/mode
+    if [ -n "${CFG_FLEET_REMOTE_PASSWORD:-}" ]; then
+        ( umask 077; printf '%s\n' "$CFG_FLEET_REMOTE_PASSWORD" > /etc/copal/remote/passwd )
+    else
+        rm -f /etc/copal/remote/passwd
+        if [ "$_remote_mode" != off ]; then
+            warn "no COPAL_FLEET_REMOTE_PASSWORD in answers.txt -- screen sharing is OFF on this node"
+            note "  'make answers' sets one; rewrite the card to turn sharing on."
+        fi
+        _remote_mode=off
+    fi
+    printf '%s\n' "$_remote_mode"                     > /etc/copal/remote/mode
     printf '%s\n' "${CFG_FLEET_REMOTE_MINUTES:-30}"    > /etc/copal/remote/minutes
     note "copal-remote and copal-notify installed (mode $(cat /etc/copal/remote/mode))"
 }
@@ -28850,6 +28887,11 @@ $menu = copal-launcher
 # systemd --user on Alpine to start it.
 exec-once = copal-wallpaper
 exec-once = mako
+# The sound server, PipeWire, if stage 10 installed it. i3's session start has
+# always run this; Hyprland's did not, so a Wayland login could come up with no
+# sound at all. copal-audio-start starts only what is missing, so a second
+# session start does no harm.
+exec-once = sh -c 'command -v copal-audio-start >/dev/null 2>&1 && exec copal-audio-start'
 # The clipboard history recorder, so Super+Ctrl+V has something to show.
 # Under Wayland it hands over to wl-paste --watch where cliphist exists.
 exec-once = copal-clip watch

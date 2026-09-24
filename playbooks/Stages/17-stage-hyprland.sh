@@ -645,6 +645,11 @@ $menu = copal-launcher
 # systemd --user on Alpine to start it.
 exec-once = copal-wallpaper
 exec-once = mako
+# The sound server, PipeWire, if stage 10 installed it. i3's session start has
+# always run this; Hyprland's did not, so a Wayland login could come up with no
+# sound at all. copal-audio-start starts only what is missing, so a second
+# session start does no harm.
+exec-once = sh -c 'command -v copal-audio-start >/dev/null 2>&1 && exec copal-audio-start'
 # The clipboard history recorder, so Super+Ctrl+V has something to show.
 # Under Wayland it hands over to wl-paste --watch where cliphist exists.
 exec-once = copal-clip watch

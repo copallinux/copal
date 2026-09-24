@@ -25,9 +25,13 @@ status    session, server, mode, minutes and address (the default)
 ## Notes
 - On X11 it runs x11vnc on port 5900; on Wayland, hypr-rdp on 3389 with
   the node's certificate. Neither is part of a normal install.
-- The VNC server has no password (`-nopw`): anyone on the LAN can
-  connect while it runs. The deadline and the LAN-only address are the
-  limits, so keep it to a network you trust.
+- VNC asks for the fleet's screen password: `COPAL_FLEET_REMOTE_PASSWORD`,
+  set by `make answers` and kept on the node in
+  `/etc/copal/remote/passwd` (root only). The console's seat answers with
+  the same one. With no password set, stage 16 turns sharing off
+  altogether, and `start` says why.
+- Classic VNC encrypts the login but not the screen, so keep it to a
+  network you trust.
 - `/etc/copal/remote/mode` set to `off` forbids it -- the setting for a
   machine in a public place. `/etc/copal/remote/minutes` sets the
   deadline; `0` means none.

@@ -106,8 +106,10 @@ if [ "$SHOW" -eq 1 ]; then
     # The token is single use and unspent until a node enrols, so it is worth
     # the same masking as the hash -- a screenshot of --show should not be a
     # working enrolment for somebody else's machine.
+    # The screen password opens every node's screen while it is shared.
     sed -e "s/^\\(COPAL_ROOT_PW_HASH=\\).*/\\1<set>/" \
-        -e "s/^\\(COPAL_FLEET_TOKEN=\\).\\{1,\\}/\\1<set>/" "$ANSWERS"
+        -e "s/^\\(COPAL_FLEET_TOKEN=\\).\\{1,\\}/\\1<set>/" \
+        -e "s/^\\(COPAL_FLEET_REMOTE_PASSWORD=\\).\\{1,\\}/\\1<set>/" "$ANSWERS"
     exit 0
 fi
 
@@ -160,6 +162,7 @@ if [ -f "$ANSWERS" ]; then
     COPAL_FLEET_DISCOVERY=$(get_answer COPAL_FLEET_DISCOVERY)
     COPAL_FLEET_REMOTE=$(get_answer COPAL_FLEET_REMOTE)
     COPAL_FLEET_REMOTE_MINUTES=$(get_answer COPAL_FLEET_REMOTE_MINUTES)
+    COPAL_FLEET_REMOTE_PASSWORD=$(get_answer COPAL_FLEET_REMOTE_PASSWORD)
     COPAL_FLEET_CA=$(get_answer COPAL_FLEET_CA)
     COPAL_FLEET_PSK=$(get_answer COPAL_FLEET_PSK)
     COPAL_FLEET_TAGS=$(get_answer COPAL_FLEET_TAGS)
@@ -169,6 +172,9 @@ fi
 # $RANDOM is worth anything. od is in coreutils on the Mac and in busybox on
 # Alpine, so this is the one form that works in both places.
 rand_hex() { od -An -tx1 -N"${1:-16}" /dev/urandom | tr -d ' \n'; }
+# Eight letters and digits: all a VNC password can be. LC_ALL=C because the
+# Mac's tr refuses urandom's bytes as an illegal sequence in a UTF-8 locale.
+rand_pw() { LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 8; }
 
 # museum + 3 -> museum-03. Two digits because a fleet that reaches ten sorts
 # wrongly with one, and every list in the console is sorted by name.
@@ -250,6 +256,9 @@ COPAL_FLEET_DISCOVERY=$(sq "${COPAL_FLEET_DISCOVERY:-}")
 # for how long once it does.
 COPAL_FLEET_REMOTE=$(sq "${COPAL_FLEET_REMOTE:-}")
 COPAL_FLEET_REMOTE_MINUTES=$(sq "${COPAL_FLEET_REMOTE_MINUTES:-}")
+# The VNC password for every node's screen, and the one orrery's seat answers
+# with. A secret: 'make answers-show' prints only that it is set.
+COPAL_FLEET_REMOTE_PASSWORD=$(sq "${COPAL_FLEET_REMOTE_PASSWORD:-}")
 # The PUBLIC half of the fleet certificate authority. Every card carries it so
 # that no machine is ever trusted on first sight. The private half stays in
 # ~/.copal/ca on the machine that ran this script and must never be on a card.
@@ -306,7 +315,7 @@ if [ -n "${COPAL_FLEET:-}" ]; then
 note "  fleet          ${COPAL_FLEET} -- card ${COPAL_FLEET_INDEX} of ${COPAL_FLEET_SIZE}, role ${COPAL_FLEET_ROLE}"
 note "  fleet tags     ${COPAL_FLEET_TAGS:-(none)}"
 note "  fleet discovery ${COPAL_FLEET_DISCOVERY}"
-note "  fleet screen    ${COPAL_FLEET_REMOTE:-auto}, ${COPAL_FLEET_REMOTE_MINUTES:-30} minutes"
+note "  fleet screen    ${COPAL_FLEET_REMOTE:-auto}, ${COPAL_FLEET_REMOTE_MINUTES:-30} minutes${COPAL_FLEET_REMOTE_PASSWORD:+, password set}"
 note "  fleet CA       ${COPAL_FLEET_CA:-(none -- weaker; see docs/fleet-plan.md)}"
 note "  enrolment      a fresh single-use token for this card"
 fi
@@ -483,6 +492,22 @@ if [ -n "$COPAL_FLEET" ]; then
     case "$COPAL_FLEET_REMOTE_MINUTES" in
         ''|*[!0-9]*) die "the screen deadline is a number of minutes" ;;
     esac
+    # THE SCREEN'S PASSWORD, the same on every card. copal-remote starts the
+    # VNC server with it, and orrery's seat reads it from this file to answer.
+    # Without one, a shared screen was open to anyone on the LAN. VNC reads
+    # eight characters and no more, so it is exactly eight; Enter takes the
+    # random one offered, or keeps the fleet's.
+    if [ "$COPAL_FLEET_REMOTE" = auto ]; then
+        [ -n "${COPAL_FLEET_REMOTE_PASSWORD:-}" ] || COPAL_FLEET_REMOTE_PASSWORD=$(rand_pw)
+        ask "  Screen password (8 letters and digits)" "$COPAL_FLEET_REMOTE_PASSWORD" \
+            COPAL_FLEET_REMOTE_PASSWORD
+        case "$COPAL_FLEET_REMOTE_PASSWORD" in
+            [A-Za-z0-9][A-Za-z0-9][A-Za-z0-9][A-Za-z0-9][A-Za-z0-9][A-Za-z0-9][A-Za-z0-9][A-Za-z0-9]) ;;
+            *) die "the screen password is exactly 8 letters and digits" ;;
+        esac
+    else
+        COPAL_FLEET_REMOTE_PASSWORD=""
+    fi
 
     # THE CERTIFICATE AUTHORITY, and the only part of this that is a secret
     # worth anything. The PUBLIC half travels on every card and is what lets a
@@ -545,7 +570,7 @@ if [ -n "$COPAL_FLEET" ]; then
 else
     COPAL_FLEET_SIZE=""; COPAL_FLEET_INDEX=""; COPAL_FLEET_ROLE=""
     COPAL_FLEET_TAGS=""; COPAL_FLEET_DISCOVERY=""; COPAL_FLEET_CA=""
-    COPAL_FLEET_PSK="";  COPAL_FLEET_TOKEN=""
+    COPAL_FLEET_PSK="";  COPAL_FLEET_TOKEN=""; COPAL_FLEET_REMOTE_PASSWORD=""
 fi
 
 printf '\n'
