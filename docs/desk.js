@@ -6,7 +6,9 @@
  * opens from them as a window:
  *
  *   #page/NAME   a page of the site, framed: about, install, commands ...
- *   #app/CMD     a program: its gallery picture and where it is documented
+ *   #app/CMD     a program: its gallery picture beside its Terminal Guide
+ *                entry, the full entry, man page and home page a click away
+ *   #man/CMD     a man page, framed
  *
  * Windows tile the way Hyprland tiles them. One fills the workspace, two
  * split it, and a third goes to the next workspace with room, which the bar's
@@ -53,6 +55,34 @@
     if (a && a.big) return "img/site/" + a.big + ".jpg";
     if (!s) return null;
     return (site[s] ? "img/site/" : "img/gallery/") + s + ".jpg";
+  }
+
+  // The Terminal Guide's entries (guide-cards.json, written by
+  // copal-command-ref.py render beside commands.html): fetched once, by the
+  // first program window, never on page load.
+  var cards = null, cardsWait = null;
+  function withCards(then) {
+    if (cards) { then(cards); return; }
+    if (!cardsWait) {
+      cardsWait = fetch("guide-cards.json").then(function (r) { return r.ok ? r.json() : {}; })
+        .catch(function () { return {}; })
+        .then(function (c) { cards = c; return c; });
+    }
+    cardsWait.then(then);
+  }
+
+  // `code` in an entry's text becomes code, and a link to that program's
+  // window when it names one the guide knows.
+  function prose(tag, text) {
+    var e = el(tag);
+    String(text).split(/(`[^`]+`)/).forEach(function (part) {
+      if (!/^`[^`]+`$/.test(part)) { e.appendChild(document.createTextNode(part)); return; }
+      var t = part.slice(1, -1), w = t.split(/\s/)[0];
+      var c = el("code", null, t);
+      if (cards && cards[w] && t === w) { var a = el("a"); a.href = "#app/" + w; a.appendChild(c); e.appendChild(a); }
+      else e.appendChild(c);
+    });
+    return e;
   }
 
   // ----- the desktop -----
@@ -188,34 +218,92 @@
     x.body.appendChild(f);
   }
 
+  // A program's window: its gallery picture beside its Terminal Guide entry.
+  // A terminal program's entry is set in a foot window, as it would be read.
   function program(x, item) {
     var cmd = item.cmd, u = shot(cmd), a = byCmd[cmd];
+    var term = item.kind === "term" || item.kind === "help" || !!(a && a.terminal);
     x.el.classList.add("app");
-    var pic = el("div", "desk-pic" + (u ? "" : " none"));
-    if (u) pic.style.backgroundImage = "url(" + u + ")";
-    else pic.textContent = item.kind === "run" ? "No picture in the gallery yet." : "A terminal program, in foot.";
+    if (term) x.el.classList.add("foot");
+
+    // The title bar: the full entry, the man page, the project's home.
+    var links = el("span", "links");
+    x.el.querySelector(".desk-head").insertBefore(links, x.el.querySelector(".shut"));
+    function link(text, href, off) {
+      var l = el("a", null, text);
+      l.href = href;
+      if (off) { l.target = "_blank"; l.rel = "noopener"; }
+      links.appendChild(l);
+    }
+
+    // The picture, where the gallery has one; without one the entry has the
+    // window to itself rather than half of it beside an empty frame.
+    var pic = null;
+    if (u) {
+      pic = el("div", "desk-pic");
+      pic.style.backgroundImage = "url(" + u + ")";
+      x.el.classList.add("pictured");
+    }
     var txt = el("div", "desk-txt");
+    // Examples and See also, under both: examples are wide, and in a column
+    // beside a picture they would be cut off.
+    var more = el("div", "desk-txt desk-more");
     txt.appendChild(el("h2", null, x.title));
-    var line = refs[cmd] || (a && (a.desc || a.generic)) || "";
-    if (line) txt.appendChild(el("p", null, line));
-    if (item.kind === "install") txt.appendChild(el("p", "cmd", "$ doas copal-install " + cmd));
-    else txt.appendChild(el("p", "cmd", "$ " + cmd));
-    if (refs[cmd]) {
-      var g = el("a", "doc", "Terminal Guide: " + cmd + " →");
-      g.href = "#page/commands/c-" + cmd;
-      txt.appendChild(g);
-    }
-    if (homes[cmd]) {
-      var h = el("a", "doc", homes[cmd].replace(/^https?:\/\/(www\.)?/, "").replace(/\/.*$/, "") + " ↗");
-      h.href = homes[cmd]; h.target = "_blank"; h.rel = "noopener";
-      txt.appendChild(h);
-    }
-    x.body.appendChild(pic); x.body.appendChild(txt);
+    var lede = el("p", "lede", refs[cmd] || (a && (a.desc || a.generic)) || "");
+    txt.appendChild(lede);
+    var run = item.kind === "install" ? "doas copal-install " + cmd : cmd;
+    txt.appendChild(el("p", "cmd", "$ " + run));
+    if (pic) x.body.appendChild(pic);
+    x.body.appendChild(txt);
+    x.body.appendChild(more);
+
+    withCards(function (cs) {
+      var c = cs[cmd];
+      // Opened by its address rather than from a menu, a terminal program is
+      // known by the guide's record of it.
+      if (c && (c.m === "t" || c.m === "h") && !term) {
+        term = true;
+        x.el.classList.add("foot");
+      }
+      if (c) {
+        link("Guide", "#page/commands/c-" + cmd);
+        if (c.man) link("man", "#man/" + cmd);
+        lede.textContent = c.p;
+        if (c.why) txt.appendChild(prose("p", c.why)).classList.add("why");
+        (c.use || []).forEach(function (p) { txt.appendChild(prose("p", p)); });
+        if (c.ex && c.ex.length) {
+          more.appendChild(el("h3", null, "Examples"));
+          var pre = el("pre", "ex");
+          c.ex.forEach(function (line) {
+            var m = line.match(/^(.*?)(\s+#\s.*)?$/), row = el("div");
+            row.appendChild(el("span", "run", m[1]));
+            if (m[2]) row.appendChild(el("span", "note", m[2]));
+            pre.appendChild(row);
+          });
+          more.appendChild(pre);
+        }
+        if (c.see && c.see.length) {
+          var see = el("p", "see", "See also: ");
+          c.see.forEach(function (w, i) {
+            if (i) see.appendChild(document.createTextNode(", "));
+            var l = el("a"); l.href = "#app/" + w; l.appendChild(el("code", null, w));
+            see.appendChild(l);
+          });
+          more.appendChild(see);
+        }
+        if (!c.why && !c.use) txt.appendChild(el("p", "thin", "The guide has this one's facts and its man page, but no written entry yet."));
+      } else if (a && a.desc && a.desc !== lede.textContent) {
+        txt.appendChild(el("p", null, a.desc));
+      }
+      if (homes[cmd]) link(homes[cmd].replace(/^https?:\/\/(www\.)?/, "").replace(/\/.*$/, "") + " ↗", homes[cmd], true);
+    });
   }
 
   // ----- addresses -----
   function appRoute(cmd) { return "app/" + cmd; }
   function pageRoute(u) {
+    var mm = u.pathname.match(/\/man\/([A-Za-z0-9][\w.+@-]*)\.html$/);
+    if (mm) return { name: "man/" + mm[1], route: "man/" + mm[1] };
     var m = u.pathname.match(/\/([a-z0-9-]*)(?:\.html)?$/);
     var name = m && m[1] ? m[1] : "about";   // the site's root is the desktop; its text is About
     if (!PAGES[name]) return null;
@@ -225,6 +313,8 @@
   function parse(route) {
     var m = route.match(/^page\/([a-z0-9-]+)(?:\/(.+))?$/);
     if (m && PAGES[m[1]]) return { kind: "page", name: m[1], file: m[1] + ".html" + (m[2] ? "#" + m[2] : ""), title: PAGES[m[1]] };
+    m = route.match(/^man\/([A-Za-z0-9][\w.+@-]*)$/);
+    if (m) return { kind: "page", name: "man/" + m[1], file: "man/" + m[1] + ".html", title: "man " + m[1] };
     m = route.match(/^app\/([A-Za-z0-9][\w.+@-]*)$/);
     if (m) return { kind: "app", cmd: m[1] };
     return null;
@@ -267,6 +357,9 @@
     x.el.addEventListener("mousedown", function () { focus(x); });
     x.el.addEventListener("click", function (e) { e.stopPropagation(); closeMenus(); });
     if (r.kind === "page") frame(x, r); else program(x, item || { cmd: r.cmd, kind: a && a.terminal ? "term" : "run" });
+    // The welcome window gives up its smaller first-visit size as soon as
+    // another window shares its workspace: from then on, it tiles.
+    onSpace(x.ws).forEach(function (y) { y.el.classList.remove("intro"); });
     spaces[x.ws - 1].appendChild(x.el);
     wins.push(x);
     if (!restoring) history.pushState(null, "", "#" + route);
@@ -314,8 +407,10 @@
   var start = location.hash.slice(1);
   if (!start || !open(start, null, true)) {
     // No address, or one that names nothing: the welcome window, so nobody
-    // lands on an empty desktop and has to guess.
-    open("page/about", null, true);
+    // lands on an empty desktop and has to guess -- and smaller than a tiled
+    // window would be, so the desktop it opened on is in sight beside it.
+    var w = open("page/about", null, true);
+    if (w) w.el.classList.add("intro");
     history.replaceState(null, "", "#page/about");
   }
   document.documentElement.classList.add("desk-on");

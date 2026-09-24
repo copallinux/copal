@@ -1109,10 +1109,13 @@ lint: | $(BUILDDIR)
 	@python3 tools/copal-playbooks.py check
 	@python3 tools/copal-command-ref.py check | sed 's/^  //; s/^/  /'
 	@cp docs/commands.html $(BUILDDIR)/.commands.lint.html; cp docs/commands-index.json $(BUILDDIR)/.commands.lint.json; \
+	 cp docs/guide-cards.json $(BUILDDIR)/.commands.lint.cards; \
 	 python3 tools/copal-command-ref.py render >/dev/null; \
-	 if cmp -s docs/commands.html $(BUILDDIR)/.commands.lint.html && cmp -s docs/commands-index.json $(BUILDDIR)/.commands.lint.json; then \
+	 if cmp -s docs/commands.html $(BUILDDIR)/.commands.lint.html && cmp -s docs/commands-index.json $(BUILDDIR)/.commands.lint.json \
+	    && cmp -s docs/guide-cards.json $(BUILDDIR)/.commands.lint.cards; then \
 	    printf '  ok      docs/commands.html matches its facts and notes\n'; rm -f $(BUILDDIR)/.commands.lint.*; \
 	 else mv $(BUILDDIR)/.commands.lint.html docs/commands.html; mv $(BUILDDIR)/.commands.lint.json docs/commands-index.json; \
+	    mv $(BUILDDIR)/.commands.lint.cards docs/guide-cards.json; \
 	    printf '\033[31merror:\033[0m docs/commands.html has drifted from its facts and notes -- run: make commands\n'; exit 1; fi
 	@sed -n "/^    cat > \/usr\/local\/bin\/copal-store <<'COPALSTORE'$$/,/^COPALSTORE$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.store.lint.sh

@@ -585,6 +585,9 @@ def man_html():
 NOTES = os.path.join(ROOT, "docs", "commands")
 GUIDE = os.path.join(ROOT, "docs", "commands.html")
 INDEX = os.path.join(ROOT, "docs", "commands-index.json")
+# The desktop's program windows (docs/desk.js): each command's entry, small
+# enough to fetch on the first window that wants one -- commands.html is not.
+CARDS = os.path.join(ROOT, "docs", "guide-cards.json")
 
 # The core list has no catalogue section; these are its sections.
 CORE_SECTION = {
@@ -858,8 +861,32 @@ def render():
     with open(INDEX, "w") as f:
         json.dump(index, f, ensure_ascii=False, indent=0, sort_keys=True)
         f.write("\n")
-    print("  ok      %d commands, %d with notes -> docs/commands.html (%.0f kB), docs/commands-index.json"
-          % (len(cmds), sum(1 for c in cmds if c["cmd"] in ns), len(page.encode()) / 1024))
+    cards = {}
+    for c in cmds:
+        card = {"p": index[c["cmd"]], "s": section_of(c)}
+        if c.get("man"):
+            card["man"] = 1
+        if c.get("mode"):
+            card["m"] = c["mode"]      # t terminal program, h command-line tool, x graphical
+        note = ns.get(c["cmd"])
+        if note:
+            head, secs = note["head"], note["secs"]
+            if head.get("why"):
+                card["why"] = head["why"]
+            # The header's '# see:' line, where it names commands the guide has.
+            see = [w for w in re.split(r"[,\s]+", head.get("see", "")) if w in index and w != c["cmd"]]
+            if see:
+                card["see"] = see
+            if secs.get("use"):
+                card["use"] = [" ".join(p.split()) for p in "\n".join(secs["use"]).split("\n\n") if p.strip()]
+            if secs.get("examples"):
+                card["ex"] = [l[4:] if l.startswith("    ") else l.strip() for l in secs["examples"] if l.strip()]
+        cards[c["cmd"]] = card
+    with open(CARDS, "w") as f:
+        json.dump(cards, f, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        f.write("\n")
+    print("  ok      %d commands, %d with notes -> docs/commands.html (%.0f kB), docs/commands-index.json, docs/guide-cards.json (%.0f kB)"
+          % (len(cmds), sum(1 for c in cmds if c["cmd"] in ns), len(page.encode()) / 1024, os.path.getsize(CARDS) / 1024))
     return 0
 
 

@@ -33,9 +33,10 @@
 .sim-bar .grow { flex: 1; color: #c9b27a; white-space: nowrap; overflow: hidden; }
 .sim-bar .time { color: var(--bar-hot); font-weight: 700; }
 
+/* On the right, where the welcome window leaves the desktop in sight. */
 .sim-clock {
-  position: absolute; left: 44%; top: 15%; z-index: 1; pointer-events: none;
-  text-align: left;
+  position: absolute; right: 5%; top: 15%; z-index: 1; pointer-events: none;
+  text-align: right;
 }
 .sim-clock .hm {
   font: 600 120px/1 "Cormorant Garamond", Georgia, serif; color: #f4c27c;

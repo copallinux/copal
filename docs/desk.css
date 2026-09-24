@@ -28,6 +28,10 @@ html.desk-on .desk-fallback { display: none; }
   background: #181818; border: 2px solid #3a3a3a; border-radius: 8px; overflow: hidden;
   box-shadow: 0 6px 22px rgba(0,0,0,.35);
 }
+/* The welcome window at a first visit: two-thirds of the width, so the
+   wallpaper and the clock are in sight beside it. A second window on its
+   workspace takes the class away (desk.js), and a phone keeps it full. */
+@media (min-width: 760px) { .desk-win.intro { flex: 0 1 min(64%, 940px); } }
 /* Hyprland's active border: the theme's gold on the window with focus. */
 .desk-win.focus { border-color: var(--bar-hot); }
 .desk-head {
@@ -46,26 +50,65 @@ html.desk-on .desk-fallback { display: none; }
 .desk-win.page .desk-body { background: #f2e3c0; }
 .desk-win.page iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
-/* A program: its picture beside what it is. */
+/* A program: its picture beside its Terminal Guide entry, and the examples
+   and See also across the width beneath both. */
 .desk-win.app .desk-body {
-  display: flex; gap: 18px; padding: 18px; overflow: auto; background: #181818; color: #e8e1cf;
+  display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 4px 22px;
+  padding: 18px; overflow: auto; background: #181818; color: #e8e1cf;
+  user-select: text; cursor: auto;
 }
+.desk-win.app.pictured .desk-body { grid-template-columns: minmax(0, 3fr) minmax(16rem, 2fr); }
+.desk-win.app.pictured .desk-more { grid-column: 1 / -1; }
 .desk-pic {
-  flex: 3 1 0; min-width: 0; aspect-ratio: 16 / 10; align-self: flex-start;
+  min-width: 0; aspect-ratio: 16 / 10;
   background: #0d0d0d center / contain no-repeat; border: 1px solid #333;
 }
-.desk-pic.none {
-  display: grid; place-items: center; color: #8e8778; font: 13px "JetBrains Mono", monospace;
+.desk-txt { min-width: 0; max-width: 60rem; font: 14px/1.6 "JetBrains Mono", monospace; }
+.desk-txt h2 {
+  margin: 0 0 .5rem; padding: 0; border: 0; font: 600 30px/1.1 "Cormorant Garamond", Georgia, serif;
+  color: #f4c27c; text-transform: none; letter-spacing: 0;
 }
-.desk-txt { flex: 2 1 0; min-width: 14rem; font: 14px/1.55 "JetBrains Mono", monospace; }
-.desk-txt h2 { margin: 0 0 .6rem; font: 600 28px/1.1 "Cormorant Garamond", Georgia, serif; color: #f4c27c; }
+.desk-txt h3 {
+  margin: 1.1rem 0 .4rem; font: 700 11px/1 "JetBrains Mono", monospace; letter-spacing: .12em;
+  text-transform: uppercase; color: #8e8778;
+}
 .desk-txt p { margin: 0 0 .8rem; }
+.desk-txt .lede { font-size: 15px; color: #f2e3c0; }
 .desk-txt .cmd { color: var(--bar-hot); }
-.desk-txt a.doc {
-  display: inline-block; margin: 0 .5rem .5rem 0; padding: 3px 10px; border: 1px solid #fccf8a;
-  border-radius: 12px; color: #fccf8a; text-decoration: none; font-size: 13px;
+.desk-txt .why { color: #cfc6b0; border-left: 2px solid #87704f; padding-left: .8rem; }
+.desk-txt .thin { color: #8e8778; }
+.desk-txt .see { color: #8e8778; margin-top: 1rem; }
+.desk-txt code { color: #f4c27c; background: #242424; padding: 0 .25em; border-radius: 3px; }
+.desk-txt a { color: #fccf8a; }
+.desk-txt a code {
+  background: #242424; color: #f4c27c; border: 0;
+  text-decoration: underline; text-decoration-color: #87704f;
 }
-.desk-txt a.doc:hover, .desk-txt a.doc:focus-visible { background: #fccf8a; color: #121212; }
+/* As the guide sets them: each line as written -- a command, or a key the
+   program answers to -- with its comment dimmed. */
+.desk-txt pre.ex {
+  margin: 0; padding: .7rem .8rem; background: #0f0f0f; color: #efe6d2; box-shadow: none;
+  border: 1px solid #2c2c2c; border-radius: 4px;
+  font: 13px/1.6 "JetBrains Mono", monospace; overflow-x: auto; white-space: pre;
+  scrollbar-color: #4a4a4a #0f0f0f;
+}
+.desk-txt pre.ex .run { color: #efe6d2; }
+.desk-txt pre.ex .note { color: #8e8778; }
+
+/* The title bar's links: the full entry, the man page, the project's home. */
+.desk-head .links { display: flex; gap: 4px; flex: none; }
+.desk-head .links a {
+  color: #fccf8a; text-decoration: none; padding: 0 8px; line-height: 20px;
+  border: 1px solid #5a4a30; border-radius: 10px; font-size: 11px;
+}
+.desk-head .links a:hover, .desk-head .links a:focus-visible { background: #fccf8a; color: #121212; }
+@media (max-width: 640px) { .desk-head .links a:nth-child(n+3) { display: none; } }
+
+/* A terminal program: its entry set in a foot window, as it would be read. */
+.desk-win.foot .desk-body { background: #151515; }
+.desk-win.foot .desk-txt h2 { font: 700 15px/1.4 "JetBrains Mono", monospace; color: #e9b86a; }
+.desk-win.foot .desk-txt h2::before { content: "── "; color: #5a4a30; }
+
 /* Narrow: the picture above the words. */
-@container (max-width: 560px) { .desk-win.app .desk-body { flex-direction: column; } }
+@container (max-width: 640px) { .desk-win.app.pictured .desk-body { grid-template-columns: minmax(0, 1fr); } }
 .desk-win.app { container-type: inline-size; }
