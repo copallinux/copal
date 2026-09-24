@@ -786,6 +786,11 @@ fresh-img-%: | require-tools $(BUILDDIR)
 # repository embeds. https://github.com/vonglurt/orrery
 ORRERY_SRC ?= $(HOME)/code/orrery
 
+## desk-check: drive the site's desktop in a headless Firefox and report every check (needs firefox).
+.PHONY: desk-check
+desk-check:
+	@sh tools/desk-check/desk-check.sh
+
 ## install-fleet: 'copal fleet' as a real command here, in ~/.local/bin, running this checkout's console.
 .PHONY: install-fleet
 install-fleet:
@@ -875,7 +880,7 @@ sync-store:
 	@$(MAKE) --no-print-directory lint
 
 ## reports: the lab reports as pages of the site (docs/NAME.html), from their Markdown.
-REPORTS = docs/terminal-guide-lab-report.md
+REPORTS = docs/terminal-guide-lab-report.md docs/desktop-site-lab-report.md
 .PHONY: reports
 reports:
 	@python3 tools/copal-report-html $(REPORTS)

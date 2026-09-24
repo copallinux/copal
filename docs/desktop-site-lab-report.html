@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Desktop Is the Site · Copal Linux</title>
+<meta name="description" content="copallinux.org opened on a conventional page: a header, five numbered sections, and two simulations of Copal&amp;#39;s menus set in it as pictures. Every page of documentation behind it had just been checked against the machine — 274 Terminal Guide entries, 193 man pages, 216 gallery pictures, a home pa">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="./">Copal</a>
+  <a class="key" href="./">Home</a>
+  <a class="key" href="about.html">About</a>
+  <a class="key" href="desktop.html">Desktop</a>
+  <a class="key" href="install.html">Install</a>
+  <a class="key" href="platforms.html">Platforms</a>
+  <a class="key" href="alpine.html">Alpine</a>
+  <a class="key" href="software.html">Software</a>
+  <a class="key" href="commands.html">Commands</a>
+</nav>
+
+<main class="report">
+
+<header class="page-head">
+  <h1>The Desktop Is the Site: Rebuilding copallinux.org&#x27;s Front Door as the Copal Desktop, Tested in a Browser It Never Shows</h1>
+  <p class="lede">Lab Report — IEEE Format</p>
+</header>
+
+<p>Copyright (c) 2026 Paul Richeson. MIT licensed — see <code>LICENSE</code>. Copal Linux is
+an aggregation of Alpine Linux, not a derivative work of it; Alpine and its
+packages remain under their own licences.</p>
+<p><em>Copal Linux, Hyprland 0.54 desktop, Alpine 3.24 aarch64 guest under UTM on a
+Mac: the "bench". 24 September 2026. The work was done by the author with an
+AI coding assistant (Claude) in one terminal on the bench, in five phases, each
+stopped for review; this report records the method as well as the results, so
+the method can be used again.</em></p>
+<hr/>
+<h2 id="abstract">Abstract</h2>
+<p>copallinux.org opened on a conventional page: a header, five numbered
+sections, and two simulations of Copal&#39;s menus set in it as pictures. Every
+page of documentation behind it had just been checked against the machine —
+274 Terminal Guide entries, 193 man pages, 216 gallery pictures, a home page
+for every program in both menus — and was reached through a row of links. The
+work reported here made the front door the desktop itself: <code>index.html</code> is
+Copal&#39;s Hyprland desktop, full screen, and everything on the site opens from
+its two menus as a window on it. A program&#39;s window puts its gallery picture
+beside its Terminal Guide entry; a page of the site opens framed; windows tile
+as Hyprland tiles them, across five workspaces, and every window has an
+address that Back and Forward walk. It works from the keyboard with Copal&#39;s
+own shortcuts, on a phone, to a screen reader, and — as a plain list — without
+JavaScript. Fifty-five checks drive it in a real browser and read their
+verdicts from a web server&#39;s log, so the browser runs headless and nothing is
+ever shown on the author&#39;s screen. The checks and the screenshots found eleven
+defects in the work and four in the checks themselves; all are fixed.</p>
+<h2 id="i.-objective">I. Objective</h2>
+<ol>
+<li>Make the site&#39;s front door the Copal desktop, with the documentation
+reached through the desktop&#39;s own menus rather than a list of links.</li>
+<li>Show a program as its gallery picture beside its written entry, one click
+from the full entry, the man page and the project&#39;s home page.</li>
+<li>Keep every existing address working, keep the site usable without
+JavaScript, on a phone and to a screen reader, and load no more on the
+first screen than the old page did.</li>
+<li>Test it the way a person would use it — clicks, typing, history — without
+taking over the author&#39;s screen, and leave the tests in the repository so
+they can be run again.</li>
+</ol>
+<h2 id="ii.-materials">II. Materials</h2>
+<ul>
+<li><strong>The bench</strong>: the Copal machine the site describes, with Firefox ESR 140,
+Python 3.14 and ImageMagick.</li>
+<li><strong>What already existed</strong>: the two menu simulations (<code>menu-sim.js</code>,
+<code>textmenu-sim.js</code>), their data generator (<code>tools&#47;copal-menu-sim.py</code>, which
+reads the real menus on a running desktop), the Terminal Guide&#39;s generator
+(<code>tools&#47;copal-command-ref.py</code>) and the site&#39;s pages and stylesheet [1], [2].</li>
+<li><strong>The plan</strong>: <code>docs&#47;splash-plan.md</code> [3], written and reviewed first, with
+the author&#39;s three decisions: the desktop is the whole site; a program&#39;s
+picture sits beside its entry; both menus, switched on the bar.</li>
+</ul>
+<h2 id="iii.-method">III. Method</h2>
+<h3 id="a.-five-phases-each-stopped-for-review">A. Five phases, each stopped for review</h3>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>What it built</th>
+<th>Commit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>the shell: bar, clock, both menus, tiled windows, addresses, framed pages</td>
+<td><code>226ef89</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>program windows: picture beside entry; <code>guide-cards.json</code></td>
+<td><code>4232e3c</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>the site in both menus: a Copal section and a "This site" branch</td>
+<td><code>2536692</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>keys, phones, screen readers</td>
+<td><code>216aa68</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>the checks in the repository, the pictures, this report</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>Each phase ended with its checks run, its screenshots looked at, and a report
+to the author, who decided whether it went in. Two decisions were taken at
+those stops rather than in the plan: the welcome window opens at two-thirds of
+the width on a first visit (a single tiled window filled the screen and hid
+the desktop it was meant to introduce), and the Terminal Guide window uses the
+page&#39;s own search box rather than a second one in the title bar.</p>
+<h3 id="b.-the-menus-became-parts-not-pictures">B. The menus became parts, not pictures</h3>
+<p>The two simulations each built their own 1280×800 stage, scaled to fit a
+plate on the page. A framed page and a phone need real pixels, so each became
+a part the desktop mounts — <code>menu-gui.js</code> (copal-gui, Super+A) and
+<code>menu-keys.js</code> (copal-menu, Super+Space and Super+Z) — keeping their behaviour
+rule for rule and handing every launch to the desktop as the same small item:
+a name and a command, or a page. <code>git mv</code> kept their history. The desktop,
+<code>desk.js</code>, owns the bar, the clock, the windows and the addresses.</p>
+<h3 id="c.-one-source-for-each-fact">C. One source for each fact</h3>
+<ul>
+<li><strong>The site&#39;s pages</strong> are listed once, in the generator&#39;s <code>SITE</code> — title, one
+line, and a theme icon. The menus show them; the desktop frames only them,
+so an address cannot put another site inside this one.</li>
+<li><strong>A program&#39;s entry</strong> is written once, in <code>docs&#47;commands&#47;</code>. The guide&#39;s
+generator, which already writes <code>commands.html</code>, now also writes
+<code>guide-cards.json</code> — each command&#39;s purpose, section, mode and man page, and
+the written entry&#39;s why, use, examples and "see" — and <code>make lint</code> checks it
+with the rest.</li>
+<li><strong>A program&#39;s picture and home page</strong> come from the menus&#39; data, as before.</li>
+</ul>
+<h3 id="d.-checks-that-read-a-log-not-a-screen">D. Checks that read a log, not a screen</h3>
+<p>Each page of checks (<code>tools&#47;desk-check&#47;t-desk*.js</code>) is <code>index.html</code> with one
+script added after <code>desk.js</code>. The script clicks, types, dispatches key events
+and steps through history, and reports each verdict by requesting
+<code>&#47;verdict&#47;N&#47;TEXT</code> from the local server that serves the page. The runner reads
+the verdicts from the server&#39;s log. Nothing has to be looked at, so Firefox
+runs headless and the author&#39;s screen is never touched — an improvement on the
+first runs, which opened a real Firefox on workspace 3, where the author had
+asked test windows to go.</p>
+<p>Screenshots are the other half, and they need two concessions a person&#39;s
+browser does not: a headless screenshot is taken at the load event, before a
+fetch completes or a fade finishes, so the screenshot page makes <code>fetch</code>
+synchronous and fades instant. Neither is used by the checks.</p>
+<p>The site is served, not opened from <code>file:&#47;&#47;</code>: Firefox gives each file its own
+origin, and the desktop must reach into the pages it frames.</p>
+<h2 id="iv.-results">IV. Results</h2>
+<h3 id="a.-the-site">A. The site</h3>
+<p><img src="img/desk-lab/welcome.jpg" alt="The desktop at a first visit: the bar, the clock on the right, and the
+welcome window at two-thirds of the width" /></p>
+<p><em>Fig. 1. copallinux.org at a first visit: the welcome window (About Copal)
+beside the desktop it opened on.</em></p>
+<p><img src="img/desk-lab/tiled.jpg" alt="Two windows tiled: About Copal on the left, Brogue on the right with its
+picture, its entry, its examples and See also" /></p>
+<p><em>Fig. 2. Two windows, tiled. Brogue, opened from copal-gui, is a terminal
+program: its window is set as foot would set it, its gallery picture beside
+its Terminal Guide entry, the examples across the width beneath.</em></p>
+<p><img src="img/desk-lab/menus.jpg" alt="Both menus open on the site's pages: copal-gui's Copal section with a
+preview card, and copal-menu's This site branch with its
+card" /></p>
+<p><em>Fig. 3. The site in both menus: copal-gui&#39;s Copal section (top) and
+copal-menu&#39;s "This site" branch (bottom), each with the card saying what the
+selected page is.</em></p>
+<p><img src="img/desk-lab/phone.jpg" alt="Three phone screens: the welcome window, copal-gui as a full-screen sheet,
+and Brogue's window with its picture above its entry" /></p>
+<p><em>Fig. 4. At 390 px: the welcome window, copal-gui as a sheet under the bar,
+and a program&#39;s window with its picture above its entry.</em></p>
+<p><img src="img/desk-lab/no-javascript.jpg" alt="The page with JavaScript switched off: the site's nav, the wordmark, and a
+list of every page" /></p>
+<p><em>Fig. 5. The same address with JavaScript switched off: every page, as a
+list.</em></p>
+<h3 id="b.-weight">B. Weight</h3>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>File</th>
+<th>Size</th>
+<th>Compressed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>index.html</code></td>
+<td>3.4 kB</td>
+<td>1.4 kB</td>
+</tr>
+<tr>
+<td><code>desk.js</code> + <code>menu-gui.js</code> + <code>menu-keys.js</code></td>
+<td>51.5 kB</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>menu-data.js</code></td>
+<td>165 kB</td>
+<td>42 kB</td>
+</tr>
+<tr>
+<td><code>guide-cards.json</code> (first program window only)</td>
+<td>238 kB</td>
+<td>83 kB</td>
+</tr>
+<tr>
+<td><code>commands.html</code> (never loaded by a program window)</td>
+<td>714 kB</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>The first screen loads what the old page&#39;s two simulations loaded — the data,
+the icon sheet, the wallpaper — plus the welcome window&#39;s page. The cards are
+fetched by the first program window, not on arrival.</p>
+<h3 id="c.-the-checks">C. The checks</h3>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>Page</th>
+<th>Checks</th>
+<th>What they drive</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>t-desk</code></td>
+<td>18</td>
+<td>menus, tiling, workspaces, addresses, Back and Forward, links in pages, closing</td>
+</tr>
+<tr>
+<td><code>t-desk2</code></td>
+<td>9</td>
+<td>program windows: entry, foot, title-bar links, man pages, links between entries</td>
+</tr>
+<tr>
+<td><code>t-desk3</code></td>
+<td>11</td>
+<td>the site&#39;s pages in both menus, search, the card</td>
+</tr>
+<tr>
+<td><code>t-desk4</code></td>
+<td>17</td>
+<td>shortcuts (Super and Ctrl+Alt), Super tap, keys from a framed page, fields, focus, what a screen reader is told</td>
+</tr>
+</tbody>
+</table></div>
+<p>All 55 pass, headless, in about 40 seconds on the bench.</p>
+<h3 id="d.-defects-found-in-the-work-and-what-caught-each">D. Defects found in the work, and what caught each</h3>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>Defect</th>
+<th>Caught by</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A lone welcome window filled the screen and hid the desktop</td>
+<td>the author, at review</td>
+<td>two-thirds on a first visit; the clock moved right</td>
+</tr>
+<tr>
+<td>Example commands nearly invisible: the site&#39;s <code>pre</code> colour inherited</td>
+<td>screenshot</td>
+<td>the examples&#39; own colour</td>
+</tr>
+<tr>
+<td>Examples cut off beside a picture</td>
+<td>screenshot</td>
+<td>examples across the width beneath</td>
+</tr>
+<tr>
+<td>An empty "no picture" frame took half a window</td>
+<td>screenshot</td>
+<td>the entry has the window to itself</td>
+</tr>
+<tr>
+<td>A "$" prompt on key bindings that are not commands</td>
+<td>screenshot</td>
+<td>lines as the guide writes them</td>
+</tr>
+<tr>
+<td>A program opened by its address was not known to be a terminal program</td>
+<td>reading</td>
+<td>the cards carry each command&#39;s mode</td>
+</tr>
+<tr>
+<td>Links between entries: only 6 entries name a command in backticks</td>
+<td>a failing check</td>
+<td>"See also" from each entry&#39;s <code># see:</code> (272 entries)</td>
+</tr>
+<tr>
+<td>Page icons fell back to the generic executable</td>
+<td>screenshot</td>
+<td>icons this theme loads</td>
+</tr>
+<tr>
+<td>Games, Graphics and Sound &#38; Video had no icon — in the real copal-gui too</td>
+<td>screenshot</td>
+<td>their symbolic icons, in <code>tools&#47;copal-gui</code></td>
+</tr>
+<tr>
+<td>Man pages opened in place rather than as windows</td>
+<td>reading</td>
+<td><code>#man&#47;CMD</code> addresses</td>
+</tr>
+<tr>
+<td>The keyboard menu&#39;s phone sheet stopped short of the bottom</td>
+<td>screenshot</td>
+<td>pinned to the bottom</td>
+</tr>
+</tbody>
+</table></div>
+<p>The Games, Graphics and Sound &#38; Video icons are the one defect in Copal
+itself: GNOME&#39;s Adwaita dropped the full-colour category icons, copal-gui&#39;s
+section list gives each section a symbolic one it does have, and these three
+had been missed. The fix went into the menu every Copal machine runs.</p>
+<h3 id="e.-defects-in-the-checks">E. Defects in the checks</h3>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>Defect</th>
+<th>Effect</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A check written as <code>… \|\| true</code></td>
+<td>could not fail</td>
+<td>a real condition: the card names the page</td>
+</tr>
+<tr>
+<td><code>null === null</code> counted as a pass</td>
+<td>"the field names the selected option" passed with nothing selected</td>
+<td>requires a selection</td>
+</tr>
+<tr>
+<td>A search for a program copal-gui does not carry (rsync)</td>
+<td>a cascade of false failures</td>
+<td>a program it does carry</td>
+</tr>
+<tr>
+<td>A check that stopped at the first error reported only the error</td>
+<td>the passes before it were hidden</td>
+<td>report what passed, then the error</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="v.-discussion">V. Discussion</h2>
+<p><strong>Tiling is the truth and not always the right first impression.</strong> A lone
+tiled window fills its workspace; that is Hyprland, and every later window
+follows the rule. The first window a visitor sees is the exception, because
+its job is to introduce the desktop, which it cannot do on top of it.</p>
+<p><strong>A check must be able to fail.</strong> Two of the four defects in the checks were
+checks that could not fail. Writing each check against a condition that is
+false before the feature works, and looking at a failing run once, would have
+found both.</p>
+<p><strong>The harness matters as much as the checks.</strong> Several runs were spoiled by
+the harness, not the site: a port held by another session&#39;s server
+(the screenshots were of that session&#39;s copy and were discarded), a server
+that outlived its <code>kill</code> because <code>$!</code> named a subshell, and a log read as
+binary because it was emptied while being written. A <code>&#47;tmp</code> too small for four
+browser profiles stopped the fourth. Each fix is now in <code>desk-check.sh</code>.</p>
+<p><strong>What was not tested.</strong> The screen-reader work is tested as markup — roles,
+labels, the selection named on the field — not with a screen reader speaking
+it. The phone layout is tested at 390 px in a desktop browser, not on a phone.
+Browsers keep some Super combinations for themselves (Cmd+Q quits a browser on
+a Mac), which is why Copal&#39;s Ctrl+Alt fallbacks [4] are the ones to rely on.</p>
+<h2 id="vi.-procedures">VI. Procedures</h2>
+<p><strong>Run the checks</strong> (needs Firefox and Python 3):</p>
+<pre><code>make desk-check
+</code></pre>
+<p><strong>Make the pictures</strong> for a report like this one:</p>
+<pre><code>sh tools&#47;desk-check&#47;desk-check.sh --shots &#47;tmp&#47;desk-shots
+</code></pre>
+<p><strong>After changing a Terminal Guide entry</strong>, rebuild the guide and its cards:</p>
+<pre><code>make commands
+</code></pre>
+<p><strong>After changing the menus or the site&#39;s pages</strong> (<code>SITE</code> in
+<code>tools&#47;copal-menu-sim.py</code>), regenerate the menus&#39; data on a running Copal
+desktop:</p>
+<pre><code>python3 tools&#47;copal-menu-sim.py
+</code></pre>
+<p><strong>Add a check</strong>: a condition that is false until the feature works, pushed
+onto <code>out</code> with <code>ok(name, condition, detail)</code> in the right <code>t-desk*.js</code>.</p>
+<h2 id="vii.-files-touched">VII. Files touched</h2>
+<ul>
+<li><code>docs&#47;index.html</code> — the desktop, and its no-JavaScript list;
+<code>docs&#47;about.html</code> — the old home page&#39;s text, the welcome window.</li>
+<li><code>docs&#47;desk.js</code>, <code>docs&#47;desk.css</code> — the desktop; <code>docs&#47;menu-gui.js</code>,
+<code>docs&#47;menu-keys.js</code>, <code>docs&#47;menus.css</code> — the two menus as parts.</li>
+<li><code>docs&#47;guide-cards.json</code>, written by <code>tools&#47;copal-command-ref.py</code>;
+<code>docs&#47;menu-data.js</code> and <code>docs&#47;img&#47;menu&#47;icons.png</code>, written by
+<code>tools&#47;copal-menu-sim.py</code>.</li>
+<li><code>docs&#47;site.css</code> — <code>html.framed</code>; every page&#39;s nav gains About.</li>
+<li><code>tools&#47;copal-gui</code> (synced into stage 4) — three section icons.</li>
+<li><code>tools&#47;desk-check&#47;</code> — the checks and their runner; <code>make desk-check</code>.</li>
+</ul>
+<h2 id="references">References</h2>
+<p>[1] Copal Linux, "Writing a Command Reference Against the Machine,"
+<code>docs&#47;terminal-guide-lab-report.md</code>, 2026.</p>
+<p>[2] Copal Linux, "The Terminal Guide: plan," <code>docs&#47;terminal-guide-plan.md</code>,
+2026.</p>
+<p>[3] Copal Linux, "The Desktop Is the Site — plan," <code>docs&#47;splash-plan.md</code>, 2026.</p>
+<p>[4] Hyprland, "Binds," <code>hyprland.conf</code> on the bench: Super and Ctrl+Alt
+shortcuts, version 0.54.3.</p>
+
+
+<nav class="onward" aria-label="Next">
+  <a href="commands.html">The Terminal Guide →</a>
+  <a href="https://github.com/copallinux/copal/blob/main/docs/desktop-site-lab-report.md">The source of this report →</a>
+</nav>
+
+<footer>
+  <p>Copal Linux · MIT licensed · <a href="https://github.com/copallinux/copal">github.com/copallinux/copal</a> ·
+  Alpine Linux is its project's own; Copal is not part of it.</p>
+</footer>
+
+</main>
+</body>
+</html>

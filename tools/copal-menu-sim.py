@@ -79,6 +79,8 @@ SITE = [
      ("text-x-generic", "utilities-terminal")),
     ("terminal-guide-lab-report", "Lab report: the Terminal Guide", "How a command reference was written against a running machine",
      ("x-office-document",)),
+    ("desktop-site-lab-report", "Lab report: the desktop is the site", "How this site became the Copal desktop, and how it is tested",
+     ("x-office-document",)),
 ]
 
 

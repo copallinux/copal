@@ -95,3 +95,10 @@ for review, as the guide's batches did.
 - **The simulation's code is two files written as widgets.** Phase 1 turns
   them into one desktop with two menus; the risk is regressions in edge
   scrolling and favourites, which the existing lab report's checks cover.
+
+## VIII. Done (24 September 2026)
+
+All five phases: `226ef89`, `4232e3c`, `2536692`, `216aa68`, and phase 5 —
+the checks in `tools/desk-check/` (`make desk-check`, 55 checks, headless)
+and the lab report, `docs/desktop-site-lab-report.md`, which records the
+method, the defects the checks and screenshots found, and what was not tested.
