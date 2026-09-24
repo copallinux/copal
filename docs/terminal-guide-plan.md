@@ -192,8 +192,8 @@ Each ends with a review of what it produced before the next begins.
    with a package and a version or a reason it has none (`copal-*`: "copal,
    stage N").
 3. **The template and the renderer**, with five entries written in full
-   for review: `apk`, `doas`, `rsync`, `tmux`, `links`, one of each kind
-   of hard. The page, the search, the anchors.
+   for review: `apk`, `doas`, `rsync`, `tmux`, `links`. *Built 24 Sep
+   2026*, below.
 4. **The editorial passes**, in batches of about twenty, in this terminal,
    each reviewed against the checklist before the next: core first (the
    most-asked: apk, doas, OpenRC, lbu, BusyBox), then Copal's own, then the
@@ -254,6 +254,40 @@ Each ends with a review of what it produced before the next begins.
 - **`docs/man/`**: 168 pages, mandoc's HTML in the site's type, a
   cross-reference a link when its page is here. 9.0 MB, 2.3 MB compressed
   as GitHub Pages serves it.
+
+### Phase 3, as built
+
+- **The template** is as section II has it: `docs/commands/<Section>/<cmd>.md`,
+  header `command`, `purpose`, `why`, `see`, then `## Use`, `## Examples`
+  (`command  # what`), `## Options` (`option  what`), `## Notes` (`- `).
+  A command in backticks that is in the guide becomes a link to its entry.
+- **`render`** writes `docs/commands.html`: the facts line (section, kind,
+  package and version, the stage that installs it and its step, the man
+  page, the home page), dependencies, the written notes, the synopsis, and
+  for a command with no notes its facts under "no notes yet". A find box
+  that filters as you type; sections as chips. And
+  `docs/commands-index.json`, command -> purpose, which the home page's
+  menus now read: all 289 link to the guide.
+- **`check`**: every note names a command in the inventory and has its
+  header and sections; on a Copal machine every option it lists is found in
+  the man page, its subcommands' pages (apk-add(8) for `apk add`) or
+  `--help` -- apk 3's `--no-X` accepted where the page states that rule.
+  `make lint` runs it, and fails if `docs/commands.html` has drifted from
+  its facts and notes. `make commands` renders and checks.
+- **The stages, right.** Each command's stage is now the one a full install
+  runs FIRST among those that install it (order.list), found by position,
+  not text, and never from a quoted hint (`note "apk add tmux..."`); the
+  core list's compilers through the package that pulls them in
+  (`build-base`); `openssh` and `chrony` from setup-alpine's answers
+  (stage 1); Alpine's base system, as `alpine-base` lists it, called so.
+- **Copal's own commands** take their purpose from their own header
+  (`# copal-desk -- put the workspaces into a known shape`): 40 of 41.
+- **Five entries, for review**: `apk`, `doas`, `rsync`, `tmux`, `links`,
+  every option checked against the machine. Found on the way: Alpine builds
+  links without graphics, so the catalogue's "Links (text/graphics web)"
+  is now "Links (text web)".
+- **Man pages build the same way twice**: an undated page is left undated
+  and the OS is Alpine's, not the build host's kernel.
 
 ## VII. Risks
 

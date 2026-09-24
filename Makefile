@@ -895,6 +895,14 @@ sync-gui:
 ## package, dependencies and man page (docs/commands/facts.json), and the man pages
 ## as site pages (docs/man/). Needs a Copal machine: apk, and the pages
 ## install_manuals puts there. docs/terminal-guide-plan.md.
+## commands: render the Terminal Guide (docs/commands.html) from the facts and the
+## written notes in docs/commands/<section>/<cmd>.md, then check the notes. Runs
+## anywhere; on a Copal machine the check also tests every option a note lists.
+.PHONY: commands
+commands:
+	@python3 tools/copal-command-ref.py render
+	@python3 tools/copal-command-ref.py check
+
 .PHONY: commands-facts
 commands-facts:
 	@test -f /etc/alpine-release && command -v mandoc >/dev/null \
@@ -1071,6 +1079,13 @@ lint: | $(BUILDDIR)
 	         diff -u tools/copal-fleet-agent $(BUILDDIR)/.agent.lint.py | head -20; exit 1; }
 	@rm -f $(BUILDDIR)/.nkeys.lint.py $(BUILDDIR)/.nats.lint.py $(BUILDDIR)/.agent.lint.py
 	@python3 tools/copal-playbooks.py check
+	@python3 tools/copal-command-ref.py check | sed 's/^  //; s/^/  /'
+	@cp docs/commands.html $(BUILDDIR)/.commands.lint.html; cp docs/commands-index.json $(BUILDDIR)/.commands.lint.json; \
+	 python3 tools/copal-command-ref.py render >/dev/null; \
+	 if cmp -s docs/commands.html $(BUILDDIR)/.commands.lint.html && cmp -s docs/commands-index.json $(BUILDDIR)/.commands.lint.json; then \
+	    printf '  ok      docs/commands.html matches its facts and notes\n'; rm -f $(BUILDDIR)/.commands.lint.*; \
+	 else mv $(BUILDDIR)/.commands.lint.html docs/commands.html; mv $(BUILDDIR)/.commands.lint.json docs/commands-index.json; \
+	    printf '\033[31merror:\033[0m docs/commands.html has drifted from its facts and notes -- run: make commands\n'; exit 1; fi
 	@sed -n "/^    cat > \/usr\/local\/bin\/copal-store <<'COPALSTORE'$$/,/^COPALSTORE$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.store.lint.sh
 	@test -s $(BUILDDIR)/.store.lint.sh \

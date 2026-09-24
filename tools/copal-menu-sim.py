@@ -24,7 +24,7 @@ and, for the other menu, copal-menu's own list: it is rebuilt with
 'copal-menu --rebuild' into a scratch cache (your own ~/.cache/copal is left
 alone) and carried whole, so the text menu on the page walks the same rows,
 sections and Install branch the keyboard menu does. The command reference's
-entries (docs/command-reference.json) are listed too, so a terminal program
+index (docs/commands-index.json) is carried too, so a terminal program
 can link to its page.
 
 The store's bench prefix (~/.cache/copal-store/prefix, where the store
@@ -172,8 +172,10 @@ def main():
         subprocess.run(["copal-menu", "--rebuild"], env=env, check=True)
         textmenu = open(os.path.join(tmp, "copal", "menu-wayland.csv")).read()
 
-    ref = os.path.join(DOCS, "command-reference.json")
-    refs = {e["cmd"]: e["purpose"] for e in json.load(open(ref))} if os.path.exists(ref) else {}
+    # The Terminal Guide's index (tools/copal-command-ref.py render):
+    # command -> purpose, for the "see man" links.
+    ref = os.path.join(DOCS, "commands-index.json")
+    refs = json.load(open(ref)) if os.path.exists(ref) else {}
 
     data = {"px": PX, "cols": COLS, "sections": sections, "session": session,
             "favourites": favs, "apps": entries, "textmenu": textmenu,

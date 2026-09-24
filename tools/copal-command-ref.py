@@ -14,6 +14,11 @@ and SYNOPSIS. docs/terminal-guide-plan.md is the design; the written layer
                                      docs/commands/facts.json
     copal-command-ref.py man-html    on a Copal machine: each command's man
                                      page as HTML, into docs/man/
+    copal-command-ref.py render      anywhere: facts.json and the written
+                                     notes into docs/commands.html
+    copal-command-ref.py check       the notes against the inventory and,
+                                     on a Copal machine, their options
+                                     against the man page or --help
 
 THE INVENTORY is read from the files that install the commands, never
 typed: man_core_commands in copal-prep.sh (the Alpine and toolchain core);
@@ -100,17 +105,25 @@ def call_graph(prep):
 def stage_of(prep_lines, marker):
     """The stage that writes a file: the function around the line that writes
     it, then its callers, up to the first stage function (depth 5)."""
-    at = next((i for i, l in enumerate(prep_lines) if marker in l), None)
+    if isinstance(marker, int):
+        at = marker
+    else:
+        at = next((i for i, l in enumerate(prep_lines) if l == marker), None)
+        if at is None:
+            at = next((i for i, l in enumerate(prep_lines) if marker in l), None)
     if at is None:
         return None
     fn = next((f for f, a, b in FUNCS if a <= at <= b), None)
-    seen, frontier = set(), [fn]
+    seen, frontier, hit = set(), [fn], set()
     for _ in range(5):
+        # Every stage that reaches it; the one that runs first wins -- a
+        # helper stage 1 and stage 4 both call is stage 1's.
+        hit |= {STAGE_FN[f] for f in frontier if f in STAGE_FN}
         nxt = []
         for f in frontier:
-            if f in STAGE_FN:
-                return STAGE_FN[f]
-            if not f or f in seen:
+            # A stage is where the climb ends: the stages themselves are
+            # called from the dispatcher at the top level.
+            if not f or f in seen or f in STAGE_FN:
                 continue
             seen.add(f)
             call = re.compile(r"(^|[\s;&|(])%s($|[\s;&|)])" % re.escape(f))
@@ -119,8 +132,41 @@ def stage_of(prep_lines, marker):
                    if l and not l.lstrip().startswith("#") and not any(a <= i <= b for _g, a, b in FUNCS)):
                 return 0
             nxt += [g for g, a, b in FUNCS if g != f and any(call.search(l) for l in prep_lines[a + 1:b + 1])]
-        frontier = nxt
-    return None
+        frontier = [f for f in nxt if f not in STAGE_FN or STAGE_FN[f] not in hit]
+    return first_run(hit)
+
+
+RUN_ORDER = []
+
+
+def first_run(stages):
+    """Of several stages, the one a full install runs first (order.list);
+    0 (every run) before all; stages no level runs, by number, last."""
+    if not stages:
+        return None
+    if 0 in stages:
+        return 0
+    if not RUN_ORDER:
+        RUN_ORDER.extend(int(l.split()[0]) for l in open(os.path.join(STAGES, "order.list"))
+                         if l.strip() and not l.startswith("#"))
+    return min(stages, key=lambda n: (RUN_ORDER.index(n) if n in RUN_ORDER else 99, n))
+
+
+def own_purpose(name, prep, at):
+    """A Copal tool's first line about itself: '# NAME -- text' (or a
+    docstring's 'NAME -- text'), in the heredoc that writes it or in tools/."""
+    text = prep[at:at + 6000]
+    src = os.path.join(ROOT, "tools", name)
+    if not re.search(r"<<'?\w+'?\s*$", prep[at:prep.find("\n", at)]) and os.path.exists(src):
+        text = open(src).read()[:6000]
+    # 'NAME -- text', 'NAME [ARGS]  -- text'; the front door's header shouts.
+    m = re.search(r'^(?:#\s*|"""|\s*)%s\b[^\n]{0,40}?\s--?\s+(.+(?:\n(?:#\s+|\s+)(?!\S+\s+--)\S.*)*)'
+                  % re.escape(name), text, re.M | re.I)
+    if not m:
+        return None
+    t = " ".join(re.sub(r"^#\s*", "", l).strip() for l in m.group(1).split("\n"))
+    t = re.split(r"(?<=[.:;])\s", t)[0].rstrip(".:;")
+    return t[0].upper() + t[1:] if t else None
 
 
 def inventory():
@@ -145,8 +191,10 @@ def inventory():
     # by 'install' from the checkout, or (copal itself) by copying the script.
     own = re.compile(r"(?:cat >|install -m \d+ \S+|cp \S+) (?:/mnt)?(/usr/(?:local/)?bin/(copal[\w-]*))\b")
     for m in sorted(own.finditer(prep), key=lambda m: m.group(2)):
-        # The line that writes it, not the first line that mentions it.
-        add(m.group(2), "copal", stage=stage_of(prep_lines, m.group(0)), mode="h")
+        # The line that writes it, not the first line that mentions it; and
+        # what it says it is, from its own header ('# NAME -- what it is').
+        add(m.group(2), "copal", stage=stage_of(prep_lines, m.group(0)),
+            purpose=own_purpose(m.group(2), prep, m.start()))
 
     # The catalogue (the first one: winebox carries a catalogue() of its own).
     a = prep.index("    cat <<'CATALOGUE'\n") + len("    cat <<'CATALOGUE'\n")
@@ -272,13 +320,16 @@ def man_page(cmd):
 
 def install_stage(pkg):
     """The stage whose install line names the package."""
-    pat = re.compile(r"(add_optional|try_add|apk add)\b[^#]*[\s'\"]%s(@\w+)?($|[\s'\"\\])" % re.escape(pkg))
-    for i, l in enumerate(PREP_LINES):
-        if pat.search(l):
-            st = stage_of(PREP_LINES, l)
-            if st is not None:
-                return st
-    return None
+    pat = re.compile(r"(add_optional|try_add|apk add)\b[^#]*[\s'\"]%s(@\w+)?($|[\s'\"\\;|&)])" % re.escape(pkg))
+    # Every line that installs it; the stage of them that runs first.
+    def code(l):
+        # An install, not a sentence about one: note "apk add tmux && ..."
+        # is advice to the reader. The keyword must not sit inside quotes.
+        m = pat.search(l)
+        return m and not (l[:m.start()].count('"') % 2 or l[:m.start()].count("'") % 2)
+    # By position: the same text can sit earlier inside a guide's heredoc.
+    return first_run({g for g in (stage_of(PREP_LINES, i) for i, l in enumerate(PREP_LINES) if code(l))
+                      if g is not None})
 
 
 def collect():
@@ -298,6 +349,11 @@ def collect():
         if c["path"] and c["path"].startswith(BENCH):
             c["built"] = "copal-store recipe, built from source"
         c["package"] = "copal" if c["origin"] == "copal" else pkg
+    # Alpine's base system, as Alpine itself lists it (alpine-base's
+    # dependencies), and what setup-alpine installs from the answers file
+    # stage 1 applies (SSHDOPTS="-c openssh").
+    base = {l.strip() for l in run(["apk", "info", "-R", "alpine-base"]).split("\n")[1:] if l.strip()}
+    answers = set(re.findall(r'^\w+OPTS="-c (\S+)"', open(PREP).read(), re.M))
     # Every package's metadata: one query.
     meta = {}
     for q in query([c["package"] for c in inv if c.get("package") and c["package"] != "copal"],
@@ -324,8 +380,24 @@ def collect():
                 if d and d not in QUIET and d != pkg and d not in deps:
                     deps.append(d)
             c["deps"] = deps
-        if c.get("stage") is None and pkg and pkg != "copal":
-            c["stage"] = install_stage(pkg) if install_stage(pkg) is not None else install_stage(c.get("source_package", pkg))
+        if c["origin"] == "core" and ({pkg, c.get("source_package")} & base):
+            c["base"] = True
+            c["stage"] = None
+        elif c.get("stage") is None and {pkg, c.get("source_package")} & answers:
+            c["stage"] = 1
+        # A catalogue row says stage 12, but an earlier stage may install the
+        # same program (gdb: stage 7); the one that runs first is its stage.
+        if not c.get("base") and pkg and pkg != "copal":
+            # The package by name, its origin, or -- for the core, whose
+            # compilers arrive inside build-base -- a package that needs it.
+            cands = [pkg, c.get("source_package", pkg)]
+            if c["origin"] == "core":
+                cands += [re.sub(r"-\d[^-]*-r\d+$", "", r) for r in
+                          run(["apk", "info", "-r", pkg]).split("\n")[1:] if r.strip()]
+            got = {g for g in map(install_stage, dict.fromkeys(cands)) if g is not None}
+            if c.get("stage") is not None:
+                got.add(c["stage"])
+            c["stage"] = first_run(got)
         mp = man_page(cmd)
         if not mp and pkg == "busybox":
             mp = man_page("busybox")
@@ -387,9 +459,15 @@ def man_html():
     built = {c["cmd"] for c in cmds}
     os.makedirs(MANDIR, exist_ok=True)
     total = 0
+    d = datetime.date.today()
+    today = "%s %d, %d" % (d.strftime("%B"), d.day, d.year)
     for c in cmds:
         src = os.path.join("/usr/share/man", c["man"])
-        body = run(["mandoc", "-T", "html", "-O", "fragment,man=%N.html", src], timeout=60)
+        body = run(["mandoc", "-T", "html", "-I", "os=Alpine %s" % facts.get("alpine", ""),
+                    "-O", "fragment,man=%N.html", src], timeout=60)
+        # A page with no date of its own gets today's from mandoc, which
+        # would change every page on every build: leave it undated.
+        body = body.replace('<td class="foot-date">%s</td>' % today, '<td class="foot-date"></td>')
         if not body.strip():
             continue
         # A cross-reference to a page that is not built here is plain text.
@@ -411,6 +489,342 @@ def man_html():
     return 0
 
 
+# --------------------------------------------------------------------------
+# The written layer, and the page
+NOTES = os.path.join(ROOT, "docs", "commands")
+GUIDE = os.path.join(ROOT, "docs", "commands.html")
+INDEX = os.path.join(ROOT, "docs", "commands-index.json")
+
+# The core list has no catalogue section; these are its sections.
+CORE_SECTION = {
+    "Packages": "apk flatpak",
+    "System": "doas busybox lbu setup-alpine mkinitfs dmesg logread",
+    "Services": "openrc rc-service rc-update rc-status",
+    "Disks": "sfdisk resize2fs zramctl lsblk",
+    "Network": "ssh ssh-keygen curl ip iw wpa_cli wpa_passphrase bluetoothctl rsync",
+    "Development": "git gcc clang make cmake ninja gdb valgrind nvim cargo go python3 pip tmux",
+    "Desktop": "hyprctl",
+    "Audio": "wpctl pactl",
+}
+CORE_OF = {c: sec for sec, cs in CORE_SECTION.items() for c in cs.split()}
+MODE = {"t": "terminal program", "h": "command-line tool", "x": "graphical"}
+
+
+def section_of(c):
+    if c.get("section"):
+        return c["section"]
+    if c["origin"] == "copal":
+        return "Copal"
+    return CORE_OF.get(c["cmd"], "System")
+
+
+def parse_note(path):
+    """One written entry: '# key: value' header lines (continued by '#' and
+    spaces), then '## Use', '## Examples', '## Options', '## Notes'."""
+    head, secs, cur, key = {}, {}, None, None
+    for line in open(path).read().split("\n"):
+        m = re.match(r"^# (\w+):\s*(.*)$", line)
+        if cur is None and m:
+            key = m.group(1)
+            head[key] = m.group(2).strip()
+            continue
+        if cur is None and key and re.match(r"^#\s{2,}\S", line):
+            head[key] += " " + line.lstrip("#").strip()
+            continue
+        m = re.match(r"^## (\w+)\s*$", line)
+        if m:
+            cur = m.group(1).lower()
+            secs[cur] = []
+            continue
+        if cur:
+            secs[cur].append(line)
+    for k in secs:
+        while secs[k] and not secs[k][-1].strip():
+            secs[k].pop()
+        while secs[k] and not secs[k][0].strip():
+            secs[k].pop(0)
+    return head, secs
+
+
+def notes():
+    out = {}
+    for d in sorted(os.listdir(NOTES)) if os.path.isdir(NOTES) else []:
+        dd = os.path.join(NOTES, d)
+        if not os.path.isdir(dd):
+            continue
+        for f in sorted(os.listdir(dd)):
+            if f.endswith(".md"):
+                head, secs = parse_note(os.path.join(dd, f))
+                out[head.get("command", f[:-3])] = {"head": head, "secs": secs,
+                                                    "path": os.path.relpath(os.path.join(dd, f), ROOT)}
+    return out
+
+
+def esc(t):
+    return (t or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def inline(t, known):
+    """`code` becomes code, and a link when it names a command in the guide."""
+    out, parts = [], re.split(r"(`[^`]+`)", esc(t))
+    for p in parts:
+        if p.startswith("`") and p.endswith("`"):
+            w = p[1:-1]
+            first = w.split()[0] if w.split() else w
+            if first in known and w == first:
+                out.append('<a href="#c-%s"><code>%s</code></a>' % (first, w))
+            else:
+                out.append("<code>%s</code>" % w)
+        else:
+            out.append(p)
+    return "".join(out)
+
+
+def paragraphs(lines, known):
+    text = "\n".join(lines).strip()
+    return "".join("<p>%s</p>" % inline(" ".join(p.split()), known) for p in re.split(r"\n\s*\n", text) if p.strip())
+
+
+def stage_names():
+    names = {}
+    for f in os.listdir(STAGES):
+        if f.endswith(".sh"):
+            t = open(os.path.join(STAGES, f)).read()
+            m, k = re.search(r"^# stage:\s*(\d+)", t, re.M), re.search(r"^# step:\s*(.*)$", t, re.M)
+            if m and k:
+                names[int(m.group(1))] = k.group(1).strip()
+    return names
+
+
+def entry_html(c, note, known, stages):
+    cmd = c["cmd"]
+    head, secs = (note["head"], note["secs"]) if note else ({}, {})
+    purpose = head.get("purpose") or c.get("purpose") or (c.get("man_name", "").split(" - ", 1)[-1].split(" – ", 1)[-1].split(" — ", 1)[-1]
+                                      if c.get("man_name") else c.get("description", ""))
+    h = ['<article class="cmd%s" id="c-%s" data-s="%s">' % ("" if note else " facts-only", cmd,
+         esc(" ".join([cmd, purpose, section_of(c), c.get("package") or ""])).lower())]
+    h.append('<h3><a class="self" href="#c-%s"><code>%s</code></a> <span class="purpose">%s</span></h3>'
+             % (cmd, esc(cmd), inline(purpose, known)))
+    # The facts line.
+    f = [esc(section_of(c))]
+    if c.get("mode"):
+        f.append(MODE.get(c["mode"], ""))
+    if c["origin"] == "copal":
+        f.append("Copal's own")
+    elif c.get("built"):
+        f.append("built from source by Copal Apps")
+    elif c.get("package"):
+        f.append("<b>%s</b> %s" % (esc(c["package"]), esc((c.get("version") or "").split("-r")[0])))
+    st = c.get("stage")
+    if st == 0:
+        f.append("written on every run of the installer")
+    elif st:
+        f.append("stage %d · %s" % (st, esc(stages.get(st, ""))))
+    elif c.get("base"):
+        f.append("Alpine's base system")
+    if c.get("origin") == "store":
+        f.append("on the Copal Apps shelf")
+    if c.get("man"):
+        sec = c["man"].split("/")[0][3:]
+        f.append('<a href="man/%s.html">man %s(%s)</a>' % (cmd, "busybox" if c.get("applet") else esc(cmd), sec))
+    if c.get("webpage"):
+        f.append('<a href="%s">home</a>' % esc(c["webpage"]))
+    h.append('<p class="facts">%s</p>' % " · ".join(x for x in f if x))
+    if c.get("deps"):
+        h.append('<p class="deps">needs %s</p>' % ", ".join(esc(d) for d in c["deps"][:8]))
+    if c.get("applet"):
+        h.append('<p class="deps">a BusyBox applet: <code>busybox %s --help</code>, and BusyBox\'s page</p>' % esc(cmd))
+    if head.get("why"):
+        h.append('<p class="why"><b>On Copal:</b> %s</p>' % inline(head["why"], known))
+    elif c.get("description") and head.get("purpose"):
+        h.append('<p class="why">%s</p>' % esc(c["description"]))
+    if c.get("synopsis"):
+        h.append('<pre class="syn">%s</pre>' % esc(c["synopsis"]))
+    if secs.get("use"):
+        h.append("<h4>Use</h4>" + paragraphs(secs["use"], known))
+    if secs.get("examples"):
+        rows = []
+        for l in secs["examples"]:
+            if not l.strip():
+                continue
+            m = re.match(r"^\s*(.*?)\s{2,}#\s?(.*)$", l)
+            code, what = (m.group(1), m.group(2)) if m else (l.strip(), "")
+            rows.append('<div class="ex"><code>%s</code>%s</div>' % (esc(code), '<span>%s</span>' % inline(what, known) if what else ""))
+        h.append("<h4>Examples</h4>" + "".join(rows))
+    if secs.get("options"):
+        rows = []
+        for l in secs["options"]:
+            m = re.match(r"^(\S.*?)\s{2,}(.*)$", l)
+            if m:
+                rows.append("<dt><code>%s</code></dt><dd>%s</dd>" % (esc(m.group(1)), inline(m.group(2), known)))
+            elif l.strip() and rows:
+                rows[-1] = rows[-1][:-5] + " " + inline(l.strip(), known) + "</dd>"
+        h.append('<h4>Options</h4><dl class="opts">%s</dl>' % "".join(rows))
+    if secs.get("notes"):
+        items, cur = [], None
+        for l in secs["notes"]:
+            if l.startswith("- "):
+                cur = [l[2:]]
+                items.append(cur)
+            elif cur is not None and l.strip():
+                cur.append(l.strip())
+        h.append("<h4>Notes</h4><ul>%s</ul>" % "".join("<li>%s</li>" % inline(" ".join(i), known) for i in items))
+    see = [x.strip() for x in head.get("see", "").split(",") if x.strip()]
+    if see:
+        h.append('<p class="see">See also %s</p>' % ", ".join(
+            ('<a href="#c-%s"><code>%s</code></a>' % (x, esc(x))) if x in known else "<code>%s</code>" % esc(x) for x in see))
+    if not note:
+        h.append('<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>')
+    h.append("</article>")
+    return "\n".join(h)
+
+
+GUIDE_PAGE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Terminal Guide · Copal Linux</title>
+<meta name="description" content="Every terminal command on a Copal machine: what it is for, why it is here, where it comes from, how to use it, and the parts people get wrong.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="site.css">
+<link rel="stylesheet" href="commands.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="./">Copal</a>
+  <a class="key" href="./">Home</a>
+  <a class="key" href="desktop.html">Desktop</a>
+  <a class="key" href="install.html">Install</a>
+  <a class="key" href="software.html">Software</a>
+  <a class="key" href="commands.html" aria-current="page">Commands</a>
+</nav>
+<main class="guide">
+<header class="page-head">
+  <h1>The Terminal Guide</h1>
+  <p class="lede">Every terminal command a Copal machine carries on purpose: %(n)d of them. What each is
+  for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
+  <p class="gen">Facts read from Alpine %(alpine)s (%(arch)s) on %(date)s; %(written)d commands have written notes so
+  far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.</p>
+</header>
+<div class="finder">
+  <input id="find" type="search" placeholder="Find a command: name, purpose, package" autocomplete="off" aria-label="Find a command">
+  <span id="found"></span>
+</div>
+<nav class="toc" aria-label="Sections">%(toc)s</nav>
+%(body)s
+</main>
+<script>
+(function () {
+  var q = document.getElementById("find"), n = document.getElementById("found");
+  var all = [].slice.call(document.querySelectorAll("article.cmd"));
+  var secs = [].slice.call(document.querySelectorAll("section.sec"));
+  q.addEventListener("input", function () {
+    var t = q.value.trim().toLowerCase(), shown = 0;
+    all.forEach(function (a) { var on = !t || a.dataset.s.indexOf(t) >= 0; a.hidden = !on; shown += on; });
+    secs.forEach(function (s) { s.hidden = !s.querySelector("article.cmd:not([hidden])"); });
+    n.textContent = t ? shown + " of " + all.length : "";
+  });
+})();
+</script>
+</body>
+</html>
+"""
+
+
+def render():
+    facts = json.load(open(FACTS))
+    cmds = facts["commands"]
+    ns = notes()
+    known = {c["cmd"] for c in cmds}
+    stages = stage_names()
+    by = {}
+    for c in cmds:
+        by.setdefault(section_of(c), []).append(c)
+    order = sorted(by, key=lambda s: (s != "Copal", s))
+    body, toc = [], []
+    for sec in order:
+        sid = "s-" + re.sub(r"\W+", "-", sec.lower())
+        toc.append('<a href="#%s">%s <span>%d</span></a>' % (sid, esc(sec), len(by[sec])))
+        body.append('<section class="sec" id="%s"><h2>%s</h2>' % (sid, esc(sec)))
+        for c in sorted(by[sec], key=lambda c: c["cmd"].casefold()):
+            body.append(entry_html(c, ns.get(c["cmd"]), known, stages))
+        body.append("</section>")
+    page = GUIDE_PAGE % {"n": len(cmds), "alpine": esc(facts.get("alpine") or ""), "arch": esc(facts.get("arch", "")),
+                         "date": esc(facts.get("generated", "")), "written": sum(1 for c in cmds if c["cmd"] in ns),
+                         "toc": "".join(toc), "body": "\n".join(body)}
+    open(GUIDE, "w").write(page)
+    index = {}
+    for c in cmds:
+        note = ns.get(c["cmd"])
+        index[c["cmd"]] = (note and note["head"].get("purpose")) or c.get("purpose") or \
+            (c.get("man_name", "").split(" - ", 1)[-1] if c.get("man_name") else c.get("description", ""))
+    with open(INDEX, "w") as f:
+        json.dump(index, f, ensure_ascii=False, indent=0, sort_keys=True)
+        f.write("\n")
+    print("  ok      %d commands, %d with notes -> docs/commands.html (%.0f kB), docs/commands-index.json"
+          % (len(cmds), sum(1 for c in cmds if c["cmd"] in ns), len(page.encode()) / 1024))
+    return 0
+
+
+def check():
+    """Every note names a command in the inventory, has the header and the
+    sections; on a Copal machine, every option it lists is in the man page
+    or the --help of the installed version."""
+    facts = {c["cmd"]: c for c in json.load(open(FACTS))["commands"]}
+    errs, warns = [], []
+    on_machine = os.path.exists("/etc/alpine-release")
+    e = env()
+    for cmd, n in notes().items():
+        where = n["path"]
+        if cmd not in facts:
+            errs.append("%s: '%s' is not in the inventory" % (where, cmd))
+            continue
+        for k in ("purpose", "why"):
+            if not n["head"].get(k):
+                errs.append("%s: no '# %s:' line" % (where, k))
+        for k in ("use", "examples"):
+            if not n["secs"].get(k):
+                errs.append("%s: no '## %s' section" % (where, k.capitalize()))
+        if not on_machine:
+            continue
+        c = facts[cmd]
+        text = ""
+        if c.get("man"):
+            # The page, and its subcommands' pages (apk-add(8) for apk add).
+            page = os.path.join("/usr/share/man", c["man"])
+            d = os.path.dirname(page)
+            subs = sorted(os.path.join(d, f) for f in os.listdir(d) if f.startswith(cmd + "-"))
+            for f in [page] + subs:
+                text += BS.sub("", run(["mandoc", "-T", "utf8", f]))
+        path = which(cmd, e)
+        if path and c.get("mode") != "t":
+            text += run([path, "--help"], stdin=subprocess.DEVNULL, timeout=4)
+        if not text:
+            warns.append("%s: nothing to check its options against here" % where)
+            continue
+        for l in n["secs"].get("options", []):
+            m = re.match(r"^(\S+)", l)
+            if not m or not m.group(1).startswith("-"):
+                continue
+            for flag in re.findall(r"--?[\w][\w-]*", m.group(1).split("=")[0]):
+                found = lambda f: re.search(r"(^|[\s\[,(|])%s(?![\w-])" % re.escape(f), text)
+                # apk 3 and others: every --X also as --no-X, stated once.
+                if flag.startswith("--no-") and "--no-option" in text and found("--" + flag[5:]):
+                    continue
+                if not found(flag):
+                    errs.append("%s: %s is not in %s's man page or --help" % (where, flag, cmd))
+    for w in warns:
+        print("  warn    " + w)
+    for x in errs:
+        print("\033[31merror:\033[0m " + x)
+    if not errs:
+        print("  ok      %d notes: in the inventory, complete%s" % (len(notes()), ", options checked" if on_machine else ""))
+    return 1 if errs else 0
+
+
 def main(argv):
     if len(argv) < 2 or argv[1] in ("-h", "--help"):
         print(__doc__.strip().split("\n\n")[0] + "\n\n  " +
@@ -430,6 +844,10 @@ def main(argv):
         return collect()
     if argv[1] == "man-html":
         return man_html()
+    if argv[1] == "render":
+        return render()
+    if argv[1] == "check":
+        return check()
     print("usage: copal-command-ref.py inventory|collect|man-html", file=sys.stderr)
     return 2
 

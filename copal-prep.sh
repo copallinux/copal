@@ -3982,7 +3982,7 @@ Internet|BadWolf (WebKit - modern engine, tiny)|badwolf|badwolf|x|*
 Internet|Firefox ESR (full browser)|firefox-esr|firefox-esr|x|!v6
 Internet|Chromium (full browser)|chromium|chromium|x|!v6,!x32
 Internet|Brave (ad and tracker blocking)|com.brave.Browser@flathub|brave|x|64
-Internet|Links (text/graphics web)|links|links|t|*
+Internet|Links (text web)|links|links|t|*
 Internet|ELinks (text web + gopher)|elinks|elinks|t|*
 Internet|w3m (text web)|w3m|w3m|t|*
 Internet|Lynx (text web + gopher)|lynx|lynx|t|*

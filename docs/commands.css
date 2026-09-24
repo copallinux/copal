@@ -1,0 +1,64 @@
+/* The Terminal Guide: one entry per command, set like a reference -- rules
+   between entries, the facts in the mono face, the written notes in the
+   body face. */
+
+.guide .gen { font-size: .8rem; color: var(--ink-dim); }
+
+.finder {
+  position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: .8rem;
+  padding: .6rem 0; background: var(--paper); border-bottom: 1px solid var(--ink-key);
+}
+.finder input {
+  flex: 1; min-width: 0; font: 1rem "JetBrains Mono", monospace; padding: .45rem .6rem;
+  background: var(--paper-raised); color: var(--ink-body); border: 1px solid var(--ink-key);
+}
+.finder input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+#found { font: .8rem "JetBrains Mono", monospace; color: var(--ink-dim); white-space: nowrap; }
+
+.toc { display: flex; flex-wrap: wrap; gap: .35rem .5rem; margin: 1rem 0 1.5rem; }
+.toc a {
+  font: .75rem "JetBrains Mono", monospace; text-decoration: none; color: var(--ink-body);
+  border: 1px solid var(--ink-key); padding: .15rem .45rem; background: var(--paper-raised);
+}
+.toc a span { color: var(--ink-dim); }
+
+.sec h2 { margin-top: 2.5rem; }
+
+article.cmd { border-top: 1px solid var(--paper-edge); padding: 1.1rem 0 .6rem; scroll-margin-top: 4rem; }
+article.cmd h3 { margin: 0 0 .35rem; font-size: 1.05rem; line-height: 1.35; }
+article.cmd h3 a.self { text-decoration: none; }
+article.cmd h3 code { font-size: 1em; }
+article.cmd .purpose { font-weight: 400; }
+article.cmd .facts, article.cmd .deps {
+  margin: .15rem 0; font: .75rem/1.5 "JetBrains Mono", monospace; color: var(--ink-dim);
+}
+article.cmd .facts b { color: var(--ink-body); font-weight: 500; }
+article.cmd .why { margin: .55rem 0; }
+article.cmd h4 {
+  margin: .9rem 0 .3rem; font: 600 .72rem "JetBrains Mono", monospace; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--gold);
+}
+article.cmd pre.syn {
+  margin: .5rem 0; padding: .5rem .7rem; overflow-x: auto; background: var(--paper-deep);
+  font: .8rem/1.45 "JetBrains Mono", monospace; border-left: 3px solid var(--resin-deep);
+}
+article.cmd .ex {
+  display: flex; flex-wrap: wrap; gap: .1rem 1rem; align-items: baseline;
+  padding: .25rem 0; border-bottom: 1px dotted var(--paper-edge);
+}
+article.cmd .ex code { border: 0; background: none; padding: 0; color: var(--ink-body); font-weight: 500; }
+article.cmd .ex span { color: var(--ink-dim); font-size: .9rem; }
+article.cmd dl.opts { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; margin: 0; }
+article.cmd dl.opts dt code { border: 0; background: none; padding: 0; color: var(--ink-body); font-weight: 600; }
+article.cmd dl.opts dd { margin: 0; }
+article.cmd ul { margin: .2rem 0; padding-left: 1.2rem; }
+article.cmd li { margin: .25rem 0; }
+article.cmd .see { font-size: .9rem; color: var(--ink-dim); }
+article.cmd .pending { font-size: .8rem; font-style: italic; color: var(--ink-dim); }
+article.cmd.facts-only h3 .purpose { color: var(--ink-dim); }
+
+@media (max-width: 38rem) {
+  article.cmd dl.opts { grid-template-columns: 1fr; }
+  article.cmd dl.opts dd { margin: 0 0 .4rem .8rem; }
+}
+article.cmd .facts, article.cmd .deps, article.cmd .pending, article.cmd .see { max-width: none; }
