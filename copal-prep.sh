@@ -26861,6 +26861,10 @@ stage_extras() {
     say "Sound server (PipeWire)"
     add_optional pipewire wireplumber pipewire-pulse pipewire-alsa
     add_optional pipewire-jack
+    # Bluetooth headphones and speakers: BlueZ above pairs them, but without
+    # this module PipeWire never sees them as an output (found on the bench,
+    # 24 Sep 2026). bluez-alsa is a separate route that nothing starts.
+    add_optional pipewire-spa-bluez
     cat > /usr/local/bin/copal-audio-start <<'AUDIO'
 #!/bin/sh
 # copal-audio-start -- bring up the per-user sound server, once per session.

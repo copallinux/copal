@@ -36,8 +36,9 @@ info ADDR            one device's state: paired, trusted, connected
 - "No default controller available": no Bluetooth hardware, or the
   service is not running -- `rc-service bluetooth status`. The first Pi
   Zero and most VMs have none.
-- Headphones pair and connect, but PipeWire plays to them only with
-  its Bluetooth module: `doas apk add pipewire-spa-bluez`, then log out
-  and in. Copal does not install it yet.
+- Headphones pair and connect, but PipeWire plays to them only with its
+  Bluetooth module, `pipewire-spa-bluez`. Stage 10 installs it from
+  24 Sep 2026; on a machine installed before that,
+  `doas apk add pipewire-spa-bluez`, then log out and in.
 - A device that pairs but will not connect again after a reboot was
   not trusted. `trust ADDR`.
