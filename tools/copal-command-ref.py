@@ -399,7 +399,9 @@ def collect():
                 got.add(c["stage"])
             c["stage"] = first_run(got)
         mp = man_page(cmd)
-        if not mp and pkg == "busybox":
+        # An applet's namesake in section 7 or 5 is another thing: ip(7) is
+        # the socket API, not BusyBox's ip.
+        if pkg == "busybox" and not (mp and re.search(r"/man[18]/", mp)):
             mp = man_page("busybox")
             c["applet"] = True
         if mp:

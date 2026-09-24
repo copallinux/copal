@@ -15,7 +15,7 @@
   <a class="key" href="../commands.html#c-unison">unison in the guide</a>
 </nav>
 <main class="man">
-<p class="man-src">unison 2.54.0-r0 — man1/unison.1.gz, Alpine 3.24.1</p>
+<p class="man-src">unison 2.54.0-r1 — man1/unison.1.gz, Alpine 3.24.1</p>
 <table class="head">
   <tr>
     <td class="head-ltitle">UNISON(1)</td>
@@ -74,7 +74,7 @@
       to have superuser privileges on either host, or to have a FUSE
       implementation.</li>
   <li>Unison works between any pair of machines connected to the internet,
-      typically communicating over <span class="Xr">ssh(1)</span>, but
+      typically communicating over <a class="Xr" href="ssh.html">ssh(1)</a>, but
       also directly over TCP. It is careful with network bandwidth, and runs
       well over slow links. Transfers of small updates to large files are
       optimized using a compression protocol similar to
@@ -1373,7 +1373,7 @@
     filesystem, independent of where Unison is running. Remote roots can begin
     with <a class="permalink" href="#ssh://"><b class="Sy">ssh://</b></a> to
     indicate that the remote server should be started with
-    <span class="Xr">ssh(1)</span>:</p>
+    <a class="Xr" href="ssh.html">ssh(1)</a>:</p>
 <p class="Pp"></p>
 <div class="Bd
   Bd-indent"><code class="Li">ssh://remotehost//absolute/path/of/root</code></div>
@@ -1677,7 +1677,7 @@ When path is given without any protocol prefix, the protocol is assumed to be
       ssh://user@host//absolute/path</code></div>
     <p class="Pp">This command synchronizes a local directory (here specified by
         a relative path) and a remote directory (here specified by an absolute
-        path) using <span class="Xr">ssh(1)</span> and the default
+        path) using <a class="Xr" href="ssh.html">ssh(1)</a> and the default
         options (see example above).</p>
   </dd>
   <dt id="Synchronize~3"><a class="permalink" href="#Synchronize~3"><b class="Sy">Synchronize

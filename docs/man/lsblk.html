@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lsblk(8) · Copal Linux</title>
+<meta name="description" content="lsblk - list block devices">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-lsblk">lsblk in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">util-linux 2.42.3-r1 — man8/lsblk.8.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">LSBLK(8)</td>
+    <td class="head-vol">System Administration</td>
+    <td class="head-rtitle">LSBLK(8)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">lsblk - list block devices</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>lsblk</b> [options] [<i>device</i>...]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>lsblk</b> lists information about all available or the
+    specified block devices. The <b>lsblk</b> command reads the <b>sysfs</b>
+    filesystem and <b>udev db</b> to gather information. If the udev db is not
+    available or <b>lsblk</b> is compiled without udev support, then it tries to
+    read LABELs, UUIDs and filesystem types from the block device. In this case
+    root permissions are necessary.</p>
+<p class="Pp">By default, the command prints all block devices (except RAM
+    disks) in a tree-like format. The same device can be repeated in the tree if
+    it relates to other devices. The <b>--merge</b> option is recommended for
+    more complicated setups to gather groups of devices and describe complex N:M
+    relationships.</p>
+<p class="Pp">The tree-like output (or <b>children[]</b> array in the JSON
+    output) is enabled only if NAME column it present in the output or when
+    <b>--tree</b> command line option is used. See also <b>--nodeps</b> and
+    <b>--list</b> to control the tree formatting.</p>
+<p class="Pp">The default output, as well as the default output from options
+    like <b>--fs</b> and <b>--topology</b>, is subject to change. So whenever
+    possible, you should avoid using default outputs in your scripts. Always
+    explicitly define expected columns by using <b>--output</b>
+    <i>columns-list</i> and <b>--list</b> in environments where a stable output
+    is required.</p>
+<p class="Pp">Use <b>lsblk --list-columns</b> to get a list of all available
+    columns.</p>
+<p class="Pp">Note that <b>lsblk</b> might be executed in time when <b>udev</b>
+    does not have all information about recently added or modified devices yet.
+    In this case it is recommended to use <b>udevadm settle</b> before
+    <b>lsblk</b> to synchronize with udev.</p>
+<p class="Pp">The relationship between block devices and filesystems is not
+    always one-to-one. The filesystem may use more block devices, or the same
+    filesystem may be accessible by more paths. This is the reason why
+    <b>lsblk</b> provides MOUNTPOINT and MOUNTPOINTS (pl.) columns. The column
+    MOUNTPOINT displays only one mount point (usually the last mounted instance
+    of the filesystem), and the column MOUNTPOINTS displays by multi-line cell
+    all mount points associated with the device.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp"><b>-A</b>, <b>--noempty</b></p>
+<div class="Bd-indent">Don&#x2019;t print empty devices.</div>
+<p class="Pp"><b>-a</b>, <b>--all</b></p>
+<div class="Bd-indent">Disable all built-in filters and list all empty devices
+  and RAM disk devices too.</div>
+<p class="Pp"><b>-b</b>, <b>--bytes</b></p>
+<div class="Bd-indent">Print sizes in bytes rather than in human-readable form.
+<p class="Pp">By default, sizes are shown in units that are powers of 1024
+    bytes. The formal abbreviations for these units (KiB, MiB, GiB, ...) are
+    further shortened to just their first letter: K, M, G, ....</p>
+</div>
+<p class="Pp"><b>-H</b>, <b>--list-columns</b></p>
+<div class="Bd-indent">List the columns that can be specified with the
+  <b>--output</b> option. Can be used with <b>--json</b> or <b>--raw</b> to get
+  the list in a machine-readable format.</div>
+<p class="Pp"><b>-D</b>, <b>--discard</b></p>
+<div class="Bd-indent">Print information about the discarding capabilities
+  (TRIM, UNMAP) for each device.</div>
+<p class="Pp"><b>-d</b>, <b>--nodeps</b></p>
+<div class="Bd-indent">Do not print holder devices or slaves. For example,
+  <b>lsblk --nodeps /dev/sda</b> prints information about the sda device
+  only.</div>
+<p class="Pp"><b>-E</b>, <b>--dedup</b> <i>column</i></p>
+<div class="Bd-indent">Use <i>column</i> as a de-duplication key to de-duplicate
+  output tree. If the key is not available for the device, or the device is a
+  partition and parental whole-disk device provides the same key than the device
+  is always printed.
+<p class="Pp">The usual use case is to de-duplicate output on system multi-path
+    devices, for example by <b>-E WWN</b>.</p>
+</div>
+<p class="Pp"><b>-e</b>, <b>--exclude</b> <i>list</i></p>
+<div class="Bd-indent">Exclude the devices specified by the comma-separated
+  <i>list</i> of major device numbers. Note that RAM disks (major=1) are
+  excluded by default if <b>--all</b> is not specified. The filter is applied to
+  the top-level devices only. This may be confusing for <b>--list</b> output
+  format where hierarchy of the devices is not obvious.</div>
+<p class="Pp"><b>-f</b>, <b>--fs</b></p>
+<div class="Bd-indent">Output info about filesystems. This option is equivalent
+  to <b>-o NAME,FSTYPE,FSVER,LABEL,UUID,FSAVAIL,FSUSE%,MOUNTPOINTS</b>. The
+  authoritative information about filesystems and raids is provided by the
+  <b>blkid</b>(8) command.</div>
+<p class="Pp"><b>--hyperlink</b>[<b>=</b><i>when</i>]</p>
+<div class="Bd-indent">Print paths as terminal hyperlinks. The optional
+  <i>when</i> argument can be <b>always</b>, <b>never</b>, or <b>auto</b>. If
+  the argument is omitted, it defaults to <b>auto</b>, which means that
+  hyperlinks will only be used when the output goes to a terminal.</div>
+<p class="Pp"><b>-I</b>, <b>--include</b> <i>list</i></p>
+<div class="Bd-indent">Include devices specified by the comma-separated
+  <i>list</i> of major device numbers. The filter is applied to the top-level
+  devices only. This may be confusing for <b>--list</b> output format where
+  hierarchy of the devices is not obvious.</div>
+<p class="Pp"><b>-i</b>, <b>--ascii</b></p>
+<div class="Bd-indent">Use ASCII characters for tree formatting.</div>
+<p class="Pp"><b>-J</b>, <b>--json</b></p>
+<div class="Bd-indent">Use JSON output format. It&#x2019;s strongly recommended
+  to use <b>--output</b> and also <b>--tree</b> if necessary. Note that
+  <b>children[]</b> is used only if NAME column or <b>--tree</b> is used.</div>
+<p class="Pp"><b>-l</b>, <b>--list</b></p>
+<div class="Bd-indent">Produce output in the form of a list. The output does not
+  provide information about relationships between devices and since version 2.34
+  every device is printed only once if <b>--pairs</b> or <b>--raw</b> not
+  specified (the parsable outputs are maintained in backwardly compatible
+  way).</div>
+<p class="Pp"><b>-M</b>, <b>--merge</b></p>
+<div class="Bd-indent">Group parents of sub-trees to provide more readable
+  output for RAIDs and Multi-path devices. The tree-like output is
+  required.</div>
+<p class="Pp"><b>-m</b>, <b>--perms</b></p>
+<div class="Bd-indent">Output info about device owner, group and mode. This
+  option is equivalent to <b>-o NAME,SIZE,OWNER,GROUP,MODE</b>.</div>
+<p class="Pp"><b>-N</b>, <b>--nvme</b></p>
+<div class="Bd-indent">Output info about NVMe devices only.</div>
+<p class="Pp"><b>-v</b>, <b>--virtio</b></p>
+<div class="Bd-indent">Output info about virtio devices only.</div>
+<p class="Pp"><b>-n</b>, <b>--noheadings</b></p>
+<div class="Bd-indent">Do not print a header line.</div>
+<p class="Pp"><b>-o</b>, <b>--output</b> <i>list</i></p>
+<div class="Bd-indent">Specify which output columns to print. Use
+  <b>--list-columns</b> to get a list of all supported columns. The columns may
+  affect tree-like output. The default is to use tree for the column 'NAME' (see
+  also <b>--tree</b>).
+<p class="Pp">The default list of columns may be extended if <i>list</i> is
+    specified in the format <i>+list</i> (e.g., <b>lsblk -o +UUID</b>).</p>
+</div>
+<p class="Pp"><b>-O</b>, <b>--output-all</b></p>
+<div class="Bd-indent">Output all available columns.</div>
+<p class="Pp"><b>-P</b>, <b>--pairs</b></p>
+<div class="Bd-indent">Produce output in the form of key=&quot;value&quot;
+  pairs. The output lines are still ordered by dependencies. All potentially
+  unsafe value characters are hex-escaped (\x&lt;code&gt;). See also option
+  <b>--shell</b>.</div>
+<p class="Pp"><b>-p</b>, <b>--paths</b></p>
+<div class="Bd-indent">Print full device paths.</div>
+<p class="Pp"><b>-Q</b>, <b>--filter</b> <i>expression</i></p>
+<div class="Bd-indent">Print only the devices that meet the conditions specified
+  by <i>expression</i>. The filter is assessed prior to <b>lsblk</b> collecting
+  data for all output columns. Only the necessary data for the lazy evaluation
+  of the expression is retrieved from the system. This approach can enhance
+  performance when compared to post-filtering, as commonly done by tools such as
+  <b>grep</b>(1).
+<p class="Pp">This feature is EXPERIMENTAL. See also <b>scols-filter</b>(5).</p>
+<p class="Pp">For example, to exclude sda and sdb, but print everything else
+    ('!~' is a negative regular-expression matching operator):</p>
+</div>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>lsblk --filter 'NAME !~ &quot;sd[ab]&quot;'</pre>
+</div>
+<br/>
+</div>
+<p class="Pp"><b>--highlight</b> <i>expression</i></p>
+<div class="Bd-indent">Colorize lines matching <i>expression</i>.
+<p class="Pp">This feature is EXPERIMENTAL. See also <b>scols-filter</b>(5).</p>
+</div>
+<p class="Pp"><b>--ct</b>
+    <i>name</i>[<b>:</b><i>parameter</i>[<b>:</b><i>function</i>]]</p>
+<div class="Bd-indent">Define a custom counter. Custom counters are printed
+  after the standard output. The <i>name</i> is the custom name of the counter,
+  the optional <i>parameter</i> is the name of the column to be used for the
+  counter, and the optional <i>function</i> specifies the aggregation function.
+  Supported functions are: <b>count</b>, <b>min</b>, <b>max</b>, <b>sum</b>. The
+  default function is <b>count</b>. If <i>parameter</i> is not specified, then
+  the counter counts the number of lines.
+<p class="Pp">This feature is EXPERIMENTAL. See also <b>--ct-filter</b>.</p>
+<p class="Pp">For example, <b>--ct MyCounter:SIZE:sum</b> reports the total of
+    the SIZE values. To report the number of SATA disks, one can use:</p>
+</div>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>lsblk --ct-filter 'TYPE==&quot;disk&quot; &amp;&amp; TRAN==&quot;sata&quot;' \
+<br/>
+      --ct &quot;Number of SATA devices&quot;</pre>
+</div>
+<br/>
+</div>
+<p class="Pp"><b>--ct-filter</b> <i>expression</i></p>
+<div class="Bd-indent">Define a restriction for the next counter.
+<p class="Pp">This feature is EXPERIMENTAL. See also <b>--ct</b> and
+    <b>scols-filter</b>(5).</p>
+<p class="Pp">For example, to aggregate sizes by device type:</p>
+</div>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>lsblk --ct-filter 'TYPE==&quot;part&quot;' --ct Partitions:SIZE:sum \
+<br/>
+      --ct-filter 'TYPE==&quot;disk&quot;' --ct WholeDisks:SIZE:sum</pre>
+</div>
+<br/>
+</div>
+<p class="Pp"><b>-r</b>, <b>--raw</b></p>
+<div class="Bd-indent">Produce output in raw format. The output lines are still
+  ordered by dependencies. All potentially unsafe characters are hex-escaped
+  (\x&lt;code&gt;) in the NAME, KNAME, LABEL, PARTLABEL and MOUNTPOINT
+  columns.</div>
+<p class="Pp"><b>-S</b>, <b>--scsi</b></p>
+<div class="Bd-indent">Output info about SCSI devices only. All partitions,
+  slaves and holder devices are ignored.</div>
+<p class="Pp"><b>-s</b>, <b>--inverse</b></p>
+<div class="Bd-indent">Print dependencies in inverse order. If the <b>--list</b>
+  output is requested then the lines are still ordered by dependencies.</div>
+<p class="Pp"><b>-T</b>, <b>--tree</b>[<b>=</b><i>column</i>]</p>
+<div class="Bd-indent">Force tree-like output format. If <i>column</i> is
+  specified, then a tree is printed in the column. The default is NAME
+  column.</div>
+<p class="Pp"><b>-t</b>, <b>--topology</b></p>
+<div class="Bd-indent">Output info about block-device topology. This option is
+  equivalent to
+<p class="Pp"><b>-o
+    NAME,ALIGNMENT,MIN-IO,OPT-IO,PHY-SEC,LOG-SEC,ROTA,SCHED,RQ-SIZE,RA,WSAME</b>.</p>
+</div>
+<p class="Pp"><b>-w</b>, <b>--width</b> <i>number</i></p>
+<div class="Bd-indent">Specifies output width as a number of characters. The
+  default is the number of the terminal columns, and if not executed on a
+  terminal, then output width is not restricted at all by default. This option
+  also forces <b>lsblk</b> to assume that terminal control characters and unsafe
+  characters are not allowed. The expected use-case is for example when
+  <b>lsblk</b> is used by the <b>watch</b>(1) command.</div>
+<p class="Pp"><b>-x</b>, <b>--sort</b> <i>column</i></p>
+<div class="Bd-indent">Sort output lines by <i>column</i>. This option enables
+  <b>--list</b> output format by default. It is possible to use the option
+  <b>--tree</b> to force tree-like output and than the tree branches are sorted
+  by the <i>column</i>.</div>
+<p class="Pp"><b>-y</b>, <b>--shell</b></p>
+<div class="Bd-indent">The column name will be modified to contain only
+  characters allowed for shell variable identifiers, for example, MIN_IO and
+  FSUSE_PCT instead of MIN-IO and FSUSE%. This is usable, for example, with
+  <b>--pairs</b>. Note that this feature has been automatically enabled for
+  <b>--pairs</b> in version 2.37, but due to compatibility issues, now
+  it&#x2019;s necessary to request this behavior by <b>--shell</b>.</div>
+<p class="Pp"><b>-z</b>, <b>--zoned</b></p>
+<div class="Bd-indent">Print the zone related information for each device.</div>
+<p class="Pp"><b>--sysroot</b> <i>directory</i></p>
+<div class="Bd-indent">Gather data for a Linux instance other than the instance
+  from which the <b>lsblk</b> command is issued. The specified directory is the
+  system root of the Linux instance to be inspected. The real device nodes in
+  the target directory can be replaced by text files with udev attributes.</div>
+<p class="Pp"><b>--properties-by</b> <i>list</i></p>
+<div class="Bd-indent">This option specifies the methods used by <b>lsblk</b> to
+  gather information about filesystems and partition tables. The list is a
+  comma-separated list of method names. The default setting is
+  &quot;file,udev,blkid&quot;. The supported methods are:
+<p class="Pp"><b>udev</b></p>
+<div class="Bd-indent">Reads data from udev DB. If unsuccessful, it continues to
+  the next probing method.</div>
+<p class="Pp"><b>blkid</b></p>
+<div class="Bd-indent">Reads data directly from the device using libblkid. If
+  unsuccessful, it continues to the next probing method.</div>
+<p class="Pp"><b>file</b></p>
+<div class="Bd-indent">Reads data from a file. This method is only used if the
+  --sysroot option is specified. This method always stops probing if used.</div>
+<p class="Pp"><b>none</b></p>
+<div class="Bd-indent">Does not probe. This method always stops probing.</div>
+</div>
+<p class="Pp"><b>-h</b>, <b>--help</b></p>
+<div class="Bd-indent">Display help text and exit.</div>
+<p class="Pp"><b>-V</b>, <b>--version</b></p>
+<div class="Bd-indent">Display version and exit.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXIT_STATUS"><a class="permalink" href="#EXIT_STATUS">EXIT
+  STATUS</a></h1>
+<p class="Pp">0</p>
+<div class="Bd-indent">success</div>
+<p class="Pp">1</p>
+<div class="Bd-indent">failure</div>
+<p class="Pp">32</p>
+<div class="Bd-indent">none of specified devices found</div>
+<p class="Pp">64</p>
+<div class="Bd-indent">some specified devices found, some not found</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COLORS"><a class="permalink" href="#COLORS">COLORS</a></h1>
+<p class="Pp">The output colorization is implemented by
+    <b>terminal-colors.d</b>(5) functionality. Implicit coloring can be disabled
+    by an empty file</p>
+<div class="Bd-indent">
+<p class="Pp"><i>/etc/terminal-colors.d/lsblk.disable</i>
+  <br/>
+</p>
+</div>
+<p class="Pp">for the <b>lsblk</b> command or for all tools by</p>
+<div class="Bd-indent">
+<p class="Pp"><i>/etc/terminal-colors.d/disable</i>
+  <br/>
+</p>
+</div>
+<p class="Pp">Since version 2.41, the $NO_COLOR environment variable is also
+    supported to disable output colorization unless explicitly enabled by a
+    command-line option.</p>
+<p class="Pp">The user-specific <i>$XDG_CONFIG_HOME/terminal-colors.d</i> or
+    <i>$HOME/.config/terminal-colors.d</i> overrides the global setting.</p>
+<p class="Pp">Note that the output colorization may be enabled by default, and
+    in this case <i>terminal-colors.d</i> directories do not have to exist
+  yet.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENVIRONMENT"><a class="permalink" href="#ENVIRONMENT">ENVIRONMENT</a></h1>
+<p class="Pp"><b>LSBLK_DEBUG</b>=all</p>
+<div class="Bd-indent">enables <b>lsblk</b> debug output.</div>
+<p class="Pp"><b>LIBBLKID_DEBUG</b>=all</p>
+<div class="Bd-indent">enables <b>libblkid</b> debug output.</div>
+<p class="Pp"><b>LIBMOUNT_DEBUG</b>=all</p>
+<div class="Bd-indent">enables <b>libmount</b> debug output.</div>
+<p class="Pp"><b>LIBSMARTCOLS_DEBUG</b>=all</p>
+<div class="Bd-indent">enables libsmartcols debug output.</div>
+<p class="Pp"><b>LIBSMARTCOLS_DEBUG_PADDING</b>=on</p>
+<div class="Bd-indent">use visible padding characters.</div>
+<p class="Pp"><b>LIBSMARTCOLS_JSON</b>=compact|lines</p>
+<div class="Bd-indent">Controls JSON output format when using <b>--json</b>.
+  Supported values are <b>compact</b> for JSON output with minimal whitespace,
+  and <b>lines</b> for JSON Lines format (one JSON object per line). If unset or
+  set to any other value, pretty-printed JSON is used.</div>
+<p class="Pp"><b>LSBLK_COLUMNS</b>=</p>
+<div class="Bd-indent">specifies a comma-separated list of output columns to
+  print. All columns listed by <b>--list-columns</b> can be used.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="NOTES"><a class="permalink" href="#NOTES">NOTES</a></h1>
+<p class="Pp">For partitions, some information (e.g., queue attributes) is
+    inherited from the parent device.</p>
+<p class="Pp">The <b>lsblk</b> command needs to be able to look up each block
+    device by major:minor numbers, which is done by using <i>/sys/dev/block</i>.
+    This sysfs block directory appeared in kernel 2.6.27 (October 2008). In case
+    of problems with a new enough kernel, check that <b>CONFIG_SYSFS</b> was
+    enabled at the time of the kernel build.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp"><i>Milan Broz</i> &lt;gmazyland@gmail.com&gt;, <i>Karel Zak</i>
+    &lt;kzak@redhat.com&gt;</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>blkid</b>(8), <b>findmnt</b>(8) <b>ls</b>(1),
+    <b>scols-filter</b>(5)</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="REPORTING_BUGS"><a class="permalink" href="#REPORTING_BUGS">REPORTING
+  BUGS</a></h1>
+<p class="Pp">For bug reports, use the <i>issue tracker</i>
+    &lt;https://github.com/util-linux/util-linux/issues&gt;.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AVAILABILITY"><a class="permalink" href="#AVAILABILITY">AVAILABILITY</a></h1>
+<p class="Pp">The <b>lsblk</b> command is part of the util-linux package which
+    can be downloaded from <i>Linux Kernel Archive</i>
+    &lt;https://www.kernel.org/pub/linux/utils/util-linux/&gt;.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-08-04</td>
+    <td class="foot-os">util-linux 2.42.3</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

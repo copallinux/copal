@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zramctl(8) · Copal Linux</title>
+<meta name="description" content="zramctl - set up and control zram devices">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-zramctl">zramctl in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">util-linux 2.42.3-r1 — man8/zramctl.8.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ZRAMCTL(8)</td>
+    <td class="head-vol">System Administration</td>
+    <td class="head-rtitle">ZRAMCTL(8)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">zramctl - set up and control zram devices</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">Get info:</p>
+<div class="Bd-indent"><b>zramctl</b> [options]</div>
+<p class="Pp">Reset zram:</p>
+<div class="Bd-indent"><b>zramctl</b> <b>-r</b> <i>zramdev</i>...</div>
+<p class="Pp">Print name of first unused zram device:</p>
+<div class="Bd-indent"><b>zramctl</b> <b>-f</b></div>
+<p class="Pp">Set up a zram device:</p>
+<div class="Bd-indent"><b>zramctl</b> [<b>-f</b> | <i>zramdev</i>] [<b>-s</b>
+  <i>size</i>] [<b>-t</b> <i>number</i>] [<b>-a</b> <i>algorithm</i>]</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>zramctl</b> is used to quickly set up zram device parameters,
+    to reset zram devices, and to query the status of used zram devices.</p>
+<p class="Pp">If no option is given, all non-zero size zram devices are
+  shown.</p>
+<p class="Pp">Use <b>--help</b> to get an overview of the supported output
+    columns and their descriptions.</p>
+<p class="Pp">Note that <i>zramdev</i> node specified on command line has to
+    already exist. The command <b>zramctl</b> creates a new
+    <i>/dev/zram&lt;N&gt;</i> nodes only when <b>--find</b> option specified.
+    It&#x2019;s possible (and common) that after system boot
+    <i>/dev/zram&lt;N&gt;</i> nodes are not created yet.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp"><b>-a</b>, <b>--algorithm
+    lzo</b>|<b>lz4</b>|<b>lz4hc</b>|<b>deflate</b>|<b>842</b>|<b>zstd</b></p>
+<div class="Bd-indent">Set the compression algorithm to be used for compressing
+  data in the zram device.
+<p class="Pp">The <b>list of supported algorithms could be inaccurate</b> as it
+    depends on the current kernel configuration. A basic overview can be
+    obtained by using the command &quot;cat
+    /sys/block/zram0/comp_algorithm&quot;; however, please note that this list
+    might also be incomplete. This is due to the fact that ZRAM utilizes the
+    Crypto API, and if certain algorithms were built as modules, it becomes
+    impossible to enumerate all of them.</p>
+</div>
+<p class="Pp"><b>-b</b>, <b>--bytes</b></p>
+<div class="Bd-indent">Print sizes in bytes, not in human-readable format.</div>
+<p class="Pp"><b>-f</b>, <b>--find</b></p>
+<div class="Bd-indent">Find the first unused zram device. If a <b>--size</b>
+  argument is present, then initialize the device.</div>
+<p class="Pp"><b>-n</b>, <b>--noheadings</b></p>
+<div class="Bd-indent">Do not print a header line in status output.</div>
+<p class="Pp"><b>-o</b>, <b>--output</b> <i>list</i></p>
+<div class="Bd-indent">Define the status output columns to be used. If no output
+  arrangement is specified, then a default set is used. Use <b>--help</b> to get
+  a list of all supported columns.
+<p class="Pp">The default list of columns may be extended if <i>list</i> is
+    specified in the format <i>+list</i> (e.g., <b>zramctl
+  -o+COMP-RATIO</b>).</p>
+</div>
+<p class="Pp"><b>--output-all</b></p>
+<div class="Bd-indent">Output all available columns.</div>
+<p class="Pp"><b>-p</b>, <b>--algorithm-params</b> <i>parameter</i>...</p>
+<div class="Bd-indent">Specify the parameters for the selected compression
+  algorithm. For example, <b>level=9 dict=/etc/dictionary</b> sets the
+  compression level and pre-trained dictionary. Parameters are
+  algorithm-specific.</div>
+<p class="Pp"><b>-r</b>, <b>--reset</b> <i>zramdev</i>...</p>
+<div class="Bd-indent">Reset the specified zram device(s). The settings of a
+  zram device can be changed only after a reset.</div>
+<p class="Pp"><b>--raw</b></p>
+<div class="Bd-indent">Use the raw format for status output.</div>
+<p class="Pp"><b>-s</b>, <b>--size</b> <i>size</i></p>
+<div class="Bd-indent">Create a zram device of the specified <i>size</i>. Zram
+  devices are aligned to memory pages; when the requested <i>size</i> is not a
+  multiple of the page size, it will be rounded up to the next multiple. When
+  not otherwise specified, the unit of the <i>size</i> parameter is bytes.
+<p class="Pp">The <i>size</i> argument may be followed by the multiplicative
+    suffixes KiB (=1024), MiB (=1024*1024), and so on for GiB, TiB, PiB, EiB,
+    ZiB and YiB (the &quot;iB&quot; is optional, e.g., &quot;K&quot; has the
+    same meaning as &quot;KiB&quot;) or the suffixes KB (=1000), MB
+    (=1000*1000), and so on for GB, TB, PB, EB, ZB and YB.</p>
+</div>
+<p class="Pp"><b>-t</b>, <b>--streams</b> <i>number</i></p>
+<div class="Bd-indent">Set the maximum number of compression streams that can be
+  used for the device. The default is use all CPUs and one stream for kernels
+  older than 4.6.</div>
+<p class="Pp"><b>-h</b>, <b>--help</b></p>
+<div class="Bd-indent">Display help text and exit.</div>
+<p class="Pp"><b>-V</b>, <b>--version</b></p>
+<div class="Bd-indent">Display version and exit.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXIT_STATUS"><a class="permalink" href="#EXIT_STATUS">EXIT
+  STATUS</a></h1>
+<p class="Pp"><b>zramctl</b> returns 0 on success, nonzero on failure.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<p class="Pp"><i>/dev/zram[0..N]</i></p>
+<div class="Bd-indent">zram block devices</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXAMPLE"><a class="permalink" href="#EXAMPLE">EXAMPLE</a></h1>
+<p class="Pp">The following commands set up a zram device with a size of one
+    gigabyte and use it as swap device.</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>
+<br/>
+ # zramctl --find --size 1024M
+<br/>
+ /dev/zram0
+<br/>
+ # mkswap /dev/zram0
+<br/>
+ # swapon /dev/zram0
+<br/>
+ ...
+<br/>
+ # swapoff /dev/zram0
+<br/>
+ # zramctl --reset /dev/zram0</pre>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp"><i>Timofey Titovets</i> &lt;nefelim4ag@gmail.com&gt;, <i>Karel
+    Zak</i> &lt;kzak@redhat.com&gt;</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><i>Linux kernel documentation</i>
+    &lt;https://docs.kernel.org/admin-guide/blockdev/zram.html&gt;</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="REPORTING_BUGS"><a class="permalink" href="#REPORTING_BUGS">REPORTING
+  BUGS</a></h1>
+<p class="Pp">For bug reports, use the <i>issue tracker</i>
+    &lt;https://github.com/util-linux/util-linux/issues&gt;.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AVAILABILITY"><a class="permalink" href="#AVAILABILITY">AVAILABILITY</a></h1>
+<p class="Pp">The <b>zramctl</b> command is part of the util-linux package which
+    can be downloaded from <i>Linux Kernel Archive</i>
+    &lt;https://www.kernel.org/pub/linux/utils/util-linux/&gt;.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-08-04</td>
+    <td class="foot-os">util-linux 2.42.3</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

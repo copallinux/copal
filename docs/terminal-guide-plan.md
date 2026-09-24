@@ -289,6 +289,26 @@ Each ends with a review of what it produced before the next begins.
 - **Man pages build the same way twice**: an undated page is left undated
   and the OS is Alpine's, not the build host's kernel.
 
+### Phase 4, batch 1: the Alpine core (24 Sep 2026)
+
+- **22 entries**: `openrc`, `rc-service`, `rc-update`, `rc-status`, `lbu`,
+  `setup-alpine`, `busybox`, `mkinitfs`, `dmesg`, `logread`, `sfdisk`,
+  `resize2fs`, `zramctl`, `lsblk`, `flatpak`, `ssh`, `ssh-keygen`, `curl`,
+  `ip`, `iw`, `wpa_cli`, `wpa_passphrase`. Every option checked (`check`,
+  and by hand for the four with no `--help` it can read); the safe examples
+  run on the bench.
+- **Found on the way**: `logread` fails on Copal by design (syslogd writes
+  `/var/log/messages`); `dmesg` needs root (`dmesg_restrict`); the
+  `wpa_supplicant.conf` setup-interfaces writes has no `ctrl_interface`, so
+  `wpa_cli` cannot connect until one is added; `.local` names need avahi,
+  which only stage 16 enables.
+- **Two fixes**: the collector gave BusyBox's `ip` the socket page ip(7) --
+  an applet now takes BusyBox's page unless a section 1 or 8 page has its
+  name. And `makewhatis` raced mandoc-apropos's own trigger, which rebuilds
+  in the background under `flock /tmp/makewhatis.lock`: two writers left
+  `mandoc.db` corrupt on the bench. `install_manuals` and the store now
+  take the same lock.
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.

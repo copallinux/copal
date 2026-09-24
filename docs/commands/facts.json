@@ -602,7 +602,9 @@
     "zlib",
     "zstd-libs"
    ],
-   "synopsis": "",
+   "man": "man1/bsdtar.1.gz",
+   "man_name": "tar – manipulate tape archives",
+   "synopsis": "tar [bundled-flags ⟨args⟩] [⟨file⟩ | ⟨pattern⟩ ...]\ntar {-c} [options] [files | directories]\ntar {-r | -u} -f archive-file [options] [files | directories]\ntar {-t | -x} [options] [patterns]",
    "gallery": false
   },
   {
@@ -1927,6 +1929,9 @@
     "libncursesw"
    ],
    "stage": 5,
+   "man": "man1/dmesg.1.gz",
+   "man_name": "dmesg - print or control the kernel ring buffer",
+   "synopsis": "dmesg [options]\n\ndmesg --clear\n\ndmesg --read-clear [options]\n\ndmesg --console-level level\n\ndmesg --console-on\n\ndmesg --console-off",
    "gallery": false
   },
   {
@@ -3200,9 +3205,10 @@
    "deps": [],
    "base": true,
    "stage": null,
-   "man": "man7/ip.7.gz",
-   "man_name": "ip - Linux IPv4 protocol implementation",
-   "synopsis": "#include <sys/socket.h>\n#include <netinet/in.h>\n#include <netinet/ip.h>  /* superset of previous */\n\ntcp_socket = socket(AF_INET, SOCK_STREAM, 0);\nudp_socket = socket(AF_INET, SOCK_DGRAM, 0);\nraw_socket = socket(AF_INET, SOCK_RAW, protocol);",
+   "applet": true,
+   "man": "man1/busybox.1.gz",
+   "man_name": "BusyBox - The Swiss Army Knife of Embedded Linux",
+   "synopsis": "",
    "gallery": false
   },
   {
@@ -3251,6 +3257,9 @@
     "libnl3"
    ],
    "stage": 10,
+   "man": "man8/iw.8.gz",
+   "man_name": "iw - show / manipulate wireless devices and their configuration",
+   "synopsis": "iw [ OPTIONS ] { help [  command ] | OBJECT COMMAND }\n\n\nOBJECT := {  dev | phy | reg }\n\n\nOPTIONS := { --version | --debug }",
    "gallery": false
   },
   {
@@ -3568,6 +3577,9 @@
     "libsmartcols"
    ],
    "stage": 5,
+   "man": "man8/lsblk.8.gz",
+   "man_name": "lsblk - list block devices",
+   "synopsis": "lsblk [options] [device...]",
    "gallery": false
   },
   {
@@ -4416,7 +4428,7 @@
    "origin": "catalogue",
    "installed": true,
    "package": "ocaml",
-   "version": "4.14.3-r0",
+   "version": "4.14.4-r0",
    "description": "Main implementation of the Caml programming language",
    "webpage": "https://ocaml.org/",
    "source_package": "ocaml",
@@ -4655,6 +4667,9 @@
     "libxcb"
    ],
    "stage": 10,
+   "man": "man1/pactl.1.gz",
+   "man_name": "pactl - Control a running PulseAudio sound server",
+   "synopsis": "pactl [options] COMMAND [ARGS ...]\n\npactl --help\n\npactl --version",
    "gallery": false
   },
   {
@@ -4720,7 +4735,9 @@
     "lcms2",
     "poppler"
    ],
-   "synopsis": "",
+   "man": "man1/pdftotext.1.gz",
+   "man_name": "pdftotext - Portable Document Format (PDF) to text converter (version 3.03)",
+   "synopsis": "pdftotext [options] PDF-file [text-file]",
    "gallery": false
   },
   {
@@ -4737,7 +4754,7 @@
    "origin": "catalogue",
    "installed": true,
    "package": "perl",
-   "version": "5.42.2-r0",
+   "version": "5.42.2-r1",
    "description": "Larry Wall's Practical Extraction and Report Language",
    "webpage": "https://www.perl.org/",
    "source_package": "perl",
@@ -5338,6 +5355,9 @@
     "libuuid"
    ],
    "stage": 2,
+   "man": "man8/resize2fs.8.gz",
+   "man_name": "resize2fs - ext2/ext3/ext4 file system resizer",
+   "synopsis": "resize2fs [ -fFpPMbs ] [ -d debug-flags ] [ -S RAID-stride ] [ -z undo_file ] device [ size ]",
    "gallery": false
   },
   {
@@ -5811,6 +5831,9 @@
     "libsmartcols"
    ],
    "stage": 8,
+   "man": "man8/sfdisk.8.gz",
+   "man_name": "sfdisk - display or manipulate a disk partition table",
+   "synopsis": "sfdisk [options] device [-N partition-number]\n\nsfdisk [options] command",
    "gallery": false
   },
   {
@@ -6154,6 +6177,9 @@
     "zlib"
    ],
    "stage": 1,
+   "man": "man1/ssh.1.gz",
+   "man_name": "ssh – OpenSSH remote login client",
+   "synopsis": "ssh [-46AaCfGgKkMNnqsTtVvXxYy] [-B bind_interface] [-b bind_address] [-c cipher_spec]\n    [-D [bind_address:]port] [-E log_file] [-e escape_char] [-F configfile] [-I pkcs11]\n    [-i identity_file] [-J destination] [-L address] [-l login_name] [-m mac_spec] [-O ctl_cmd]\n    [-o option] [-P tag] [-p port] [-R address] [-S ctl_path] [-W host:port]\n    [-w local_tun[:remote_tun]] destination [command [argument ...]]\nssh [-Q query_option]",
    "gallery": false
   },
   {
@@ -6172,6 +6198,9 @@
     "libcrypto3"
    ],
    "stage": 1,
+   "man": "man1/ssh-keygen.1.gz",
+   "man_name": "ssh-keygen – OpenSSH authentication key utility",
+   "synopsis": "ssh-keygen [-q] [-a rounds] [-b bits] [-C comment] [-f output_keyfile] [-m format]\n           [-N new_passphrase] [-O option] [-t ecdsa | ecdsa-sk | ed25519 | ed25519-sk | rsa]\n           [-w provider] [-Z cipher]\nssh-keygen -p [-a rounds] [-f keyfile] [-m format] [-N new_passphrase] [-P old_passphrase]\n           [-Z cipher]\nssh-keygen -i [-f input_keyfile] [-m key_format]\nssh-keygen -e [-f input_keyfile] [-m key_format]\nssh-keygen -y [-f input_keyfile]\nssh-keygen -c [-a rounds] [-C comment] [-f keyfile] [-P passphrase]\nssh-keygen -l [-v] [-E fingerprint_hash] [-f input_keyfile]\nssh-keygen -B [-f input_keyfile]\nssh-keygen -D pkcs11\nssh-keygen -F hostname [-lv] [-f known_hosts_file]\nssh-keygen -H [-f known_hosts_file]\n...",
    "gallery": false
   },
   {
@@ -6586,7 +6615,9 @@
     "libpcap",
     "wireshark-common"
    ],
-   "synopsis": "Usage: tshark [options] ...\nCapture interface:\n  -i <interface>, --interface <interface>",
+   "man": "man1/tshark.1.gz",
+   "man_name": "tshark - Dump and analyze network traffic",
+   "synopsis": "tshark [ -i <capture interface>|- ] [ -f <capture filter> ] [ -2 ] [ -r <infile> ]\n[ -w <outfile>|- ] [ options ] [ <filter> ]\n\ntshark -h|--help\n\ntshark -v|--version",
    "gallery": false
   },
   {
@@ -6706,7 +6737,7 @@
    "origin": "catalogue",
    "installed": true,
    "package": "unison",
-   "version": "2.54.0-r0",
+   "version": "2.54.0-r1",
    "description": "Efficient file-synchronization tool",
    "webpage": "https://www.cis.upenn.edu/~bcpierce/unison/",
    "source_package": "unison",
@@ -6914,6 +6945,9 @@
     "libssl3"
    ],
    "stage": 10,
+   "man": "man8/wpa_cli.8.gz",
+   "man_name": "wpa_cli - WPA command line client",
+   "synopsis": "wpa_cli [ -p path to ctrl sockets ] [ -g path to global ctrl_interface socket ] [ -i ifname ]\n[ -hvB ] [ -a action file ] [ -P pid file ] [ -G ping interval ] [ command ... ]",
    "gallery": false
   },
   {
@@ -6936,6 +6970,9 @@
     "libssl3"
    ],
    "stage": 10,
+   "man": "man8/wpa_passphrase.8.gz",
+   "man_name": "wpa_passphrase - Generate a WPA PSK from an ASCII passphrase for a SSID",
+   "synopsis": "wpa_passphrase [ ssid ] [ passphrase ]",
    "gallery": false
   },
   {
@@ -7072,6 +7109,9 @@
    "deps": [
     "libisoburn"
    ],
+   "man": "man1/xorriso.1.gz",
+   "man_name": "xorriso - creates, loads, manipulates and writes ISO 9660 filesystem images with Rock Ridge extensions.",
+   "synopsis": "xorriso [settings|actions]",
    "gallery": false
   },
   {
@@ -7241,6 +7281,9 @@
     "zlib"
    ],
    "stage": 5,
+   "man": "man8/zramctl.8.gz",
+   "man_name": "zramctl - set up and control zram devices",
+   "synopsis": "Get info:\n    zramctl [options]\n\nReset zram:\n    zramctl -r zramdev...\n\nPrint name of first unused zram device:\n    zramctl -f\n\nSet up a zram device:\n    zramctl [-f | zramdev] [-s size] [-t number] [-a algorithm]",
    "gallery": false
   }
  ]

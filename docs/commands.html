@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 289 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 5 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 27 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.</p>
 </header>
 <div class="finder">
@@ -271,10 +271,15 @@
 <pre class="syn">openmpt123 [options] [--] file1 [file2] ...</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-pactl" data-s="pactl pulseaudio utilities audio pulseaudio-utils">
-<h3><a class="self" href="#c-pactl"><code>pactl</code></a> <span class="purpose">Pulseaudio utilities</span></h3>
-<p class="facts">Audio · <b>pulseaudio-utils</b> 17.0 · stage 10 · Wireless, audio, capture and disks · <a href="https://www.freedesktop.org/wiki/Software/PulseAudio/">home</a></p>
+<article class="cmd facts-only" id="c-pactl" data-s="pactl control a running pulseaudio sound server audio pulseaudio-utils">
+<h3><a class="self" href="#c-pactl"><code>pactl</code></a> <span class="purpose">Control a running PulseAudio sound server</span></h3>
+<p class="facts">Audio · <b>pulseaudio-utils</b> 17.0 · stage 10 · Wireless, audio, capture and disks · <a href="man/pactl.html">man pactl(1)</a> · <a href="https://www.freedesktop.org/wiki/Software/PulseAudio/">home</a></p>
 <p class="deps">needs libintl, libpulse, libsndfile, libxcb</p>
+<pre class="syn">pactl [options] COMMAND [ARGS ...]
+
+pactl --help
+
+pactl --version</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
 <article class="cmd facts-only" id="c-wpctl" data-s="wpctl session / policy manager implementation for pipewire audio wireplumber">
@@ -680,10 +685,14 @@ strace --tips[=format]</pre>
 <pre class="syn">abcde [options] [tracks]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-bsdtar" data-s="bsdtar libarchive tools bsdtar and bsdcpio discs libarchive-tools">
-<h3><a class="self" href="#c-bsdtar"><code>bsdtar</code></a> <span class="purpose">libarchive tools bsdtar and bsdcpio</span></h3>
-<p class="facts">Discs · command-line tool · <b>libarchive-tools</b> 3.8.7 · stage 12 · The application catalogue · <a href="https://libarchive.org/">home</a></p>
+<article class="cmd facts-only" id="c-bsdtar" data-s="bsdtar manipulate tape archives discs libarchive-tools">
+<h3><a class="self" href="#c-bsdtar"><code>bsdtar</code></a> <span class="purpose">manipulate tape archives</span></h3>
+<p class="facts">Discs · command-line tool · <b>libarchive-tools</b> 3.8.7 · stage 12 · The application catalogue · <a href="man/bsdtar.html">man bsdtar(1)</a> · <a href="https://libarchive.org/">home</a></p>
 <p class="deps">needs acl-libs, libbz2, libcrypto3, libexpat, lz4-libs, xz-libs, zlib, zstd-libs</p>
+<pre class="syn">tar [bundled-flags ⟨args⟩] [⟨file⟩ | ⟨pattern⟩ ...]
+tar {-c} [options] [files | directories]
+tar {-r | -u} -f archive-file [options] [files | directories]
+tar {-t | -x} [options] [patterns]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
 <article class="cmd facts-only" id="c-cdparanoia" data-s="cdparanoia an audio cd reading utility which includes extra data verification features discs cdparanoia">
@@ -754,10 +763,11 @@ INSTALLING, UPGRADING, AND REMOVING PACKAGES:
 <p class="facts">Discs · command-line tool · <b>unarj</b> 2.65 · stage 12 · The application catalogue · <a href="http://www.arjsoftware.com">home</a></p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-xorriso" data-s="xorriso iso-9660 and rock ridge image manipulation tool discs xorriso">
-<h3><a class="self" href="#c-xorriso"><code>xorriso</code></a> <span class="purpose">ISO-9660 and Rock Ridge image manipulation tool</span></h3>
-<p class="facts">Discs · command-line tool · <b>xorriso</b> 1.5.8 · stage 12 · The application catalogue · <a href="https://dev.lovelyhq.com/libburnia/libisoburn">home</a></p>
+<article class="cmd facts-only" id="c-xorriso" data-s="xorriso creates, loads, manipulates and writes iso 9660 filesystem images with rock ridge extensions. discs xorriso">
+<h3><a class="self" href="#c-xorriso"><code>xorriso</code></a> <span class="purpose">creates, loads, manipulates and writes ISO 9660 filesystem images with Rock Ridge extensions.</span></h3>
+<p class="facts">Discs · command-line tool · <b>xorriso</b> 1.5.8 · stage 12 · The application catalogue · <a href="man/xorriso.html">man xorriso(1)</a> · <a href="https://dev.lovelyhq.com/libburnia/libisoburn">home</a></p>
 <p class="deps">needs libisoburn</p>
+<pre class="syn">xorriso [settings|actions]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
 <article class="cmd facts-only" id="c-zip" data-s="zip package and compress (archive) files discs zip">
@@ -780,36 +790,73 @@ inconsistencies may no longer work.</pre>
 </article>
 </section>
 <section class="sec" id="s-disks"><h2>Disks</h2>
-<article class="cmd facts-only" id="c-lsblk" data-s="lsblk block device list tool from util-linux disks lsblk">
-<h3><a class="self" href="#c-lsblk"><code>lsblk</code></a> <span class="purpose">Block device list tool from util-linux</span></h3>
-<p class="facts">Disks · <b>lsblk</b> 2.42.3 · stage 5 · Compressed swap in RAM (zram) · <a href="https://git.kernel.org/cgit/utils/util-linux/util-linux.git">home</a></p>
+<article class="cmd" id="c-lsblk" data-s="lsblk list the disks and partitions, as a tree, with sizes and mount points. disks lsblk">
+<h3><a class="self" href="#c-lsblk"><code>lsblk</code></a> <span class="purpose">List the disks and partitions, as a tree, with sizes and mount points.</span></h3>
+<p class="facts">Disks · <b>lsblk</b> 2.42.3 · stage 5 · Compressed swap in RAM (zram) · <a href="man/lsblk.html">man lsblk(8)</a> · <a href="https://git.kernel.org/cgit/utils/util-linux/util-linux.git">home</a></p>
 <p class="deps">needs libblkid, libmount, libncursesw, libsmartcols</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The answer to "which device is the card" before anything that writes to one -- sfdisk, dd, mkfs. Stage 5 installs util-linux, which brings it; BusyBox has no lsblk.</p>
+<pre class="syn">lsblk [options] [device...]</pre>
+<h4>Use</h4><p>Show every block device: whole disks, their partitions beneath them, and where each is mounted. Run it before and after plugging something in and the new line is the new device.</p>
+<h4>Examples</h4><div class="ex"><code>lsblk</code><span>the tree: disks, partitions, mounts</span></div><div class="ex"><code>doas lsblk -f</code><span>filesystems: type, label, UUID, free space</span></div><div class="ex"><code>lsblk -o NAME,SIZE,TYPE,TRAN,MODEL</code><span>with the bus (usb, sata...) and model</span></div><div class="ex"><code>lsblk -p</code><span>full paths, /dev/sda1 not sda1</span></div><div class="ex"><code>lsblk -d</code><span>the disks only, no partitions</span></div><div class="ex"><code>lsblk -J /dev/sda</code><span>one disk, as JSON for a script</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-f, --fs</code></dt><dd>filesystem type, label, UUID, available space, use</dd><dt><code>-o, --output LIST</code></dt><dd>choose the columns; -H lists them all</dd><dt><code>-p, --paths</code></dt><dd>full device paths</dd><dt><code>-d, --nodeps</code></dt><dd>whole disks only</dd><dt><code>-l, --list</code></dt><dd>a flat list instead of the tree</dd><dt><code>-J, --json</code></dt><dd>JSON output</dd><dt><code>-b, --bytes</code></dt><dd>sizes in bytes</dd></dl>
+<h4>Notes</h4><ul><li>The names say the bus: <code>mmcblk0</code> is an SD card (partitions <code>mmcblk0p1</code>), <code>sda</code> a USB or SATA disk (<code>sda1</code>), <code>nvme0n1</code> an NVMe drive (<code>nvme0n1p1</code>), <code>vda</code> a virtual machine's disk. A Pi booting from USB has its root on <code>sda</code>, not <code>mmcblk0</code>.</li><li><code>-f</code> without root shows blank FSTYPE and UUID columns: reading them means reading the device. Use <code>doas lsblk -f</code>.</li><li><code>zram0</code> with <code>[SWAP]</code> is Copal's compressed swap in RAM (stage 5), not a disk.</li></ul>
+<p class="see">See also <a href="#c-sfdisk"><code>sfdisk</code></a>, <a href="#c-resize2fs"><code>resize2fs</code></a>, <a href="#c-zramctl"><code>zramctl</code></a>, <a href="#c-dmesg"><code>dmesg</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-resize2fs" data-s="resize2fs ext2/3/4 filesystem extra utilities disks e2fsprogs-extra">
-<h3><a class="self" href="#c-resize2fs"><code>resize2fs</code></a> <span class="purpose">Ext2/3/4 filesystem extra utilities</span></h3>
-<p class="facts">Disks · <b>e2fsprogs-extra</b> 1.47.4 · stage 2 · Format p2 and move the apk cache · <a href="https://e2fsprogs.sourceforge.net/">home</a></p>
+<article class="cmd" id="c-resize2fs" data-s="resize2fs grow or shrink an ext4 filesystem to fit its partition. disks e2fsprogs-extra">
+<h3><a class="self" href="#c-resize2fs"><code>resize2fs</code></a> <span class="purpose">Grow or shrink an ext4 filesystem to fit its partition.</span></h3>
+<p class="facts">Disks · <b>e2fsprogs-extra</b> 1.47.4 · stage 2 · Format p2 and move the apk cache · <a href="man/resize2fs.html">man resize2fs(8)</a> · <a href="https://e2fsprogs.sourceforge.net/">home</a></p>
 <p class="deps">needs e2fsprogs, libblkid, libcom_err, e2fsprogs-libs, libuuid</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The second half of stage 8: after sfdisk makes the root partition fill the disk, resize2fs makes the filesystem fill the partition -- while it is mounted as /.</p>
+<pre class="syn">resize2fs [ -fFpPMbs ] [ -d debug-flags ] [ -S RAID-stride ] [ -z undo_file ] device [ size ]</pre>
+<h4>Use</h4><p>Given only a device, grow its ext2/3/4 filesystem to the size of the partition. Growing works while mounted; shrinking needs the filesystem unmounted and checked first.</p>
+<h4>Examples</h4><div class="ex"><code>doas resize2fs /dev/sda2</code><span>grow to fill the partition (mounted is fine)</span></div><div class="ex"><code>doas resize2fs -P /dev/sdb2</code><span>the smallest it could shrink to</span></div><div class="ex"><code>doas e2fsck -f /dev/sdb2</code><span>before a shrink: check, unmounted</span></div><div class="ex"><code>doas resize2fs /dev/sdb2 20G</code><span>then shrink to 20 GiB</span></div><div class="ex"><code>df -h /</code><span>the new size, as the system sees it</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>SIZE</code></dt><dd>the new size: 20G, 500M; none means the partition's size</dd><dt><code>-P</code></dt><dd>print the minimum size and change nothing</dd><dt><code>-M</code></dt><dd>shrink to that minimum</dd><dt><code>-p</code></dt><dd>show progress</dd><dt><code>-f</code></dt><dd>force: skip the safety checks</dd></dl>
+<h4>Notes</h4><ul><li>Order matters. To grow: partition first (<a href="#c-sfdisk"><code>sfdisk</code></a>), then <a href="#c-resize2fs"><code>resize2fs</code></a>. To shrink: <a href="#c-resize2fs"><code>resize2fs</code></a> first, then the partition -- the other way round cuts the end off the filesystem.</li><li>"Please run 'e2fsck -f' first" before a shrink is not optional: it needs a clean check since the last mount. That means from another system, or another card, for the root.</li><li>ext4 only. The FAT boot partition (p1) is not resized by this.</li></ul>
+<p class="see">See also <a href="#c-sfdisk"><code>sfdisk</code></a>, <a href="#c-lsblk"><code>lsblk</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-sfdisk" data-s="sfdisk partition table manipulator from util-linux disks sfdisk">
-<h3><a class="self" href="#c-sfdisk"><code>sfdisk</code></a> <span class="purpose">Partition table manipulator from util-linux</span></h3>
-<p class="facts">Disks · <b>sfdisk</b> 2.42.3 · stage 8 · Grow p2 into the free space · <a href="https://git.kernel.org/cgit/utils/util-linux/util-linux.git">home</a></p>
+<article class="cmd" id="c-sfdisk" data-s="sfdisk read, save, restore and change a disk's partition table, from a script. disks sfdisk">
+<h3><a class="self" href="#c-sfdisk"><code>sfdisk</code></a> <span class="purpose">Read, save, restore and change a disk's partition table, from a script.</span></h3>
+<p class="facts">Disks · <b>sfdisk</b> 2.42.3 · stage 8 · Grow p2 into the free space · <a href="man/sfdisk.html">man sfdisk(8)</a> · <a href="https://git.kernel.org/cgit/utils/util-linux/util-linux.git">home</a></p>
 <p class="deps">needs libfdisk, libncursesw, libsmartcols</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Stage 8 grows the root partition into the rest of the disk with it, while that partition is mounted -- which parted refuses to do. The same one line claims the space after a VM's disk is enlarged.</p>
+<pre class="syn">sfdisk [options] device [-N partition-number]
+
+sfdisk [options] command</pre>
+<h4>Use</h4><p>Print a partition table, dump it to a file you can restore, or rewrite it from lines of input. It never prompts, which is what makes it the tool for a script -- and the one to run with <code>-n</code> first.</p>
+<h4>Examples</h4><div class="ex"><code>doas sfdisk -l /dev/sda</code><span>the partitions, in sectors and sizes</span></div><div class="ex"><code>doas sfdisk -F /dev/sda</code><span>unpartitioned space</span></div><div class="ex"><code>doas sfdisk -d /dev/sda &gt; sda.dump</code><span>save the table as text</span></div><div class="ex"><code>doas sfdisk /dev/sda &lt; sda.dump</code><span>put it back</span></div><div class="ex"><code>echo ', +' | doas sfdisk -n -N 2 /dev/sda</code><span>dry run: grow partition 2 to the end</span></div><div class="ex"><code>echo ', +' | doas sfdisk --no-reread -N 2 /dev/sda</code><span>do it, mounted (stage 8's line)</span></div><div class="ex"><code>doas partx -u /dev/sda</code><span>tell the kernel the new size</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-l, --list</code></dt><dd>list the partitions</dd><dt><code>-F, --list-free</code></dt><dd>list the free areas</dd><dt><code>-d, --dump</code></dt><dd>the table as sfdisk input, to save</dd><dt><code>-N, --partno N</code></dt><dd>change partition N only</dd><dt><code>-n, --no-act</code></dt><dd>do everything but write</dd><dt><code>--no-reread</code></dt><dd>do not refuse because the disk is in use</dd><dt><code>-X, --label TYPE</code></dt><dd>create a new table: dos or gpt</dd><dt><code>--delete DEV [N]</code></dt><dd>delete partitions</dd><dt><code>-q, --quiet</code></dt><dd>fewer messages</dd></dl>
+<h4>Notes</h4><ul><li><code>', +'</code> means: keep the start, make it as large as possible. Changing the table does not change the filesystem inside: grow that with <a href="#c-resize2fs"><code>resize2fs</code></a> afterwards.</li><li>On a disk in use -- the one you booted from -- sfdisk refuses unless given <code>--no-reread</code>, and the kernel keeps the old sizes until told: <code>partx -u DISK</code>, as stage 8 does, or a reboot. That refusal is about the kernel's copy of the table, not a danger to the data.</li><li>Keep a dump before any change. A table restored from <code>sfdisk -d</code> output gives back every partition, data included, as long as nothing has been formatted in the meantime.</li></ul>
+<p class="see">See also <a href="#c-lsblk"><code>lsblk</code></a>, <a href="#c-resize2fs"><code>resize2fs</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-zramctl" data-s="zramctl misc binaries for util-linux disks util-linux-misc">
-<h3><a class="self" href="#c-zramctl"><code>zramctl</code></a> <span class="purpose">Misc binaries for util-linux</span></h3>
-<p class="facts">Disks · <b>util-linux-misc</b> 2.42.3 · stage 5 · Compressed swap in RAM (zram) · <a href="https://git.kernel.org/cgit/utils/util-linux/util-linux.git">home</a></p>
+<article class="cmd" id="c-zramctl" data-s="zramctl show and set up zram devices: compressed swap in ram. disks util-linux-misc">
+<h3><a class="self" href="#c-zramctl"><code>zramctl</code></a> <span class="purpose">Show and set up zram devices: compressed swap in RAM.</span></h3>
+<p class="facts">Disks · <b>util-linux-misc</b> 2.42.3 · stage 5 · Compressed swap in RAM (zram) · <a href="man/zramctl.html">man zramctl(8)</a> · <a href="https://git.kernel.org/cgit/utils/util-linux/util-linux.git">home</a></p>
 <p class="deps">needs setarch, libblkid, libfdisk, libmount, libncursesw, libsmartcols, utmps-libs, libuuid</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Stage 5 gives every Copal machine a zram swap half the size of RAM, compressed with lz4 -- on a 512 MB board the largest single win, and it spares the card the writes of disk swap.</p>
+<pre class="syn">Get info:
+    zramctl [options]
+
+Reset zram:
+    zramctl -r zramdev...
+
+Print name of first unused zram device:
+    zramctl -f
+
+Set up a zram device:
+    zramctl [-f | zramdev] [-s size] [-t number] [-a algorithm]</pre>
+<h4>Use</h4><p>With no arguments, show each zram device: its size, how much is stored in it and how small that compressed to. Copal sets zram up at boot from <code>/etc/local.d/zram.start</code>; zramctl is for looking, or for changing it.</p>
+<h4>Examples</h4><div class="ex"><code>zramctl</code><span>size, data stored, compressed size</span></div><div class="ex"><code>free -m</code><span>swap in use, zram included</span></div><div class="ex"><code>cat /proc/swaps</code><span>zram0 at priority 100, before any disk swap</span></div><div class="ex"><code>doas swapoff /dev/zram0</code><span>stop using it (to resize)...</span></div><div class="ex"><code>doas zramctl -r /dev/zram0</code><span>...reset it...</span></div><div class="ex"><code>doas zramctl -a lz4 -s 1G /dev/zram0 # ...set it up again at 1 GiB</code></div><div class="ex"><code>doas mkswap /dev/zram0 &amp;&amp; doas swapon -p 100 /dev/zram0</code><span>...and swap on it</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-s, --size SIZE</code></dt><dd>the device size: 512M, 1G</dd><dt><code>-a, --algorithm ALG</code></dt><dd>lzo, lz4, lz4hc, deflate, 842 or zstd</dd><dt><code>-r, --reset DEVICE</code></dt><dd>empty and release a device</dd><dt><code>-f, --find</code></dt><dd>the first free device</dd><dt><code>-o, --output LIST</code></dt><dd>choose the columns</dd><dt><code>-b, --bytes</code></dt><dd>sizes in bytes</dd></dl>
+<h4>Notes</h4><ul><li>DISKSIZE is the most it will take, not memory spent: RAM is used only for what is stored, compressed. DATA against COMPR is the ratio -- usually 2 to 3 times.</li><li>A change made with zramctl is gone at the next boot. To change the size for good, edit the <code>disksize</code> line in <code>/etc/local.d/zram.start</code>.</li><li>zram is swap, not more memory: a machine that swaps constantly is slow either way. Its gain is that a burst -- a big build, a browser -- no longer ends in the out-of-memory killer.</li></ul>
+<p class="see">See also <a href="#c-lsblk"><code>lsblk</code></a>, <a href="#c-dmesg"><code>dmesg</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-documents"><h2>Documents</h2>
-<article class="cmd facts-only" id="c-pdftotext" data-s="pdftotext poppler's xpdf-workalike command line utilities documents poppler-utils">
-<h3><a class="self" href="#c-pdftotext"><code>pdftotext</code></a> <span class="purpose">Poppler's xpdf-workalike command line utilities</span></h3>
-<p class="facts">Documents · command-line tool · <b>poppler-utils</b> 25.12.0 · stage 12 · The application catalogue · <a href="https://poppler.freedesktop.org/">home</a></p>
+<article class="cmd facts-only" id="c-pdftotext" data-s="pdftotext portable document format (pdf) to text converter (version 3.03) documents poppler-utils">
+<h3><a class="self" href="#c-pdftotext"><code>pdftotext</code></a> <span class="purpose">Portable Document Format (PDF) to text converter (version 3.03)</span></h3>
+<p class="facts">Documents · command-line tool · <b>poppler-utils</b> 25.12.0 · stage 12 · The application catalogue · <a href="man/pdftotext.html">man pdftotext(1)</a> · <a href="https://poppler.freedesktop.org/">home</a></p>
 <p class="deps">needs cairo, freetype, libintl, lcms2, poppler</p>
+<pre class="syn">pdftotext [options] PDF-file [text-file]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
 <article class="cmd facts-only" id="c-qpdf" data-s="qpdf pdf transformation software documents qpdf">
@@ -1326,7 +1373,7 @@ Only the most useful options are listed here; see below for the remainder.</pre>
 </article>
 <article class="cmd facts-only" id="c-ocaml" data-s="ocaml the ocaml interactive toplevel languages ocaml">
 <h3><a class="self" href="#c-ocaml"><code>ocaml</code></a> <span class="purpose">The OCaml interactive toplevel</span></h3>
-<p class="facts">Languages · terminal program · <b>ocaml</b> 4.14.3 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/ocaml.html">man ocaml(1)</a> · <a href="https://ocaml.org/">home</a></p>
+<p class="facts">Languages · terminal program · <b>ocaml</b> 4.14.4 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/ocaml.html">man ocaml(1)</a> · <a href="https://ocaml.org/">home</a></p>
 <p class="deps">needs ocaml-runtime, gcc</p>
 <pre class="syn">ocaml [ options ] [ object-files ] [ script-file ]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
@@ -1524,54 +1571,114 @@ weechat [-v|--version]</pre>
 <pre class="syn">bluetoothctl [-a capability] [-e] [-m] [-t seconds] [-v] [-h]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-curl" data-s="curl transfer a url network curl">
-<h3><a class="self" href="#c-curl"><code>curl</code></a> <span class="purpose">transfer a URL</span></h3>
+<article class="cmd" id="c-curl" data-s="curl fetch or send one url -- http, https, ftp and more -- from the command line. network curl">
+<h3><a class="self" href="#c-curl"><code>curl</code></a> <span class="purpose">Fetch or send one URL -- HTTP, HTTPS, FTP and more -- from the command line.</span></h3>
 <p class="facts">Network · <b>curl</b> 8.22.0 · stage 4 · X.Org, i3, a terminal and a browser · <a href="man/curl.html">man curl(1)</a> · <a href="https://curl.se/">home</a></p>
 <p class="deps">needs libcurl, zlib</p>
+<p class="why"><b>On Copal:</b> Every download in Copal's install is curl: Mini vMac's sources, the Hyprland configs, the store's release files, each checked against its sha256. It is also how to test a web server or an API.</p>
 <pre class="syn">curl [options / URLs]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Given a URL, print what is there. Save it with <code>-o</code> or <code>-O</code>, follow redirects with <code>-L</code>, and add <code>-f</code> so a server error is an error, not an HTML page saved under your filename.</p>
+<h4>Examples</h4><div class="ex"><code>curl https://example.com</code><span>the page, to the terminal</span></div><div class="ex"><code>curl -fLO https://host/file.tar.gz</code><span>download, under the name in the URL</span></div><div class="ex"><code>curl -fL -o out.iso -C - URL</code><span>resume a download that stopped</span></div><div class="ex"><code>curl -I https://example.com</code><span>the response headers only</span></div><div class="ex"><code>curl -fsSL URL | sh</code><span>a remote install script (read it first)</span></div><div class="ex"><code>curl -d 'name=copal' https://host/form</code><span>POST form data</span></div><div class="ex"><code>curl --json '{"a":1}' https://host/api</code><span>POST JSON, with its headers</span></div><div class="ex"><code>curl -s -o /dev/null -w '%{http_code}\n' URL</code><span>just the status code</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-o FILE</code></dt><dd>save to FILE</dd><dt><code>-O</code></dt><dd>save under the URL's own filename</dd><dt><code>-L</code></dt><dd>follow redirects</dd><dt><code>-f, --fail</code></dt><dd>exit non-zero on an HTTP error, save nothing</dd><dt><code>-s -S</code></dt><dd>silent, but still show errors (-sS)</dd><dt><code>-C -</code></dt><dd>continue a partial download where it stopped</dd><dt><code>-I, --head</code></dt><dd>headers only</dd><dt><code>-d DATA</code></dt><dd>POST DATA</dd><dt><code>--json DATA</code></dt><dd>POST JSON, with the Content-Type set</dd><dt><code>-H 'Name: value'</code></dt><dd>add a header</dd><dt><code>-u USER:PASS</code></dt><dd>log in</dd><dt><code>-w FORMAT</code></dt><dd>print details after: %{http_code}, %{size_download}</dd><dt><code>--retry N</code></dt><dd>try again on a transient failure</dd></dl>
+<h4>Notes</h4><ul><li>Without <code>-L</code>, a download that redirects -- GitHub release files all do -- saves a tiny redirect page. Without <code>-f</code>, a 404 saves the error page. <code>-fL</code> is the habit.</li><li>Without <code>-o</code> or <code>-O</code>, a binary goes to the terminal; curl refuses and says so.</li><li>BusyBox has <code>wget</code> too, with far fewer options; curl is the one the answers online assume.</li></ul>
+<p class="see">See also <a href="#c-links"><code>links</code></a>, <a href="#c-rsync"><code>rsync</code></a>, <a href="#c-ssh"><code>ssh</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ip" data-s="ip linux ipv4 protocol implementation network busybox">
-<h3><a class="self" href="#c-ip"><code>ip</code></a> <span class="purpose">Linux IPv4 protocol implementation</span></h3>
-<p class="facts">Network · <b>busybox</b> 1.37.0 · Alpine's base system · <a href="man/ip.html">man ip(7)</a> · <a href="https://busybox.net/">home</a></p>
-<pre class="syn">#include &lt;sys/socket.h&gt;
-#include &lt;netinet/in.h&gt;
-#include &lt;netinet/ip.h&gt;  /* superset of previous */
-
-tcp_socket = socket(AF_INET, SOCK_STREAM, 0);
-udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
-raw_socket = socket(AF_INET, SOCK_RAW, protocol);</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<article class="cmd" id="c-ip" data-s="ip show and change network interfaces, addresses and routes. network busybox">
+<h3><a class="self" href="#c-ip"><code>ip</code></a> <span class="purpose">Show and change network interfaces, addresses and routes.</span></h3>
+<p class="facts">Network · <b>busybox</b> 1.37.0 · Alpine's base system · <a href="man/ip.html">man busybox(1)</a> · <a href="https://busybox.net/">home</a></p>
+<p class="deps">a BusyBox applet: <code>busybox ip --help</code>, and BusyBox's page</p>
+<p class="why"><b>On Copal:</b> The quickest answer to "what is my address" and "is the wifi up". On Copal it is BusyBox's applet: the common part of iproute2's ip, not all of it.</p>
+<h4>Use</h4><p><code>ip addr</code> shows each interface and its addresses, <code>ip route</code> where traffic goes, <code>ip link</code> whether an interface is up. Changes made with it last until the next restart; the lasting configuration is <code>/etc/network/interfaces</code>.</p>
+<h4>Examples</h4><div class="ex"><code>ip addr</code><span>every interface and its addresses</span></div><div class="ex"><code>ip -4 -o addr</code><span>IPv4 only, one line each</span></div><div class="ex"><code>ip addr show wlan0</code><span>one interface</span></div><div class="ex"><code>ip route</code><span>the default gateway is the 'default via' line</span></div><div class="ex"><code>doas ip link set wlan0 up</code><span>bring an interface up</span></div><div class="ex"><code>ip neigh</code><span>machines seen on the local network</span></div><div class="ex"><code>doas rc-service networking restart</code><span>re-apply /etc/network/interfaces</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>addr [show DEV]</code></dt><dd>addresses (a, address)</dd><dt><code>route</code></dt><dd>the routing table (r)</dd><dt><code>link</code></dt><dd>interfaces, up or down, and their MAC addresses</dd><dt><code>neigh</code></dt><dd>the neighbour (ARP) table</dd><dt><code>-f inet</code></dt><dd>one address family: inet, inet6 (-4 and -6 work too)</dd><dt><code>-o</code></dt><dd>one line per entry, for grep</dd><dt><code>link set DEV up</code></dt><dd>bring DEV up; down to take it down</dd></dl>
+<h4>Notes</h4><ul><li>BusyBox's <a href="#c-ip"><code>ip</code></a> lacks the newer options: <code>ip -br a</code>, <code>-c</code> and <code>-j</code> print its usage instead. Use <code>ip -o addr</code> for the short form.</li><li>No IPv4 address on wlan0 means it is not associated, or DHCP has not answered: check <code>iw dev wlan0 link</code> before blaming DHCP.</li><li><code>ifconfig</code> is here too (BusyBox), for the habit; <a href="#c-ip"><code>ip</code></a> is what Alpine's own scripts use.</li><li><code>/etc/network/interfaces</code> is read by <code>ifup</code> and <code>ifdown</code> (ifupdown-ng): <code>auto wlan0</code> and <code>iface wlan0 inet dhcp</code> make it come up at boot.</li></ul>
+<p class="see">See also <a href="#c-iw"><code>iw</code></a>, <a href="#c-wpa_cli"><code>wpa_cli</code></a>, <a href="#c-ssh"><code>ssh</code></a>, <a href="#c-busybox"><code>busybox</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-iw" data-s="iw nl80211 based cli configuration utility for wireless devices network iw">
-<h3><a class="self" href="#c-iw"><code>iw</code></a> <span class="purpose">nl80211 based CLI configuration utility for wireless devices</span></h3>
-<p class="facts">Network · <b>iw</b> 6.17 · stage 10 · Wireless, audio, capture and disks · <a href="https://wireless.docs.kernel.org/en/latest/en/users/documentation/iw.html">home</a></p>
+<article class="cmd" id="c-iw" data-s="iw look at and control wireless interfaces: scan, link, signal, country. network iw">
+<h3><a class="self" href="#c-iw"><code>iw</code></a> <span class="purpose">Look at and control wireless interfaces: scan, link, signal, country.</span></h3>
+<p class="facts">Network · <b>iw</b> 6.17 · stage 10 · Wireless, audio, capture and disks · <a href="man/iw.html">man iw(8)</a> · <a href="https://wireless.docs.kernel.org/en/latest/en/users/documentation/iw.html">home</a></p>
 <p class="deps">needs libnl3</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Stage 10 installs it with wpa_supplicant for the Pi's wifi. It answers what the radio sees and how well it is connected; joining a protected network is wpa_supplicant's job, not iw's.</p>
+<pre class="syn">iw [ OPTIONS ] { help [  command ] | OBJECT COMMAND }
+
+
+OBJECT := {  dev | phy | reg }
+
+
+OPTIONS := { --version | --debug }</pre>
+<h4>Use</h4><p>Name a wireless interface (<code>wlan0</code>) and ask it something: which networks it can hear, what it is connected to and at what signal, which channels the country allows.</p>
+<h4>Examples</h4><div class="ex"><code>iw dev</code><span>the wireless interfaces</span></div><div class="ex"><code>doas iw dev wlan0 scan | grep SSID</code><span>the networks in range</span></div><div class="ex"><code>iw dev wlan0 link</code><span>connected to what, signal, speed</span></div><div class="ex"><code>iw dev wlan0 station dump</code><span>the access point's statistics</span></div><div class="ex"><code>iw reg get</code><span>the regulatory country in force</span></div><div class="ex"><code>doas iw reg set GB</code><span>set it (use your own country)</span></div><div class="ex"><code>iw list | less</code><span>everything the chip can do</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>dev</code></dt><dd>list wireless interfaces</dd><dt><code>dev IF scan</code></dt><dd>scan for networks (root)</dd><dt><code>dev IF link</code></dt><dd>the current connection</dd><dt><code>dev IF station dump</code></dt><dd>per-station statistics</dd><dt><code>reg get / reg set CC</code></dt><dd>read or set the regulatory country</dd><dt><code>list</code></dt><dd>the hardware's capabilities</dd><dt><code>phy</code></dt><dd>the radios, as distinct from interfaces</dd></dl>
+<h4>Notes</h4><ul><li>A scan needs root: without it, "Operation not permitted (-1)". "Device or resource busy (-16)" means the interface is down -- <code>doas ip link set wlan0 up</code> -- or blocked: <code>rfkill list</code>, then <code>doas rfkill unblock wifi</code>.</li><li>5 GHz networks missing from a scan often means no country is set: the radio then allows only what is legal everywhere.</li><li><code>iw dev wlan0 connect</code> joins open networks only. For WPA, which is nearly every network, use <code>wpa_supplicant</code> -- <code>setup-interfaces</code> or <a href="#c-wpa_cli"><code>wpa_cli</code></a>.</li><li>The Pi Zero (the first one) has no wifi at all; the Zero W and Zero 2 W do.</li></ul>
+<p class="see">See also <a href="#c-wpa_cli"><code>wpa_cli</code></a>, <a href="#c-wpa_passphrase"><code>wpa_passphrase</code></a>, <a href="#c-ip"><code>ip</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ssh" data-s="ssh openbsd's ssh client network openssh-client-default">
-<h3><a class="self" href="#c-ssh"><code>ssh</code></a> <span class="purpose">OpenBSD's SSH client</span></h3>
-<p class="facts">Network · <b>openssh-client-default</b> 10.3_p1 · stage 1 · Apply the setup-alpine answers · <a href="https://www.openssh.com/portable.html">home</a></p>
+<article class="cmd" id="c-ssh" data-s="ssh log in to another machine, or run one command on it, over an encrypted connection. network openssh-client-default">
+<h3><a class="self" href="#c-ssh"><code>ssh</code></a> <span class="purpose">Log in to another machine, or run one command on it, over an encrypted connection.</span></h3>
+<p class="facts">Network · <b>openssh-client-default</b> 10.3_p1 · stage 1 · Apply the setup-alpine answers · <a href="man/ssh.html">man ssh(1)</a> · <a href="https://www.openssh.com/portable.html">home</a></p>
 <p class="deps">needs openssh-keygen, openssh-client-common, !openssh-client-krb5, libcrypto3, zlib</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> How a Copal machine is reached from the Mac, and how it reaches GitHub and the others. Stage 1 turns on sshd; stage 6 authorises the Mac's key, so the first login needs no password.</p>
+<pre class="syn">ssh [-46AaCfGgKkMNnqsTtVvXxYy] [-B bind_interface] [-b bind_address] [-c cipher_spec]
+    [-D [bind_address:]port] [-E log_file] [-e escape_char] [-F configfile] [-I pkcs11]
+    [-i identity_file] [-J destination] [-L address] [-l login_name] [-m mac_spec] [-O ctl_cmd]
+    [-o option] [-P tag] [-p port] [-R address] [-S ctl_path] [-W host:port]
+    [-w local_tun[:remote_tun]] destination [command [argument ...]]
+ssh [-Q query_option]</pre>
+<h4>Use</h4><p><code>ssh user@host</code> opens a shell there; <code>ssh host command</code> runs one command and returns. The same connection carries files (<code>scp</code>, <a href="#c-rsync"><code>rsync</code></a>, <a href="#c-sshfs"><code>sshfs</code></a>) and ports (<code>-L</code>). A key instead of a password is set up once, with <a href="#c-ssh-keygen"><code>ssh-keygen</code></a> and <code>ssh-copy-id</code>.</p>
+<h4>Examples</h4><div class="ex"><code>ssh you@192.168.1.20</code><span>a shell on another machine</span></div><div class="ex"><code>ssh pi 'df -h /'</code><span>one command, then back</span></div><div class="ex"><code>ssh -p 2222 you@example.org</code><span>sshd on another port</span></div><div class="ex"><code>ssh -L 8080:localhost:80 pi</code><span>the Pi's port 80 as localhost:8080 here</span></div><div class="ex"><code>ssh -J gateway you@inside</code><span>through a machine in between</span></div><div class="ex"><code>ssh-copy-id you@192.168.1.20</code><span>install your key there, once</span></div><div class="ex"><code>ssh -v pi</code><span>say why a connection fails</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-p PORT</code></dt><dd>connect to this port</dd><dt><code>-i FILE</code></dt><dd>use this private key</dd><dt><code>-L L:HOST:R</code></dt><dd>forward local port L to HOST:R, from the far side</dd><dt><code>-R R:HOST:L</code></dt><dd>the reverse: a port there comes back here</dd><dt><code>-J HOST</code></dt><dd>jump through HOST first</dd><dt><code>-N</code></dt><dd>no command: just hold the forwards open</dd><dt><code>-t</code></dt><dd>force a terminal, for an interactive program: ssh -t pi htop</dd><dt><code>-o KEY=VALUE</code></dt><dd>any config option, for once</dd><dt><code>-v</code></dt><dd>debug output; -vvv for more</dd></dl>
+<h4>Notes</h4><ul><li><code>~/.ssh/config</code> saves typing: a <code>Host pi</code> block with <code>HostName</code>, <code>User</code> and <code>Port</code> makes <code>ssh pi</code> enough, and scp, rsync and git use it too.</li><li>"REMOTE HOST IDENTIFICATION HAS CHANGED" after reinstalling a card is expected: the new system made new host keys. Remove the old one with <code>ssh-keygen -R HOST</code>, then connect again. Anywhere else, stop and ask why.</li><li>A frozen session (the far side went away) does not answer Ctrl-C. Type Enter, then <code>~.</code> -- ssh's escape -- and it closes.</li><li>Password refused although it is right? Copal can turn password logins off: <code>copal-ssh status</code> says what is in force on the machine you are connecting to.</li></ul>
+<p class="see">See also <a href="#c-ssh-keygen"><code>ssh-keygen</code></a>, <a href="#c-rsync"><code>rsync</code></a>, <a href="#c-tmux"><code>tmux</code></a>, <a href="#c-curl"><code>curl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ssh-keygen" data-s="ssh-keygen ssh helper program for generating keys network openssh-keygen">
-<h3><a class="self" href="#c-ssh-keygen"><code>ssh-keygen</code></a> <span class="purpose">ssh helper program for generating keys</span></h3>
-<p class="facts">Network · <b>openssh-keygen</b> 10.3_p1 · stage 1 · Apply the setup-alpine answers · <a href="https://www.openssh.com/portable.html">home</a></p>
+<article class="cmd" id="c-ssh-keygen" data-s="ssh-keygen make ssh keys, and inspect, fix or forget them. network openssh-keygen">
+<h3><a class="self" href="#c-ssh-keygen"><code>ssh-keygen</code></a> <span class="purpose">Make SSH keys, and inspect, fix or forget them.</span></h3>
+<p class="facts">Network · <b>openssh-keygen</b> 10.3_p1 · stage 1 · Apply the setup-alpine answers · <a href="man/ssh-keygen.html">man ssh-keygen(1)</a> · <a href="https://www.openssh.com/portable.html">home</a></p>
 <p class="deps">needs libcrypto3</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> A key is what lets this machine push to GitHub and log in to the others without a password. Stage 7 tells you to make one when a checkout falls back to HTTPS; stage 16's fleet reads its host certificates with it.</p>
+<pre class="syn">ssh-keygen [-q] [-a rounds] [-b bits] [-C comment] [-f output_keyfile] [-m format]
+           [-N new_passphrase] [-O option] [-t ecdsa | ecdsa-sk | ed25519 | ed25519-sk | rsa]
+           [-w provider] [-Z cipher]
+ssh-keygen -p [-a rounds] [-f keyfile] [-m format] [-N new_passphrase] [-P old_passphrase]
+           [-Z cipher]
+ssh-keygen -i [-f input_keyfile] [-m key_format]
+ssh-keygen -e [-f input_keyfile] [-m key_format]
+ssh-keygen -y [-f input_keyfile]
+ssh-keygen -c [-a rounds] [-C comment] [-f keyfile] [-P passphrase]
+ssh-keygen -l [-v] [-E fingerprint_hash] [-f input_keyfile]
+ssh-keygen -B [-f input_keyfile]
+ssh-keygen -D pkcs11
+ssh-keygen -F hostname [-lv] [-f known_hosts_file]
+ssh-keygen -H [-f known_hosts_file]
+...</pre>
+<h4>Use</h4><p>Make a key pair: a private half that stays in <code>~/.ssh</code> and a <code>.pub</code> half you give away. Beyond that it answers questions about keys -- fingerprints, certificates -- and removes stale hosts from <code>known_hosts</code>.</p>
+<h4>Examples</h4><div class="ex"><code>ssh-keygen -t ed25519 -C "$(hostname)"</code><span>a new key (Enter for the defaults)</span></div><div class="ex"><code>cat ~/.ssh/id_ed25519.pub</code><span>the half to paste into GitHub</span></div><div class="ex"><code>ssh-keygen -l -f ~/.ssh/id_ed25519.pub</code><span>its fingerprint</span></div><div class="ex"><code>ssh-keygen -R 192.168.1.20</code><span>forget a host whose key changed</span></div><div class="ex"><code>ssh-keygen -p -f ~/.ssh/id_ed25519</code><span>add or change the passphrase</span></div><div class="ex"><code>ssh-keygen -y -f ~/.ssh/id_ed25519</code><span>rebuild a lost .pub from the private key</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-t TYPE</code></dt><dd>the key type: ed25519 (use this), rsa, ecdsa</dd><dt><code>-C COMMENT</code></dt><dd>a label stored in the key: who and where</dd><dt><code>-f FILE</code></dt><dd>the key file to make or read</dd><dt><code>-N PHRASE</code></dt><dd>the passphrase, given on the command line ('' for none)</dd><dt><code>-l</code></dt><dd>show a key's fingerprint</dd><dt><code>-R HOST</code></dt><dd>remove HOST from known_hosts</dd><dt><code>-F HOST</code></dt><dd>find HOST in known_hosts</dd><dt><code>-p</code></dt><dd>change a key's passphrase</dd><dt><code>-y</code></dt><dd>print the public key of a private one</dd><dt><code>-L</code></dt><dd>show a certificate's contents</dd></dl>
+<h4>Notes</h4><ul><li>The private file (<code>id_ed25519</code>, no <code>.pub</code>) never leaves the machine. If it is ever pasted anywhere, make a new pair.</li><li>ssh refuses a private key others can read: "UNPROTECTED PRIVATE KEY FILE". <code>chmod 600 ~/.ssh/id_ed25519</code> and <code>chmod 700 ~/.ssh</code>.</li><li>Use ed25519: short, fast, and accepted everywhere Copal connects to. Only very old servers need <code>-t rsa -b 4096</code>.</li><li>Running it again over an existing key asks before overwriting -- say no unless you mean to replace the key everywhere it is installed.</li></ul>
+<p class="see">See also <a href="#c-ssh"><code>ssh</code></a>, <a href="#c-git"><code>git</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-wpa_cli" data-s="wpa_cli utility providing key negotiation for wpa wireless networks network wpa_supplicant">
-<h3><a class="self" href="#c-wpa_cli"><code>wpa_cli</code></a> <span class="purpose">utility providing key negotiation for WPA wireless networks</span></h3>
-<p class="facts">Network · <b>wpa_supplicant</b> 2.11 · stage 10 · Wireless, audio, capture and disks · <a href="https://w1.fi/wpa_supplicant/">home</a></p>
+<article class="cmd" id="c-wpa_cli" data-s="wpa_cli talk to the running wpa_supplicant: scan, add a network, see the state. network wpa_supplicant">
+<h3><a class="self" href="#c-wpa_cli"><code>wpa_cli</code></a> <span class="purpose">Talk to the running wpa_supplicant: scan, add a network, see the state.</span></h3>
+<p class="facts">Network · <b>wpa_supplicant</b> 2.11 · stage 10 · Wireless, audio, capture and disks · <a href="man/wpa_cli.html">man wpa_cli(8)</a> · <a href="https://w1.fi/wpa_supplicant/">home</a></p>
 <p class="deps">needs libcrypto3, dbus-libs, libnl3, pcsc-lite-libs, libssl3</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Copal's wifi is wpa_supplicant (stage 10), not NetworkManager, so there is no nmcli. wpa_cli is how to join a new network or see why one will not connect, without editing files and restarting.</p>
+<pre class="syn">wpa_cli [ -p path to ctrl sockets ] [ -g path to global ctrl_interface socket ] [ -i ifname ]
+[ -hvB ] [ -a action file ] [ -P pid file ] [ -G ping interval ] [ command ... ]</pre>
+<h4>Use</h4><p>With a command, run it and return; with none, an interactive prompt where the same commands work, with tab completion and live events. Add a network, set its name and password, enable it, and save.</p>
+<h4>Examples</h4><div class="ex"><code>wpa_cli -i wlan0 status</code><span>connected? to what, with which address</span></div><div class="ex"><code>wpa_cli -i wlan0 scan</code><span>start a scan...</span></div><div class="ex"><code>wpa_cli -i wlan0 scan_results</code><span>...and read it</span></div><div class="ex"><code>wpa_cli -i wlan0 list_networks</code><span>the networks it knows</span></div><div class="ex"><code>wpa_cli -i wlan0 add_network</code><span>a new one: prints its number, say 1</span></div><div class="ex"><code>wpa_cli -i wlan0 set_network 1 ssid '"Home WiFi"'</code></div><div class="ex"><code>wpa_cli -i wlan0 set_network 1 psk '"the password"'</code></div><div class="ex"><code>wpa_cli -i wlan0 enable_network 1</code><span>try it</span></div><div class="ex"><code>wpa_cli -i wlan0 save_config</code><span>keep it across reboots</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-i IF</code></dt><dd>the interface, wlan0</dd><dt><code>-p DIR</code></dt><dd>where the control sockets are (/run/wpa_supplicant)</dd><dt><code>status</code></dt><dd>state, SSID, address</dd><dt><code>scan, scan_results</code></dt><dd>scan, then list what was found</dd><dt><code>list_networks</code></dt><dd>the configured networks and their numbers</dd><dt><code>add_network</code></dt><dd>a new empty network; prints its number</dd><dt><code>set_network N KEY VALUE</code></dt><dd>ssid, psk, key_mgmt, priority...</dd><dt><code>enable_network N</code></dt><dd>allow it; select_network N uses only it</dd><dt><code>remove_network N</code></dt><dd>forget it</dd><dt><code>save_config</code></dt><dd>write the configuration file</dd><dt><code>reconfigure</code></dt><dd>re-read the configuration file</dd></dl>
+<h4>Notes</h4><ul><li>"Failed to connect to non-global ctrl_ifname": wpa_supplicant has no control socket. The file <code>setup-interfaces</code> writes has no <code>ctrl_interface</code> line; add <code>ctrl_interface=DIR=/run/wpa_supplicant GROUP=wheel</code> and <code>update_config=1</code> at the top of <code>/etc/wpa_supplicant/wpa_supplicant.conf</code>, then <code>doas rc-service wpa_supplicant restart</code>.</li><li>The quotes are both needed: <code>'"Home WiFi"'</code>. The outer pair is for the shell; the inner pair tells wpa_supplicant it is text, not hex.</li><li><code>save_config</code> fails without <code>update_config=1</code> in the file, and the network is forgotten at the next restart.</li><li>The password typed into <code>set_network</code> lands in the shell's history. <a href="#c-wpa_passphrase"><code>wpa_passphrase</code></a> avoids that.</li></ul>
+<p class="see">See also <a href="#c-wpa_passphrase"><code>wpa_passphrase</code></a>, <a href="#c-iw"><code>iw</code></a>, <a href="#c-ip"><code>ip</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-wpa_passphrase" data-s="wpa_passphrase utility providing key negotiation for wpa wireless networks network wpa_supplicant">
-<h3><a class="self" href="#c-wpa_passphrase"><code>wpa_passphrase</code></a> <span class="purpose">utility providing key negotiation for WPA wireless networks</span></h3>
-<p class="facts">Network · <b>wpa_supplicant</b> 2.11 · stage 10 · Wireless, audio, capture and disks · <a href="https://w1.fi/wpa_supplicant/">home</a></p>
+<article class="cmd" id="c-wpa_passphrase" data-s="wpa_passphrase turn a wifi name and password into a network block for wpa_supplicant. network wpa_supplicant">
+<h3><a class="self" href="#c-wpa_passphrase"><code>wpa_passphrase</code></a> <span class="purpose">Turn a wifi name and password into a network block for wpa_supplicant.</span></h3>
+<p class="facts">Network · <b>wpa_supplicant</b> 2.11 · stage 10 · Wireless, audio, capture and disks · <a href="man/wpa_passphrase.html">man wpa_passphrase(8)</a> · <a href="https://w1.fi/wpa_supplicant/">home</a></p>
 <p class="deps">needs libcrypto3, dbus-libs, libnl3, pcsc-lite-libs, libssl3</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Alpine's own setup-interfaces uses it to write Copal's wifi configuration, and it is the quick way to add a second network by hand without leaving the password in the file as plain text.</p>
+<pre class="syn">wpa_passphrase [ ssid ] [ passphrase ]</pre>
+<h4>Use</h4><p>Give it the network's name; type the password when it asks. It prints a <code>network={...}</code> block with the password hashed into a 64-digit <code>psk</code>, ready to add to <code>/etc/wpa_supplicant/wpa_supplicant.conf</code>.</p>
+<h4>Examples</h4><div class="ex"><code>wpa_passphrase "Home WiFi"</code><span>type the password; prints the block</span></div><div class="ex"><code>wpa_passphrase "Home WiFi" | doas tee -a /etc/wpa_supplicant/wpa_supplicant.conf</code></div><div class="ex"><code>doas rc-service wpa_supplicant restart</code><span>use the new network</span></div><div class="ex"><code>wpa_passphrase "Home WiFi" 'the password'</code><span>password as an argument (see Notes)</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>SSID</code></dt><dd>the network's name; quote it if it has spaces</dd><dt><code>PASSPHRASE</code></dt><dd>the password, 8 to 63 characters; omit it to be asked</dd></dl>
+<h4>Notes</h4><ul><li>The block it prints includes the password in clear, as a comment (<code>#psk="..."</code>). Delete that line from the file -- setup-interfaces does the same.</li><li>A password on the command line is saved in the shell's history. Leave it off and type it at the prompt instead; piping it in does not work ("Not a tty").</li><li>The hash depends on the name: rename the network and the <code>psk</code> must be made again.</li><li>Open networks and WPA3-only networks need a block written by hand (<code>key_mgmt=NONE</code>, or <code>key_mgmt=SAE</code> with <code>sae_password</code>).</li></ul>
+<p class="see">See also <a href="#c-wpa_cli"><code>wpa_cli</code></a>, <a href="#c-iw"><code>iw</code></a>, <a href="#c-setup-alpine"><code>setup-alpine</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-news"><h2>News</h2>
@@ -1672,12 +1779,17 @@ Commands:
 <h4>Notes</h4><ul><li><code>world</code> is the truth. A package installed as a dependency is removed when nothing in world needs it any more; to keep it, <code>apk add</code> it by name.</li><li><code>@testing</code> names a repository tag: <code>apk add foo@testing</code> works only when <code>/etc/apk/repositories</code> has a line beginning <code>@testing</code>. Copal adds it the first time a catalogue row asks. One untagged testing name in a list makes apk refuse the whole list.</li><li><code>-t</code> groups build dependencies: <code>apk add -t .build gcc make</code>, then <code>apk del .build</code> takes them all away. Copal Apps does exactly this with <code>.copal-store-build-*</code>.</li><li>On a diskless system (before stage 3) a change survives a reboot only after <code>lbu commit</code>; Copal's installed system is not diskless.</li></ul>
 <p class="see">See also <a href="#c-doas"><code>doas</code></a>, <a href="#c-flatpak"><code>flatpak</code></a>, <a href="#c-lbu"><code>lbu</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-flatpak" data-s="flatpak build, install and run applications and runtimes packages flatpak">
-<h3><a class="self" href="#c-flatpak"><code>flatpak</code></a> <span class="purpose">Build, install and run applications and runtimes</span></h3>
+<article class="cmd" id="c-flatpak" data-s="flatpak install and run desktop applications from flathub, in their own runtime. packages flatpak">
+<h3><a class="self" href="#c-flatpak"><code>flatpak</code></a> <span class="purpose">Install and run desktop applications from Flathub, in their own runtime.</span></h3>
 <p class="facts">Packages · <b>flatpak</b> 1.16.6 · stage 4 · X.Org, i3, a terminal and a browser · <a href="man/flatpak.html">man flatpak(1)</a> · <a href="https://flatpak.org/">home</a></p>
 <p class="deps">needs bubblewrap, desktop-file-utils, fuse3, gtk-update-icon-cache, shared-mime-info, xdg-dbus-proxy, libxau, appstream</p>
+<p class="why"><b>On Copal:</b> For the few programs Alpine does not package -- a browser like Brave. Copal Apps installs a row marked @flathub through it, and says the cost first: a Flatpak brings its own glibc runtime, about 500 MB, beside the musl system.</p>
 <pre class="syn">flatpak [OPTION...] {COMMAND}</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Search Flathub, install an application by its ID, run it. Copal's installation is system-wide (<code>/var/lib/flatpak</code>), so installing and updating need <a href="#c-doas"><code>doas</code></a>; running does not.</p>
+<h4>Examples</h4><div class="ex"><code>flatpak search brave</code><span>find an app's ID</span></div><div class="ex"><code>doas flatpak install flathub com.brave.Browser</code><span>install it</span></div><div class="ex"><code>flatpak run com.brave.Browser</code><span>run it (the menus do this for you)</span></div><div class="ex"><code>flatpak list --app</code><span>installed applications</span></div><div class="ex"><code>doas flatpak update</code><span>update apps and runtimes</span></div><div class="ex"><code>doas flatpak uninstall --unused</code><span>remove runtimes nothing uses</span></div><div class="ex"><code>flatpak override --user --filesystem=~/Music com.example.App</code><span>let it see a folder</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>install REMOTE ID</code></dt><dd>install an application (and its runtime)</dd><dt><code>uninstall ID</code></dt><dd>remove it; --unused for orphaned runtimes, --delete-data for its files</dd><dt><code>update</code></dt><dd>update everything installed</dd><dt><code>list --app</code></dt><dd>applications only; --runtime for runtimes</dd><dt><code>run ID</code></dt><dd>start an application</dd><dt><code>remotes</code></dt><dd>the configured repositories (Copal adds flathub)</dd><dt><code>override</code></dt><dd>change an app's permissions; --show to see them</dd><dt><code>-y, --assumeyes</code></dt><dd>answer yes to every question</dd></dl>
+<h4>Notes</h4><ul><li>Space is the cost. The first app brings a runtime of about 500 MB; apps that share it cost only themselves. <code>flatpak list --runtime</code> shows what is installed, <code>uninstall --unused</code> clears what is left over.</li><li>Flathub builds for 64-bit ARM and x86 only: on a 32-bit Pi there is nothing to install.</li><li>An app sees only what its permissions allow. A file dialog that cannot find your folder is the sandbox: <code>flatpak override</code> widens it.</li><li>Prefer the apk when there is one. It is smaller, updates with the system, and is built for musl.</li></ul>
+<p class="see">See also <a href="#c-apk"><code>apk</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-programming"><h2>Programming</h2>
@@ -1906,13 +2018,16 @@ filecount ]
 <p class="deps">needs tshark</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-tshark" data-s="tshark network protocol analyzer (console version) security tshark">
-<h3><a class="self" href="#c-tshark"><code>tshark</code></a> <span class="purpose">Network protocol analyzer (Console version)</span></h3>
-<p class="facts">Security · command-line tool · <b>tshark</b> 4.6.6 · stage 10 · Wireless, audio, capture and disks · <a href="https://www.wireshark.org/">home</a></p>
+<article class="cmd facts-only" id="c-tshark" data-s="tshark dump and analyze network traffic security tshark">
+<h3><a class="self" href="#c-tshark"><code>tshark</code></a> <span class="purpose">Dump and analyze network traffic</span></h3>
+<p class="facts">Security · command-line tool · <b>tshark</b> 4.6.6 · stage 10 · Wireless, audio, capture and disks · <a href="man/tshark.html">man tshark(1)</a> · <a href="https://www.wireshark.org/">home</a></p>
 <p class="deps">needs glib, libnl3, libpcap, wireshark-common</p>
-<pre class="syn">Usage: tshark [options] ...
-Capture interface:
-  -i &lt;interface&gt;, --interface &lt;interface&gt;</pre>
+<pre class="syn">tshark [ -i &lt;capture interface&gt;|- ] [ -f &lt;capture filter&gt; ] [ -2 ] [ -r &lt;infile&gt; ]
+[ -w &lt;outfile&gt;|- ] [ options ] [ &lt;filter&gt; ]
+
+tshark -h|--help
+
+tshark -v|--version</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
 <article class="cmd facts-only" id="c-ufw" data-s="ufw program for managing a netfilter firewall security ufw">
@@ -1923,17 +2038,23 @@ Capture interface:
 </article>
 </section>
 <section class="sec" id="s-services"><h2>Services</h2>
-<article class="cmd facts-only" id="c-openrc" data-s="openrc stops and starts services for the specified runlevel services openrc">
-<h3><a class="self" href="#c-openrc"><code>openrc</code></a> <span class="purpose">stops and starts services for the specified runlevel</span></h3>
+<article class="cmd" id="c-openrc" data-s="openrc alpine's init system: starts and stops services by runlevel. services openrc">
+<h3><a class="self" href="#c-openrc"><code>openrc</code></a> <span class="purpose">Alpine's init system: starts and stops services by runlevel.</span></h3>
 <p class="facts">Services · <b>openrc</b> 0.63.2 · Alpine's base system · <a href="man/openrc.html">man openrc(8)</a> · <a href="https://github.com/OpenRC/openrc">home</a></p>
 <p class="deps">needs ifupdown-any, openrc-user, libcap2</p>
+<p class="why"><b>On Copal:</b> Every service on a Copal machine -- sshd, chronyd, bluetooth, seatd, acpid -- is an OpenRC script in /etc/init.d, and every stage that enables one does it with rc-update. There is no systemd here.</p>
 <pre class="syn">openrc [-n, --no-stop] [-o, --override] [runlevel]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Switch the machine to a runlevel: OpenRC starts what that runlevel lists and stops what it does not. At boot it runs sysinit, then boot, then default; you rarely call <a href="#c-openrc"><code>openrc</code></a> by hand. The day-to-day commands are <a href="#c-rc-service"><code>rc-service</code></a> (start and stop one), <a href="#c-rc-update"><code>rc-update</code></a> (what starts at boot) and <a href="#c-rc-status"><code>rc-status</code></a> (what is running).</p>
+<h4>Examples</h4><div class="ex"><code>rc-status</code><span>the current runlevel and its services</span></div><div class="ex"><code>doas openrc default</code><span>bring the default runlevel back up</span></div><div class="ex"><code>doas openrc nonetwork</code><span>drop to the runlevel without networking</span></div><div class="ex"><code>ls /etc/init.d</code><span>every service this machine could run</span></div><div class="ex"><code>ls /etc/local.d</code><span>Copal's boot-time scripts (*.start)</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>RUNLEVEL</code></dt><dd>switch to it: sysinit, boot, default, nonetwork, shutdown</dd><dt><code>-n, --no-stop</code></dt><dd>start the runlevel's services, stop none of the others</dd><dt><code>-S, --sys</code></dt><dd>the kind of system OpenRC thinks it is on (VM, container...)</dd><dt><code>-v, --verbose</code></dt><dd>say what it does</dd></dl>
+<h4>Notes</h4><ul><li>The systemd answers online do not apply: no <code>systemctl</code>, no <code>journalctl</code>, no unit files. <code>systemctl restart sshd</code> is <code>rc-service sshd restart</code>; <code>systemctl enable sshd</code> is <code>rc-update add sshd</code>; the journal is <code>/var/log/messages</code>.</li><li>A runlevel is a directory, <code>/etc/runlevels/NAME</code>, of links to <code>/etc/init.d</code> scripts. <a href="#c-rc-update"><code>rc-update</code></a> edits those links; editing them by hand works too.</li><li><code>/etc/local.d/*.start</code> run at the end of boot, through the <code>local</code> service -- Copal's zram swap is started from there (stage 5). A script is run only if it is executable.</li><li><code>/etc/rc.conf</code> holds the global settings. Two worth knowing, both off: <code>rc_parallel</code>, and <code>rc_logger</code>, which when on writes the whole boot to <code>/var/log/rc.log</code> -- the thing to turn on when a boot goes wrong too fast to read.</li></ul>
+<p class="see">See also <a href="#c-rc-service"><code>rc-service</code></a>, <a href="#c-rc-update"><code>rc-update</code></a>, <a href="#c-rc-status"><code>rc-status</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-rc-service" data-s="rc-service locate and run an openrc service with the given arguments services openrc">
-<h3><a class="self" href="#c-rc-service"><code>rc-service</code></a> <span class="purpose">locate and run an OpenRC service with the given arguments</span></h3>
+<article class="cmd" id="c-rc-service" data-s="rc-service start, stop, restart or ask about one openrc service. services openrc">
+<h3><a class="self" href="#c-rc-service"><code>rc-service</code></a> <span class="purpose">Start, stop, restart or ask about one OpenRC service.</span></h3>
 <p class="facts">Services · <b>openrc</b> 0.63.2 · Alpine's base system · <a href="man/rc-service.html">man rc-service(8)</a> · <a href="https://github.com/OpenRC/openrc">home</a></p>
 <p class="deps">needs ifupdown-any, openrc-user, libcap2</p>
+<p class="why"><b>On Copal:</b> The command every stage uses to bring a service up once it is installed, and the one to reach for when a service needs a kick: sshd after an edit to its config, bluetooth after a pairing sulks.</p>
 <pre class="syn">rc-service [-c, --ifcrashed] service cmd [...]
 rc-service -d, --debug service cmd [...]
 rc-service -D, --nodeps service cmd [...]
@@ -1946,25 +2067,39 @@ rc-service -e, --exists service
 rc-service -Z, --dry-run service cmd [...]
 rc-service -l, --list
 rc-service -r, --resolve service</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run a service's script with a verb: <code>start</code>, <code>stop</code>, <code>restart</code>, <code>status</code>, and whatever else that script offers. It finds the script (in <code>/etc/init.d</code> or <code>/usr/local/etc/init.d</code>) and resolves the services it needs first. <code>service</code> is the same command under its old name.</p>
+<h4>Examples</h4><div class="ex"><code>rc-service sshd status</code><span>running or not</span></div><div class="ex"><code>doas rc-service sshd restart</code><span>after editing /etc/ssh/sshd_config</span></div><div class="ex"><code>doas rc-service bluetooth start</code><span>start one now (not at boot)</span></div><div class="ex"><code>rc-service -l</code><span>every service there is</span></div><div class="ex"><code>doas rc-service -s chronyd restart</code><span>restart only if it is running</span></div><div class="ex"><code>doas rc-service syncthing zap</code><span>forget a state that is wrong</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>start, stop, restart</code></dt><dd>the usual verbs; status says started, stopped or crashed</dd><dt><code>zap</code></dt><dd>reset the recorded state to stopped, running nothing</dd><dt><code>-l, --list</code></dt><dd>list every service</dd><dt><code>-e, --exists NAME</code></dt><dd>exit 0 if the service exists</dd><dt><code>-i, --ifexists</code></dt><dd>run the verb only if the service exists</dd><dt><code>-s, --ifstarted</code></dt><dd>run the verb only if it is started</dd><dt><code>-S, --ifstopped</code></dt><dd>run the verb only if it is stopped</dd><dt><code>-D, --nodeps</code></dt><dd>ignore its dependencies</dd><dt><code>-d, --debug</code></dt><dd>trace the script as it runs (set -x)</dd></dl>
+<h4>Notes</h4><ul><li>Starting a service does not make it start at boot. That is <code>rc-update add NAME</code>; the two are separate on purpose.</li><li>"already starting" or a service shown as started that plainly is not: its recorded state is out of step with reality. <code>rc-service NAME zap</code> resets it, then <code>start</code> again.</li><li><code>status</code> needs no root; anything that changes a service does.</li><li>Stopping a service also stops the services that need it -- stopping <code>dbus</code> takes bluetooth down with it. OpenRC says so as it does it.</li></ul>
+<p class="see">See also <a href="#c-rc-update"><code>rc-update</code></a>, <a href="#c-rc-status"><code>rc-status</code></a>, <a href="#c-openrc"><code>openrc</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-rc-status" data-s="rc-status show status info about runlevels services openrc">
-<h3><a class="self" href="#c-rc-status"><code>rc-status</code></a> <span class="purpose">show status info about runlevels</span></h3>
+<article class="cmd" id="c-rc-status" data-s="rc-status show which services are running, runlevel by runlevel. services openrc">
+<h3><a class="self" href="#c-rc-status"><code>rc-status</code></a> <span class="purpose">Show which services are running, runlevel by runlevel.</span></h3>
 <p class="facts">Services · <b>openrc</b> 0.63.2 · Alpine's base system · <a href="man/rc-status.html">man rc-status(8)</a> · <a href="https://github.com/OpenRC/openrc">home</a></p>
 <p class="deps">needs ifupdown-any, openrc-user, libcap2</p>
+<p class="why"><b>On Copal:</b> The first question after a boot that went wrong, or a desktop piece that is missing: is its service started, stopped or crashed. No root needed.</p>
 <pre class="syn">rc-status [-C] [-f ini] [-i state] [runlevel]
 rc-status [-C] [-f ini] [-a | -m | -S | -s | -u]
 rc-status [-C] [-c | -l | -r]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>List the current runlevel's services and their state. With <code>-a</code> it shows every runlevel; with <code>-c</code> only what has crashed, which after a bad boot is usually the short list you want.</p>
+<h4>Examples</h4><div class="ex"><code>rc-status</code><span>the current runlevel</span></div><div class="ex"><code>rc-status -a</code><span>every runlevel</span></div><div class="ex"><code>rc-status -c</code><span>only crashed services</span></div><div class="ex"><code>rc-status -m</code><span>started by hand, in no runlevel</span></div><div class="ex"><code>rc-status -u</code><span>installed but in no runlevel</span></div><div class="ex"><code>rc-status -r</code><span>the name of the current runlevel</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-a, --all</code></dt><dd>services in every runlevel</dd><dt><code>-c, --crashed</code></dt><dd>only crashed services</dd><dt><code>-m, --manual</code></dt><dd>services started by hand, not by a runlevel</dd><dt><code>-u, --unused</code></dt><dd>services in no runlevel</dd><dt><code>-s, --servicelist</code></dt><dd>every service and its state, as one list</dd><dt><code>-r, --runlevel</code></dt><dd>print the current runlevel's name</dd><dt><code>-f ini</code></dt><dd>output a script can parse</dd></dl>
+<h4>Notes</h4><ul><li>"crashed" means OpenRC started it and its process has gone. The cause is in <code>/var/log/messages</code> or the service's own log, not here; restart it with <code>rc-service NAME restart</code>.</li><li>A service missing from the list is in no runlevel -- <code>rc-status -u</code> to find it, <code>rc-update add</code> to put it in one.</li></ul>
+<p class="see">See also <a href="#c-rc-service"><code>rc-service</code></a>, <a href="#c-rc-update"><code>rc-update</code></a>, <a href="#c-openrc"><code>openrc</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-rc-update" data-s="rc-update add and remove services to and from a runlevel services openrc">
-<h3><a class="self" href="#c-rc-update"><code>rc-update</code></a> <span class="purpose">add and remove services to and from a runlevel</span></h3>
+<article class="cmd" id="c-rc-update" data-s="rc-update choose which services start at boot, and in which runlevel. services openrc">
+<h3><a class="self" href="#c-rc-update"><code>rc-update</code></a> <span class="purpose">Choose which services start at boot, and in which runlevel.</span></h3>
 <p class="facts">Services · <b>openrc</b> 0.63.2 · Alpine's base system · <a href="man/rc-update.html">man rc-update(8)</a> · <a href="https://github.com/OpenRC/openrc">home</a></p>
 <p class="deps">needs ifupdown-any, openrc-user, libcap2</p>
+<p class="why"><b>On Copal:</b> How every stage enables what it installs -- sshd and chronyd in stage 1, acpid, bluetooth, seatd and the rest later. Undoing one of those choices is rc-update del.</p>
 <pre class="syn">rc-update [-s, --stack] add service [runlevel ...]
 rc-update [-s, --stack] [-a, --all] delete service [runlevel ...]
 rc-update [-u, --update] [-v, --verbose] show [runlevel ...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Add a service to a runlevel, or take it out. Most services belong in <code>default</code>; a few that must run before the network or the desktop go in <code>boot</code>. <a href="#c-rc-update"><code>rc-update</code></a> with no arguments shows what starts where.</p>
+<h4>Examples</h4><div class="ex"><code>rc-update</code><span>every enabled service and its runlevel</span></div><div class="ex"><code>doas rc-update add syncthing default # start it at every boot from now on</code></div><div class="ex"><code>doas rc-update del bluetooth default # stop starting it at boot</code></div><div class="ex"><code>doas rc-update del -a oldthing</code><span>out of every runlevel, e.g. after removing it</span></div><div class="ex"><code>rc-update show -v</code><span>every service, enabled or not</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>add NAME [LEVEL]</code></dt><dd>enable in LEVEL; with no level, the current one (default)</dd><dt><code>del NAME [LEVEL]</code></dt><dd>disable in LEVEL; delete is the same word</dd><dt><code>show [LEVEL]</code></dt><dd>what is enabled, and where</dd><dt><code>-a, --all</code></dt><dd>with del: from every runlevel</dd><dt><code>-v, --verbose</code></dt><dd>with show: list the services in no runlevel too</dd><dt><code>-u, --update</code></dt><dd>rebuild the dependency cache (after clock skew)</dd></dl>
+<h4>Notes</h4><ul><li>Enabling does not start it now: <code>rc-update add X</code> and then <code>rc-service X start</code>, or wait for the next boot.</li><li>Removing a package can leave its service in a runlevel; OpenRC then complains at boot about a script that is not there. <code>rc-update del -a NAME</code> clears it.</li><li>"clock skew detected": a file in <code>/etc</code> is newer than the clock, which happens on a Pi with no real-time clock before chronyd has set the time. It passes once the time is right; <code>rc-update -u</code> forces the rebuild.</li></ul>
+<p class="see">See also <a href="#c-rc-service"><code>rc-service</code></a>, <a href="#c-rc-status"><code>rc-status</code></a>, <a href="#c-openrc"><code>openrc</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-sharing"><h2>Sharing</h2>
@@ -2117,10 +2252,15 @@ unison profilename [options]</pre>
 btop [--default-config | {-h | --help} | {-V | --version}]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-busybox" data-s="busybox the swiss army knife of embedded linux system busybox">
-<h3><a class="self" href="#c-busybox"><code>busybox</code></a> <span class="purpose">The Swiss Army Knife of Embedded Linux</span></h3>
+<article class="cmd" id="c-busybox" data-s="busybox one small program that is three hundred commands: sh, sed, awk, vi, wget... system busybox">
+<h3><a class="self" href="#c-busybox"><code>busybox</code></a> <span class="purpose">One small program that is three hundred commands: sh, sed, awk, vi, wget...</span></h3>
 <p class="facts">System · <b>busybox</b> 1.37.0 · Alpine's base system · <a href="man/busybox.html">man busybox(1)</a> · <a href="https://busybox.net/">home</a></p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Alpine's base system is BusyBox, and so is Copal's. The fuller levels pull in GNU coreutils, grep and tar beside it, but sed, awk, find, xargs, vi, wget, ping, nc, ip, blkid and the shell /bin/sh stay BusyBox's.</p>
+<h4>Use</h4><p>Mostly invisible: each applet is a link to <code>/bin/busybox</code>, and runs as whatever name it was called by. Call <a href="#c-busybox"><code>busybox</code></a> by name to see what it provides, to read an applet's help, or to run the BusyBox version of a command a fuller package has replaced.</p>
+<h4>Examples</h4><div class="ex"><code>busybox --list</code><span>every applet it provides</span></div><div class="ex"><code>ls -l $(command -v sed)</code><span>-&gt; /bin/busybox: sed is BusyBox here</span></div><div class="ex"><code>busybox sed --help</code><span>an applet's options, and only those</span></div><div class="ex"><code>busybox wget -O- https://example.com # the applet, even if GNU wget is in</code></div><div class="ex"><code>apk info -W $(command -v find)</code><span>BusyBox, or a real package?</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--list</code></dt><dd>the applets, one per line</dd><dt><code>APPLET --help</code></dt><dd>that applet's usage: the options it really has</dd></dl>
+<h4>Notes</h4><ul><li>The answers online are mostly for GNU. BusyBox applets take fewer options, and some take an option and ignore it: <code>blkid -s UUID -o value</code> prints the whole line and exits 0 -- it once put a device path where a UUID belonged in Copal's grub.cfg. Check with <code>busybox APPLET --help</code>.</li><li><code>/bin/sh</code> is BusyBox <code>ash</code>, not bash: no arrays, no <code>[[ ]]</code> in scripts that start <code>#!/bin/sh</code>. Your login shell may be bash; scripts are not.</li><li>There is one manual page for all of it -- <code>man busybox</code> -- and each applet's section in it is short. <code>--help</code> is usually quicker.</li><li>Installing the GNU package (<code>findutils</code>, <code>sed</code>, <code>gawk</code>...) replaces the link; <code>apk del</code> puts BusyBox's back.</li></ul>
+<p class="see">See also <a href="#c-ip"><code>ip</code></a>, <a href="#c-logread"><code>logread</code></a>, <a href="#c-apk"><code>apk</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-delta" data-s="delta syntax-highlighting pager for git and diff output system delta">
 <h3><a class="self" href="#c-delta"><code>delta</code></a> <span class="purpose">Syntax-highlighting pager for git and diff output</span></h3>
@@ -2131,11 +2271,27 @@ Arguments:
   [MINUS_FILE]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-dmesg" data-s="dmesg dmesg tool from util-linux system dmesg">
-<h3><a class="self" href="#c-dmesg"><code>dmesg</code></a> <span class="purpose">dmesg tool from util-linux</span></h3>
-<p class="facts">System · <b>dmesg</b> 2.42.3 · stage 5 · Compressed swap in RAM (zram) · <a href="https://git.kernel.org/cgit/utils/util-linux/util-linux.git">home</a></p>
+<article class="cmd" id="c-dmesg" data-s="dmesg read the kernel's message buffer: hardware, drivers, and what went wrong. system dmesg">
+<h3><a class="self" href="#c-dmesg"><code>dmesg</code></a> <span class="purpose">Read the kernel's message buffer: hardware, drivers, and what went wrong.</span></h3>
+<p class="facts">System · <b>dmesg</b> 2.42.3 · stage 5 · Compressed swap in RAM (zram) · <a href="man/dmesg.html">man dmesg(1)</a> · <a href="https://git.kernel.org/cgit/utils/util-linux/util-linux.git">home</a></p>
 <p class="deps">needs libncursesw</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The first place to look when a device does nothing -- a USB radio that never appears, a card reader, a wifi chip without firmware. Copal's syslog does not collect kernel messages; they are only here.</p>
+<pre class="syn">dmesg [options]
+
+dmesg --clear
+
+dmesg --read-clear [options]
+
+dmesg --console-level level
+
+dmesg --console-on
+
+dmesg --console-off</pre>
+<h4>Use</h4><p>Print what the kernel has said since boot, oldest first. Plug a device in, then look at the last lines: they say what it was recognised as, which driver took it, or why none did.</p>
+<h4>Examples</h4><div class="ex"><code>doas dmesg | tail -20</code><span>the latest, after plugging something in</span></div><div class="ex"><code>doas dmesg -T</code><span>with wall-clock times</span></div><div class="ex"><code>doas dmesg -w</code><span>follow: print new lines as they come</span></div><div class="ex"><code>doas dmesg -l err,warn</code><span>errors and warnings only</span></div><div class="ex"><code>doas dmesg | grep -i usb</code><span>everything about USB</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-T, --ctime</code></dt><dd>human-readable timestamps (off after a suspend)</dd><dt><code>-H, --human</code></dt><dd>readable and paged, with colour</dd><dt><code>-w, --follow</code></dt><dd>wait for new messages</dd><dt><code>-W, --follow-new</code></dt><dd>print only new ones</dd><dt><code>-l, --level LIST</code></dt><dd>only these levels: emerg, alert, crit, err, warn, notice, info, debug</dd><dt><code>-k, --kernel</code></dt><dd>only kernel messages</dd><dt><code>--since TIME</code></dt><dd>only lines after TIME</dd><dt><code>-C, --clear</code></dt><dd>empty the buffer</dd></dl>
+<h4>Notes</h4><ul><li>It needs root on Copal: <code>kernel.dmesg_restrict</code> is 1, so without <a href="#c-doas"><code>doas</code></a> it says "read kernel buffer failed: Operation not permitted".</li><li>The buffer is fixed-size: on a long-running machine the boot messages have been overwritten. Look soon after the event.</li><li>Silence is an answer too. A device that adds no line at all is not being seen -- a cable, power, or (in a VM) a device not passed through.</li></ul>
+<p class="see">See also <a href="#c-logread"><code>logread</code></a>, <a href="#c-lsblk"><code>lsblk</code></a>, <a href="#c-rc-status"><code>rc-status</code></a></p>
 </article>
 <article class="cmd" id="c-doas" data-s="doas run one command as root, or as another user. system doas">
 <h3><a class="self" href="#c-doas"><code>doas</code></a> <span class="purpose">Run one command as root, or as another user.</span></h3>
@@ -2175,25 +2331,40 @@ pcp-htop [-dCFhpustvH] [--host/-h host]</pre>
 <p class="deps">needs git</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-lbu" data-s="lbu manage local backups for diskless alpine linux systems system alpine-conf">
-<h3><a class="self" href="#c-lbu"><code>lbu</code></a> <span class="purpose">manage local backups for diskless Alpine Linux systems</span></h3>
+<article class="cmd" id="c-lbu" data-s="lbu save a ram-resident alpine system's changes to disk (the apkovl). system alpine-conf">
+<h3><a class="self" href="#c-lbu"><code>lbu</code></a> <span class="purpose">Save a RAM-resident Alpine system's changes to disk (the apkovl).</span></h3>
 <p class="facts">System · <b>alpine-conf</b> 3.22.0 · Alpine's base system · <a href="man/lbu.html">man lbu(8)</a> · <a href="https://gitlab.alpinelinux.org/alpine/alpine-conf">home</a></p>
 <p class="deps">needs openrc</p>
+<p class="why"><b>On Copal:</b> Copal's first two stages run from RAM, the way Alpine boots from a card, and anything they change is gone at the next boot unless lbu commits it. Stage 3 moves the system onto the disk; after that, lbu has nothing to do.</p>
 <pre class="syn">lbu SUBCOMMAND [OPTIONS] [ARGS]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>On a diskless Alpine system, every file lives in RAM. <code>lbu commit</code> packs the changed configuration -- <code>/etc</code> and the list of installed packages, by default -- into an <code>.apkovl.tar.gz</code> on the boot medium, and the next boot unpacks it. On an installed Copal machine (every machine past stage 3) you will not need it.</p>
+<h4>Examples</h4><div class="ex"><code>lbu status</code><span>what changed since the last commit</span></div><div class="ex"><code>lbu diff</code><span>the same, as a diff</span></div><div class="ex"><code>doas lbu commit -d</code><span>save, and delete the older archive</span></div><div class="ex"><code>doas lbu include /root/notes.txt</code><span>track a file outside /etc</span></div><div class="ex"><code>lbu include -l</code><span>what has been added to the set</span></div><div class="ex"><code>lbu list</code><span>every file the next commit will pack</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>commit, ci</code></dt><dd>write the apkovl to the medium</dd><dt><code>-d</code></dt><dd>with commit: remove the old apkovl first</dd><dt><code>-n</code></dt><dd>with commit: dry run, show what would be packed</dd><dt><code>status, st</code></dt><dd>changes since the last commit (A added, U updated, D deleted)</dd><dt><code>diff</code></dt><dd>the changes as a diff</dd><dt><code>include, add</code></dt><dd>add a file or directory to what is saved</dd><dt><code>exclude, ex</code></dt><dd>leave one out</dd><dt><code>list, ls</code></dt><dd>the files that would be packed</dd><dt><code>list-backup, lb</code></dt><dd>the older timestamped archives</dd><dt><code>revert REV</code></dt><dd>go back to one of them</dd></dl>
+<h4>Notes</h4><ul><li>Only <code>/etc</code> and apk's world are saved unless you <code>lbu include</code> more. A home directory in RAM is lost at every reboot.</li><li>The medium is <code>LBU_MEDIA</code> in <code>/etc/lbu/lbu.conf</code> -- the boot partition. Copal sets it from the partition it actually booted from (a Pi's mmcblk0p1, a PC's sda1, a VM's vda1).</li><li><code>df /</code> says which kind of system this is: a disk partition means installed, and lbu does not apply; <code>tmpfs</code> means diskless, and it does.</li></ul>
+<p class="see">See also <a href="#c-setup-alpine"><code>setup-alpine</code></a>, <a href="#c-apk"><code>apk</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-logread" data-s="logread the swiss army knife of embedded linux system busybox">
-<h3><a class="self" href="#c-logread"><code>logread</code></a> <span class="purpose">The Swiss Army Knife of Embedded Linux</span></h3>
+<article class="cmd" id="c-logread" data-s="logread read busybox syslogd's in-memory log. system busybox">
+<h3><a class="self" href="#c-logread"><code>logread</code></a> <span class="purpose">Read BusyBox syslogd's in-memory log.</span></h3>
 <p class="facts">System · <b>busybox</b> 1.37.0 · Alpine's base system · <a href="man/logread.html">man busybox(1)</a> · <a href="https://busybox.net/">home</a></p>
 <p class="deps">a BusyBox applet: <code>busybox logread --help</code>, and BusyBox's page</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Alpine's usual answer to "where is the log" -- and on Copal the wrong one: Copal's syslogd writes the file /var/log/messages, not the in-memory buffer logread reads.</p>
+<h4>Use</h4><p>On an Alpine system whose syslogd keeps a circular buffer in memory (started with <code>-C</code>), print it, or follow it. On Copal, read the file instead: the same messages, kept across reboots.</p>
+<h4>Examples</h4><div class="ex"><code>tail -50 /var/log/messages</code><span>Copal: the latest system messages</span></div><div class="ex"><code>tail -f /var/log/messages</code><span>Copal: follow them</span></div><div class="ex"><code>grep sshd /var/log/messages</code><span>one service's lines</span></div><div class="ex"><code>logread -f</code><span>elsewhere: follow the buffer</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-f</code></dt><dd>follow: print new messages as they arrive</dd><dt><code>-F</code></dt><dd>the same, after printing the whole buffer first</dd></dl>
+<h4>Notes</h4><ul><li>On Copal <a href="#c-logread"><code>logread</code></a> answers "can't find syslogd buffer": syslogd runs with <code>SYSLOGD_OPTS="-t"</code> (see <code>/etc/conf.d/syslog</code>), which writes the file. That is expected, not a fault.</li><li><code>/var/log/messages</code> belongs to the group <code>wheel</code>, so an administrator reads it without <a href="#c-doas"><code>doas</code></a>.</li><li>Kernel messages are not in it: read them with <code>doas dmesg</code>.</li></ul>
+<p class="see">See also <a href="#c-dmesg"><code>dmesg</code></a>, <a href="#c-rc-status"><code>rc-status</code></a>, <a href="#c-busybox"><code>busybox</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-mkinitfs" data-s="mkinitfs generate an initramfs system mkinitfs">
-<h3><a class="self" href="#c-mkinitfs"><code>mkinitfs</code></a> <span class="purpose">Generate an initramfs</span></h3>
+<article class="cmd" id="c-mkinitfs" data-s="mkinitfs build the initramfs: the small first root that finds and mounts the real one. system mkinitfs">
+<h3><a class="self" href="#c-mkinitfs"><code>mkinitfs</code></a> <span class="purpose">Build the initramfs: the small first root that finds and mounts the real one.</span></h3>
 <p class="facts">System · <b>mkinitfs</b> 3.14.1 · stage 10 · Wireless, audio, capture and disks · <a href="man/mkinitfs.html">man mkinitfs(1)</a> · <a href="https://gitlab.alpinelinux.org/alpine/mkinitfs">home</a></p>
 <p class="deps">needs apk-tools, busybox-binsh, kmod, lddtree, mdev-conf, libblkid, cryptsetup-libs, kmod-libs</p>
+<p class="why"><b>On Copal:</b> Every kernel install and upgrade runs it, through apk's trigger: setup-disk in stage 3, and each <code>apk upgrade</code> that brings a new kernel. You call it by hand only after changing what it includes.</p>
 <pre class="syn">mkinitfs [OPTIONS] [KERNELVERSION]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Pack the kernel modules and tools needed to reach the root filesystem -- the disk controller, the filesystem, USB -- into <code>/boot/initramfs-*</code>. Which ones is set by <code>features=</code> in <code>/etc/mkinitfs/mkinitfs.conf</code>. Add a feature, then rebuild.</p>
+<h4>Examples</h4><div class="ex"><code>cat /etc/mkinitfs/mkinitfs.conf</code><span>the features this machine uses</span></div><div class="ex"><code>mkinitfs -L</code><span>every feature there is</span></div><div class="ex"><code>mkinitfs -l | less</code><span>dry run: the files it would pack</span></div><div class="ex"><code>doas mkinitfs</code><span>rebuild for the running kernel</span></div><div class="ex"><code>ls /lib/modules</code><span>the kernel versions installed</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>KERNELVERSION</code></dt><dd>build for that kernel (a name in /lib/modules); default the running one</dd><dt><code>-L</code></dt><dd>list the available features</dd><dt><code>-l</code></dt><dd>dry run: list the files it would include</dd><dt><code>-F FEATURES</code></dt><dd>use these features instead of the config's</dd><dt><code>-o FILE</code></dt><dd>write to FILE instead of /boot</dd><dt><code>-c FILE</code></dt><dd>read another config file</dd><dt><code>-C ALGORITHM</code></dt><dd>compress with gzip (default), xz, zstd, lz4 or none</dd></dl>
+<h4>Notes</h4><ul><li>A root on something the features do not name -- NVMe, LVM, an encrypted disk -- boots to "mounting root failed" and an emergency shell. Add <code>nvme</code>, <code>lvm</code> or <code>cryptsetup</code> to <code>features=</code> and rebuild before rebooting onto it.</li><li>After a kernel upgrade, reboot soon: the running kernel's modules have been replaced, so loading a new module fails until you do.</li><li>"WARNING: no kernel found" during stage 3 is expected: setup-disk runs on the RAM system, which has no kernel package of its own.</li></ul>
+<p class="see">See also <a href="#c-apk"><code>apk</code></a>, <a href="#c-lsblk"><code>lsblk</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-neofetch" data-s="neofetch a fast, highly customizable system info script system neofetch">
 <h3><a class="self" href="#c-neofetch"><code>neofetch</code></a> <span class="purpose">A fast, highly customizable system info script</span></h3>
@@ -2202,12 +2373,17 @@ pcp-htop [-dCFhpustvH] [--host/-h host]</pre>
 <pre class="syn">neofetch func_name --option "value" --option "value"</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-setup-alpine" data-s="setup-alpine alpine linux installation and configuration script system alpine-conf">
-<h3><a class="self" href="#c-setup-alpine"><code>setup-alpine</code></a> <span class="purpose">Alpine Linux installation and configuration script</span></h3>
+<article class="cmd" id="c-setup-alpine" data-s="setup-alpine alpine's installer: keyboard, hostname, network, time, users, sshd, disk. system alpine-conf">
+<h3><a class="self" href="#c-setup-alpine"><code>setup-alpine</code></a> <span class="purpose">Alpine's installer: keyboard, hostname, network, time, users, sshd, disk.</span></h3>
 <p class="facts">System · <b>alpine-conf</b> 3.22.0 · Alpine's base system · <a href="man/setup-alpine.html">man setup-alpine(8)</a> · <a href="https://gitlab.alpinelinux.org/alpine/alpine-conf">home</a></p>
 <p class="deps">needs openrc</p>
+<p class="why"><b>On Copal:</b> Stage 1 runs it with an answer file that copal-prep.sh wrote on the Mac, so the first boot asks almost nothing. Copal gives it no disk (DISKOPTS=none): stage 3 installs to disk itself.</p>
 <pre class="syn">setup-alpine [-ahq] [-c FILE | -f FILE]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run once on a new Alpine system. It calls a family of smaller scripts in turn -- <code>setup-keymap</code>, <code>setup-interfaces</code>, <code>setup-timezone</code>, <code>setup-user</code>, <code>setup-sshd</code> and the rest -- and those are the useful part afterwards: each one redoes a single step on a machine already running.</p>
+<h4>Examples</h4><div class="ex"><code>doas setup-interfaces</code><span>redo the network, wifi included</span></div><div class="ex"><code>doas setup-timezone</code><span>change the time zone</span></div><div class="ex"><code>doas setup-keymap</code><span>change the keyboard layout</span></div><div class="ex"><code>doas setup-apkrepos</code><span>choose another package mirror</span></div><div class="ex"><code>setup-alpine -c answers.txt</code><span>write a blank answer file, change nothing</span></div><div class="ex"><code>cat /media/*/answers.txt</code><span>the answers Copal's stage 1 used</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-f FILE</code></dt><dd>install from an answer file (a path or a URL)</dd><dt><code>-c FILE</code></dt><dd>write an answer file template and stop</dd><dt><code>-q</code></dt><dd>quick: hostname, networking and a mirror, nothing else</dd><dt><code>-e</code></dt><dd>set an empty root password (implied by -q)</dd><dt><code>-a</code></dt><dd>write an apkovl only; install nothing to disk</dd></dl>
+<h4>Notes</h4><ul><li>An answer file is a shell script it sources: <code>KEYMAPOPTS</code>, <code>HOSTNAMEOPTS</code>, <code>INTERFACESOPTS</code>, <code>USEROPTS</code>, <code>DISKOPTS</code> and so on. There is no variable for the root password; Copal answers that prompt itself.</li><li>Run over SSH, it leaves the network running while it rewrites the settings, so the connection you are using is not cut from under you.</li><li>The other setup scripts are in <code>/usr/sbin</code>: <code>ls /usr/sbin/setup-*</code>. Each has its own man page: <code>man setup-interfaces</code>.</li></ul>
+<p class="see">See also <a href="#c-lbu"><code>lbu</code></a>, <a href="#c-doas"><code>doas</code></a>, <a href="#c-wpa_passphrase"><code>wpa_passphrase</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-sha224sum" data-s="sha224sum sha224sum system coreutils">
 <h3><a class="self" href="#c-sha224sum"><code>sha224sum</code></a> <span class="purpose">sha224sum</span></h3>

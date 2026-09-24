@@ -3694,6 +3694,15 @@ add_optional() { try_add "$@" || true; }
 # end of each stage that installs commands the guide covers, so a page
 # arrives with its program. docs/terminal-guide-plan.md has the reasoning.
 MAN_DOC_CAP_KB=32768
+# mandoc's database, for apropos and whatis. mandoc-apropos's own apk trigger
+# rebuilds it in the BACKGROUND (nohup ... &) under flock on
+# /tmp/makewhatis.lock; a second makewhatis beside it, unlocked, leaves
+# mandoc.db corrupt -- "Invalid number of macros" from every man. So wait
+# for the trigger's run on the same lock, then rebuild once more.
+makewhatis_locked() {
+    command -v makewhatis >/dev/null 2>&1 || return 0
+    ( flock 9 && makewhatis -T utf8 ) 9>/tmp/makewhatis.lock >/dev/null 2>&1 || true
+}
 man_core_commands() {
     echo "apk doas rc-service rc-update rc-status openrc lbu setup-alpine busybox mkinitfs
           sfdisk resize2fs zramctl flatpak git gcc clang make cmake ninja gdb valgrind nvim
@@ -3719,7 +3728,7 @@ install_manuals() {
     _mk=$(apk query --fields origin $_mk 2>/dev/null | sed -n 's/^Origin: \(.*\)/\1-doc/p' | sort -u)
     _mh=$(apk info -e $_mk 2>/dev/null)
     _mk=$(printf '%s\n' $_mk | grep -vxF "$(printf '%s\n' $_mh)" || true)
-    [ -n "$_mk" ] || { note "every documented command has its page"; makewhatis 2>/dev/null || true; return 0; }
+    [ -n "$_mk" ] || { note "every documented command has its page"; makewhatis_locked; return 0; }
     _mk=$(apk search -e $_mk 2>/dev/null | sed 's/-[^-]*-r[0-9]*$//' | sort -u)
     # The size cap, from the index: 'NAME-VER installed size:' then 'N UNIT'.
     _mbig=$(apk info -s $_mk 2>/dev/null | awk -v cap="$MAN_DOC_CAP_KB" '
@@ -3733,7 +3742,7 @@ install_manuals() {
         note "skipped $_b -- over the $((MAN_DOC_CAP_KB / 1024)) MiB cap; its man page goes with it"
     done
     _mk=$(printf '%s\n' $_mk | grep -vxF "$(printf '%s\n' $_mbig)" || true)
-    [ -n "$_mk" ] || { makewhatis 2>/dev/null || true; return 0; }
+    [ -n "$_mk" ] || { makewhatis_locked; return 0; }
     # A -doc that only edge/testing has is masked unless it is asked for by
     # its tagged name: one untagged name among many fails the whole apk
     # transaction (seen on the bench: sigrok-cli-doc, xmp-doc and six more
@@ -3744,8 +3753,8 @@ install_manuals() {
         /^    / && $1 !~ /^@/ { u = 1 }
         END { if (n != "") print n (u ? "" : "@testing") }')
     add_optional $_mk
-    # apropos and whatis read mandoc's database, which nothing else writes.
-    makewhatis 2>/dev/null || true
+    # apropos and whatis read mandoc's database.
+    makewhatis_locked
     note "man NAME, and apropos WORD to find one"
 }
 
@@ -29975,7 +29984,9 @@ man_pages_for() {  # <apk names...>
         /^    / && $1 !~ /^@/ { u = 1 }
         END { if (n != "") print n (u ? "" : "@testing") }')
     apk add -q $_md >/dev/null 2>&1 && note "man page: $(echo $_md)"
-    have makewhatis && makewhatis 2>/dev/null || true
+    # Under the lock mandoc-apropos's trigger takes: it rebuilds in the
+    # background, and two unlocked writers corrupt mandoc.db.
+    have makewhatis && { ( flock 9 && makewhatis -T utf8 ) 9>/tmp/makewhatis.lock >/dev/null 2>&1 || true; }
 }
 
 # ------------------------------------------------------------ recipes: kit ---

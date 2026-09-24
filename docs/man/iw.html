@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iw(8) · Copal Linux</title>
+<meta name="description" content="iw - show / manipulate wireless devices and their configuration">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-iw">iw in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">iw 6.17-r0 — man8/iw.8.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">IW(8)</td>
+    <td class="head-vol">Linux</td>
+    <td class="head-rtitle">IW(8)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">iw - show / manipulate wireless devices and their
+  configuration</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<br/>
+<p class="Pp"><b>iw</b> [<i> OPTIONS </i>]<i> </i>{<i></i> <b>help</b> [
+    <i>command</i> ] <b>|</b> <i>OBJECT</i> <i>COMMAND</i> }</p>
+<p class="Pp"></p>
+<p class="Pp"><i>OBJECT</i> := { <b>dev</b> | <b>phy</b> | <b>reg</b> }</p>
+<p class="Pp"></p>
+<p class="Pp"><i>OPTIONS</i> := { --version | --debug }</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<dl class="Bl-tag">
+  <dt id="version"><a class="permalink" href="#version"><b>
+    --version</b></a></dt>
+  <dd>print version information and exit.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="debug"><a class="permalink" href="#debug"><b> --debug</b></a></dt>
+  <dd>enable netlink message debugging.
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="IW_-_COMMAND_SYNTAX"><a class="permalink" href="#IW_-_COMMAND_SYNTAX">IW
+  - COMMAND SYNTAX</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="OBJECT"><a class="permalink" href="#OBJECT"><i>OBJECT</i></a></h2>
+<dl class="Bl-tag">
+  <dt id="dev"><a class="permalink" href="#dev"><b>dev &lt;interface
+    name&gt;</b></a></dt>
+  <dd>- network interface.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="phy"><a class="permalink" href="#phy"><b>phy &lt;phy
+    name&gt;</b></a></dt>
+  <dd>- wireless hardware device (by name).</dd>
+  <dt id="phy__phy"><a class="permalink" href="#phy__phy"><b>phy#&lt;phy
+    index&gt;</b></a></dt>
+  <dd>- wireless hardware device (by index).
+    <p class="Pp"></p>
+  </dd>
+  <dt id="reg"><a class="permalink" href="#reg"><b>reg</b></a></dt>
+  <dd>- regulatory agent.
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="COMMAND"><a class="permalink" href="#COMMAND"><i>COMMAND</i></a></h2>
+<p class="Pp">Specifies the action to perform on the object. The set of possible
+    actions depends on the object type. <b>iw help</b> will print all supported
+    commands, while <b>iw help command</b> will print the help for all matching
+    commands.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>ip</b>(8), <b>crda</b>(8), <b>regdbdump</b>(8),
+    <b>regulatory.bin</b>(5).</p>
+<p class="Pp"><a class="Lk" href="https://wireless.wiki.kernel.org/en/users/Documentation/iw">Documentation
+    at kernel wiki</a>.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">22 November 2020</td>
+    <td class="foot-os">iw</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

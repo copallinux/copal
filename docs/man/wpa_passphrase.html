@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wpa_passphrase(8) · Copal Linux</title>
+<meta name="description" content="wpa_passphrase - Generate a WPA PSK from an ASCII passphrase for a SSID">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-wpa_passphrase">wpa_passphrase in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">wpa_supplicant 2.11-r4 — man8/wpa_passphrase.8.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">WPA_PASSPHRASE(8)</td>
+    <td class="head-vol"></td>
+    <td class="head-rtitle">WPA_PASSPHRASE(8)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<p class="Pp"></p>
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">wpa_passphrase - Generate a WPA PSK from an ASCII passphrase for a
+    SSID</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>wpa_passphrase</b> [ <b></b><i>ssid</i><b></b> ] [
+    <b></b><i>passphrase</i><b></b> ]</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OVERVIEW"><a class="permalink" href="#OVERVIEW">OVERVIEW</a></h1>
+<p class="Pp"><b>wpa_passphrase</b> pre-computes PSK entries for network
+    configuration blocks of a <i>wpa_supplicant.conf</i> file. An ASCII
+    passphrase and SSID are used to generate a 256-bit PSK.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<dl class="Bl-tag">
+  <dt id="ssid"><a class="permalink" href="#ssid"><b>ssid</b></a></dt>
+  <dd>The SSID whose passphrase should be derived.</dd>
+  <dt id="passphrase"><a class="permalink" href="#passphrase"><b>passphrase</b></a></dt>
+  <dd>The passphrase to use. If not included on the command line, passphrase
+      will be read from standard input.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>wpa_supplicant.conf</b>(5) <b>wpa_supplicant</b>(8)</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="LEGAL"><a class="permalink" href="#LEGAL">LEGAL</a></h1>
+<p class="Pp">wpa_supplicant is copyright (c) 2003-2022, Jouni Malinen
+    &lt;j@w1.fi&gt; and contributors. All Rights Reserved.</p>
+<p class="Pp">This program is licensed under the BSD license (the one with
+    advertisement clause removed).</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">07 August 2019</td>
+    <td class="foot-os"></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

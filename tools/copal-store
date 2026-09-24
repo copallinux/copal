@@ -405,7 +405,9 @@ man_pages_for() {  # <apk names...>
         /^    / && $1 !~ /^@/ { u = 1 }
         END { if (n != "") print n (u ? "" : "@testing") }')
     apk add -q $_md >/dev/null 2>&1 && note "man page: $(echo $_md)"
-    have makewhatis && makewhatis 2>/dev/null || true
+    # Under the lock mandoc-apropos's trigger takes: it rebuilds in the
+    # background, and two unlocked writers corrupt mandoc.db.
+    have makewhatis && { ( flock 9 && makewhatis -T utf8 ) 9>/tmp/makewhatis.lock >/dev/null 2>&1 || true; }
 }
 
 # ------------------------------------------------------------ recipes: kit ---
