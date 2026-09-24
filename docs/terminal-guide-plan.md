@@ -473,6 +473,28 @@ Each ends with a review of what it produced before the next begins.
 - **Left**: Copal's own commands (41), which were to come after the core
   and never did; Security (11) by choice; `lldb`, `pwndbg` and `cl65`.
 
+### Phase 4, batch 14: Copal's own commands, the everyday ones (24 Sep 2026)
+
+- **21 entries**: `copal`, `copal-apps`, `copal-store`, `copal-menu`,
+  `copal-gui`, `copal-install`, `copal-guide`, `copal-center`,
+  `copal-config`, `copal-shot`, `copal-camera`, `copal-theme`,
+  `copal-terminal-theme`, `copal-wallpaper`, `copal-fonts`, `copal-clip`,
+  `copal-desk`, `copal-halt`, `copal-launcher`, `copal-widgets`,
+  `copal-bar`.
+- **check never runs Copal's own commands.** Most take no `--help`, and
+  some act at once: `copal-shot --help` started a screenshot, `copal-halt`
+  would power off. Their options are checked against their source -- the
+  heredoc copal-prep.sh writes them from, or their file in tools/.
+- **OnionShare removed** from Copal Apps (its Alpine package cannot be
+  installed). **Stage 7's closing text** promised Super+Shift+G for the
+  guides, a key nothing binds; it now names Super+/.
+- **Left**: batch 15, the session and fleet plumbing (21): copal-audio-start,
+  copal-autologin, copal-build, copal-code, copal-debug, copal-desktop,
+  copal-fleet, copal-fleet-agent, copal-fleet-exec, copal-gpu,
+  copal-logflush, copal-logs, copal-morse, copal-notify, copal-readme-man,
+  copal-remote, copal-session, copal-splash, copal-ssh, copal-startx,
+  copal-times.
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.

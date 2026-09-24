@@ -380,7 +380,7 @@ MAKEFILE
     NAME' rebuilds one.
 
     THE GUIDES. These are the tutorials, on this machine, no network needed.
-    Super+Shift+G opens the list; from a terminal:
+    Super+/ opens the desktop's key guide; all of them from a terminal:
 
         copal-guide ide           compiling, breakpoints, stepping, call traces
         copal-guide nvim          the editor itself, from nothing to useful

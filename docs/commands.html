@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 288 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 232 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 253 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.
   How it is written, checked against a running machine: <a href="terminal-guide-lab-report.html">the lab report</a>.</p>
 </header>
@@ -35,15 +35,25 @@
 </div>
 <nav class="toc" aria-label="Sections"><a href="#s-copal">Copal <span>42</span></a><a href="#s-appearance">Appearance <span>2</span></a><a href="#s-audio">Audio <span>5</span></a><a href="#s-browsers">Browsers <span>1</span></a><a href="#s-code">Code <span>8</span></a><a href="#s-control">Control <span>2</span></a><a href="#s-design">Design <span>2</span></a><a href="#s-desktop">Desktop <span>1</span></a><a href="#s-development">Development <span>6</span></a><a href="#s-devtools">Devtools <span>20</span></a><a href="#s-discs">Discs <span>12</span></a><a href="#s-disks">Disks <span>4</span></a><a href="#s-documents">Documents <span>3</span></a><a href="#s-editors">Editors <span>4</span></a><a href="#s-emulation">Emulation <span>2</span></a><a href="#s-engineering">Engineering <span>3</span></a><a href="#s-files">Files <span>6</span></a><a href="#s-games">Games <span>19</span></a><a href="#s-graphics">Graphics <span>1</span></a><a href="#s-instruments">Instruments <span>2</span></a><a href="#s-internet">Internet <span>7</span></a><a href="#s-languages">Languages <span>27</span></a><a href="#s-learn">Learn <span>1</span></a><a href="#s-mail">Mail <span>7</span></a><a href="#s-media">Media <span>3</span></a><a href="#s-multimedia">Multimedia <span>1</span></a><a href="#s-network">Network <span>8</span></a><a href="#s-news">News <span>4</span></a><a href="#s-notes">Notes <span>6</span></a><a href="#s-packages">Packages <span>2</span></a><a href="#s-programming">Programming <span>3</span></a><a href="#s-radio">Radio <span>6</span></a><a href="#s-retro">Retro <span>1</span></a><a href="#s-science">Science <span>8</span></a><a href="#s-security">Security <span>11</span></a><a href="#s-services">Services <span>4</span></a><a href="#s-sharing">Sharing <span>7</span></a><a href="#s-smallweb">Smallweb <span>7</span></a><a href="#s-system">System <span>16</span></a><a href="#s-terminals">Terminals <span>7</span></a><a href="#s-tools">Tools <span>6</span></a><a href="#s-transfer">Transfer <span>1</span></a></nav>
 <section class="sec" id="s-copal"><h2>Copal</h2>
-<article class="cmd facts-only" id="c-copal" data-s="copal  copal copal">
-<h3><a class="self" href="#c-copal"><code>copal</code></a> <span class="purpose"></span></h3>
+<article class="cmd" id="c-copal" data-s="copal the installer, on the machine itself: re-run any stage, update copal, and see what is installed. copal copal">
+<h3><a class="self" href="#c-copal"><code>copal</code></a> <span class="purpose">The installer, on the machine itself: re-run any stage, update Copal, and see what is installed.</span></h3>
 <p class="facts">Copal · Copal's own · stage 3 · Move the root filesystem onto the card</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Stage 3 leaves this copy on every Copal machine, so the whole install -- eighteen stages -- can be re-run, one stage or all of them, and updated from the repository without the Mac.</p>
+<h4>Use</h4><p>With no arguments it shows the stage menu. <code>--stage N</code> re-runs chosen stages; <code>-U</code> updates Copal's scripts from the repository (or from a local checkout); <code>--check</code> says whether an update exists. Updating changes what the stages will do; it does not run them.</p>
+<h4>Examples</h4><div class="ex"><code>copal</code><span>the stage menu</span></div><div class="ex"><code>copal --check</code><span>is there a newer Copal?</span></div><div class="ex"><code>doas copal -U</code><span>update from the repository</span></div><div class="ex"><code>doas copal --stage 17</code><span>re-run one stage (the desktop)</span></div><div class="ex"><code>doas copal --stage 12,18 --auto</code><span>re-run two, answering for you</span></div><div class="ex"><code>doas copal -U --from ~/code/copal &amp;&amp; doas copal --stage 17 --auto</code><span>test a local change</span></div><div class="ex"><code>copal --version</code><span>what is installed, and from where</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--stage N,...</code></dt><dd>run only these stages (add --auto to answer their questions)</dd><dt><code>--auto</code></dt><dd>every stage, unattended, resuming across reboots</dd><dt><code>-U [REF]</code></dt><dd>update from the repository; REF a branch, tag or commit</dd><dt><code>-U --from PATH</code></dt><dd>update from a checkout on this machine</dd><dt><code>--check [REF]</code></dt><dd>whether an update is available; changes nothing</dd><dt><code>--version</code></dt><dd>the installed version and its source</dd></dl>
+<h4>Notes</h4><ul><li>Every stage is written to be run again: a re-run repairs or updates what it set up and leaves the rest alone.</li><li>An update keeps the previous copy as <code>copal-init.sh.bak</code>.</li><li><code>-U REF</code> pins a version: a tag or commit goes back to an older Copal.</li></ul>
+<p class="see">See also <a href="#c-copal-store"><code>copal-store</code></a>, <a href="#c-copal-config"><code>copal-config</code></a>, <a href="#c-copal-code"><code>copal-code</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-copal-apps" data-s="copal-apps copal apps copal copal">
-<h3><a class="self" href="#c-copal-apps"><code>copal-apps</code></a> <span class="purpose">Copal Apps</span></h3>
+<article class="cmd" id="c-copal-apps" data-s="copal-apps copal apps: the window for browsing copal's programs by shelf, installing them, and watching installs happen. copal copal">
+<h3><a class="self" href="#c-copal-apps"><code>copal-apps</code></a> <span class="purpose">Copal Apps: the window for browsing Copal's programs by shelf, installing them, and watching installs happen.</span></h3>
 <p class="facts">Copal · Copal's own · stage 18 · The Copal Store, and OpenShot compiled</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The graphical face of copal-store. It never installs anything itself and never needs root: Install opens a terminal running <code>doas copal-store install</code>, and the window follows the progress. At the full monty's first login it opens on the slideshow of the queued programs arriving.</p>
+<h4>Use</h4><p>Open it from the menu or the command line. Shelves on the left, programs with their status in the middle, one program in full on the right: its picture, two sentences, where it comes from and how it installs. While an install runs, it shows each program arriving with three progress bars.</p>
+<h4>Examples</h4><div class="ex"><code>copal-apps</code><span>the shelves and programs</span></div><div class="ex"><code>copal-apps gimp</code><span>opened on one program</span></div><div class="ex"><code>copal-apps --progress</code><span>the install running now, as a slideshow</span></div><div class="ex"><code>copal-apps --follow</code><span>the slideshow, only if something is installing</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>ID</code></dt><dd>open on that program</dd><dt><code>--progress</code></dt><dd>the running install's slideshow: the run, the program, the step</dd><dt><code>--follow</code></dt><dd>the same, but only when an install is queued or running</dd></dl>
+<h4>Notes</h4><ul><li>Everything it shows comes from copal-store (<code>copal-store rows</code>, <code>copal-store playbook ID</code>) and the event stream it writes to <code>/var/log/copal/events</code>: the terminal and the window always agree.</li><li>Pictures are the gallery's, fetched once into <code>~/.cache/copal-apps</code>; a program without one shows its icon.</li><li>It needs a desktop (GTK); on a console, <a href="#c-copal-store"><code>copal-store</code></a> alone gives the same shelves as terminal menus.</li></ul>
+<p class="see">See also <a href="#c-copal-store"><code>copal-store</code></a>, <a href="#c-copal-install"><code>copal-install</code></a>, <a href="#c-copal-menu"><code>copal-menu</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-copal-audio-start" data-s="copal-audio-start bring up the per-user sound server, once per session copal copal">
 <h3><a class="self" href="#c-copal-audio-start"><code>copal-audio-start</code></a> <span class="purpose">Bring up the per-user sound server, once per session</span></h3>
@@ -55,50 +65,80 @@
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-copal-bar" data-s="copal-bar start whichever shell this machine actually has copal copal">
-<h3><a class="self" href="#c-copal-bar"><code>copal-bar</code></a> <span class="purpose">Start whichever shell this machine actually has</span></h3>
+<article class="cmd" id="c-copal-bar" data-s="copal-bar start the desktop's bar and widgets with whichever shell the machine has: quickshell, else waybar. copal copal">
+<h3><a class="self" href="#c-copal-bar"><code>copal-bar</code></a> <span class="purpose">Start the desktop's bar and widgets with whichever shell the machine has: quickshell, else waybar.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The theme's bar is written for quickshell, which Alpine does not package, so waybar stands in. copal-bar is the one place that decides, and prefers quickshell: install it and the next login uses the real thing, with nothing else changed.</p>
+<h4>Use</h4><p>The session starts it; you run it by hand only to restart a bar that has gone. It starts the bar and the desktop widgets.</p>
+<h4>Examples</h4><div class="ex"><code>copal-bar &amp;</code><span>start the bar again, after it crashed</span></div><div class="ex"><code>pkill -x waybar; copal-bar &amp;</code><span>restart it after editing its config</span></div>
+<h4>Options</h4><dl class="opts"></dl>
+<h4>Notes</h4><ul><li>The waybar configuration is in <code>~/.config/waybar</code>; copal-theme rewrites its colours, so keep your own changes to layout and modules.</li><li>If neither shell is installed it says so where it will be seen, rather than leaving a desktop with no bar and no explanation.</li></ul>
+<p class="see">See also <a href="#c-copal-widgets"><code>copal-widgets</code></a>, <a href="#c-copal-theme"><code>copal-theme</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-copal-build" data-s="copal-build compile the checkouts in ~/code and put what they make on path copal copal">
 <h3><a class="self" href="#c-copal-build"><code>copal-build</code></a> <span class="purpose">Compile the checkouts in ~/code and put what they make on PATH</span></h3>
 <p class="facts">Copal · Copal's own · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-copal-camera" data-s="copal-camera the camera application, whichever one this machine has copal copal">
-<h3><a class="self" href="#c-copal-camera"><code>copal-camera</code></a> <span class="purpose">The camera application, whichever one this machine has</span></h3>
+<article class="cmd" id="c-copal-camera" data-s="copal-camera open the camera application, whichever one this machine has. copal copal">
+<h3><a class="self" href="#c-copal-camera"><code>copal-camera</code></a> <span class="purpose">Open the camera application, whichever one this machine has.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> One answer to "the camera", asked from three places -- the Camera entry in copal-menu, Super+Shift+B on both desktops, and the camera role in a copal-desk layout. Birdshot first, from ~/code; then other camera programs.</p>
+<h4>Use</h4><p>Run it, or press Super+Shift+B; it opens the first camera program it finds: birdshot's window, else birdshot's browser viewfinder, else another installed camera application. <code>--which</code> says which, and opens nothing.</p>
+<h4>Examples</h4><div class="ex"><code>copal-camera</code><span>open the camera</span></div><div class="ex"><code>copal-camera --which</code><span>print the command it would run</span></div><div class="ex"><code>CAMERA=cheese copal-camera</code><span>use another program, once</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--which</code></dt><dd>print the command it would run; exit 1 if there is none</dd></dl>
+<h4>Notes</h4><ul><li><code>$CAMERA</code> overrides the choice, as <code>$BROWSER</code> does for the browser: set it in <code>~/.profile.local</code> and every place that opens "the camera" follows.</li><li>Birdshot is one of the checkouts stage 7 builds into <code>~/.local/bin</code>; copal-camera looks there even when the session did not read <code>~/.profile</code>.</li></ul>
+<p class="see">See also <a href="#c-birdshot"><code>birdshot</code></a>, <a href="#c-copal-desk"><code>copal-desk</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-copal-center" data-s="copal-center one window listing the whole catalogue, installed or not copal copal">
-<h3><a class="self" href="#c-copal-center"><code>copal-center</code></a> <span class="purpose">One window listing the whole catalogue, installed or not</span></h3>
+<article class="cmd" id="c-copal-center" data-s="copal-center one window listing the whole catalogue, installed or not, with the action for each. copal copal">
+<h3><a class="self" href="#c-copal-center"><code>copal-center</code></a> <span class="purpose">One window listing the whole catalogue, installed or not, with the action for each.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Super+Shift+C: the catalogue at a glance. It opens Copal Apps where that exists, and the store's own window where it does not.</p>
+<h4>Use</h4><p>Open it with Super+Shift+C or by name. Each row is a program with its status and section; choosing one runs it if installed, or installs it.</p>
+<h4>Examples</h4><div class="ex"><code>copal-center</code><span>the catalogue window</span></div>
+<h4>Options</h4><dl class="opts"></dl>
+<h4>Notes</h4><ul><li>It is the older window of the two; Copal Apps (<a href="#c-copal-apps"><code>copal-apps</code></a>) is the richer one, and copal-center hands over to it where it is installed.</li></ul>
+<p class="see">See also <a href="#c-copal-apps"><code>copal-apps</code></a>, <a href="#c-copal-store"><code>copal-store</code></a>, <a href="#c-copal-install"><code>copal-install</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-copal-clip" data-s="copal-clip one clipboard, one set of keys, every window copal copal">
-<h3><a class="self" href="#c-copal-clip"><code>copal-clip</code></a> <span class="purpose">One clipboard, one set of keys, every window</span></h3>
+<article class="cmd" id="c-copal-clip" data-s="copal-clip one clipboard, one set of keys, every window -- with a history, and a bridge to the vm host. copal copal">
+<h3><a class="self" href="#c-copal-clip"><code>copal-clip</code></a> <span class="purpose">One clipboard, one set of keys, every window -- with a history, and a bridge to the VM host.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Super+C, Super+X and Super+V copy, cut and paste in every program, terminal included, the way Cmd-C does on a Mac. It keeps a clipboard history, and in a VM shares the clipboard with the host.</p>
+<h4>Use</h4><p>The desktop binds the keys; you rarely run it by name. From a shell, <code>store</code> puts text on the clipboard and <code>show</code> prints it, which makes it the pipe between the clipboard and commands.</p>
+<h4>Examples</h4><div class="ex"><code>echo hello | copal-clip store</code><span>put text on the clipboard</span></div><div class="ex"><code>copal-clip show</code><span>print the clipboard</span></div><div class="ex"><code>copal-clip show | wc -w</code><span>use it in a pipeline</span></div><div class="ex"><code>copal-clip history</code><span>pick an earlier entry (Super+Ctrl+V)</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>copy / cut / paste</code></dt><dd>the Super+C / Super+X / Super+V actions</dd><dt><code>history</code></dt><dd>choose from the clipboard history</dd><dt><code>store</code></dt><dd>put stdin on the clipboard</dd><dt><code>show</code></dt><dd>print the clipboard</dd><dt><code>watch</code></dt><dd>record the history (the session starts this)</dd><dt><code>bridge</code></dt><dd>share the clipboard with the VM host (the session starts this)</dd></dl>
+<h4>Notes</h4><ul><li>In a UTM or QEMU guest, copy and paste with the Mac works only while <code>copal-clip bridge</code> and <code>spice-vdagent</code> are running; both are started from <code>hyprland.conf</code>. If it stops working, check those two first.</li><li>The history keeps the last 100 entries, in <code>~/.cache/copal/clipboard</code>; delete that folder to clear it.</li></ul>
+<p class="see">See also <code>wl-copy</code>, <a href="#c-ytq"><code>ytq</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-copal-code" data-s="copal-code the checkouts in ~/code copal copal">
 <h3><a class="self" href="#c-copal-code"><code>copal-code</code></a> <span class="purpose">The checkouts in ~/code</span></h3>
 <p class="facts">Copal · Copal's own · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-copal-config" data-s="copal-config system settings for copal copal copal">
-<h3><a class="self" href="#c-copal-config"><code>copal-config</code></a> <span class="purpose">System settings for Copal</span></h3>
+<article class="cmd" id="c-copal-config" data-s="copal-config system settings for copal: users, host name, time zone, keyboard, ssh, services, boot and storage. copal copal">
+<h3><a class="self" href="#c-copal-config"><code>copal-config</code></a> <span class="purpose">System settings for Copal: users, host name, time zone, keyboard, SSH, services, boot and storage.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> raspi-config's job, done with Copal's own tools: the settings a Pi owner changes, in one place, in a window on the desktop or in the terminal on a console.</p>
+<h4>Use</h4><p>Run it; it opens a window where there is a display and terminal menus where there is not. Choose a screen, change a setting. Most settings write to /etc, so it asks for doas when it needs to.</p>
+<h4>Examples</h4><div class="ex"><code>copal-config</code><span>the settings, in a window or the terminal</span></div><div class="ex"><code>copal-config --tui</code><span>the terminal menus, even on a desktop</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--tui</code></dt><dd>the terminal interface, even with a display</dd><dt><code>--help</code></dt><dd>the usage</dd></dl>
+<h4>Notes</h4><ul><li>Its screens: users (add one, groups), hostname, timezone, keymap, ssh, services (what starts at boot), boot, storage, and about.</li><li>Each screen uses the same tools a shell would -- <code>setup-timezone</code>, <a href="#c-rc-update"><code>rc-update</code></a>, <a href="#c-copal-ssh"><code>copal-ssh</code></a> -- so a change made here and one made by hand agree.</li><li>It works with GTK (yad), curses (dialog), or plain prompts, whichever the machine has.</li></ul>
+<p class="see">See also <a href="#c-copal-ssh"><code>copal-ssh</code></a>, <a href="#c-setup-alpine"><code>setup-alpine</code></a>, <a href="#c-rc-update"><code>rc-update</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-copal-debug" data-s="copal-debug turn the log collection on, off, or look at it copal copal">
 <h3><a class="self" href="#c-copal-debug"><code>copal-debug</code></a> <span class="purpose">Turn the log collection on, off, or look at it</span></h3>
 <p class="facts">Copal · Copal's own · written on every run of the installer</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-copal-desk" data-s="copal-desk put the workspaces into a known shape, in one command copal copal">
-<h3><a class="self" href="#c-copal-desk"><code>copal-desk</code></a> <span class="purpose">Put the workspaces into a known shape, in one command</span></h3>
+<article class="cmd" id="c-copal-desk" data-s="copal-desk put the workspaces into a known shape in one step: editor, terminal, browser, each where it belongs. copal copal">
+<h3><a class="self" href="#c-copal-desk"><code>copal-desk</code></a> <span class="purpose">Put the workspaces into a known shape in one step: editor, terminal, browser, each where it belongs.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Super+Shift+D. Muscle memory needs things in the same place, so a layout file names what opens on which workspace, and one key lays the desk out. Deliberately not an autostart: you can decline it on the morning you want an empty machine.</p>
+<h4>Use</h4><p>Run it (or press Super+Shift+D) and it opens what the layout names on the workspaces it names, without pulling your eyes along. The default layout is <code>code</code>; others are files you can write.</p>
+<h4>Examples</h4><div class="ex"><code>copal-desk</code><span>the 'code' layout</span></div><div class="ex"><code>copal-desk --list</code><span>the layouts on this machine</span></div><div class="ex"><code>copal-desk --show code</code><span>what a layout does, without running it</span></div><div class="ex"><code>copal-desk music</code><span>a layout of your own</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>NAME</code></dt><dd>lay out that layout (default: code)</dd><dt><code>--list</code></dt><dd>the layouts available</dd><dt><code>--show NAME</code></dt><dd>print a layout without running it</dd></dl>
+<h4>Notes</h4><ul><li>Layouts are <code>NAME.layout</code> files in <code>/usr/local/share/copal/layouts</code> (Copal's) and <code>~/.config/copal/layouts</code> (yours, which wins over a system one of the same name).</li><li>The <code>code</code> layout: the editor and a terminal on 2, an agent on 3, the browser on 5, and an empty 1 to start from.</li><li>It works on both desktops: Hyprland places each window as it opens; i3 switches workspace first.</li></ul>
+<p class="see">See also <a href="#c-copal-camera"><code>copal-camera</code></a>, <a href="#c-hyprctl"><code>hyprctl</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-copal-desktop" data-s="copal-desktop choose which desktop owns the screen copal copal">
 <h3><a class="self" href="#c-copal-desktop"><code>copal-desktop</code></a> <span class="purpose">Choose which desktop owns the screen</span></h3>
@@ -120,40 +160,70 @@
 <p class="facts">Copal · Copal's own · stage 16 · Join the named fleet, and announce it</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-copal-fonts" data-s="copal-fonts the font sets, and the console font copal copal">
-<h3><a class="self" href="#c-copal-fonts"><code>copal-fonts</code></a> <span class="purpose">The font sets, and the console font</span></h3>
+<article class="cmd" id="c-copal-fonts" data-s="copal-fonts install copal's font sets -- coding, console, ibm pc, web documents -- and set the text console's font. copal copal">
+<h3><a class="self" href="#c-copal-fonts"><code>copal-fonts</code></a> <span class="purpose">Install Copal's font sets -- coding, console, IBM PC, web documents -- and set the text console's font.</span></h3>
 <p class="facts">Copal · Copal's own · stage 12 · The application catalogue</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Fonts in groups rather than one by one: the coding faces (with Nerd Font symbols for prompts), the console fonts, the classic IBM PC faces, and the metric-compatible set that makes a .docx look right. Stage 12 installs coding, console and ibmpc by default.</p>
+<h4>Use</h4><p>With no arguments it shows what is installed, group by group. <code>install</code> adds a group; <code>console</code> sets the font of the text console (the one before the desktop, and after Ctrl-Alt-F2).</p>
+<h4>Examples</h4><div class="ex"><code>copal-fonts</code><span>what is installed, by group</span></div><div class="ex"><code>copal-fonts list coding</code><span>what a group contains</span></div><div class="ex"><code>doas copal-fonts install web</code><span>the document fonts (about 120 MB)</span></div><div class="ex"><code>doas copal-fonts install coding-extra</code><span>Iosevka and the large Nerd cuts (~1.9 GB)</span></div><div class="ex"><code>doas copal-fonts console</code><span>the console fonts available</span></div><div class="ex"><code>doas copal-fonts console ter-v24n</code><span>set one</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>install GROUP...</code></dt><dd>coding, console, ibmpc, web, coding-extra, or all</dd><dt><code>list [GROUP]</code></dt><dd>a group's contents, and what is on disk</dd><dt><code>console [NAME]</code></dt><dd>list, or set, the text console's font</dd><dt><code>licences</code></dt><dd>where the fonts' licence files are</dd></dl>
+<h4>Notes</h4><ul><li><code>web</code> is not installed by default: it matters only when a document from elsewhere looks wrong, and it is large. Install it when that happens.</li><li>Installing a group again only fetches what is missing.</li></ul>
+<p class="see">See also <a href="#c-starship"><code>starship</code></a>, <a href="#c-oh-my-posh"><code>oh-my-posh</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-copal-gpu" data-s="copal-gpu report the display stack, layer by layer, and say what is wrong copal copal">
 <h3><a class="self" href="#c-copal-gpu"><code>copal-gpu</code></a> <span class="purpose">Report the display stack, layer by layer, and say what is wrong</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-copal-gui" data-s="copal-gui the other menu copal copal">
-<h3><a class="self" href="#c-copal-gui"><code>copal-gui</code></a> <span class="purpose">The other menu</span></h3>
+<article class="cmd" id="c-copal-gui" data-s="copal-gui the other menu, linux mint's cinnamon style: favourites, categories, icons and search, for the mouse. copal copal">
+<h3><a class="self" href="#c-copal-gui"><code>copal-gui</code></a> <span class="purpose">The other menu, Linux Mint's Cinnamon style: favourites, categories, icons and search, for the mouse.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Super+A. The mouse's menu beside copal-menu's keyboard one: hover a category to switch to it, hover a program to read about it, click to run. It sits over the screen as a layer, on the theme's own menu colours.</p>
+<h4>Use</h4><p>Press Super+A (again to close). Categories on the left switch on hover, after a short pause; programs on the right describe themselves at the foot as you hover them; a click runs one. Type to search. Right-click a program to add or remove it from the favourites column.</p>
+<h4>Examples</h4><div class="ex"><code>copal-gui</code><span>open the menu, or close it if open</span></div><div class="ex"><code>copal-gui --list</code><span>every entry: section|name|desktop id</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--list</code></dt><dd>print section|name|desktop-id for every entry, and exit</dd></dl>
+<h4>Notes</h4><ul><li>Scrolling by the edges: rest the pointer in the strip at the top or the bottom of the list and it scrolls at a steady pace; the rows in between stay still, so a click lands on what you aimed at. The wheel works as usual.</li><li>The favourites are kept in <code>~/.config/copal/gui-favourites</code>, one per line: edit it, or right-click in the menu.</li><li>A click anywhere outside the menu closes it.</li></ul>
+<p class="see">See also <a href="#c-copal-menu"><code>copal-menu</code></a>, <a href="#c-copal-apps"><code>copal-apps</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-copal-guide" data-s="copal-guide read one of the plain-text guides, or list them all copal copal">
-<h3><a class="self" href="#c-copal-guide"><code>copal-guide</code></a> <span class="purpose">Read one of the plain-text guides, or list them all</span></h3>
+<article class="cmd" id="c-copal-guide" data-s="copal-guide read copal's plain-text guides, on the machine, with no network: tmux, nvim, languages, radio and more. copal copal">
+<h3><a class="self" href="#c-copal-guide"><code>copal-guide</code></a> <span class="purpose">Read Copal's plain-text guides, on the machine, with no network: tmux, nvim, languages, radio and more.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The tutorials that come with Copal -- how the editor is set up, which languages this board has, software radio, the small web -- kept in /usr/local/share/copal/guides and opened by name. Super+/ (or Super+F1) opens the desktop's key guide.</p>
+<h4>Use</h4><p>Without a name it lists the guides and asks which; with a name it opens that guide in the pager.</p>
+<h4>Examples</h4><div class="ex"><code>copal-guide</code><span>the list, then a choice</span></div><div class="ex"><code>copal-guide nvim</code><span>the editor, from nothing to useful</span></div><div class="ex"><code>copal-guide languages</code><span>what this board has, and why</span></div><div class="ex"><code>copal-guide radio</code><span>software-defined radio</span></div><div class="ex"><code>copal-guide small-web</code><span>Gemini and Gopher</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>NAME</code></dt><dd>open that guide (the file's name without .txt)</dd></dl>
+<h4>Notes</h4><ul><li>The guides are plain text files in <code>/usr/local/share/copal/guides</code>; <code>less</code> or <code>grep</code> reads them as well.</li><li>The stage that installs a feature writes its guide, so the list grows with what the machine has.</li></ul>
+<p class="see">See also <code>man</code>, <a href="#c-tldr"><code>tldr</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-copal-halt" data-s="copal-halt end the session, and the machine, in one step copal copal">
-<h3><a class="self" href="#c-copal-halt"><code>copal-halt</code></a> <span class="purpose">End the session, and the machine, in one step</span></h3>
+<article class="cmd" id="c-copal-halt" data-s="copal-halt end the session, and the machine, in one step: shut down, restart or log out, asking first. copal copal">
+<h3><a class="self" href="#c-copal-halt"><code>copal-halt</code></a> <span class="purpose">End the session, and the machine, in one step: shut down, restart or log out, asking first.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Super+Shift+P and Session in the menu both run it. It closes the desktop properly first, so programs are asked to quit, then powers down -- from a terminal, a console or SSH alike, without typing the root password.</p>
+<h4>Use</h4><p>With no argument it asks, then shuts down. <code>reboot</code> restarts, <code>logout</code> leaves the desktop and keeps the machine running. <code>-y</code> skips the question.</p>
+<h4>Examples</h4><div class="ex"><code>copal-halt</code><span>shut down (asks first)</span></div><div class="ex"><code>copal-halt reboot</code><span>restart</span></div><div class="ex"><code>copal-halt logout</code><span>leave the desktop</span></div><div class="ex"><code>copal-halt -y reboot</code><span>restart without asking</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>(none)</code></dt><dd>shut down, after asking</dd><dt><code>reboot</code></dt><dd>restart</dd><dt><code>logout</code></dt><dd>end the desktop session only</dd><dt><code>-y, --yes</code></dt><dd>do not ask</dd><dt><code>-h, --help</code></dt><dd>the usage</dd></dl>
+<h4>Notes</h4><ul><li>It needs no password: a narrow doas rule, <code>zz-copal-halt.conf</code>, lets your account run only this. That rule is named to sort after the general wheel rule, because in doas the last match wins.</li><li>Inside i3 it closes the session first, so unsaved work gets its prompt before the power goes.</li></ul>
+<p class="see">See also <a href="#c-doas"><code>doas</code></a>, <a href="#c-rc-service"><code>rc-service</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-copal-install" data-s="copal-install install packages and keep the window open to say so copal copal">
-<h3><a class="self" href="#c-copal-install"><code>copal-install</code></a> <span class="purpose">Install packages and keep the window open to say so</span></h3>
+<article class="cmd" id="c-copal-install" data-s="copal-install install packages from the menu's install branch, in a terminal that stays open to say how it went. copal copal">
+<h3><a class="self" href="#c-copal-install"><code>copal-install</code></a> <span class="purpose">Install packages from the menu's Install branch, in a terminal that stays open to say how it went.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> What the menus run when you choose a program you do not have yet. It installs the packages, then -- where Copal Apps is present -- their man pages, optionals and group access, and refreshes the menu so the program is there the next time it opens.</p>
+<h4>Use</h4><p>You rarely type it: the menus open a terminal running it. By hand, name the packages; a name ending <code>@testing</code> comes from Alpine's testing repository, and one ending <code>@flathub</code> from Flathub.</p>
+<h4>Examples</h4><div class="ex"><code>doas copal-install htop</code><span>one package</span></div><div class="ex"><code>doas copal-install maxima@testing</code><span>from the testing repository</span></div><div class="ex"><code>doas copal-install com.brave.Browser@flathub</code><span>a Flatpak (~500 MB runtime first)</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>PKG...</code></dt><dd>Alpine packages to install</dd><dt><code>NAME@testing</code></dt><dd>from edge/testing (the repository tag is added if needed)</dd><dt><code>NAME@flathub</code></dt><dd>a Flatpak from Flathub</dd></dl>
+<h4>Notes</h4><ul><li>The window waits for Enter at the end, so a failure's message can be read: the usual causes are no network, or a package this board's architecture does not have.</li><li>It needs root, and says so: run it with doas.</li><li>On a RAM-resident system it reminds you to <code>lbu commit</code>; an installed Copal machine does not need that.</li></ul>
+<p class="see">See also <a href="#c-copal-store"><code>copal-store</code></a>, <a href="#c-copal-menu"><code>copal-menu</code></a>, <a href="#c-apk"><code>apk</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-copal-launcher" data-s="copal-launcher super+space, super+d and super+z on the antiquity desktop copal copal">
-<h3><a class="self" href="#c-copal-launcher"><code>copal-launcher</code></a> <span class="purpose">Super+Space, Super+D and Super+Z on the Antiquity desktop</span></h3>
+<article class="cmd" id="c-copal-launcher" data-s="copal-launcher open the program launcher -- whichever this machine has: copal's menu, wofi, or dmenu. copal copal">
+<h3><a class="self" href="#c-copal-launcher"><code>copal-launcher</code></a> <span class="purpose">Open the program launcher -- whichever this machine has: Copal's menu, wofi, or dmenu.</span></h3>
 <p class="facts">Copal · Copal's own · stage 17 · Hyprland and the Antiquity theme</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> What the theme's launcher key runs. Linux Antiquity names its own launcher, which is not packaged for Alpine; this hands the key to copal-menu, falling back to wofi or dmenu.</p>
+<h4>Use</h4><p>Press the launcher key (Super+Space) or run it; it opens the first launcher it finds.</p>
+<h4>Examples</h4><div class="ex"><code>copal-launcher</code><span>the menu, as the key opens it</span></div>
+<h4>Options</h4><dl class="opts"></dl>
+<h4>Notes</h4><ul><li>The order is copal-menu, then <code>wofi --show drun</code>, then <code>dmenu_run</code>; if none is installed it says so and exits.</li></ul>
+<p class="see">See also <a href="#c-copal-menu"><code>copal-menu</code></a>, <a href="#c-copal-gui"><code>copal-gui</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-copal-logflush" data-s="copal-logflush copy the ram logs down to the card, and back up at boot copal copal">
 <h3><a class="self" href="#c-copal-logflush"><code>copal-logflush</code></a> <span class="purpose">Copy the RAM logs down to the card, and back up at boot</span></h3>
@@ -165,10 +235,15 @@
 <p class="facts">Copal · Copal's own · written on every run of the installer</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-copal-menu" data-s="copal-menu the desktop's menu copal copal">
-<h3><a class="self" href="#c-copal-menu"><code>copal-menu</code></a> <span class="purpose">The desktop's menu</span></h3>
+<article class="cmd" id="c-copal-menu" data-s="copal-menu the keyboard menu: every program in one searchable list, and a second pane of categories, settings, install and the session. copal copal">
+<h3><a class="self" href="#c-copal-menu"><code>copal-menu</code></a> <span class="purpose">The keyboard menu: every program in one searchable list, and a second pane of categories, settings, Install and the session.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Super+Space (and Super+D, and the bar's button) open its left pane; Super+Z its right. Unlike a plain launcher it lists the terminal programs, the tools you would have to know the names of, and what you could install but have not.</p>
+<h4>Use</h4><p>The left pane is every program, flat and sorted: type to filter, Enter to run. The right pane is the same programs by category, then Settings, Style, Install and the session (lock, log out, reboot, shut down). Left and Right cross between the panes; nothing is more than two levels deep.</p>
+<h4>Examples</h4><div class="ex"><code>copal-menu</code><span>the left pane (Super+Space)</span></div><div class="ex"><code>copal-menu --system</code><span>the right pane (Super+Z)</span></div><div class="ex"><code>copal-menu --at-pointer</code><span>open where the mouse is</span></div><div class="ex"><code>copal-menu --rebuild</code><span>rebuild its list now</span></div><div class="ex"><code>copal-menu --rebuild-all</code><span>both desktops' lists</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--system</code></dt><dd>open on the right pane</dd><dt><code>--at-pointer</code></dt><dd>open at the mouse pointer</dd><dt><code>--rebuild</code></dt><dd>rebuild the cached list for this desktop</dd><dt><code>--rebuild-all</code></dt><dd>rebuild it for both sessions (Hyprland and i3)</dd></dl>
+<h4>Notes</h4><ul><li>The list is cached in <code>~/.cache/copal</code> so the menu opens in a fraction of a second; it rebuilds itself when programs change, and copal-install rebuilds it after every install. A program missing from the menu: <code>copal-menu --rebuild</code>.</li><li>It draws with wofi. Its scrolling is wofi's own: with the mouse, keep to the middle rows and use the wheel; the arrow keys always work.</li><li>The Install branch lists the catalogue's programs not yet installed; choosing one runs copal-install in a terminal.</li></ul>
+<p class="see">See also <a href="#c-copal-gui"><code>copal-gui</code></a>, <a href="#c-copal-install"><code>copal-install</code></a>, <a href="#c-copal-apps"><code>copal-apps</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-copal-morse" data-s="copal-morse send, drill and look up morse code copal copal">
 <h3><a class="self" href="#c-copal-morse"><code>copal-morse</code></a> <span class="purpose">Send, drill and look up morse code</span></h3>
@@ -195,10 +270,15 @@
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-copal-shot" data-s="copal-shot super+shift+s copal copal">
-<h3><a class="self" href="#c-copal-shot"><code>copal-shot</code></a> <span class="purpose">Super+Shift+S</span></h3>
+<article class="cmd" id="c-copal-shot" data-s="copal-shot super+shift+s: drag a rectangle, and that part of the screen is saved as a picture. copal copal">
+<h3><a class="self" href="#c-copal-shot"><code>copal-shot</code></a> <span class="purpose">Super+Shift+S: drag a rectangle, and that part of the screen is saved as a picture.</span></h3>
 <p class="facts">Copal · Copal's own · stage 17 · Hyprland and the Antiquity theme</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The Hyprland desktop's screenshot key. The theme binds hyprshot, which Alpine does not package; copal-shot does the same with grim (grab) and slurp (select), which it does.</p>
+<h4>Use</h4><p>Press Super+Shift+S, then drag over the area you want; release and it is saved to <code>~/Pictures</code> as <code>screenshot-DATE-TIME.png</code> (to <code>/tmp</code> if there is no Pictures folder). Escape cancels.</p>
+<h4>Examples</h4><div class="ex"><code>copal-shot</code><span>select a region, save it</span></div><div class="ex"><code>grim ~/Pictures/whole.png</code><span>the whole screen, with grim directly</span></div><div class="ex"><code>grim -g "$(slurp)" - | wl-copy</code><span>a region straight to the clipboard</span></div>
+<h4>Options</h4><dl class="opts"></dl>
+<h4>Notes</h4><ul><li>It saves without saying so: look in <code>~/Pictures</code>.</li><li>For the whole screen, a window, or a copy on the clipboard, use grim directly, as in the examples.</li><li>On the i3 desktop (X11) screenshots are <a href="#c-scrot"><code>scrot</code></a>; copal-shot is for Wayland.</li></ul>
+<p class="see">See also <code>grim</code>, <a href="#c-scrot"><code>scrot</code></a>, <a href="#c-tesseract"><code>tesseract</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-copal-splash" data-s="copal-splash render ~/.config/i3/keys.txt onto the root window copal copal">
 <h3><a class="self" href="#c-copal-splash"><code>copal-splash</code></a> <span class="purpose">Render ~/.config/i3/keys.txt onto the root window</span></h3>
@@ -215,35 +295,60 @@
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-copal-store" data-s="copal-store find a good program by what it does, and install it copal copal">
-<h3><a class="self" href="#c-copal-store"><code>copal-store</code></a> <span class="purpose">Find a good program by what it does, and install it</span></h3>
+<article class="cmd" id="c-copal-store" data-s="copal-store copal apps from the command line: find programs by what they do, install and remove them, with everything they need. copal copal">
+<h3><a class="self" href="#c-copal-store"><code>copal-store</code></a> <span class="purpose">Copal Apps from the command line: find programs by what they do, install and remove them, with everything they need.</span></h3>
 <p class="facts">Copal · Copal's own · stage 18 · The Copal Store, and OpenShot compiled</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The engine behind Copal Apps and the menu's Install: every program Copal offers is a playbook, and copal-store runs it -- from an Alpine package, a Flatpak, a build from GitHub source, or a clone into ~/code -- then adds its man page, its optionals (plugins, codecs, format loaders) and the groups it needs.</p>
+<h4>Use</h4><p><code>list</code> and <code>info</code> to look; <code>install</code> and <code>remove</code> to change things (they ask for doas). With no arguments it opens the store window, or terminal menus where there is no desktop.</p>
+<h4>Examples</h4><div class="ex"><code>copal-store list Games</code><span>a shelf: status, id, name</span></div><div class="ex"><code>copal-store info gimp</code><span>what it is, where from, how it installs</span></div><div class="ex"><code>doas copal-store install gimp ffmpeg # install, with man pages, optionals, access</code></div><div class="ex"><code>doas copal-store remove gimp</code><span>and remove</span></div><div class="ex"><code>copal-store optionals</code><span>the optionals table</span></div><div class="ex"><code>doas copal-store optionals --installed</code><span>catch up everything already installed</span></div><div class="ex"><code>doas copal-store access</code><span>the groups installed programs need</span></div><div class="ex"><code>copal-store summary</code><span>what each build did: result, size, "with", "absent"</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>list [SECTION]</code></dt><dd>every program, or one shelf</dd><dt><code>info ID</code></dt><dd>one program: description, source, install method</dd><dt><code>install ID...</code></dt><dd>install (with man pages, optionals and access)</dd><dt><code>remove ID...</code></dt><dd>remove</dd><dt><code>recipes</code></dt><dd>the programs built from source</dd><dt><code>optionals [PKG...|--installed]</code></dt><dd>the plugins and helpers; install them</dd><dt><code>access [USER]</code></dt><dd>the groups programs need: plugdev, wireshark, dialout...</dd><dt><code>manpages PKG...</code></dt><dd>the man pages of these packages</dd><dt><code>summary</code></dt><dd>the build record</dd><dt><code>log ID</code></dt><dd>one build's full log</dd></dl>
+<h4>Notes</h4><ul><li>A build from source records what it compiled in ("with") and what it could not find ("absent") in the summary: the answer to which formats and codecs a build has.</li><li>Its logs are in <code>/var/log/copal-store</code>; the event stream Copal Apps reads is <code>/var/log/copal/events</code>.</li><li>Installed on medium and full installs (stage 18).</li></ul>
+<p class="see">See also <a href="#c-copal-apps"><code>copal-apps</code></a>, <a href="#c-copal-install"><code>copal-install</code></a>, <a href="#c-apk"><code>apk</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-copal-terminal-theme" data-s="copal-terminal-theme the desktop's theme on every terminal, opaque copal copal">
-<h3><a class="self" href="#c-copal-terminal-theme"><code>copal-terminal-theme</code></a> <span class="purpose">The desktop's theme on every terminal, opaque</span></h3>
+<article class="cmd" id="c-copal-terminal-theme" data-s="copal-terminal-theme write a colour theme into the terminal emulators' configs: foot, kitty, alacritty and the rest. copal copal">
+<h3><a class="self" href="#c-copal-terminal-theme"><code>copal-terminal-theme</code></a> <span class="purpose">Write a colour theme into the terminal emulators' configs: foot, kitty, alacritty and the rest.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The terminal part of the desktop's look, on its own: copal-theme calls it, and it can be run by hand for a different terminal palette or opacity.</p>
+<h4>Use</h4><p>Name a theme and it writes it into every terminal configuration in your home; with no name it follows the desktop's current theme. Open terminals pick it up when they next start.</p>
+<h4>Examples</h4><div class="ex"><code>copal-terminal-theme</code><span>follow the desktop's theme</span></div><div class="ex"><code>copal-terminal-theme --list</code><span>the palettes there are</span></div><div class="ex"><code>copal-terminal-theme sand</code><span>Copal's own light palette</span></div><div class="ex"><code>copal-terminal-theme night --alpha 1 # Tokyo Night, fully opaque</code></div><div class="ex"><code>copal-terminal-theme --show eris</code><span>print a palette, change nothing</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>THEME</code></dt><dd>helios, eris, priapus, eros, hades (Linux Antiquity), night, sand</dd><dt><code>--list</code></dt><dd>the theme names --show THEME print the palette and stop</dd><dt><code>--alpha A</code></dt><dd>window opacity, 0.5 to 1 (default 0.9)</dd></dl>
+<h4>Notes</h4><ul><li><code>$COPAL_TERMINAL_THEME</code> overrides what "follow the desktop" means.</li><li>Only terminals already configured in your home are rewritten; a terminal installed later gets the theme the next time this runs.</li></ul>
+<p class="see">See also <a href="#c-copal-theme"><code>copal-theme</code></a>, <code>foot</code></p>
 </article>
-<article class="cmd facts-only" id="c-copal-theme" data-s="copal-theme one switch for the whole desktop's look copal copal">
-<h3><a class="self" href="#c-copal-theme"><code>copal-theme</code></a> <span class="purpose">One switch for the whole desktop's look</span></h3>
+<article class="cmd" id="c-copal-theme" data-s="copal-theme one switch for the whole desktop's look: bar, borders, wallpaper, gtk, terminal, menus and editor together. copal copal">
+<h3><a class="self" href="#c-copal-theme"><code>copal-theme</code></a> <span class="purpose">One switch for the whole desktop's look: bar, borders, wallpaper, GTK, terminal, menus and editor together.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Copal's desktop is themed in a dozen places -- Hyprland, the bar, wofi, GTK, the terminal, Neovim, mc. copal-theme changes all of them at once, so nothing is left in the old colours.</p>
+<h4>Use</h4><p>With no argument it lists the themes, the current one starred. A name switches to it; <code>--toggle</code> swaps light and dark; <code>--pick</code> offers a menu (Super+Shift+T, or Style in the menu).</p>
+<h4>Examples</h4><div class="ex"><code>copal-theme</code><span>the themes, * the current</span></div><div class="ex"><code>copal-theme tokyo-night</code><span>switch everything to it</span></div><div class="ex"><code>copal-theme --toggle</code><span>light &lt;-&gt; dark (Super+Shift+N)</span></div><div class="ex"><code>copal-theme --pick</code><span>choose from a menu</span></div><div class="ex"><code>copal-theme --show antiquity</code><span>a theme's colour tokens</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>NAME</code></dt><dd>switch to NAME</dd><dt><code>--toggle</code></dt><dd>the current theme's light or dark partner</dd><dt><code>--pick</code></dt><dd>choose from a menu (Super+Shift+T)</dd><dt><code>--show [NAME]</code></dt><dd>print a theme's tokens</dd><dt><code>-q, --quiet</code></dt><dd>say nothing but errors</dd></dl>
+<h4>Notes</h4><ul><li>The colours are written to <code>~/.config/copal/current/colors.css</code>, which the bar, wofi and the Super+A menu read: a running Neovim follows the change without restarting.</li><li>Themes shipped: Antiquity (helios, light) and Tokyo Night (dark).</li></ul>
+<p class="see">See also <a href="#c-copal-terminal-theme"><code>copal-terminal-theme</code></a>, <a href="#c-copal-wallpaper"><code>copal-wallpaper</code></a>, <a href="#c-copal-gui"><code>copal-gui</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-copal-times" data-s="copal-times how long each package took, and which ones are worth moving copal copal">
 <h3><a class="self" href="#c-copal-times"><code>copal-times</code></a> <span class="purpose">How long each package took, and which ones are worth moving</span></h3>
 <p class="facts">Copal · Copal's own · written on every run of the installer</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-copal-wallpaper" data-s="copal-wallpaper paint the wallpaper, choose one, or fetch more copal copal">
-<h3><a class="self" href="#c-copal-wallpaper"><code>copal-wallpaper</code></a> <span class="purpose">Paint the wallpaper, choose one, or fetch more</span></h3>
+<article class="cmd" id="c-copal-wallpaper" data-s="copal-wallpaper choose and paint the desktop's wallpaper, from the theme's collection or your own pictures. copal copal">
+<h3><a class="self" href="#c-copal-wallpaper"><code>copal-wallpaper</code></a> <span class="purpose">Choose and paint the desktop's wallpaper, from the theme's collection or your own pictures.</span></h3>
 <p class="facts">Copal · Copal's own · stage 17 · Hyprland and the Antiquity theme</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Hyprland's own wallpaper tool, hyprpaper, is not packaged for Alpine; copal-wallpaper paints with swaybg, remembers the choice, and is what the session starts.</p>
+<h4>Use</h4><p><code>--pick</code> shows thumbnails to choose from; <code>set FILE</code> uses any picture. Without arguments it paints the chosen one and keeps running -- the session starts it that way.</p>
+<h4>Examples</h4><div class="ex"><code>copal-wallpaper --pick</code><span>choose, with thumbnails</span></div><div class="ex"><code>copal-wallpaper set ~/Pictures/lake.jpg</code><span>any picture of yours</span></div><div class="ex"><code>copal-wallpaper --list</code><span>what is available, and from where</span></div><div class="ex"><code>copal-wallpaper --fetch</code><span>download diinki's published collection</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--pick</code></dt><dd>choose one, with thumbnails</dd><dt><code>set FILE</code></dt><dd>use FILE from now on</dd><dt><code>--list</code></dt><dd>the wallpapers, and where each came from</dd><dt><code>--fetch</code></dt><dd>download the theme author's full collection</dd></dl>
+<h4>Notes</h4><ul><li>The bundled wallpapers are in <code>~/.config/hypr/wallpapers_bundled</code>; <code>--fetch</code> adds the rest of the collection.</li><li>The choice is remembered across logins; <code>set</code> is all it takes.</li></ul>
+<p class="see">See also <a href="#c-copal-theme"><code>copal-theme</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-copal-widgets" data-s="copal-widgets the widgets on the wallpaper copal copal">
-<h3><a class="self" href="#c-copal-widgets"><code>copal-widgets</code></a> <span class="purpose">The widgets on the wallpaper</span></h3>
+<article class="cmd" id="c-copal-widgets" data-s="copal-widgets the clock, date and weather on the wallpaper: show them, hide them, and see where they come from. copal copal">
+<h3><a class="self" href="#c-copal-widgets"><code>copal-widgets</code></a> <span class="purpose">The clock, date and weather on the wallpaper: show them, hide them, and see where they come from.</span></h3>
 <p class="facts">Copal · Copal's own · stage 4 · X.Org, i3, a terminal and a browser</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The desktop layer's widgets. The theme's own widget shell, quickshell, is not packaged for Alpine, so waybar draws them; this command turns them on and off without touching the bar, and seeds the theme's own widget file for the day quickshell arrives.</p>
+<h4>Use</h4><p><code>--off</code> hides them, <code>--on</code> brings them back, both at once; <code>--status</code> says which are running and from where.</p>
+<h4>Examples</h4><div class="ex"><code>copal-widgets --status</code><span>what is running</span></div><div class="ex"><code>copal-widgets --off</code><span>hide the clock and weather now</span></div><div class="ex"><code>copal-widgets --on</code><span>show them again</span></div><div class="ex"><code>copal-guide widgets</code><span>the longer version</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--on</code></dt><dd>show the widgets</dd><dt><code>--off</code></dt><dd>hide them</dd><dt><code>--status</code></dt><dd>which are running, and from where</dd><dt><code>--seed</code></dt><dd>place the theme's widgets in its quickshell file (run at login)</dd></dl>
+<h4>Notes</h4><ul><li>What is drawn and where is <code>~/.config/waybar/desktop.json</code>; the type and colours, <code>desktop.css</code> beside it. Nothing regenerates those files once they exist, so edits stay.</li></ul>
+<p class="see">See also <a href="#c-copal-bar"><code>copal-bar</code></a>, <a href="#c-copal-theme"><code>copal-theme</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-appearance"><h2>Appearance</h2>

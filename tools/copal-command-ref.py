@@ -885,7 +885,7 @@ def help_snapshot():
     keep = set()
     for c in facts:
         path = which(c["cmd"], e)
-        if not path or c["cmd"] in NO_HELP:
+        if not path or c["cmd"] in NO_HELP or c.get("origin") == "copal":
             continue
         t = help_text(path)
         if t.strip() and len(t) < 200000:
@@ -897,6 +897,30 @@ def help_snapshot():
             os.remove(os.path.join(HELPDIR, f))
     print("  ok      %d help texts -> docs/commands/help/" % len(keep))
     return 0
+
+
+def source_text(cmd):
+    """Copal's own commands are never run to read their help: copal-shot
+    starts a screenshot, copal-halt shuts down, and most take no --help.
+    Their text is their source -- the heredoc copal-prep.sh writes them
+    from, or their file in tools/."""
+    if cmd == "copal":        # the installer's copy of itself
+        return open(PREP, encoding="utf-8", errors="replace").read()
+    for f in (os.path.join(ROOT, "tools", cmd), os.path.join(ROOT, "tools", cmd + ".sh")):
+        if os.path.isfile(f):
+            return open(f, encoding="utf-8", errors="replace").read()
+    lines = open(os.path.join(ROOT, "copal-prep.sh"), encoding="utf-8", errors="replace").read().split("\n")
+    pat = re.compile(r'cat > "?/usr(?:/local)?/bin/%s"? <<\s*\'?"?([A-Z_]+)' % re.escape(cmd))
+    for i, l in enumerate(lines):
+        m = pat.search(l)
+        if m:
+            tag, body = m.group(1), []
+            for l2 in lines[i + 1:]:
+                if l2.strip() == tag:
+                    break
+                body.append(l2)
+            return "\n".join(body)
+    return ""
 
 
 def saved_text(cmd):
@@ -933,7 +957,9 @@ def check():
         c = facts[cmd]
         text = ""
         path = None
-        if not on_machine:
+        if c.get("origin") == "copal":
+            text = source_text(cmd)
+        elif not on_machine:
             # What the last Copal machine saved: its man pages and --help.
             text = saved_text(cmd)
         else:
