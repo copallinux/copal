@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Software · Copal Linux</title>
+<meta name="description" content="The software made for Copal — Copal Apps, the menus, the clipboard bridge, a fleet console, an instrument panel for a Geiger counter — and a gallery of every program photographed running on it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="./">Copal</a>
+  <a class="key" href="./">Home</a>
+  <a class="key" href="desktop.html">Desktop</a>
+  <a class="key" href="install.html">Install</a>
+  <a class="key" href="platforms.html">Platforms</a>
+  <a class="key" href="alpine.html">Alpine</a>
+  <a class="key" href="software.html" aria-current="page">Software</a>
+</nav>
+
+<main>
+
+<header class="page-head">
+  <h1>Made for Copal</h1>
+  <p class="lede">The programs written for this desktop, the projects that
+  live on it, and every program it offers, photographed running.</p>
+</header>
+
+<h2><span class="idx">01</span>The desktop's own</h2>
+
+<p>Small programs, each doing one job the desktop needed and nobody had
+written for Alpine. All of them are in the installer, and all are MIT
+licensed.</p>
+
+<div class="cards">
+  <article class="card">
+    <h3>Copal Apps</h3>
+    <p>Every program Copal offers, on shelves, with a picture, two sentences,
+    its source and its status. An install is shown as a slideshow: the
+    program arriving, its steps, and three bars.</p>
+    <p class="where">copal-apps · copal-store · Super ⇧ C</p>
+  </article>
+  <article class="card">
+    <h3>The installer</h3>
+    <p>One script, eighteen stages, a playbook per program. It writes the card
+    on the Mac, sets up the machine, and keeps a record of all of it.</p>
+    <p class="where">copal · copal-prep.sh</p>
+  </article>
+  <article class="card">
+    <h3>copal-gui</h3>
+    <p>The menu for the mouse, laid out the way Linux Mint's is: favourites,
+    sections, search. Built from the programs the system already advertises,
+    so a program installed a minute ago is already in it.</p>
+    <p class="where">Super A</p>
+  </article>
+  <article class="card">
+    <h3>copal-menu</h3>
+    <p>The menu for the keyboard: applications on one side, everything else
+    on the other, in wofi on Wayland and jgmenu on X.</p>
+    <p class="where">Super Z · Super D</p>
+  </article>
+  <article class="card">
+    <h3>copal-clip</h3>
+    <p>One clipboard, one set of keys, in every window — X programs and
+    Wayland ones alike, and in a virtual machine the Mac's clipboard too.</p>
+    <p class="where">runs at login</p>
+  </article>
+  <article class="card">
+    <h3>copal-session and copal-bar</h3>
+    <p>The front door of the graphical session, and the bar that starts
+    whichever shell the machine actually has: waybar today, the theme's own
+    quickshell the day Alpine packages it.</p>
+    <p class="where">runs at login</p>
+  </article>
+  <article class="card">
+    <h3>The fleet</h3>
+    <p>Several Copal machines, one console: a certificate authority, an mDNS
+    beacon on each machine, and a console that sees and acts on the room.</p>
+    <p class="where">copal fleet · stage 16 · <a href="https://github.com/vonglurt/orrery">orrery</a></p>
+  </article>
+</div>
+
+<h2><span class="idx">02</span>Projects that live on it</h2>
+
+<p>Stage 7 clones the repositories you name into <code>~/code</code>; these
+are the ones this machine is used to make. Each is its own project, in its
+own repository.</p>
+
+<div class="cards">
+  <article class="card">
+    <h3><a href="https://github.com/vonglurt/radbeeper">radbeeper</a></h3>
+    <p>A GQ GMC-320 Plus Geiger counter on the desk, read from Alpine: two
+    dials, a live chart and a log, from one or two tubes at once.</p>
+    <p class="where">Rust · the instrument panel</p>
+  </article>
+  <article class="card">
+    <h3><a href="https://github.com/vonglurt/copal-tm">copal-tm</a></h3>
+    <p>An instrument panel and a process browser in one terminal window: the
+    task manager for Copal's full install, one Rust crate with no
+    dependencies.</p>
+    <p class="where">Rust · the task manager</p>
+  </article>
+  <article class="card">
+    <h3><a href="https://github.com/vonglurt/staticstream">staticstream</a></h3>
+    <p>A stream stopped in a file and let go again: the <code>.sstr</code>
+    format, and ytq, Copal's download queue that watches the clipboard.</p>
+    <p class="where">Rust · no dependencies</p>
+  </article>
+  <article class="card">
+    <h3><a href="https://github.com/vonglurt/orrery">orrery</a></h3>
+    <p>The Copal fleet's console: the wall, the seat, the museum interface,
+    and the verbs that act on a room full of machines.</p>
+    <p class="where">the fleet</p>
+  </article>
+  <article class="card">
+    <h3><a href="https://github.com/vonglurt/urfinkel">UR FINKEL</a></h3>
+    <p>The Royal Game of Ur for the Commodore Plus/4 — and playable in a
+    browser, where a Plus/4 boots inside the page.</p>
+    <p class="where">C and 6502 assembly · <a href="https://vonglurt.github.io/urfinkel/">play it</a></p>
+  </article>
+  <article class="card">
+    <h3><a href="https://github.com/vonglurt/ascitty">ASCITTY</a></h3>
+    <p>A raytraced city built entirely of typeable characters, in real time,
+    on a colour terminal and on a Commodore Plus/4 — with a taxi game
+    inside it.</p>
+    <p class="where">terminal · Plus/4</p>
+  </article>
+  <article class="card">
+    <h3><a href="https://github.com/vonglurt/codexofconquest">Codex of Conquest</a></h3>
+    <p>A whole adventure RPG in one HTML file: combat, a world map, quests,
+    saves and eight acts of story, with no server and nothing to install.</p>
+    <p class="where">one HTML file</p>
+  </article>
+  <article class="card">
+    <h3><a href="https://github.com/vonglurt/birdshot">birdshot</a></h3>
+    <p>Bird and sky capture for the Raspberry Pi HQ Camera.</p>
+    <p class="where">Raspberry Pi · <a href="https://birdshot.org">birdshot.org</a></p>
+  </article>
+</div>
+
+<h2><span class="idx">03</span>Every program, running</h2>
+
+<p>Each picture below was taken on the bench by the same probe that checks
+a program starts: it launches the program on a spare workspace, waits for
+its window, gets past any first-run dialog, and photographs the screen.
+A program is listed only if it opened a window.</p>
+
+<!-- gallery:begin -- generated by tools/copal-app-gallery.py; edit that, not this -->
+<h3 class="gallery-section">Audio <span style="color:var(--resin-deep)">7</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/ardour9.jpg" width="320" height="200" loading="lazy" alt="Ardour (recording studio), running on Copal"><figcaption>Ardour (recording studio)</figcaption></figure>
+  <figure><img src="img/gallery/audacity.jpg" width="320" height="200" loading="lazy" alt="Audacity (audio editor), running on Copal"><figcaption>Audacity (audio editor)</figcaption></figure>
+  <figure><img src="img/gallery/hydrogen.jpg" width="320" height="200" loading="lazy" alt="Hydrogen (drum machine), running on Copal"><figcaption>Hydrogen (drum machine)</figcaption></figure>
+  <figure><img src="img/gallery/lmms.jpg" width="320" height="200" loading="lazy" alt="LMMS (DAW - tracker lineage), running on Copal"><figcaption>LMMS (DAW - tracker lineage)</figcaption></figure>
+  <figure><img src="img/gallery/mscore.jpg" width="320" height="200" loading="lazy" alt="MuseScore (music notation), running on Copal"><figcaption>MuseScore (music notation)</figcaption></figure>
+  <figure><img src="img/gallery/schismtracker.jpg" width="320" height="200" loading="lazy" alt="Schism Tracker (Impulse Tracker style), running on Copal"><figcaption>Schism Tracker (Impulse Tracker style)</figcaption></figure>
+  <figure><img src="img/gallery/vsid.jpg" width="320" height="200" loading="lazy" alt="VICE vsid (Commodore 64 SID player), running on Copal"><figcaption>VICE vsid (Commodore 64 SID player)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Control <span style="color:var(--resin-deep)">3</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/blueman-manager.jpg" width="320" height="200" loading="lazy" alt="Bluetooth manager, running on Copal"><figcaption>Bluetooth manager</figcaption></figure>
+  <figure><img src="img/gallery/arandr.jpg" width="320" height="200" loading="lazy" alt="Display layout, running on Copal"><figcaption>Display layout</figcaption></figure>
+  <figure><img src="img/gallery/pavucontrol.jpg" width="320" height="200" loading="lazy" alt="Volume control (PulseAudio), running on Copal"><figcaption>Volume control (PulseAudio)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Creative <span style="color:var(--resin-deep)">2</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/darktable.jpg" width="320" height="200" loading="lazy" alt="darktable (raw photo developer), running on Copal"><figcaption>darktable (raw photo developer)</figcaption></figure>
+  <figure><img src="img/gallery/pencil2d.jpg" width="320" height="200" loading="lazy" alt="Pencil2D (hand-drawn animation), running on Copal"><figcaption>Pencil2D (hand-drawn animation)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Design <span style="color:var(--resin-deep)">8</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/drawing.jpg" width="320" height="200" loading="lazy" alt="Drawing (simple paint), running on Copal"><figcaption>Drawing (simple paint)</figcaption></figure>
+  <figure><img src="img/gallery/inkscape.jpg" width="320" height="200" loading="lazy" alt="Inkscape (vector drawing), running on Copal"><figcaption>Inkscape (vector drawing)</figcaption></figure>
+  <figure><img src="img/gallery/libresprite.jpg" width="320" height="200" loading="lazy" alt="LibreSprite (pixel art + animation), running on Copal"><figcaption>LibreSprite (pixel art + animation)</figcaption></figure>
+  <figure><img src="img/gallery/mypaint.jpg" width="320" height="200" loading="lazy" alt="MyPaint (natural media painting), running on Copal"><figcaption>MyPaint (natural media painting)</figcaption></figure>
+  <figure><img src="img/gallery/pinta.jpg" width="320" height="200" loading="lazy" alt="Pinta (Paint.NET-like), running on Copal"><figcaption>Pinta (Paint.NET-like)</figcaption></figure>
+  <figure><img src="img/gallery/tuxpaint.jpg" width="320" height="200" loading="lazy" alt="Tux Paint (for children), running on Copal"><figcaption>Tux Paint (for children)</figcaption></figure>
+  <figure><img src="img/gallery/umbrello6.jpg" width="320" height="200" loading="lazy" alt="Umbrello (UML diagram editor), running on Copal"><figcaption>Umbrello (UML diagram editor)</figcaption></figure>
+  <figure><img src="img/gallery/xfig.jpg" width="320" height="200" loading="lazy" alt="Xfig (vector drawing - classic), running on Copal"><figcaption>Xfig (vector drawing - classic)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Devtools <span style="color:var(--resin-deep)">6</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/cgdb.jpg" width="320" height="200" loading="lazy" alt="cgdb (GDB with a source window), running on Copal"><figcaption>cgdb (GDB with a source window)</figcaption></figure>
+  <figure><img src="img/gallery/codeblocks.jpg" width="320" height="200" loading="lazy" alt="Code::Blocks (IDE - GDB breakpoints), running on Copal"><figcaption>Code::Blocks (IDE - GDB breakpoints)</figcaption></figure>
+  <figure><img src="img/gallery/gdb.jpg" width="320" height="200" loading="lazy" alt="GDB (the debugger everything uses), running on Copal"><figcaption>GDB (the debugger everything uses)</figcaption></figure>
+  <figure><img src="img/gallery/kdevelop.jpg" width="320" height="200" loading="lazy" alt="KDevelop (IDE - GDB breakpoints), running on Copal"><figcaption>KDevelop (IDE - GDB breakpoints)</figcaption></figure>
+  <figure><img src="img/gallery/lapce.jpg" width="320" height="200" loading="lazy" alt="Lapce (modern GUI editor, Rust), running on Copal"><figcaption>Lapce (modern GUI editor, Rust)</figcaption></figure>
+  <figure><img src="img/gallery/lldb.jpg" width="320" height="200" loading="lazy" alt="LLDB (the Clang debugger), running on Copal"><figcaption>LLDB (the Clang debugger)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Discs <span style="color:var(--resin-deep)">3</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/cdw.jpg" width="320" height="200" loading="lazy" alt="cdw (CD/DVD burner - terminal), running on Copal"><figcaption>cdw (CD/DVD burner - terminal)</figcaption></figure>
+  <figure><img src="img/gallery/k3b.jpg" width="320" height="200" loading="lazy" alt="K3b (CD/DVD/Blu-ray burner), running on Copal"><figcaption>K3b (CD/DVD/Blu-ray burner)</figcaption></figure>
+  <figure><img src="img/gallery/xfburn.jpg" width="320" height="200" loading="lazy" alt="Xfburn (CD/DVD burner), running on Copal"><figcaption>Xfburn (CD/DVD burner)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Documents <span style="color:var(--resin-deep)">10</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/abiword.jpg" width="320" height="200" loading="lazy" alt="AbiWord (word processor), running on Copal"><figcaption>AbiWord (word processor)</figcaption></figure>
+  <figure><img src="img/gallery/evince.jpg" width="320" height="200" loading="lazy" alt="Evince (PDF - full featured), running on Copal"><figcaption>Evince (PDF - full featured)</figcaption></figure>
+  <figure><img src="img/gallery/focuswriter.jpg" width="320" height="200" loading="lazy" alt="FocusWriter (distraction-free writing), running on Copal"><figcaption>FocusWriter (distraction-free writing)</figcaption></figure>
+  <figure><img src="img/gallery/foliate.jpg" width="320" height="200" loading="lazy" alt="Foliate (ebook reader), running on Copal"><figcaption>Foliate (ebook reader)</figcaption></figure>
+  <figure><img src="img/gallery/gnumeric.jpg" width="320" height="200" loading="lazy" alt="Gnumeric (spreadsheet), running on Copal"><figcaption>Gnumeric (spreadsheet)</figcaption></figure>
+  <figure><img src="img/gallery/koreader.jpg" width="320" height="200" loading="lazy" alt="KOReader (ebook reader), running on Copal"><figcaption>KOReader (ebook reader)</figcaption></figure>
+  <figure><img src="img/gallery/mupdf.jpg" width="320" height="200" loading="lazy" alt="MuPDF (PDF - fastest), running on Copal"><figcaption>MuPDF (PDF - fastest)</figcaption></figure>
+  <figure><img src="img/gallery/sc-im.jpg" width="320" height="200" loading="lazy" alt="sc-im (spreadsheet - terminal), running on Copal"><figcaption>sc-im (spreadsheet - terminal)</figcaption></figure>
+  <figure><img src="img/gallery/xpdf.jpg" width="320" height="200" loading="lazy" alt="xpdf (PDF), running on Copal"><figcaption>xpdf (PDF)</figcaption></figure>
+  <figure><img src="img/gallery/zathura.jpg" width="320" height="200" loading="lazy" alt="Zathura (PDF), running on Copal"><figcaption>Zathura (PDF)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Editors <span style="color:var(--resin-deep)">9</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/emacs.jpg" width="320" height="200" loading="lazy" alt="Emacs (Eglot LSP built in; -nw for terminal), running on Copal"><figcaption>Emacs (Eglot LSP built in; -nw for terminal)</figcaption></figure>
+  <figure><img src="img/gallery/geany.jpg" width="320" height="200" loading="lazy" alt="Geany (programmer&#x27;s editor), running on Copal"><figcaption>Geany (programmer&#x27;s editor)</figcaption></figure>
+  <figure><img src="img/gallery/gedit.jpg" width="320" height="200" loading="lazy" alt="gedit (GNOME editor), running on Copal"><figcaption>gedit (GNOME editor)</figcaption></figure>
+  <figure><img src="img/gallery/hx.jpg" width="320" height="200" loading="lazy" alt="Helix (terminal - modal, batteries in), running on Copal"><figcaption>Helix (terminal - modal, batteries in)</figcaption></figure>
+  <figure><img src="img/gallery/kate.jpg" width="320" height="200" loading="lazy" alt="Kate (KDE - LSP client built in), running on Copal"><figcaption>Kate (KDE - LSP client built in)</figcaption></figure>
+  <figure><img src="img/gallery/micro.jpg" width="320" height="200" loading="lazy" alt="micro (terminal - modeless), running on Copal"><figcaption>micro (terminal - modeless)</figcaption></figure>
+  <figure><img src="img/gallery/mousepad.jpg" width="320" height="200" loading="lazy" alt="Mousepad (small GUI editor), running on Copal"><figcaption>Mousepad (small GUI editor)</figcaption></figure>
+  <figure><img src="img/gallery/nano.jpg" width="320" height="200" loading="lazy" alt="nano (terminal - simplest), running on Copal"><figcaption>nano (terminal - simplest)</figcaption></figure>
+  <figure><img src="img/gallery/vis.jpg" width="320" height="200" loading="lazy" alt="vis (terminal - vi keys), running on Copal"><figcaption>vis (terminal - vi keys)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Engineering <span style="color:var(--resin-deep)">3</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/FreeCAD.jpg" width="320" height="200" loading="lazy" alt="FreeCAD (parametric 3D CAD - heavy), running on Copal"><figcaption>FreeCAD (parametric 3D CAD - heavy)</figcaption></figure>
+  <figure><img src="img/gallery/kicad.jpg" width="320" height="200" loading="lazy" alt="KiCad (schematic + PCB + gerbers), running on Copal"><figcaption>KiCad (schematic + PCB + gerbers)</figcaption></figure>
+  <figure><img src="img/gallery/solvespace.jpg" width="320" height="200" loading="lazy" alt="SolveSpace (parametric CAD, exports STL), running on Copal"><figcaption>SolveSpace (parametric CAD, exports STL)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Files <span style="color:var(--resin-deep)">9</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/czkawka_gui.jpg" width="320" height="200" loading="lazy" alt="Czkawka (find duplicates), running on Copal"><figcaption>Czkawka (find duplicates)</figcaption></figure>
+  <figure><img src="img/gallery/krusader.jpg" width="320" height="200" loading="lazy" alt="Krusader (two-pane - powerful), running on Copal"><figcaption>Krusader (two-pane - powerful)</figcaption></figure>
+  <figure><img src="img/gallery/mc.jpg" width="320" height="200" loading="lazy" alt="Midnight Commander, running on Copal"><figcaption>Midnight Commander</figcaption></figure>
+  <figure><img src="img/gallery/nnn.jpg" width="320" height="200" loading="lazy" alt="nnn (terminal file manager), running on Copal"><figcaption>nnn (terminal file manager)</figcaption></figure>
+  <figure><img src="img/gallery/pcmanfm.jpg" width="320" height="200" loading="lazy" alt="PCManFM (file manager), running on Copal"><figcaption>PCManFM (file manager)</figcaption></figure>
+  <figure><img src="img/gallery/ranger.jpg" width="320" height="200" loading="lazy" alt="ranger (terminal file manager), running on Copal"><figcaption>ranger (terminal file manager)</figcaption></figure>
+  <figure><img src="img/gallery/thunar.jpg" width="320" height="200" loading="lazy" alt="Thunar (file manager), running on Copal"><figcaption>Thunar (file manager)</figcaption></figure>
+  <figure><img src="img/gallery/xarchiver.jpg" width="320" height="200" loading="lazy" alt="Xarchiver (zip/tar/7z), running on Copal"><figcaption>Xarchiver (zip/tar/7z)</figcaption></figure>
+  <figure><img src="img/gallery/xfe.jpg" width="320" height="200" loading="lazy" alt="Xfe (two-pane file manager), running on Copal"><figcaption>Xfe (two-pane file manager)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Games <span style="color:var(--resin-deep)">30</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/atc.jpg" width="320" height="200" loading="lazy" alt="Air Traffic Control, running on Copal"><figcaption>Air Traffic Control</figcaption></figure>
+  <figure><img src="img/gallery/angband.jpg" width="320" height="200" loading="lazy" alt="Angband (roguelike), running on Copal"><figcaption>Angband (roguelike)</figcaption></figure>
+  <figure><img src="img/gallery/asciiquarium.jpg" width="320" height="200" loading="lazy" alt="Asciiquarium, running on Copal"><figcaption>Asciiquarium</figcaption></figure>
+  <figure><img src="img/gallery/brogue.jpg" width="320" height="200" loading="lazy" alt="Brogue (roguelike), running on Copal"><figcaption>Brogue (roguelike)</figcaption></figure>
+  <figure><img src="img/gallery/cataclysm-tiles.jpg" width="320" height="200" loading="lazy" alt="Cataclysm DDA (survival roguelike), running on Copal"><figcaption>Cataclysm DDA (survival roguelike)</figcaption></figure>
+  <figure><img src="img/gallery/xboard.jpg" width="320" height="200" loading="lazy" alt="Chess (XBoard + GNU Chess), running on Copal"><figcaption>Chess (XBoard + GNU Chess)</figcaption></figure>
+  <figure><img src="img/gallery/chocolate-doom.jpg" width="320" height="200" loading="lazy" alt="Chocolate Doom (faithful Doom, with Freedoom), running on Copal"><figcaption>Chocolate Doom (faithful Doom, with Freedoom)</figcaption></figure>
+  <figure><img src="img/gallery/cmatrix.jpg" width="320" height="200" loading="lazy" alt="cmatrix, running on Copal"><figcaption>cmatrix</figcaption></figure>
+  <figure><img src="img/gallery/adventure.jpg" width="320" height="200" loading="lazy" alt="Colossal Cave Adventure, running on Copal"><figcaption>Colossal Cave Adventure</figcaption></figure>
+  <figure><img src="img/gallery/endless-sky.jpg" width="320" height="200" loading="lazy" alt="Endless Sky (space trading), running on Copal"><figcaption>Endless Sky (space trading)</figcaption></figure>
+  <figure><img src="img/gallery/freeciv-sdl2.jpg" width="320" height="200" loading="lazy" alt="Freeciv (SDL client - slow), running on Copal"><figcaption>Freeciv (SDL client - slow)</figcaption></figure>
+  <figure><img src="img/gallery/gzdoom.jpg" width="320" height="200" loading="lazy" alt="GZDoom (Doom engine, with Freedoom), running on Copal"><figcaption>GZDoom (Doom engine, with Freedoom)</figcaption></figure>
+  <figure><img src="img/gallery/hangman.jpg" width="320" height="200" loading="lazy" alt="Hangman, running on Copal"><figcaption>Hangman</figcaption></figure>
+  <figure><img src="img/gallery/klondike.jpg" width="320" height="200" loading="lazy" alt="Klondike (cards), running on Copal"><figcaption>Klondike (cards)</figcaption></figure>
+  <figure><img src="img/gallery/luanti.jpg" width="320" height="200" loading="lazy" alt="Luanti (Minetest - voxel sandbox), running on Copal"><figcaption>Luanti (Minetest - voxel sandbox)</figcaption></figure>
+  <figure><img src="img/gallery/gnome-mines.jpg" width="320" height="200" loading="lazy" alt="Minesweeper, running on Copal"><figcaption>Minesweeper</figcaption></figure>
+  <figure><img src="img/gallery/naev.jpg" width="320" height="200" loading="lazy" alt="Naev (space sandbox), running on Copal"><figcaption>Naev (space sandbox)</figcaption></figure>
+  <figure><img src="img/gallery/nethack.jpg" width="320" height="200" loading="lazy" alt="NetHack (roguelike), running on Copal"><figcaption>NetHack (roguelike)</figcaption></figure>
+  <figure><img src="img/gallery/openmw-launcher.jpg" width="320" height="200" loading="lazy" alt="OpenMW (Morrowind engine - needs the game&#x27;s data), running on Copal"><figcaption>OpenMW (Morrowind engine - needs the game&#x27;s data)</figcaption></figure>
+  <figure><img src="img/gallery/openttd.jpg" width="320" height="200" loading="lazy" alt="OpenTTD (transport sim), running on Copal"><figcaption>OpenTTD (transport sim)</figcaption></figure>
+  <figure><img src="img/gallery/robots.jpg" width="320" height="200" loading="lazy" alt="Robots, running on Copal"><figcaption>Robots</figcaption></figure>
+  <figure><img src="img/gallery/snake.jpg" width="320" height="200" loading="lazy" alt="Snake, running on Copal"><figcaption>Snake</figcaption></figure>
+  <figure><img src="img/gallery/sol.jpg" width="320" height="200" loading="lazy" alt="Solitaire, running on Copal"><figcaption>Solitaire</figcaption></figure>
+  <figure><img src="img/gallery/gnome-sudoku.jpg" width="320" height="200" loading="lazy" alt="Sudoku, running on Copal"><figcaption>Sudoku</figcaption></figure>
+  <figure><img src="img/gallery/supertux2.jpg" width="320" height="200" loading="lazy" alt="SuperTux (platformer - needs a GPU), running on Copal"><figcaption>SuperTux (platformer - needs a GPU)</figcaption></figure>
+  <figure><img src="img/gallery/taisei.jpg" width="320" height="200" loading="lazy" alt="Taisei (bullet hell), running on Copal"><figcaption>Taisei (bullet hell)</figcaption></figure>
+  <figure><img src="img/gallery/ttysolitaire.jpg" width="320" height="200" loading="lazy" alt="TTY Solitaire, running on Copal"><figcaption>TTY Solitaire</figcaption></figure>
+  <figure><img src="img/gallery/wesnoth.jpg" width="320" height="200" loading="lazy" alt="Wesnoth (heavy - turn-based strategy), running on Copal"><figcaption>Wesnoth (heavy - turn-based strategy)</figcaption></figure>
+  <figure><img src="img/gallery/widelands.jpg" width="320" height="200" loading="lazy" alt="Widelands (settlers-like), running on Copal"><figcaption>Widelands (settlers-like)</figcaption></figure>
+  <figure><img src="img/gallery/zangband.jpg" width="320" height="200" loading="lazy" alt="ZAngband (roguelike), running on Copal"><figcaption>ZAngband (roguelike)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Graphics <span style="color:var(--resin-deep)">6</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/gpicview.jpg" width="320" height="200" loading="lazy" alt="GPicView (image viewer), running on Copal"><figcaption>GPicView (image viewer)</figcaption></figure>
+  <figure><img src="img/gallery/gthumb.jpg" width="320" height="200" loading="lazy" alt="gThumb (browse and tag photos), running on Copal"><figcaption>gThumb (browse and tag photos)</figcaption></figure>
+  <figure><img src="img/gallery/ristretto.jpg" width="320" height="200" loading="lazy" alt="Ristretto (image viewer), running on Copal"><figcaption>Ristretto (image viewer)</figcaption></figure>
+  <figure><img src="img/gallery/simple-scan.jpg" width="320" height="200" loading="lazy" alt="Simple Scan (scanner), running on Copal"><figcaption>Simple Scan (scanner)</figcaption></figure>
+  <figure><img src="img/gallery/skanlite.jpg" width="320" height="200" loading="lazy" alt="Skanlite (scanner), running on Copal"><figcaption>Skanlite (scanner)</figcaption></figure>
+  <figure><img src="img/gallery/xsane.jpg" width="320" height="200" loading="lazy" alt="XSane (scanner, every SANE option), running on Copal"><figcaption>XSane (scanner, every SANE option)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Instruments <span style="color:var(--resin-deep)">5</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/ghex.jpg" width="320" height="200" loading="lazy" alt="GHex (hex and binary editor), running on Copal"><figcaption>GHex (hex and binary editor)</figcaption></figure>
+  <figure><img src="img/gallery/gtkwave.jpg" width="320" height="200" loading="lazy" alt="GTKWave (view digital waveforms), running on Copal"><figcaption>GTKWave (view digital waveforms)</figcaption></figure>
+  <figure><img src="img/gallery/pulseview.jpg" width="320" height="200" loading="lazy" alt="PulseView (oscilloscope + logic analyser), running on Copal"><figcaption>PulseView (oscilloscope + logic analyser)</figcaption></figure>
+  <figure><img src="img/gallery/qspectrumanalyzer.jpg" width="320" height="200" loading="lazy" alt="QSpectrumAnalyzer (spectrum from an SDR), running on Copal"><figcaption>QSpectrumAnalyzer (spectrum from an SDR)</figcaption></figure>
+  <figure><img src="img/gallery/speedcrunch.jpg" width="320" height="200" loading="lazy" alt="SpeedCrunch (calculator - bin/oct/hex), running on Copal"><figcaption>SpeedCrunch (calculator - bin/oct/hex)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Internet <span style="color:var(--resin-deep)">10</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/brave.jpg" width="320" height="200" loading="lazy" alt="Brave (ad and tracker blocking), running on Copal"><figcaption>Brave (ad and tracker blocking)</figcaption></figure>
+  <figure><img src="img/gallery/elinks.jpg" width="320" height="200" loading="lazy" alt="ELinks (text web + gopher), running on Copal"><figcaption>ELinks (text web + gopher)</figcaption></figure>
+  <figure><img src="img/gallery/firefox-esr.jpg" width="320" height="200" loading="lazy" alt="Firefox ESR (full browser), running on Copal"><figcaption>Firefox ESR (full browser)</figcaption></figure>
+  <figure><img src="img/gallery/lftp.jpg" width="320" height="200" loading="lazy" alt="lftp (FTP - terminal), running on Copal"><figcaption>lftp (FTP - terminal)</figcaption></figure>
+  <figure><img src="img/gallery/links.jpg" width="320" height="200" loading="lazy" alt="Links (text/graphics web), running on Copal"><figcaption>Links (text/graphics web)</figcaption></figure>
+  <figure><img src="img/gallery/lynx.jpg" width="320" height="200" loading="lazy" alt="Lynx (text web + gopher), running on Copal"><figcaption>Lynx (text web + gopher)</figcaption></figure>
+  <figure><img src="img/gallery/qbittorrent.jpg" width="320" height="200" loading="lazy" alt="qBittorrent (torrents), running on Copal"><figcaption>qBittorrent (torrents)</figcaption></figure>
+  <figure><img src="img/gallery/retawq.jpg" width="320" height="200" loading="lazy" alt="retawq (tiny text browser), running on Copal"><figcaption>retawq (tiny text browser)</figcaption></figure>
+  <figure><img src="img/gallery/transmission-gtk.jpg" width="320" height="200" loading="lazy" alt="Transmission (torrents), running on Copal"><figcaption>Transmission (torrents)</figcaption></figure>
+  <figure><img src="img/gallery/w3m.jpg" width="320" height="200" loading="lazy" alt="w3m (text web), running on Copal"><figcaption>w3m (text web)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Languages <span style="color:var(--resin-deep)">9</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/csi.jpg" width="320" height="200" loading="lazy" alt="CHICKEN (Scheme to C), running on Copal"><figcaption>CHICKEN (Scheme to C)</figcaption></figure>
+  <figure><img src="img/gallery/elixir.jpg" width="320" height="200" loading="lazy" alt="Elixir, running on Copal"><figcaption>Elixir</figcaption></figure>
+  <figure><img src="img/gallery/guile.jpg" width="320" height="200" loading="lazy" alt="Guile (Scheme), running on Copal"><figcaption>Guile (Scheme)</figcaption></figure>
+  <figure><img src="img/gallery/lua5.4.jpg" width="320" height="200" loading="lazy" alt="Lua 5.4 + LuaJIT, running on Copal"><figcaption>Lua 5.4 + LuaJIT</figcaption></figure>
+  <figure><img src="img/gallery/ocaml.jpg" width="320" height="200" loading="lazy" alt="OCaml, running on Copal"><figcaption>OCaml</figcaption></figure>
+  <figure><img src="img/gallery/racket.jpg" width="320" height="200" loading="lazy" alt="Racket, running on Copal"><figcaption>Racket</figcaption></figure>
+  <figure><img src="img/gallery/retro.jpg" width="320" height="200" loading="lazy" alt="RetroForth (the Forth family), running on Copal"><figcaption>RetroForth (the Forth family)</figcaption></figure>
+  <figure><img src="img/gallery/ruby.jpg" width="320" height="200" loading="lazy" alt="Ruby, running on Copal"><figcaption>Ruby</figcaption></figure>
+  <figure><img src="img/gallery/sbcl.jpg" width="320" height="200" loading="lazy" alt="SBCL (Common Lisp), running on Copal"><figcaption>SBCL (Common Lisp)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Learn <span style="color:var(--resin-deep)">3</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/gtypist.jpg" width="320" height="200" loading="lazy" alt="GNU Typist (touch typing course), running on Copal"><figcaption>GNU Typist (touch typing course)</figcaption></figure>
+  <figure><img src="img/gallery/ktouch.jpg" width="320" height="200" loading="lazy" alt="KTouch (typing tutor with a keyboard map), running on Copal"><figcaption>KTouch (typing tutor with a keyboard map)</figcaption></figure>
+  <figure><img src="img/gallery/minuet.jpg" width="320" height="200" loading="lazy" alt="Minuet (music theory and ear training), running on Copal"><figcaption>Minuet (music theory and ear training)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Mail <span style="color:var(--resin-deep)">9</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/aerc.jpg" width="320" height="200" loading="lazy" alt="aerc (terminal), running on Copal"><figcaption>aerc (terminal)</figcaption></figure>
+  <figure><img src="img/gallery/alpine.jpg" width="320" height="200" loading="lazy" alt="Alpine (pine - terminal), running on Copal"><figcaption>Alpine (pine - terminal)</figcaption></figure>
+  <figure><img src="img/gallery/claws-mail.jpg" width="320" height="200" loading="lazy" alt="Claws Mail (GUI - Sylpheed lineage), running on Copal"><figcaption>Claws Mail (GUI - Sylpheed lineage)</figcaption></figure>
+  <figure><img src="img/gallery/irssi.jpg" width="320" height="200" loading="lazy" alt="irssi (IRC), running on Copal"><figcaption>irssi (IRC)</figcaption></figure>
+  <figure><img src="img/gallery/kmail.jpg" width="320" height="200" loading="lazy" alt="KMail (KDE mail - heavy, pulls in Akonadi), running on Copal"><figcaption>KMail (KDE mail - heavy, pulls in Akonadi)</figcaption></figure>
+  <figure><img src="img/gallery/mutt.jpg" width="320" height="200" loading="lazy" alt="Mutt (terminal), running on Copal"><figcaption>Mutt (terminal)</figcaption></figure>
+  <figure><img src="img/gallery/profanity.jpg" width="320" height="200" loading="lazy" alt="Profanity (XMPP), running on Copal"><figcaption>Profanity (XMPP)</figcaption></figure>
+  <figure><img src="img/gallery/thunderbird.jpg" width="320" height="200" loading="lazy" alt="Thunderbird (full mail client), running on Copal"><figcaption>Thunderbird (full mail client)</figcaption></figure>
+  <figure><img src="img/gallery/weechat.jpg" width="320" height="200" loading="lazy" alt="WeeChat (IRC), running on Copal"><figcaption>WeeChat (IRC)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Media <span style="color:var(--resin-deep)">6</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/audacious.jpg" width="320" height="200" loading="lazy" alt="Audacious (playlists - XMMS fork), running on Copal"><figcaption>Audacious (playlists - XMMS fork)</figcaption></figure>
+  <figure><img src="img/gallery/cmus.jpg" width="320" height="200" loading="lazy" alt="cmus (audio - terminal), running on Copal"><figcaption>cmus (audio - terminal)</figcaption></figure>
+  <figure><img src="img/gallery/deadbeef.jpg" width="320" height="200" loading="lazy" alt="DeaDBeeF (audio player), running on Copal"><figcaption>DeaDBeeF (audio player)</figcaption></figure>
+  <figure><img src="img/gallery/ncmpcpp.jpg" width="320" height="200" loading="lazy" alt="MPD + ncmpcpp (daemon + client), running on Copal"><figcaption>MPD + ncmpcpp (daemon + client)</figcaption></figure>
+  <figure><img src="img/gallery/alsamixer.jpg" width="320" height="200" loading="lazy" alt="Volume control, running on Copal"><figcaption>Volume control</figcaption></figure>
+  <figure><img src="img/gallery/ytq.jpg" width="320" height="200" loading="lazy" alt="ytq download queue, running on Copal"><figcaption>ytq download queue</figcaption></figure>
+</div>
+<h3 class="gallery-section">News <span style="color:var(--resin-deep)">4</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/liferea.jpg" width="320" height="200" loading="lazy" alt="Liferea (RSS - window), running on Copal"><figcaption>Liferea (RSS - window)</figcaption></figure>
+  <figure><img src="img/gallery/newsboat.jpg" width="320" height="200" loading="lazy" alt="Newsboat (RSS/Atom - terminal), running on Copal"><figcaption>Newsboat (RSS/Atom - terminal)</figcaption></figure>
+  <figure><img src="img/gallery/newsraft.jpg" width="320" height="200" loading="lazy" alt="Newsraft (RSS - terminal, fast), running on Copal"><figcaption>Newsraft (RSS - terminal, fast)</figcaption></figure>
+  <figure><img src="img/gallery/ticker.jpg" width="320" height="200" loading="lazy" alt="Ticker (stock prices - terminal), running on Copal"><figcaption>Ticker (stock prices - terminal)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Notes <span style="color:var(--resin-deep)">5</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/cherrytree.jpg" width="320" height="200" loading="lazy" alt="CherryTree (hierarchical notebook), running on Copal"><figcaption>CherryTree (hierarchical notebook)</figcaption></figure>
+  <figure><img src="img/gallery/ghostwriter.jpg" width="320" height="200" loading="lazy" alt="Ghostwriter (distraction-free Markdown), running on Copal"><figcaption>Ghostwriter (distraction-free Markdown)</figcaption></figure>
+  <figure><img src="img/gallery/gnote.jpg" width="320" height="200" loading="lazy" alt="Gnote (sticky wiki notes), running on Copal"><figcaption>Gnote (sticky wiki notes)</figcaption></figure>
+  <figure><img src="img/gallery/vim.jpg" width="320" height="200" loading="lazy" alt="Vim + spell check, running on Copal"><figcaption>Vim + spell check</figcaption></figure>
+  <figure><img src="img/gallery/zim.jpg" width="320" height="200" loading="lazy" alt="Zim (wiki-style notebook), running on Copal"><figcaption>Zim (wiki-style notebook)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Radio <span style="color:var(--resin-deep)">4</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/gnuradio-companion.jpg" width="320" height="200" loading="lazy" alt="GNU Radio (build your own SDR, in blocks), running on Copal"><figcaption>GNU Radio (build your own SDR, in blocks)</figcaption></figure>
+  <figure><img src="img/gallery/gqrx.jpg" width="320" height="200" loading="lazy" alt="Gqrx (SDR receiver with a waterfall), running on Copal"><figcaption>Gqrx (SDR receiver with a waterfall)</figcaption></figure>
+  <figure><img src="img/gallery/qsstv.jpg" width="320" height="200" loading="lazy" alt="QSSTV (slow-scan television), running on Copal"><figcaption>QSSTV (slow-scan television)</figcaption></figure>
+  <figure><img src="img/gallery/welle-io.jpg" width="320" height="200" loading="lazy" alt="welle.io (DAB+ radio), running on Copal"><figcaption>welle.io (DAB+ radio)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Retro <span style="color:var(--resin-deep)">6</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/dosbox.jpg" width="320" height="200" loading="lazy" alt="DOSBox Staging (DOS), running on Copal"><figcaption>DOSBox Staging (DOS)</figcaption></figure>
+  <figure><img src="img/gallery/fs-uae.jpg" width="320" height="200" loading="lazy" alt="FS-UAE (Amiga), running on Copal"><figcaption>FS-UAE (Amiga)</figcaption></figure>
+  <figure><img src="img/gallery/retroarch.jpg" width="320" height="200" loading="lazy" alt="RetroArch (many consoles), running on Copal"><figcaption>RetroArch (many consoles)</figcaption></figure>
+  <figure><img src="img/gallery/scummvm.jpg" width="320" height="200" loading="lazy" alt="ScummVM (point-and-click adventures), running on Copal"><figcaption>ScummVM (point-and-click adventures)</figcaption></figure>
+  <figure><img src="img/gallery/urfinkel.jpg" width="320" height="200" loading="lazy" alt="UR FINKEL (Plus/4, make run in xplus4), running on Copal"><figcaption>UR FINKEL (Plus/4, make run in xplus4)</figcaption></figure>
+  <figure><img src="img/gallery/x64sc.jpg" width="320" height="200" loading="lazy" alt="VICE (Commodore 64 - see stage 9), running on Copal"><figcaption>VICE (Commodore 64 - see stage 9)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Science <span style="color:var(--resin-deep)">8</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/lyx.jpg" width="320" height="200" loading="lazy" alt="LyX (LaTeX with a document view), running on Copal"><figcaption>LyX (LaTeX with a document view)</figcaption></figure>
+  <figure><img src="img/gallery/maxima.jpg" width="320" height="200" loading="lazy" alt="Maxima (computer algebra, solves systems), running on Copal"><figcaption>Maxima (computer algebra, solves systems)</figcaption></figure>
+  <figure><img src="img/gallery/octave.jpg" width="320" height="200" loading="lazy" alt="Octave (MATLAB-compatible maths), running on Copal"><figcaption>Octave (MATLAB-compatible maths)</figcaption></figure>
+  <figure><img src="img/gallery/gp.jpg" width="320" height="200" loading="lazy" alt="PARI/GP (number theory), running on Copal"><figcaption>PARI/GP (number theory)</figcaption></figure>
+  <figure><img src="img/gallery/qalculate-gtk.jpg" width="320" height="200" loading="lazy" alt="Qalculate (unit-aware calculator), running on Copal"><figcaption>Qalculate (unit-aware calculator)</figcaption></figure>
+  <figure><img src="img/gallery/R.jpg" width="320" height="200" loading="lazy" alt="R (statistics), running on Copal"><figcaption>R (statistics)</figcaption></figure>
+  <figure><img src="img/gallery/Singular.jpg" width="320" height="200" loading="lazy" alt="Singular (polynomial algebra), running on Copal"><figcaption>Singular (polynomial algebra)</figcaption></figure>
+  <figure><img src="img/gallery/wxmaxima.jpg" width="320" height="200" loading="lazy" alt="wxMaxima (built from source), running on Copal"><figcaption>wxMaxima (built from source)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Security <span style="color:var(--resin-deep)">2</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/termshark.jpg" width="320" height="200" loading="lazy" alt="Termshark (Wireshark-like TUI), running on Copal"><figcaption>Termshark (Wireshark-like TUI)</figcaption></figure>
+  <figure><img src="img/gallery/wireshark.jpg" width="320" height="200" loading="lazy" alt="Wireshark (packet capture - window), running on Copal"><figcaption>Wireshark (packet capture - window)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Smallweb <span style="color:var(--resin-deep)">5</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/amfora.jpg" width="320" height="200" loading="lazy" alt="Amfora (gemini browser), running on Copal"><figcaption>Amfora (gemini browser)</figcaption></figure>
+  <figure><img src="img/gallery/bombadillo.jpg" width="320" height="200" loading="lazy" alt="Bombadillo (gopher + gemini + finger), running on Copal"><figcaption>Bombadillo (gopher + gemini + finger)</figcaption></figure>
+  <figure><img src="img/gallery/gmnlm.jpg" width="320" height="200" loading="lazy" alt="gmnlm (gemini line mode), running on Copal"><figcaption>gmnlm (gemini line mode)</figcaption></figure>
+  <figure><img src="img/gallery/clagrange.jpg" width="320" height="200" loading="lazy" alt="Lagrange (gemini - terminal), running on Copal"><figcaption>Lagrange (gemini - terminal)</figcaption></figure>
+  <figure><img src="img/gallery/lagrange.jpg" width="320" height="200" loading="lazy" alt="Lagrange (gemini - window), running on Copal"><figcaption>Lagrange (gemini - window)</figcaption></figure>
+</div>
+<h3 class="gallery-section">System <span style="color:var(--resin-deep)">9</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/baobab.jpg" width="320" height="200" loading="lazy" alt="Disk usage (Baobab), running on Copal"><figcaption>Disk usage (Baobab)</figcaption></figure>
+  <figure><img src="img/gallery/gnome-disks.jpg" width="320" height="200" loading="lazy" alt="Disk utility (format, image, SMART), running on Copal"><figcaption>Disk utility (format, image, SMART)</figcaption></figure>
+  <figure><img src="img/gallery/gitk.jpg" width="320" height="200" loading="lazy" alt="git-gui + gitk, running on Copal"><figcaption>git-gui + gitk</figcaption></figure>
+  <figure><img src="img/gallery/gitui.jpg" width="320" height="200" loading="lazy" alt="gitui (git TUI), running on Copal"><figcaption>gitui (git TUI)</figcaption></figure>
+  <figure><img src="img/gallery/htop.jpg" width="320" height="200" loading="lazy" alt="htop (process viewer), running on Copal"><figcaption>htop (process viewer)</figcaption></figure>
+  <figure><img src="img/gallery/lazygit.jpg" width="320" height="200" loading="lazy" alt="lazygit (git TUI), running on Copal"><figcaption>lazygit (git TUI)</figcaption></figure>
+  <figure><img src="img/gallery/meld.jpg" width="320" height="200" loading="lazy" alt="Meld (compare files and folders), running on Copal"><figcaption>Meld (compare files and folders)</figcaption></figure>
+  <figure><img src="img/gallery/xfce4-taskmanager.jpg" width="320" height="200" loading="lazy" alt="Task manager (Xfce), running on Copal"><figcaption>Task manager (Xfce)</figcaption></figure>
+  <figure><img src="img/gallery/tig.jpg" width="320" height="200" loading="lazy" alt="tig (git history TUI), running on Copal"><figcaption>tig (git history TUI)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Terminals <span style="color:var(--resin-deep)">15</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/alacritty.jpg" width="320" height="200" loading="lazy" alt="Alacritty (GPU - fast, needs OpenGL), running on Copal"><figcaption>Alacritty (GPU - fast, needs OpenGL)</figcaption></figure>
+  <figure><img src="img/gallery/byobu.jpg" width="320" height="200" loading="lazy" alt="Byobu (tmux with a status line set up), running on Copal"><figcaption>Byobu (tmux with a status line set up)</figcaption></figure>
+  <figure><img src="img/gallery/cool-retro-term.jpg" width="320" height="200" loading="lazy" alt="Cool Retro Term (a CRT, convincingly), running on Copal"><figcaption>Cool Retro Term (a CRT, convincingly)</figcaption></figure>
+  <figure><img src="img/gallery/dvtm.jpg" width="320" height="200" loading="lazy" alt="dvtm (tiling in a terminal), running on Copal"><figcaption>dvtm (tiling in a terminal)</figcaption></figure>
+  <figure><img src="img/gallery/screen.jpg" width="320" height="200" loading="lazy" alt="GNU screen (multiplexer - the classic), running on Copal"><figcaption>GNU screen (multiplexer - the classic)</figcaption></figure>
+  <figure><img src="img/gallery/lxterminal.jpg" width="320" height="200" loading="lazy" alt="LXTerminal (light GTK, tabs), running on Copal"><figcaption>LXTerminal (light GTK, tabs)</figcaption></figure>
+  <figure><img src="img/gallery/qterminal.jpg" width="320" height="200" loading="lazy" alt="QTerminal (Qt, drop-down mode), running on Copal"><figcaption>QTerminal (Qt, drop-down mode)</figcaption></figure>
+  <figure><img src="img/gallery/urxvt.jpg" width="320" height="200" loading="lazy" alt="rxvt-unicode (light, the Copal default), running on Copal"><figcaption>rxvt-unicode (light, the Copal default)</figcaption></figure>
+  <figure><img src="img/gallery/sakura.jpg" width="320" height="200" loading="lazy" alt="Sakura (small GTK, tabs), running on Copal"><figcaption>Sakura (small GTK, tabs)</figcaption></figure>
+  <figure><img src="img/gallery/st.jpg" width="320" height="200" loading="lazy" alt="st (suckless - smallest and quickest), running on Copal"><figcaption>st (suckless - smallest and quickest)</figcaption></figure>
+  <figure><img src="img/gallery/terminator.jpg" width="320" height="200" loading="lazy" alt="Terminator (split panes in a grid), running on Copal"><figcaption>Terminator (split panes in a grid)</figcaption></figure>
+  <figure><img src="img/gallery/tilda.jpg" width="320" height="200" loading="lazy" alt="Tilda (drop-down, F1 - light), running on Copal"><figcaption>Tilda (drop-down, F1 - light)</figcaption></figure>
+  <figure><img src="img/gallery/xfce4-terminal.jpg" width="320" height="200" loading="lazy" alt="Xfce Terminal (featureful GTK), running on Copal"><figcaption>Xfce Terminal (featureful GTK)</figcaption></figure>
+  <figure><img src="img/gallery/xterm.jpg" width="320" height="200" loading="lazy" alt="xterm (the original, always works), running on Copal"><figcaption>xterm (the original, always works)</figcaption></figure>
+  <figure><img src="img/gallery/zellij.jpg" width="320" height="200" loading="lazy" alt="Zellij (multiplexer, discoverable keys), running on Copal"><figcaption>Zellij (multiplexer, discoverable keys)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Tools <span style="color:var(--resin-deep)">5</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/galculator.jpg" width="320" height="200" loading="lazy" alt="Galculator, running on Copal"><figcaption>Galculator</figcaption></figure>
+  <figure><img src="img/gallery/sqlitebrowser.jpg" width="320" height="200" loading="lazy" alt="SQLite browser, running on Copal"><figcaption>SQLite browser</figcaption></figure>
+  <figure><img src="img/gallery/xpad.jpg" width="320" height="200" loading="lazy" alt="Sticky notes, running on Copal"><figcaption>Sticky notes</figcaption></figure>
+  <figure><img src="img/gallery/tmux.jpg" width="320" height="200" loading="lazy" alt="tmux (terminal multiplexer), running on Copal"><figcaption>tmux (terminal multiplexer)</figcaption></figure>
+  <figure><img src="img/gallery/x11vnc.jpg" width="320" height="200" loading="lazy" alt="x11vnc (share this screen), running on Copal"><figcaption>x11vnc (share this screen)</figcaption></figure>
+</div>
+<h3 class="gallery-section">Windows <span style="color:var(--resin-deep)">2</span></h3>
+<div class="gallery">
+  <figure><img src="img/gallery/winebox-notepad++.jpg" width="320" height="200" loading="lazy" alt="Notepad++ in a Wine box, running on Copal"><figcaption>Notepad++ in a Wine box</figcaption></figure>
+  <figure><img src="img/gallery/winecfg.jpg" width="320" height="200" loading="lazy" alt="winecfg, running on Copal"><figcaption>winecfg</figcaption></figure>
+</div>
+<!-- gallery:end -->
+
+<nav class="onward" aria-label="Next">
+  <a href="desktop.html">The desktop →</a>
+  <a href="https://github.com/vonglurt/copal/blob/main/docs/app-gallery.md">The gallery, as a document →</a>
+</nav>
+
+<footer>
+  <p>Copal Linux · MIT licensed · <a href="https://github.com/vonglurt/copal">github.com/vonglurt/copal</a> ·
+  every program pictured is its own authors' work.</p>
+</footer>
+
+</main>
+</body>
+</html>

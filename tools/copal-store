@@ -12,6 +12,8 @@
 #   copal-store remove ID...       and take it away again
 #   copal-store recipes            the programs built from GitHub source here
 #   copal-store playbook ID        one program in full: about, source, needs, steps, status, last build
+#   copal-store rows               every program, one line each, its status last (for a window)
+#   copal-store pending ID...      the ones of those ids not installed yet
 #   copal-store bundle [NAME]      the bundles, or the program ids in one (starter, full-monty)
 #   copal-store events [N]         the last N progress events (JSON, one per line)
 #   copal-store summary            what each build did: result, size, sources, absences
@@ -1653,6 +1655,21 @@ build_recipe() {  # <recipe>
     note "installed: $(wc -l < "$_old") files under $PREFIX -- 'copal-store summary' for the record"
 }
 
+# Is it on the machine? Its command resolves, or, for a font (no command),
+# its first package is installed.
+installed_id() {  # <bin> <install field>
+    if [ "$1" != "-" ]; then have "$1"; else apk info -e "${2%%[@ ]*}" >/dev/null 2>&1; fi
+}
+
+# Every row with its status last, for a window to read: the rows() fields
+# (id|shelf|label|install|bin|mode|about|home|origin) and installed|available.
+rows_status() {
+    rows | while IFS='|' read -r _id _sec _label _inst _bin _mode _desc _home _orig; do
+        if installed_id "$_bin" "$_inst"; then _st=installed; else _st=available; fi
+        printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s\n' "$_id" "$_sec" "$_label" "$_inst" "$_bin" "$_mode" "$_desc" "$_home" "$_orig" "$_st"
+    done
+}
+
 # ONE PROGRAM, IN FULL: what Copal Apps shows beside the list -- what it is,
 # where it comes from, what it needs, the steps its playbook takes, whether
 # it is installed, and what its last build recorded.
@@ -1661,9 +1678,7 @@ playbook_show() {  # <id>
     IFS='|' read -r _id _sec _label _inst _bin _mode _desc _home _orig <<EOF
 $_row
 EOF
-    if [ "$_bin" != "-" ] && have "$_bin"; then _st=installed
-    elif [ "$_bin" = "-" ] && apk info -e "${_inst%%@*}" >/dev/null 2>&1; then _st=installed
-    else _st=available; fi
+    if installed_id "$_bin" "$_inst"; then _st=installed; else _st=available; fi
     printf '%s  [%s]\n' "$_label" "$_st"
     printf '  %-10s %s\n' id "$_id" shelf "$_sec"
     [ -z "$_desc" ] || printf '  %-10s %s\n' about "$_desc"
@@ -2026,6 +2041,11 @@ case "${1:-}" in
     info)     [ $# -ge 2 ] || die "info needs an id"; info_id "$2" ;;
     install)  shift; [ $# -gt 0 ] || die "install what?"; need_root install "$@"; install_ids "$@" ;;
     playbook) [ $# -ge 2 ] || die "playbook of what?"; playbook_show "$2" ;;
+    rows)     rows_status ;;
+    pending)  shift; for _id in "$@"; do
+                  _row=$(row_for "$_id"); [ -n "$_row" ] || continue
+                  installed_id "$(printf '%s' "$_row" | cut -d'|' -f5)" "$(printf '%s' "$_row" | cut -d'|' -f4)" || printf '%s\n' "$_id"
+              done ;;
     events)   tail -n "${2:-20}" "$EVENTS" 2>/dev/null || note "no events yet ($EVENTS)" ;;
     bundle)   [ $# -ge 2 ] || { store_bundles; exit 0; }; store_bundle "$2" || die "no bundle called '$2' -- one of: $(store_bundles)" ;;
     summary)  if [ -s "$LOGDIR/summary.txt" ]; then cat "$LOGDIR/summary.txt"; else note "no builds recorded yet"; fi ;;

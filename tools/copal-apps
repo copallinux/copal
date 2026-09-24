@@ -1,0 +1,514 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+"""copal-apps -- Copal Apps: the programs Copal offers, and their installs as they happen.
+
+  copal-apps              the list: shelves, programs and their status, one program in full
+  copal-apps --progress   the install that is running, as a slideshow with three bars
+  copal-apps --follow     the same, but only if an install is queued or running; else nothing
+  copal-apps ID           the list, opened on that program
+
+TWO VIEWS OF ONE THING.  Every program is a playbook (docs/playbooks-plan.md),
+and copal-store runs them.  This window never installs anything by itself and
+never needs root: the list comes from 'copal-store rows' and 'copal-store
+playbook ID', and the progress from the event stream copal-store writes,
+/var/log/copal/events, one JSON line per run, program and step.  Install and
+Remove open a terminal running 'doas copal-store install ID', so the password
+is asked where passwords are asked, and this window follows the events.
+
+THE SLIDESHOW.  While an install runs, the window shows the program arriving:
+its picture, its name, its two sentences, where it comes from, and its steps
+(deps, pre, install, post) ticked off as they finish.  Three bars sit under it:
+the run (programs done of all), the program (steps done of its steps), and
+the step itself -- read from the build log the install event names, ninja's
+[n/m] or make's percentage, or a pulse where the build prints neither.
+
+THE FIRST LOGIN.  The full monty queues its programs (/var/lib/copal/apps-queue)
+for a boot service to install as root; the desktop starts 'copal-apps
+--follow', which opens on the slideshow while that runs and stays away when
+nothing is queued or running.
+
+PICTURES are the gallery's, docs/img/gallery/ID.jpg on GitHub, fetched once
+into ~/.cache/copal-apps and kept; without one, the program's icon.
+"""
+import json, os, re, shutil, subprocess, sys, threading, time, urllib.request
+
+import gi
+gi.require_version("Gtk", "3.0")
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import GdkPixbuf, GLib, Gtk, Pango  # noqa: E402
+
+STORE = os.environ.get("COPAL_STORE") or shutil.which("copal-store") or "/usr/local/bin/copal-store"
+EVENTS = os.environ.get("COPAL_EVENTS", "/var/log/copal/events")
+QUEUE = os.environ.get("COPAL_APPS_QUEUE", "/var/lib/copal/apps-queue")
+CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"), "copal-apps", "pictures")
+GALLERY = "https://raw.githubusercontent.com/vonglurt/copal/main/docs/img/gallery/%s.jpg"
+STEPS = ("deps", "pre", "install", "post")
+MARK = {"ok": "✓", "failed": "✗", "start": "▸", None: "·"}
+PIC_W, PIC_H = 320, 200
+
+
+# ------------------------------------------------------------------ data ---
+
+def store(*args):
+    try:
+        return subprocess.run([STORE] + list(args), capture_output=True, text=True, timeout=120).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def load_rows():
+    """The store's programs: id, shelf, label, install, bin, mode, about, home, origin, status."""
+    keys = ("id", "shelf", "label", "install", "bin", "mode", "about", "home", "origin", "status")
+    rows = []
+    for line in store("rows").splitlines():
+        f = line.split("|")
+        if len(f) == len(keys):
+            r = dict(zip(keys, f))
+            if r["origin"] == "store":
+                rows.append(r)
+    return rows
+
+
+def load_playbook(pid):
+    """'copal-store playbook ID' as a dict; 'last' holds the last build's lines."""
+    info, last, in_last = {}, [], False
+    for line in store("playbook", pid).splitlines():
+        if in_last:
+            last.append(line.strip()); continue
+        if line.strip() == "last build":
+            in_last = True; continue
+        m = re.match(r"^  (\S+)\s+(.*)$", line)
+        if m:
+            info[m.group(1)] = m.group(2)
+        elif line and not line.startswith(" "):
+            info["title"] = line
+    info["last"] = last
+    return info
+
+
+class Events:
+    """The event stream, read as it grows; the latest run in it, program by program."""
+
+    def __init__(self, path):
+        self.path, self.offset = path, 0
+        self.reset()
+
+    def reset(self):
+        self.run = None            # {"of", "ids", "state", "t"}
+        self.programs = {}         # id -> {"n", "label", "state", "steps", "playbook", "log", "t"}
+        self.order = []
+        self.current = None
+
+    def poll(self):
+        try:
+            with open(self.path) as f:
+                f.seek(self.offset)
+                chunk = f.read()
+                self.offset = f.tell()
+        except OSError:
+            return False
+        changed = False
+        for line in chunk.splitlines():
+            try:
+                e = json.loads(line)
+            except ValueError:
+                continue
+            changed = True
+            step, state, prog = e.get("step"), e.get("state"), e.get("program") or e.get("playbook")
+            if step == "run":
+                if state == "start":
+                    self.reset()
+                    self.run = {"of": e.get("of", 0), "ids": e.get("ids", "").split(), "state": "start", "t": e["t"]}
+                elif self.run:
+                    self.run["state"] = state
+                continue
+            if step == "stage" or prog is None:
+                continue
+            p = self.programs.get(prog)
+            if p is None:
+                p = self.programs[prog] = {"n": 0, "label": prog, "state": None, "steps": {}, "playbook": e.get("playbook"), "log": None, "t": e["t"]}
+                self.order.append(prog)
+            if step == "program":
+                p["state"] = state
+                p["n"] = e.get("n", p["n"])
+                p["label"] = e.get("label", p["label"])
+                if state == "start":
+                    self.current = prog
+            else:
+                p["steps"][step] = state
+                if step == "install" and e.get("log"):
+                    p["log"] = e["log"]
+                p["playbook"] = e.get("playbook", p["playbook"])
+        return changed
+
+    def active(self, within=6 * 3600):
+        return bool(self.run and self.run["state"] == "start" and time.time() - self.run["t"] < within)
+
+
+def step_fraction(log):
+    """How far a build step has got, from its log's tail: ninja's [n/m], make's n%."""
+    if not log:
+        return None, ""
+    try:
+        with open(log, "rb") as f:
+            f.seek(0, 2); size = f.tell(); f.seek(max(0, size - 8192))
+            tail = f.read().decode("utf-8", "replace")
+    except OSError:
+        return None, ""
+    m = None
+    for m in re.finditer(r"\[\s*(\d+)/(\d+)\]", tail):
+        pass
+    if m and int(m.group(2)) > 0:
+        return int(m.group(1)) / int(m.group(2)), "%s of %s" % (m.group(1), m.group(2))
+    m = None
+    for m in re.finditer(r"\[\s*(\d{1,3})%\]", tail):
+        pass
+    if m:
+        return int(m.group(1)) / 100.0, m.group(1) + "%"
+    return None, ""
+
+
+def picture(pid, done):
+    """Call done(path or None) with the program's gallery picture, fetching it once."""
+    os.makedirs(CACHE, exist_ok=True)
+    path = os.path.join(CACHE, pid + ".jpg")
+    if os.path.exists(path):
+        done(path if os.path.getsize(path) > 0 else None); return
+    def fetch():
+        ok = False
+        try:
+            with urllib.request.urlopen(GALLERY % pid, timeout=10) as r, open(path + ".part", "wb") as f:
+                f.write(r.read()); ok = True
+        except Exception:
+            pass
+        if ok:
+            os.replace(path + ".part", path)
+        else:
+            open(path, "wb").close()        # remembered as absent; delete the file to retry
+        GLib.idle_add(done, path if ok else None)
+    threading.Thread(target=fetch, daemon=True).start()
+
+
+def set_picture(image, pid, icon):
+    def done(path):
+        if path:
+            try:
+                image.set_from_pixbuf(GdkPixbuf.Pixbuf.new_from_file_at_scale(path, PIC_W, PIC_H, True)); return
+            except GLib.Error:
+                pass
+        image.set_from_icon_name(icon if Gtk.IconTheme.get_default().has_icon(icon) else "application-x-executable", Gtk.IconSize.DIALOG)
+        image.set_pixel_size(96)
+    picture(pid, done)
+
+
+def terminal(cmd):
+    """A terminal window running cmd, left open until Enter so the output can be read."""
+    for t in (os.environ.get("TERMINAL"), "kitty", "foot", "alacritty", "xfce4-terminal", "xterm"):
+        if t and shutil.which(t):
+            sh = cmd + "; printf '\\nPress Enter to close.'; read _"
+            subprocess.Popen([t, "-e", "sh", "-c", sh])
+            return True
+    return False
+
+
+def label(text="", css=None, wrap=False, xalign=0.0, select=False):
+    lab = Gtk.Label(label=text, xalign=xalign)
+    if wrap:
+        lab.set_line_wrap(True); lab.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+    if css:
+        lab.get_style_context().add_class(css)
+    lab.set_selectable(select)
+    return lab
+
+
+# ------------------------------------------------------------- progress ---
+
+class Progress(Gtk.Box):
+    """The slideshow: the program arriving, its steps, and three nested bars."""
+
+    def __init__(self, rows_by_id):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.set_border_width(18)
+        self.rows = rows_by_id
+        self.events = Events(EVENTS)
+        self.shown = None
+
+        slide = Gtk.Box(spacing=18)
+        self.image = Gtk.Image(); self.image.set_size_request(PIC_W, PIC_H)
+        slide.pack_start(self.image, False, False, 0)
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.title = label(css="copal-title", wrap=True)
+        self.about = label(wrap=True)
+        self.source = label(css="dim-label", wrap=True)
+        self.steps = label(css="copal-steps")
+        for w in (self.title, self.about, self.source, self.steps):
+            text.pack_start(w, False, False, 0)
+        slide.pack_start(text, True, True, 0)
+        self.pack_start(slide, False, False, 0)
+
+        self.bars = []
+        for _ in range(3):
+            box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+            cap = label(css="dim-label")
+            bar = Gtk.ProgressBar(); bar.set_show_text(True)
+            box.pack_start(cap, False, False, 0); box.pack_start(bar, False, False, 0)
+            self.pack_start(box, False, False, 0)
+            self.bars.append((cap, bar))
+
+        self.history = Gtk.FlowBox(); self.history.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.history.set_max_children_per_line(6)
+        self.pack_start(label("Done", css="dim-label"), False, False, 0)
+        self.pack_start(self.history, False, False, 0)
+        self.status = label(wrap=True)
+        self.pack_start(self.status, False, False, 0)
+        self.hist_n = -1
+        GLib.timeout_add(500, self.tick)
+        self.tick()
+
+    def tick(self):
+        self.events.poll()
+        ev = self.events
+        if not ev.run:
+            self.title.set_markup("<big><b>Nothing is being installed</b></big>")
+            self.about.set_text("Install a program from the list, and it arrives here: what it is, its steps, and how far each has got.")
+            for cap, bar in self.bars:
+                cap.set_text(""); bar.set_fraction(0); bar.set_text("")
+            return True
+        of = ev.run["of"] or len(ev.order)
+        done = sum(1 for p in ev.programs.values() if p["state"] in ("ok", "failed"))
+        cur = ev.current and ev.programs.get(ev.current)
+        if cur and cur is not self.shown:
+            self.show_program(ev.current, cur)
+        if cur:
+            self.shown = cur
+            order = [s for s in STEPS if s in cur["steps"] or (s in ("deps", "install"))]
+            marks = "   ".join("%s %s" % (MARK.get(cur["steps"].get(s)), s) for s in order)
+            self.steps.set_markup("<tt>%s</tt>" % GLib.markup_escape_text(marks))
+            nsteps = len(order) or 1
+            sdone = sum(1 for s in order if cur["steps"].get(s) in ("ok", "failed"))
+            running = next((s for s in order if cur["steps"].get(s) == "start"), None)
+            cap, bar = self.bars[1]
+            cap.set_text("%s -- step %d of %d" % (cur["label"], min(sdone + 1, nsteps), nsteps))
+            bar.set_fraction(sdone / nsteps); bar.set_text(running or ("done" if cur["state"] == "ok" else ""))
+            cap, bar = self.bars[2]
+            if running == "install" and cur.get("log"):
+                frac, what = step_fraction(cur["log"])
+                cap.set_text("Compiling -- " + os.path.basename(cur["log"]))
+                if frac is None:
+                    bar.pulse(); bar.set_text("working")
+                else:
+                    bar.set_fraction(frac); bar.set_text(what)
+            elif running:
+                cap.set_text(running.capitalize()); bar.pulse(); bar.set_text("working")
+            else:
+                cap.set_text(""); bar.set_fraction(1 if cur["state"] == "ok" else 0); bar.set_text("")
+        cap, bar = self.bars[0]
+        cap.set_text("Programs -- %d of %d" % (min(done + (0 if ev.run["state"] != "start" else 1), of), of))
+        bar.set_fraction(done / of if of else 0); bar.set_text("%d%%" % (100 * done // of if of else 0))
+        finished = [p for p in ev.order if ev.programs[p]["state"] in ("ok", "failed")]
+        if len(finished) != self.hist_n:
+            self.hist_n = len(finished)
+            for c in self.history.get_children():
+                self.history.remove(c)
+            for pid in finished:
+                p = ev.programs[pid]
+                self.history.add(label("%s %s" % (MARK[p["state"]], p["label"])))
+            self.history.show_all()
+        if ev.run["state"] != "start":
+            bad = [ev.programs[p]["label"] for p in finished if ev.programs[p]["state"] == "failed"]
+            self.status.set_markup("<b>Finished.</b> %d of %d installed.%s  'copal-store summary' has the record." % (
+                len(finished) - len(bad), of, (" Not installed: " + ", ".join(bad) + ".") if bad else ""))
+        else:
+            self.status.set_text("")
+        return True
+
+    def show_program(self, pid, p):
+        r = self.rows.get(pid, {})
+        self.title.set_markup("<big><b>%s</b></big>" % GLib.markup_escape_text(p["label"]))
+        self.about.set_text(r.get("about", ""))
+        src = r.get("install", "")
+        if src.endswith("@source"):
+            info = load_playbook(pid)
+            self.source.set_text("Compiled here from " + info.get("source", "its source"))
+        elif src:
+            self.source.set_text("From Alpine: apk add " + src.replace("@testing", " (edge/testing)"))
+        set_picture(self.image, pid, r.get("bin") or pid)
+
+
+# ------------------------------------------------------------------ list ---
+
+class Details(Gtk.ScrolledWindow):
+    """One program in full: picture, name, status, two sentences, source, needs, steps, last build."""
+
+    def __init__(self, on_install, on_remove):
+        super().__init__()
+        self.on_install, self.on_remove = on_install, on_remove
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        box.set_border_width(16)
+        self.image = Gtk.Image(); self.image.set_size_request(PIC_W, PIC_H)
+        self.title = label(wrap=True)
+        self.status = label(css="dim-label")
+        self.about = label(wrap=True)
+        self.grid = Gtk.Grid(column_spacing=12, row_spacing=6)
+        buttons = Gtk.Box(spacing=6)
+        self.b_install = Gtk.Button(label="Install"); self.b_remove = Gtk.Button(label="Remove")
+        self.b_open = Gtk.Button(label="Open"); self.b_web = Gtk.Button(label="Website")
+        for b in (self.b_install, self.b_remove, self.b_open, self.b_web):
+            buttons.pack_start(b, False, False, 0)
+        self.b_install.get_style_context().add_class("suggested-action")
+        self.b_install.connect("clicked", lambda *_: self.row and self.on_install(self.row))
+        self.b_remove.connect("clicked", lambda *_: self.row and self.on_remove(self.row))
+        self.b_open.connect("clicked", lambda *_: self.row and subprocess.Popen([self.row["bin"]]))
+        self.b_web.connect("clicked", lambda *_: self.row and subprocess.Popen(["xdg-open", self.row["home"]]))
+        for w in (self.image, self.title, self.status, self.about, buttons, self.grid):
+            box.pack_start(w, False, False, 0)
+        self.add(box)
+        self.row = None
+
+    def show_row(self, r):
+        self.row = r
+        self.title.set_markup("<big><b>%s</b></big>" % GLib.markup_escape_text(r["label"]))
+        self.status.set_text("%s  ·  %s" % (r["status"], r["shelf"]))
+        self.about.set_text(r["about"])
+        set_picture(self.image, r["id"], r["bin"] if r["bin"] != "-" else r["id"])
+        installed = r["status"] == "installed"
+        self.b_install.set_visible(not installed); self.b_remove.set_visible(installed)
+        self.b_open.set_visible(installed and r["mode"] == "x")
+        self.b_web.set_visible(bool(r["home"]))
+        for c in self.grid.get_children():
+            self.grid.remove(c)
+        info = load_playbook(r["id"])
+        rows = []
+        if r["install"].endswith("@source"):
+            rows.append(("Source", "compiled here from " + info.get("source", "")))
+            rows.append(("To build", info.get("build", "") or "nothing more"))
+            rows.append(("To run", info.get("runs", "") or "only what the build links against"))
+            if info.get("needs"):
+                rows.append(("Needs first", info["needs"]))
+        else:
+            rows.append(("Source", "Alpine: " + r["install"].replace("@testing", " (edge/testing)")))
+        rows.append(("Steps", info.get("steps", "")))
+        if info["last"]:
+            rows.append(("Last build", "\n".join(info["last"])))
+        for i, (k, v) in enumerate(rows):
+            self.grid.attach(label(k, css="dim-label"), 0, i, 1, 1)
+            val = label(v, wrap=True, select=True); val.set_max_width_chars(60)
+            if k == "Last build":
+                val.get_style_context().add_class("monospace")
+            self.grid.attach(val, 1, i, 1, 1)
+        self.show_all()
+        self.b_install.set_visible(not installed); self.b_remove.set_visible(installed)
+        self.b_open.set_visible(installed and r["mode"] == "x"); self.b_web.set_visible(bool(r["home"]))
+
+
+class Apps(Gtk.Window):
+    def __init__(self, page, select=None):
+        super().__init__(title="Copal Apps")
+        self.set_default_size(1100, 700)
+        self.set_icon_name("system-software-install")
+        self.rows = load_rows()
+        by_id = {r["id"]: r for r in self.rows}
+
+        hb = Gtk.HeaderBar(show_close_button=True, title="Copal Apps")
+        self.set_titlebar(hb)
+        self.stack = Gtk.Stack()
+        sw = Gtk.StackSwitcher(stack=self.stack)
+        hb.set_custom_title(sw)
+        self.search = Gtk.SearchEntry(placeholder_text="Search")
+        self.search.connect("search-changed", lambda *_: self.fill())
+        hb.pack_end(self.search)
+
+        # The list: shelves | programs | one program
+        paned = Gtk.Paned()
+        self.shelves = Gtk.ListBox()
+        self.shelves.connect("row-selected", lambda *_: self.fill())
+        for name in ["All"] + sorted({r["shelf"] for r in self.rows}):
+            row = Gtk.ListBoxRow(); row.add(label(name)); row.name = name
+            self.shelves.add(row)
+        left = Gtk.ScrolledWindow(); left.add(self.shelves); left.set_size_request(170, -1)
+        self.list = Gtk.ListBox()
+        self.list.connect("row-selected", self.on_pick)
+        mid = Gtk.ScrolledWindow(); mid.add(self.list); mid.set_size_request(330, -1)
+        self.details = Details(self.install, self.remove)
+        inner = Gtk.Paned(); inner.pack1(mid, False, False); inner.pack2(self.details, True, False)
+        paned.pack1(left, False, False); paned.pack2(inner, True, False)
+        self.stack.add_titled(paned, "list", "Programs")
+        self.progress = Progress(by_id)
+        self.stack.add_titled(self.progress, "progress", "Progress")
+        self.add(self.stack)
+        self.shelves.select_row(self.shelves.get_row_at_index(0))
+        self.show_all()
+        for row in self.list.get_children():
+            if select and row.r["id"] == select:
+                self.list.select_row(row)
+        self.stack.set_visible_child_name(page)
+        GLib.timeout_add_seconds(3, self.refresh_when_done)
+        self.was_active = self.progress.events.active()
+
+    def fill(self):
+        sel = self.shelves.get_selected_row()
+        shelf = sel.name if sel else "All"
+        q = self.search.get_text().lower()
+        for c in self.list.get_children():
+            self.list.remove(c)
+        for r in sorted(self.rows, key=lambda r: r["label"].lower()):
+            if shelf != "All" and r["shelf"] != shelf:
+                continue
+            if q and q not in (r["label"] + " " + r["about"]).lower():
+                continue
+            row = Gtk.ListBoxRow(); row.r = r
+            box = Gtk.Box(spacing=8); box.set_border_width(4)
+            box.pack_start(label("●" if r["status"] == "installed" else "○"), False, False, 0)
+            box.pack_start(label(r["label"]), True, True, 0)
+            row.add(box)
+            self.list.add(row)
+        self.list.show_all()
+
+    def on_pick(self, _lb, row):
+        if row is not None:
+            self.details.show_row(row.r)
+
+    def install(self, r):
+        if terminal("doas %s install %s" % (STORE, r["id"])):
+            self.stack.set_visible_child_name("progress")
+
+    def remove(self, r):
+        terminal("doas %s remove %s" % (STORE, r["id"]))
+
+    def refresh_when_done(self):
+        active = self.progress.events.active()
+        if self.was_active and not active:
+            self.rows = load_rows(); self.fill()
+        self.was_active = active
+        return True
+
+
+CSS = b"""
+.copal-title { font-size: 150%; }
+.copal-steps { font-family: monospace; }
+.monospace { font-family: monospace; font-size: 90%; }
+"""
+
+
+def main():
+    args = sys.argv[1:]
+    if "-h" in args or "--help" in args:
+        print(__doc__.split("\n\n")[1]); return 0
+    if "--follow" in args:
+        queued = os.path.exists(QUEUE) and os.path.getsize(QUEUE) > 0
+        ev = Events(EVENTS); ev.poll()
+        if not queued and not ev.active():
+            return 0
+    prov = Gtk.CssProvider(); prov.load_from_data(CSS)
+    from gi.repository import Gdk
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), prov, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+    ids = [a for a in args if not a.startswith("-")]
+    win = Apps("progress" if ("--progress" in args or "--follow" in args) else "list", ids[0] if ids else None)
+    win.connect("destroy", Gtk.main_quit)
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

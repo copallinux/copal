@@ -1,0 +1,421 @@
+/* ===========================================================================
+   COPAL LINUX — docs/site.css, shared by every page of copallinux.org
+   SPDX-License-Identifier: MIT   Copyright (c) 2026 Paul Richeson
+
+   ONE VISUAL WORLD, DELIBERATELY -- an engraved plate. This page commits to
+   a single theme rather than answering prefers-color-scheme, and every colour
+   is painted explicitly from a token below, so nothing is inherited from the
+   host and the page holds whatever ground it lands on.
+
+   THE PALETTE IS NOT INVENTED HERE. It is diinki's Linux Antiquity "helios"
+   scheme, read out of configs/quickshell/Config.qml in the vendored theme.
+
+   BLACK IS THE KEY, NOT THE FIELD. An earlier draft set this page on a black
+   ground and it read as a void with text on it -- which is not what the theme
+   looks like. The artwork in Antiquity is drawn the other way round: amber
+   discs on warm paper, every one of them struck with a black `cbodyStroke`
+   outline. So black here does only what a key plate does -- frames, rules,
+   keycaps, the hard offset shadow under a card -- and the paper carries the
+   page. Depth is three paper tones and a hard black shadow, never a blur:
+   this is printing, not glass.
+   ======================================================================== */
+:root {
+  /* THE GROUND IS PAPER, AND BLACK IS THE KEY.
+     Antiquity's helios scheme has two halves. The dark half is the shell
+     chrome; the half that actually carries the artwork is the one the
+     celestial bodies are drawn on -- `glassTintColor` #fce2ab and
+     `cbodyBackground` #fccf8a, struck with a black `cbodyStroke` outline.
+     That is an engraved plate: aged paper, amber wash, and black doing the
+     work of every line. This page is set on that half. Black appears only
+     where a line belongs -- frames, rules, keycaps, the plate shadow -- and
+     never as a field. */
+  --paper:        #f2e3c0;  /* the ground: aged, warm, never white          */
+  --paper-raised: #fce2ab;  /* Antiquity `glassTintColor` -- cards on top   */
+  --paper-deep:   #e7d5a6;  /* the layer below the page: wells, transcripts */
+  --paper-edge:   #dcc793;  /* the deepest tone -- shadow side of a fold    */
+
+  --ink-key:      #121212;  /* Antiquity `outline`. Every frame and rule.   */
+  --ink-body:     #1b1710;  /* reading colour: ink, very slightly warm      */
+  --ink-dim:      #6d6047;  /* secondary text; still 6:1 on --paper         */
+
+  --gold:         #8a6320;  /* the accent AS TEXT -- dark enough to read    */
+  --resin:        #fccf8a;  /* Antiquity `accent` AS FILL -- discs, washes  */
+  --resin-deep:   #87704f;  /* Antiquity `accentDark` -- labels, hairlines  */
+  --celestial:    #565c85;  /* Antiquity `cbodyMainMenu`, deepened to read  */
+  --ember:        #bf3f14;  /* Antiquity `urgent`, taken down onto paper    */
+
+  --measure:    58rem;
+  --step:       clamp(.9rem, .86rem + .18vw, 1rem);
+
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 1.25rem 6rem;
+  /* Explicit, always: the artifact host paints its own ground behind this
+     page, and a transparent body would borrow it. */
+  background: var(--paper);
+  color: var(--ink-body);
+  font: var(--step)/1.65 "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  -webkit-font-smoothing: antialiased;
+}
+
+main { max-width: var(--measure); margin: 0 auto; }
+
+/* --- type scale ---------------------------------------------------------
+   Cormorant Garamond carries every display line: an engraved face from the
+   era of the illustrations this theme is drawn from. JetBrains Mono carries
+   everything operational -- and is the same face stage 17 substitutes into
+   kitty.conf on the installed machine, which is the sort of rhyme worth
+   having. Nothing on this page is set in a third family. */
+.display {
+  font-family: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+  font-weight: 300;
+  text-wrap: balance;
+}
+
+h2 {
+  font-size: 1rem; font-weight: 700; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--gold);
+  margin: 4.5rem 0 1.25rem; padding-bottom: .5rem;
+  border-bottom: 1px solid var(--ink-key);
+  scroll-margin-top: 1.5rem;
+}
+/* The section's index, not decoration: these sections ARE the order the
+   install runs in, and the numeral says so. */
+h2 .idx {
+  color: var(--resin-deep); font-weight: 400;
+  margin-right: .75rem; font-variant-numeric: tabular-nums;
+}
+
+h3 {
+  font-size: .95rem; font-weight: 700; letter-spacing: .04em;
+  color: var(--ink-body); margin: 2rem 0 .5rem;
+}
+
+p { margin: 0 0 1rem; max-width: 62ch; }
+a { color: var(--gold); text-decoration-color: var(--resin-deep); text-underline-offset: .2em; }
+a:hover { color: var(--ember); }
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--ink-key); outline-offset: 3px;
+}
+strong { color: var(--ink-body); font-weight: 700; }
+code {
+  font-family: inherit; font-size: .92em;
+  color: var(--gold); background: var(--paper-deep);
+  padding: .1em .4em; border: 1px solid var(--ink-key);
+}
+
+/* ===================== THE HERO =========================================
+   The orbit is the thesis. In this desktop a workspace is a planet on a
+   curve and the active one grows flares -- so the page opens on the actual
+   mechanism rather than a screenshot of it. Canvas, not hand-authored SVG
+   path data, because the arc is computed. */
+header { padding: 5rem 0 1rem; position: relative; }
+
+#orbit {
+  display: block; width: 100%; height: 190px;
+  margin: 0 0 2.5rem;
+}
+
+.wordmark {
+  font-size: clamp(3.2rem, 13vw, 7rem);
+  line-height: .88; letter-spacing: .02em;
+  margin: 0 0 .75rem; color: var(--ink-key);
+  font-weight: 300;
+}
+.wordmark em {
+  font-style: italic; color: var(--ink-body);
+  font-size: .42em; letter-spacing: .04em;
+  display: block; margin-top: .9rem;
+}
+
+.thesis {
+  font-size: clamp(1.15rem, .95rem + .9vw, 1.6rem);
+  line-height: 1.45; color: var(--ink-body);
+  max-width: 34ch; margin: 0 0 1.75rem;
+}
+.thesis b { color: var(--gold); font-weight: 400; }
+
+.resin-note {
+  border-left: 2px solid var(--resin-deep);
+  padding: .1rem 0 .1rem 1rem; margin: 0 0 2.5rem;
+  color: var(--ink-dim); font-size: .88rem; max-width: 58ch;
+}
+
+/* --- the two commands that start everything ----------------------------- */
+.start {
+  display: flex; flex-wrap: wrap; gap: .75rem; margin: 0 0 1rem;
+}
+.start code {
+  background: var(--paper-raised); border: 1px solid var(--ink-key);
+  color: var(--ink-body); padding: .7rem 1.1rem; font-size: .92rem;
+  box-shadow: 3px 3px 0 var(--ink-key);
+}
+
+/* ===================== THE THREE LEVELS =================================
+   Laid out as a grid rather than prose because they are a choice made once,
+   at one moment, and a reader comparing three things wants them side by
+   side. The clipped corner marks a card you pick. */
+.levels {
+  display: grid; gap: 1rem; margin: 1.5rem 0 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+.level {
+  background: var(--paper-raised); border: 1px solid var(--ink-key);
+  box-shadow: 5px 5px 0 var(--ink-key);
+  padding: 1.25rem 1.25rem 1.4rem;
+  clip-path: polygon(0 0, calc(100% - 1rem) 0, 100% 1rem, 100% 100%, 0 100%);
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.level .body { /* the celestial body, drawn in CSS: this theme's button */
+  width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  border: 1px solid var(--ink-key); margin-bottom: .35rem;
+}
+.level.server .body { background: var(--celestial); }
+.level.medium .body { background: var(--resin-deep); }
+.level.full   .body {
+  background: var(--resin); border-color: var(--ink-key);
+  border-width: 2px; box-shadow: 2px 2px 0 var(--ink-key);
+}
+.level h3 { margin: 0; letter-spacing: .1em; text-transform: uppercase; font-size: .8rem; }
+.level.full h3 { color: var(--gold); }
+.level .what { font-family: "Cormorant Garamond", Georgia, serif;
+               font-size: 1.35rem; line-height: 1.25; color: var(--ink-body); }
+.level p { font-size: .82rem; color: var(--ink-dim); margin: 0; max-width: none; }
+.level .stages {
+  margin-top: auto; padding-top: .9rem; font-size: .72rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--resin-deep);
+}
+
+/* ===================== THE PROCESS DECK =================================
+   The four acts of an install, dealt as cards. The card shape is borrowed
+   from the theme on purpose -- Antiquity draws its power menu as three tarot
+   cards, so a sequence of steps in this design language is a hand, not a
+   list. The clipped corner and the numeral are the whole device.
+
+   These ARE a sequence and the numbering says something true: act 3 cannot
+   happen before act 2, and act 2 reboots. */
+.deck {
+  display: grid; gap: 1rem; margin: 1.5rem 0 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+.act {
+  position: relative; display: flex; flex-direction: column; gap: .55rem;
+  box-shadow: 3px 3px 0 var(--paper-edge);
+  background: linear-gradient(170deg, var(--paper-raised), var(--paper-deep));
+  border: 1px solid var(--ink-key); padding: 1.5rem 1.15rem 1.25rem;
+  clip-path: polygon(0 0, calc(100% - 1rem) 0, 100% 1rem, 100% 100%, 0 100%);
+}
+/* The numeral, set as a celestial marker rather than a bullet. */
+.act .num {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 2.4rem; line-height: 1; color: var(--ink-key);
+  font-variant-numeric: tabular-nums;
+}
+.act h3 {
+  margin: 0; font-size: .78rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--gold);
+}
+.act p { margin: 0; font-size: .82rem; color: var(--ink-dim); max-width: none; }
+.act .where {
+  margin-top: auto; padding-top: .9rem; font-size: .68rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--resin-deep);
+  border-top: 1px solid var(--ink-key);
+}
+/* The one act that restarts the machine wears the ember, because that is the
+   single moment in the install a person needs to expect. */
+.act.reboots .num { color: var(--ember); }
+
+/* ===================== FIGURES =========================================
+   Screenshot slots. Each figure keeps its aspect ratio whether or not the
+   image has landed, so dropping a file in never reflows the page around it,
+   and an empty slot says what belongs there rather than showing a broken
+   image icon. Drop a PNG at the path in src and the caption stays put. */
+.shots {
+  display: grid; gap: 1.25rem; margin: 1.5rem 0 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+}
+figure { margin: 0; display: flex; flex-direction: column; gap: .6rem; }
+.frame {
+  position: relative; aspect-ratio: 16 / 10; overflow: hidden;
+  background: var(--paper-deep); border: 1px solid var(--ink-key);
+  box-shadow: 4px 4px 0 var(--paper-edge);
+}
+.frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Shown underneath the image; an image that loads simply covers it. */
+.frame .pending {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: .4rem; padding: 1rem;
+  text-align: center; border: 1px dashed var(--ink-key); margin: .5rem;
+}
+.frame .pending b {
+  font-family: "Cormorant Garamond", Georgia, serif; font-weight: 400;
+  font-size: 1.15rem; color: var(--ink-key);
+}
+.frame .pending span { font-size: .68rem; color: var(--ink-dim); letter-spacing: .06em; }
+figcaption { font-size: .8rem; color: var(--ink-dim); }
+figcaption b { color: var(--ink-body); font-weight: 500; }
+
+/* The cast player sits in the same frame, but an install transcript is wider
+   than it is tall and should not be cropped to 16:10. */
+.frame.cast { aspect-ratio: 16 / 9; }
+
+/* ===================== THE FLOW CHART ===================================
+   Mermaid renders this itself; the container's only jobs are to sit it on
+   the same paper plate as everything else and to keep a wide diagram inside
+   its own scroll box rather than letting it widen the page. */
+.chart {
+  background: var(--paper-raised); border: 1px solid var(--ink-key);
+  box-shadow: 4px 4px 0 var(--paper-edge);
+  padding: 1.25rem; margin: 0 0 1.75rem; overflow-x: auto;
+}
+.chart pre.mermaid {
+  background: none; border: 0; box-shadow: none; padding: 0; margin: 0;
+  text-align: center;
+}
+
+/* ===================== KEYS =============================================
+   A keyboard-driven system should show its keys, so the bindings are set as
+   keycaps rather than a table of text. These are the real bindings from the
+   generated hyprland.conf and i3 config. */
+.keys { display: grid; gap: .55rem 1rem; margin: 1.25rem 0 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); }
+.keyrow { display: flex; align-items: baseline; gap: .6rem; }
+kbd {
+  font: 700 .72rem/1 "JetBrains Mono", monospace; letter-spacing: .04em;
+  background: var(--paper-raised); color: var(--ink-body);
+  border: 1px solid var(--ink-key); box-shadow: 2px 2px 0 var(--ink-key);
+  padding: .4rem .5rem; white-space: nowrap; flex: none;
+}
+.keyrow span { color: var(--ink-dim); font-size: .85rem; }
+
+/* ===================== TABLES / TARGETS ================================= */
+.scroll { overflow-x: auto; margin: 0 0 1.5rem; }
+table { border-collapse: collapse; width: 100%; font-size: .84rem; min-width: 34rem; }
+th, td { text-align: left; padding: .55rem .9rem .55rem 0; border-bottom: 1px solid var(--resin-deep);
+         vertical-align: top; }
+th { color: var(--resin-deep); font-weight: 400; letter-spacing: .12em;
+     text-transform: uppercase; font-size: .68rem; }
+td:first-child { color: var(--gold); white-space: nowrap; }
+td em { font-style: normal; color: var(--ink-dim); }
+
+/* ===================== THE HONEST NOTE ==================================
+   The ember, spent here and nowhere else: the one thing on this page that
+   is a caveat rather than a claim. */
+.honest {
+  border: 1px solid var(--ink-key); border-left: 4px solid var(--ember);
+  background: var(--paper-raised); padding: 1rem 1.15rem; margin: 1.5rem 0;
+  font-size: .85rem; color: var(--ink-dim);
+}
+.honest b { color: var(--ember); font-weight: 700; }
+
+/* ===================== TERMINAL BLOCK =================================== */
+pre {
+  background: var(--paper-deep); border: 1px solid var(--ink-key);
+  border-left: 4px solid var(--ink-key);
+  padding: 1rem 1.15rem; overflow-x: auto; font-size: .82rem;
+  line-height: 1.7; margin: 0 0 1.5rem; color: var(--ink-body);
+}
+pre .c { color: var(--ink-dim); }        /* comment  */
+pre .p { color: var(--resin-deep); }        /* prompt   */
+pre .k { color: var(--ink-body); font-weight: 700; }  /* command  */
+
+footer {
+  margin-top: 5rem; padding-top: 1.5rem; border-top: 1px solid var(--ink-key);
+  font-size: .78rem; color: var(--ink-dim);
+}
+footer a { color: var(--gold); }
+footer a:hover { color: var(--ember); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ===================== THE SITE ==========================================
+   Six pages on one plate. The navigation is a strip of keycaps, because
+   everything here that you press is drawn as a key; the page you are on is
+   the one pressed in (no shadow, resin fill). */
+.site-nav {
+  max-width: var(--measure); margin: 0 auto; padding: 1.25rem 0 0;
+  display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
+}
+.site-nav .mark {
+  font-family: "Cormorant Garamond", Georgia, serif; font-size: 1.5rem;
+  color: var(--ink-key); text-decoration: none; margin-right: auto; line-height: 1;
+}
+.site-nav a.key {
+  font: 700 .7rem/1 "JetBrains Mono", monospace; letter-spacing: .06em;
+  text-transform: uppercase; text-decoration: none; color: var(--ink-body);
+  background: var(--paper-raised); border: 1px solid var(--ink-key);
+  box-shadow: 2px 2px 0 var(--ink-key); padding: .45rem .6rem;
+}
+.site-nav a.key:hover { color: var(--ember); }
+.site-nav a.key[aria-current="page"] {
+  background: var(--resin); box-shadow: none; transform: translate(2px, 2px);
+}
+
+/* An inner page's heading: the wordmark's face, a size down, and a lede. */
+.page-head { padding: 3.5rem 0 .5rem; }
+.page-head h1 {
+  font-family: "Cormorant Garamond", Georgia, serif; font-weight: 300;
+  font-size: clamp(2.4rem, 8vw, 4.2rem); line-height: .95; margin: 0 0 1rem;
+  color: var(--ink-key);
+}
+.page-head .lede {
+  font-family: "Cormorant Garamond", Georgia, serif; font-size: clamp(1.1rem, 1rem + .6vw, 1.45rem);
+  line-height: 1.45; max-width: 40ch; margin: 0 0 1rem;
+}
+
+/* One wide picture, full measure: the desktop, a window, a slideshow. */
+.plate { margin: 1.75rem 0 2.25rem; }
+.plate img {
+  display: block; width: 100%; height: auto;
+  border: 1px solid var(--ink-key); box-shadow: 5px 5px 0 var(--ink-key);
+}
+.plate figcaption { margin-top: .75rem; }
+
+/* Programs: cards with a name, what it is, and where it lives. */
+.cards {
+  display: grid; gap: 1rem; margin: 1.5rem 0 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+.card {
+  background: var(--paper-raised); border: 1px solid var(--ink-key);
+  box-shadow: 4px 4px 0 var(--ink-key); padding: 1rem 1.1rem 1.1rem;
+  display: flex; flex-direction: column; gap: .45rem;
+}
+.card h3 { margin: 0; font-size: .82rem; letter-spacing: .08em; color: var(--gold); }
+.card p { margin: 0; font-size: .82rem; color: var(--ink-dim); max-width: none; }
+.card .where {
+  margin-top: auto; padding-top: .6rem; font-size: .68rem; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--resin-deep); border-top: 1px solid var(--resin-deep);
+}
+
+/* The gallery: every program that opened a window, a small picture each. */
+.gallery-section { margin: 2rem 0 .5rem; }
+.gallery {
+  display: grid; gap: .9rem; margin: .75rem 0 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+}
+.gallery figure { gap: .35rem; }
+.gallery img {
+  /* height: auto, or the height attribute (there to reserve the space)
+     wins over the aspect ratio and the pictures come out tall. */
+  width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; display: block;
+  border: 1px solid var(--ink-key); box-shadow: 3px 3px 0 var(--paper-edge);
+  background: var(--paper-deep);
+}
+.gallery figcaption { font-size: .72rem; line-height: 1.35; }
+
+/* The next page, at the foot of each: where the reading goes on. */
+.onward { display: flex; flex-wrap: wrap; gap: .75rem; margin: 3rem 0 0; }
+.onward a {
+  text-decoration: none; background: var(--paper-raised); color: var(--ink-body);
+  border: 1px solid var(--ink-key); box-shadow: 3px 3px 0 var(--ink-key);
+  padding: .7rem 1rem; font-size: .85rem;
+}
+.onward a:hover { color: var(--ember); }

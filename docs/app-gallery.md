@@ -258,4 +258,4 @@ refused, and anything that plays sound was silent.
 | Yakuake (drop-down, F12 - KDE) | `yakuake` | NO WINDOW in 30s, process no (exit 139) |
 | Zutty (X11-native, very fast) | `zutty` | NO WINDOW in 30s, process no (exit 139) |
 
-*Generated 2026-09-23 17:28.*
+*Generated 2026-09-23 20:00.*

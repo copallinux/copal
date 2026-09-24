@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Platforms · Copal Linux</title>
+<meta name="description" content="Where Copal runs: Raspberry Pi boards from the Zero to the Pi 5, UEFI PCs on x86_64 and x86, and UTM virtual machines on Apple Silicon — and what has been tested on each.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="./">Copal</a>
+  <a class="key" href="./">Home</a>
+  <a class="key" href="desktop.html">Desktop</a>
+  <a class="key" href="install.html">Install</a>
+  <a class="key" href="platforms.html" aria-current="page">Platforms</a>
+  <a class="key" href="alpine.html">Alpine</a>
+  <a class="key" href="software.html">Software</a>
+</nav>
+
+<main>
+
+<header class="page-head">
+  <h1>Where it runs</h1>
+  <p class="lede">Nine targets and four architectures, from a Pi Zero with
+  512 MB to a virtual machine on a Mac — and a plain account of what has been
+  tested on each.</p>
+</header>
+
+<h2><span class="idx">01</span>The targets</h2>
+
+<p>A target is a pair: what the system is written to, and what loads its
+kernel. That second half is the only real difference between a Raspberry Pi
+and everything else. On a Pi the GPU's firmware <em>is</em> the bootloader and
+reads the kernel from a FAT partition by itself, so writing a card is a file
+copy. Everywhere else a UEFI firmware loads GRUB from an EFI partition.</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Target</th><th>Arch</th><th>Machine</th><th>Levels</th><th>How we know</th></tr></thead>
+  <tbody>
+    <tr><td>vm</td><td>aarch64</td><td>UTM on Apple Silicon</td><td>all three</td><td>the daily bench: every screenshot on this site comes from it</td></tr>
+    <tr><td>vmx86</td><td>x86_64</td><td>UTM emulating a PC on Apple Silicon</td><td>all three</td><td>the README's quick start, on full automatic</td></tr>
+    <tr><td>pi4, pi5</td><td>aarch64</td><td>Pi 4, Pi 400, CM4, Pi 5</td><td>all three</td><td>written as cards from a Mac; <em>the boards for the full monty</em></td></tr>
+    <tr><td>zero2</td><td>aarch64</td><td>Pi Zero 2 W, Pi 3, CM3</td><td>all three; medium advised</td><td>written as cards from a Mac</td></tr>
+    <tr><td>pi2b</td><td>armv7</td><td>Pi 2 B v1.1</td><td>server, medium</td><td>written as cards from a Mac</td></tr>
+    <tr><td>zero</td><td>armhf</td><td>Pi Zero, Zero W, Pi 1, CM1</td><td>server, medium</td><td>the board Copal was written for</td></tr>
+    <tr><td>pc</td><td>x86_64</td><td>any UEFI PC or laptop, Intel Mac</td><td>all three</td><td>built the same way as vmx86, for real hardware</td></tr>
+    <tr><td>pc32</td><td>x86</td><td>32-bit UEFI machines</td><td>server, medium</td><td>built the same way; <em>rare hardware, least tested</em></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>The full monty needs <strong>aarch64 or x86_64</strong>: Alpine packages no
+Hyprland for 32-bit ARM or x86, and a Pi Zero's VideoCore has no graphics
+driver worth asking. On those machines the full level declines itself and
+installs the medium desktop instead — X and i3, drawn by the CPU, which is
+exactly what 512 MB can carry.</p>
+
+<div class="honest">
+  <b>What "tested" means here.</b> The aarch64 virtual machine is where Copal
+  is built and used every day, and where every program in Copal Apps was
+  compiled and launched before it was listed. The Pi boards are where Copal
+  began; this release has not been re-run on each of them. Copal Apps'
+  compiled programs are admitted on x86_64 on the strength of every dependency
+  being in Alpine's index there, but have not yet been built on it.
+</div>
+
+<h2><span class="idx">02</span>Raspberry Pi</h2>
+
+<p>The Pi is Copal's native ground. Copal writes the SD card from a Mac:
+it downloads Alpine for the board's architecture, verifies it, lays out a FAT
+boot partition with room behind it, and puts Alpine and the installer on the
+card. The Pi boots Alpine from RAM; the installer formats the root as ext4,
+moves the system onto it, and from then on the card is a normal disk.</p>
+
+<ul>
+  <li><strong>Pi 4, Pi 400 and Pi 5</strong> have the memory and the GPU for
+  Hyprland — the boards to choose for the full monty.</li>
+  <li><strong>Pi Zero 2 W and Pi 3</strong> are aarch64 with 512 MB to 1 GB:
+  the medium desktop is the comfortable one.</li>
+  <li><strong>Pi Zero, Zero W and Pi 1</strong>, one 1 GHz core and 512 MB,
+  are the design constraint everything else answers to: a tiling window
+  manager so nothing is drawn twice, swap compressed in RAM because the card
+  is the slowest and most fragile part of the machine, and nothing running
+  that you did not ask for.</li>
+</ul>
+
+<p>Stage 15 is about the card itself: what wears one out, a log policy that
+spares it, and a read-only root for a Pi that should never change.</p>
+
+<h2><span class="idx">03</span>Apple Silicon, in UTM</h2>
+
+<p><a href="https://mac.getutm.app">UTM</a> is a virtual-machine app for the
+Mac, built on QEMU. On Apple Silicon it runs an <strong>aarch64</strong> guest
+on Apple's own hypervisor, at native speed, and draws its display with the
+Mac's GPU. It can also run an <strong>x86_64</strong> guest, by emulating a
+whole PC: slower, but the same image a PC would boot.</p>
+
+<p>Copal builds both from the Mac and registers them with UTM itself, with a
+shared folder, a serial console, and a clipboard joined to the Mac's:</p>
+
+<pre><span class="p">$</span> <span class="k">./copal build vm</span>                                   <span class="c"># aarch64: build/copal-vm.img</span>
+<span class="p">$</span> <span class="k">./copal vm create --target aarch64 --image build/copal-vm.img</span>
+<span class="p">$</span> <span class="k">make utm-x86</span>                                       <span class="c"># x86_64: build, register, start</span>
+<span class="p">$</span> <span class="k">make utm-grow SIZE=256g</span>                            <span class="c"># a full VM's disk, made bigger</span></pre>
+
+<p>A virtual machine is also how Copal is tested: change the installer, boot
+a fresh image, and see what it built — without a card, a Pi, or a reboot
+cycle. The images are sparse, so a 128 GB disk costs the Mac only what the
+guest has written.</p>
+
+<h2><span class="idx">04</span>PCs, x86_64 and x86</h2>
+
+<p>The <code>pc</code> target is a UEFI disk image for any 64-bit PC or laptop
+from about 2012 on, and for Intel Macs; <code>pc32</code> is the same for the
+rare 32-bit UEFI machines. Both are written to a USB stick or an image file
+from the Mac.</p>
+
+<p><strong>UEFI only.</strong> That is a limit of the machine doing the
+writing, not a preference: a legacy BIOS boot needs a boot sector written by
+Linux tools that do not exist on macOS, while UEFI reads a FAT partition and
+runs a file on it, which is a copy. So Copal supports UEFI, and says so,
+rather than writing a stick that will not boot.</p>
+
+<nav class="onward" aria-label="Next">
+  <a href="alpine.html">Why Alpine →</a>
+  <a href="install.html">How it installs →</a>
+</nav>
+
+<footer>
+  <p>Copal Linux · MIT licensed · <a href="https://github.com/vonglurt/copal">github.com/vonglurt/copal</a> ·
+  Raspberry Pi is a trademark of Raspberry Pi Ltd; UTM is by its own authors. Neither is affiliated with Copal.</p>
+</footer>
+
+</main>
+</body>
+</html>

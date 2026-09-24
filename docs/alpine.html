@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alpine Linux · Copal Linux</title>
+<meta name="description" content="Why Copal is built on Alpine Linux: musl, BusyBox, OpenRC and apk; a system small enough for a Pi Zero; and what building desktop software for musl actually takes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="./">Copal</a>
+  <a class="key" href="./">Home</a>
+  <a class="key" href="desktop.html">Desktop</a>
+  <a class="key" href="install.html">Install</a>
+  <a class="key" href="platforms.html">Platforms</a>
+  <a class="key" href="alpine.html" aria-current="page">Alpine</a>
+  <a class="key" href="software.html">Software</a>
+</nav>
+
+<main>
+
+<header class="page-head">
+  <h1>Built on Alpine</h1>
+  <p class="lede">Small, simple and secure — Alpine's own three words, and the
+  reason a desktop this complete can start from a Pi Zero.</p>
+</header>
+
+<h2><span class="idx">01</span>What Alpine is</h2>
+
+<p><a href="https://alpinelinux.org">Alpine Linux</a> is an independent Linux
+distribution built around a few deliberate choices, each smaller than the
+usual one:</p>
+
+<div class="cards">
+  <article class="card">
+    <h3>musl libc</h3>
+    <p>A compact, standards-minded C library in place of glibc. Programs are
+    smaller and start faster; software written only for glibc sometimes needs
+    a hand.</p>
+    <p class="where">the C library</p>
+  </article>
+  <article class="card">
+    <h3>BusyBox</h3>
+    <p>The everyday commands — shell, file tools, networking — as one small
+    program, instead of a separate package for each.</p>
+    <p class="where">the userland</p>
+  </article>
+  <article class="card">
+    <h3>OpenRC</h3>
+    <p>A dependency-based init system of plain shell scripts, which a person
+    can read end to end.</p>
+    <p class="where">the init system</p>
+  </article>
+  <article class="card">
+    <h3>apk</h3>
+    <p>A fast package manager with a stable main repository, a community one,
+    and edge/testing for newer software.</p>
+    <p class="where">packages</p>
+  </article>
+</div>
+
+<p>By Alpine's own count, a container needs no more than 8 MB and a minimal
+install to disk about 130 MB. Stable releases come twice a year, and each is
+supported for years. It is the base of a great many container images for the
+same reasons it suits a Raspberry Pi: little is running, and what is running
+can be read.</p>
+
+<h2><span class="idx">02</span>Diskless, then set hard</h2>
+
+<p>Alpine can run <strong>diskless</strong>: it boots from read-only media
+into RAM, and nothing is written anywhere unless you save it. That is how it
+first comes up on a Copal card, and it is where the name comes from — resin
+before it hardens. Stage 3 moves the running system onto the disk in Alpine's
+ordinary <strong>sys</strong> mode, keeping the small system and giving it a
+disk to remember with. Everything Copal does is done with Alpine's own tools:
+<code>setup-alpine</code> for the base, <code>apk</code> for packages, OpenRC
+for services.</p>
+
+<h2><span class="idx">03</span>What building for musl takes</h2>
+
+<p>Copal compiles programs Alpine does not carry, or carries in an older
+release, and most of them were written on glibc. The differences are small,
+specific, and worth writing down. From the programs built for Copal Apps:</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>The difference</th><th>What it broke</th><th>What Copal does</th></tr></thead>
+  <tbody>
+    <tr><td>a thread gets 128 KB of stack, not 8 MB</td><td>Naev crashed loading textures on a worker thread; DDNet's renderer overflowed</td><td>links every build for glibc-sized thread stacks</td></tr>
+    <tr><td>no <code>execinfo.h</code></td><td>crash handlers that print a stack trace</td><td>stubs that report no frames; the crash is still logged</td></tr>
+    <tr><td>glibc's own extensions</td><td>Ardour's bundled GTK used <code>nftw</code> flags musl lacks</td><td>takes the portable path the code already had</td></tr>
+    <tr><td>build probes that test glibc's macros</td><td>darktable's image library could not learn the page size</td><td>gives it the machine's page and cache-line sizes</td></tr>
+    <tr><td>large-file names are opt-in</td><td>code calling <code>stat64</code> and friends</td><td>asks for them in every build</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Each fix sits in the playbook of the program that needed it, with a
+comment saying why — so the next version of the program can be built without
+rediscovering it.</p>
+
+<h2><span class="idx">04</span>Aggregated, not forked</h2>
+
+<p>Copal downloads stock Alpine from Alpine's mirrors and checks it against
+Alpine's published checksum before anything is written. It replaces no
+package. What it installs comes from Alpine's own repositories — edge/testing
+only for the packages named for it, tagged so nothing else follows — or is
+compiled on the machine from a pinned release whose checksum is written in
+its playbook. The exceptions are named: the Brave browser, from Flathub, and
+Claude Code, from npm. Copal is not affiliated with or endorsed by the Alpine
+project — it is built on its work, with thanks.</p>
+
+<nav class="onward" aria-label="Next">
+  <a href="software.html">The software →</a>
+  <a href="https://alpinelinux.org">alpinelinux.org →</a>
+</nav>
+
+<footer>
+  <p>Copal Linux · MIT licensed · <a href="https://github.com/vonglurt/copal">github.com/vonglurt/copal</a> ·
+  Alpine Linux is its project's own; Copal is not part of it.</p>
+</footer>
+
+</main>
+</body>
+</html>

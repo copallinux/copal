@@ -61,6 +61,47 @@ What the plan below became in its first phase, where it differs:
   Then built on the bench: Celeste Classic, Pac-Man, PyChess (its `post`
   step) and OpenTyrian, each launched.
 
+## Phase 2, done (23 Sep 2026)
+
+**Copal Apps** (`tools/copal-apps`, Python and GTK 3 like copal-gui, carried
+into stage 18 by `make sync-apps`) is the window over the store, and it
+never installs anything itself or needs root:
+
+- **The list**: shelves, every program with its status, and one program in
+  full -- its gallery picture, name, two sentences, where it comes from,
+  what it needs to build and to run, its steps, its last build -- with
+  Install, Remove, Open and Website. Install and Remove open a terminal on
+  `doas copal-store install ID`, so the password is asked where passwords
+  are, and the window turns to the progress page. `copal-apps ID` opens on
+  one program.
+- **The progress page**, the slideshow: the program arriving (picture,
+  name, two sentences, source, its steps ticked off) over three bars -- the
+  run (programs done of all), the program (steps done of its steps), and
+  the step itself, read from the build log the install event names:
+  ninja's `[n/m]` or make's percentage, a pulse where neither is printed.
+  Below them, the programs already finished, ticked or crossed.
+- **Pictures** are the gallery's, fetched from GitHub once into
+  `~/.cache/copal-apps`; without one, the program's icon.
+
+**The full monty's programs install at the first desktop login.** No
+desktop runs during the automatic install, so stage 18 queues the bundle
+in `/var/lib/copal/apps-queue` and adds the OpenRC service
+`copal-apps-queue`, which after the reboot installs, as root and in the
+background, whatever of the queue is still missing (`copal-store pending`,
+so an interrupted queue resumes without rebuilding), then removes itself.
+Both desktops start `copal-apps --follow`, which opens on the slideshow
+while a queue is waiting or a run is going and otherwise exits at once
+(0.19 s on the bench). The starter set still installs on the console.
+
+Super+Shift+C and the menu's Copal Store entry open Copal Apps; the store's
+yad window stays for a machine without it.
+
+Checked on the bench: the list opened on darktable with its picture and
+details; a live three-program run (Taisei, Naev, Celeste) followed by the
+progress page, Naev's compile read as 884 of 992; `--follow` exiting with
+nothing queued and opening with a queue; `pending` returning only what was
+missing.
+
 ## I. A playbook
 
 One file per project, `playbooks/<category>/<project>.sh`, named after the

@@ -88,7 +88,7 @@ model_of = $(patsubst pizero%,zero%,$(1))
 .PHONY: alldebug build-all-debug imagedebug freshdebug purge \
 	help menu flow targets boards configure require-tools vm graphical check \
         fresh auto image refresh utm utm-x86 layout layout-auto answers answers-show lint space clean distclean \
-        all cache build-all release capture video screens verify gallery chain walkthrough release-cast logs utm-export utm-grow sync-playbooks install \
+        all cache build-all release capture video screens verify gallery chain walkthrough release-cast logs utm-export utm-grow sync-playbooks sync-apps install \
         redeploy redeploy-check answers-node fleet-console fleet-web
 
 help:
@@ -866,6 +866,16 @@ sync-store:
 	@$(MAKE) --no-print-directory lint
 
 ## sync-gui: copy tools/copal-gui (the Mint-style menu) into stage 4's heredoc in copal-prep.sh.
+## sync-apps: copy tools/copal-apps into stage 18's heredoc in copal-prep.sh.
+sync-apps:
+	@python3 -c 'import sys;\
+	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
+	m="    cat > /usr/local/bin/copal-apps <<\x27COPALAPPS\x27\n";\
+	i=s.index(m)+len(m);j=s.index("COPALAPPS\n",i);\
+	open(p,"w").write(s[:i]+prog.rstrip("\n")+"\n"+s[j:])' $(PREP) tools/copal-apps
+	@printf '  ok      tools/copal-apps -> $(PREP)\n'
+	@$(MAKE) --no-print-directory lint
+
 sync-gui:
 	@python3 -c 'import sys;\
 	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
@@ -1058,6 +1068,15 @@ lint: | $(BUILDDIR)
 	    > $(BUILDDIR)/.store.selftest; _rc=$$?; sed 's/^/  /' $(BUILDDIR)/.store.selftest; \
 	    rm -f $(BUILDDIR)/.store.lint.sh $(BUILDDIR)/.catalogue.lint $(BUILDDIR)/.store.selftest; \
 	    [ $$_rc = 0 ] || { printf '\033[31merror:\033[0m copal-store self-test failed\n'; exit 1; }
+	@sed -n "/^    cat > \/usr\/local\/bin\/copal-apps <<'COPALAPPS'$$/,/^COPALAPPS$$/p" $(PREP) \
+	    | sed '1d;$$d' > $(BUILDDIR)/.apps.lint.py
+	@cmp -s $(BUILDDIR)/.apps.lint.py tools/copal-apps \
+	    && printf '  ok      copal-apps in $(PREP) matches tools/\n' \
+	    || { printf '\033[31merror:\033[0m copal-apps in $(PREP) has drifted -- run: make sync-apps\n'; \
+	         diff -u tools/copal-apps $(BUILDDIR)/.apps.lint.py | head -20; exit 1; }
+	@python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' $(BUILDDIR)/.apps.lint.py \
+	    && printf '  ok      copal-apps parses\n'
+	@rm -f $(BUILDDIR)/.apps.lint.py
 	@sed -n "/^    cat > \/usr\/local\/bin\/copal-gui <<'COPALGUI'$$/,/^COPALGUI$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.gui.lint.py
 	@test -s $(BUILDDIR)/.gui.lint.py \

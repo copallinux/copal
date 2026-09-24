@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Desktop · Copal Linux</title>
+<meta name="description" content="The full monty: Hyprland on Wayland, the Linux Antiquity theme, a menu for the mouse and a launcher for the keyboard, Copal Apps, and a shelf of programs chosen for being good.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="./">Copal</a>
+  <a class="key" href="./">Home</a>
+  <a class="key" href="desktop.html" aria-current="page">Desktop</a>
+  <a class="key" href="install.html">Install</a>
+  <a class="key" href="platforms.html">Platforms</a>
+  <a class="key" href="alpine.html">Alpine</a>
+  <a class="key" href="software.html">Software</a>
+</nav>
+
+<main>
+
+<header class="page-head">
+  <h1>The full monty</h1>
+  <p class="lede">An opinionated desktop: decided once, so that a new machine
+  arrives finished instead of as a list of choices.</p>
+</header>
+
+<div class="plate">
+  <figure>
+    <img src="img/site/desktop-menu.jpg" width="1280" height="800"
+         alt="The Copal desktop: Art Nouveau lilies on the wallpaper, a large amber clock, the bar across the top, and the application menu open.">
+    <figcaption><b>Super+A.</b> The application menu, laid out the way Linux
+    Mint's is, over the theme's Art Nouveau wallpaper. The clock is part of
+    the wallpaper; the bar shows workspaces, the focused window, and the
+    machine's load.</figcaption>
+  </figure>
+</div>
+
+<h2><span class="idx">01</span>Hyprland, on Wayland</h2>
+
+<p>The full level installs <strong>Hyprland</strong>, a tiling Wayland
+compositor. Windows arrange themselves: open two and they share the screen,
+open a third and they share it again, with nothing to drag and no corner to
+resize. Nine workspaces sit one key away each. The compositor draws with the
+GPU — rounded corners, soft shadows and a little blur — and in a UTM virtual
+machine that is the Mac's own GPU, reached through virgl. Where only software
+rendering is available, Copal's graphics check says so, and says why, instead
+of leaving a slow desktop to be puzzled over.</p>
+
+<p>The session belongs to your own account, never to root, and it can start
+at boot with an automatic login. X11 and i3 stay installed beside it as the
+fallback; one word in <code>/etc/copal/session</code> decides which desktop
+the machine boots into.</p>
+
+<h2><span class="idx">02</span>Linux Antiquity</h2>
+
+<p>The look is <a href="https://github.com/diinki/linux-antiquity">Linux
+Antiquity</a> by <strong>diinki</strong>: a theme built on an aesthetic
+deliberately detached from computing — art nouveau, old scientific
+illustration, and the personified suns and moons of classical astronomy. Its
+palette runs from aged paper to amber to ink. This website is set in the same
+palette, read out of the theme's own configuration.</p>
+
+<div class="honest">
+  <b>What is standing in.</b> The theme's own bar, radial taskbar and widgets
+  are written for <em>quickshell</em>, which Alpine does not package. Copal
+  draws the bar with <em>waybar</em> in the theme's palette instead, and its
+  launcher decides at login which shell to run — so the day Alpine packages
+  quickshell, the theme's real shell takes over with nothing edited.
+</div>
+
+<h2><span class="idx">03</span>Your hands, on the keyboard or the mouse</h2>
+
+<p>Everything can be done from the keyboard, and nothing requires it. The
+keys are the real bindings from the configuration the installer writes; the
+full list is one key away, and is shown at the first login.</p>
+
+<div class="keys">
+  <div class="keyrow"><kbd>Super ⏎</kbd><span>a terminal (foot)</span></div>
+  <div class="keyrow"><kbd>Super D</kbd><span>run a program by name</span></div>
+  <div class="keyrow"><kbd>Super A</kbd><span>the application menu</span></div>
+  <div class="keyrow"><kbd>Super Z</kbd><span>the system menu</span></div>
+  <div class="keyrow"><kbd>Super ⇧ C</kbd><span>Copal Apps</span></div>
+  <div class="keyrow"><kbd>Super E</kbd><span>files</span></div>
+  <div class="keyrow"><kbd>Super F</kbd><span>fullscreen</span></div>
+  <div class="keyrow"><kbd>Super 1…9</kbd><span>workspaces</span></div>
+  <div class="keyrow"><kbd>Super Q</kbd><span>close the window</span></div>
+  <div class="keyrow"><kbd>Super ⇧ S</kbd><span>screenshot a region</span></div>
+  <div class="keyrow"><kbd>Super /</kbd><span>every binding, listed</span></div>
+</div>
+
+
+<h2><span class="idx">04</span>Copal Apps</h2>
+
+<p>Every graphical program Copal offers is in one window, grouped on shelves,
+each with its picture, two sentences saying what it is, where it comes from,
+what it needs, and whether it is installed. Installing one opens its slide:
+the program arriving, its steps ticked off, and three bars — the run, the
+program, and the compile itself.</p>
+
+<div class="shots">
+  <figure>
+    <div class="frame"><img src="img/site/copal-apps.jpg" loading="lazy"
+      alt="Copal Apps: shelves on the left, the list of programs in the middle, and darktable in full on the right with its picture, description, and build dependencies."></div>
+    <figcaption><b>The list.</b> Shelves, programs and their status, and one
+    program in full.</figcaption>
+  </figure>
+  <figure>
+    <div class="frame"><img src="img/site/copal-apps-progress.jpg" loading="lazy"
+      alt="Copal Apps' progress page: Naev being installed, its picture and description, and three progress bars, the innermost reading 884 of 992."></div>
+    <figcaption><b>The slideshow.</b> Naev compiling: program 2 of 3, its
+    install step, 884 of 992 build steps done.</figcaption>
+  </figure>
+</div>
+
+<h2><span class="idx">05</span>Programs that arrive with it</h2>
+
+<p>The full monty installs sixteen programs at the first login, while the
+slideshow runs: games, photography, writing, animation, recording, disc
+burning, scanning and duplicate finding. Where Alpine's package is current
+and stable, it is used; where upstream is ahead, the program is compiled on
+the machine from its pinned release.</p>
+
+<div class="shots">
+  <figure><div class="frame"><img src="img/site/darktable.jpg" loading="lazy" alt="darktable's lighttable."></div>
+    <figcaption><b>darktable 5.6.</b> Raw photo development, compiled here with every format and its Lua scripts.</figcaption></figure>
+  <figure><div class="frame"><img src="img/site/ardour.jpg" loading="lazy" alt="Ardour's editor with an empty session."></div>
+    <figcaption><b>Ardour 9.8.</b> A recording studio, from ardour.org's own source.</figcaption></figure>
+  <figure><div class="frame"><img src="img/site/naev.jpg" loading="lazy" alt="Naev's main menu over a starfield."></div>
+    <figcaption><b>Naev.</b> Space trading and combat with a long written story.</figcaption></figure>
+  <figure><div class="frame"><img src="img/site/taisei.jpg" loading="lazy" alt="Taisei's title menu."></div>
+    <figcaption><b>Taisei.</b> A bullet-hell shooter in the Touhou tradition.</figcaption></figure>
+  <figure><div class="frame"><img src="img/site/pencil2d.jpg" loading="lazy" alt="Pencil2D's main window with its timeline."></div>
+    <figcaption><b>Pencil2D.</b> Frame-by-frame animation with onion skins.</figcaption></figure>
+  <figure><div class="frame"><img src="img/site/k3b.jpg" loading="lazy" alt="K3b's welcome screen with New Data Project and Copy Medium."></div>
+    <figcaption><b>K3b.</b> CDs, DVDs and Blu-ray, written and verified.</figcaption></figure>
+</div>
+
+<h2><span class="idx">06</span>Also in the box</h2>
+
+<ul>
+  <li><strong>A toolchain with an agent in it.</strong> gcc, gdb, Python,
+  Rust, Go and an nvim set up for building — and Claude Code, installed by
+  default, checked first to run on the CPU it is given.</li>
+  <li><strong>One clipboard.</strong> Copy in any window and paste in any
+  other, and in a virtual machine, to and from the Mac.</li>
+  <li><strong>SSH with your key, compressed swap in RAM, and root locked
+  behind <code>doas</code></strong> — the plumbing a machine should have and
+  nobody wants to set up.</li>
+  <li><strong>Over 300 programs in the catalogue</strong> and 112 more in
+  Copal Apps, each one a line saying what it is for.</li>
+</ul>
+
+<nav class="onward" aria-label="Next">
+  <a href="install.html">How it installs →</a>
+  <a href="software.html">Every program, pictured →</a>
+</nav>
+
+<footer>
+  <p>Copal Linux · MIT licensed · <a href="https://github.com/vonglurt/copal">github.com/vonglurt/copal</a> ·
+  the Linux Antiquity theme is by <a href="https://github.com/diinki/linux-antiquity">diinki</a>.</p>
+</footer>
+
+</main>
+</body>
+</html>
