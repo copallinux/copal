@@ -927,6 +927,12 @@ sync-gui:
 commands:
 	@python3 tools/copal-command-ref.py render
 	@python3 tools/copal-command-ref.py check
+	@python3 tools/copal-stamp.py
+
+## stamp: version docs/index.html's own scripts, stylesheets and cards (?v=), so no browser pairs new with stale.
+.PHONY: stamp
+stamp:
+	@python3 tools/copal-stamp.py
 
 .PHONY: commands-facts
 commands-facts:
@@ -1113,6 +1119,7 @@ lint: | $(BUILDDIR)
 	@rm -f $(BUILDDIR)/.nkeys.lint.py $(BUILDDIR)/.nats.lint.py $(BUILDDIR)/.agent.lint.py
 	@python3 tools/copal-playbooks.py check
 	@python3 tools/copal-command-ref.py check | sed 's/^  //; s/^/  /'
+	@python3 tools/copal-stamp.py --check
 	@cp docs/commands.html $(BUILDDIR)/.commands.lint.html; cp docs/commands-index.json $(BUILDDIR)/.commands.lint.json; \
 	 cp docs/guide-cards.json $(BUILDDIR)/.commands.lint.cards; \
 	 python3 tools/copal-command-ref.py render >/dev/null; \

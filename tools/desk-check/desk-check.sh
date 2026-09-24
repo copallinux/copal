@@ -48,11 +48,12 @@ for f in "$HERE"/*.js; do ln -s "$f" "$WORK/site/$(basename "$f")"; done
 # headless screenshot is taken at the load event.
 for t in "$HERE"/t-desk*.js; do
     n=$(basename "$t" .js)
-    sed "s#<script src=\"desk.js\"></script>#<script src=\"desk.js\"></script>\n<script src=\"$n.js\"></script>#" \
+    # desk.js is asked for with a version stamp (tools/copal-stamp.py).
+    sed -E "s#(<script src=\"desk\.js[^\"]*\"></script>)#\1\n<script src=\"$n.js\"></script>#" \
         "$DOCS/index.html" > "$WORK/site/$n.html"
 done
-sed -e 's#<script src="menu-data.js"></script>#<script src="t-syncfetch.js"></script>\n<script src="menu-data.js"></script>#' \
-    -e 's#<script src="desk.js"></script>#<script src="desk.js"></script>\n<script src="t-menu.js"></script>#' \
+sed -E -e 's#(<script src="menu-data\.js[^"]*"></script>)#<script src="t-syncfetch.js"></script>\n\1#' \
+    -e 's#(<script src="desk\.js[^"]*"></script>)#\1\n<script src="t-menu.js"></script>#' \
     "$DOCS/index.html" > "$WORK/site/t-shot.html"
 
 PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')

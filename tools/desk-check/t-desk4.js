@@ -41,13 +41,13 @@
     press(document, "2", "Digit2", CA);
     ok("Ctrl+Alt+2 shows workspace 2", !document.querySelectorAll(".desk-ws")[1].hidden && document.querySelectorAll(".sim-ws span")[1].getAttribute("aria-current") === "true");
     press(document, "1", "Digit1", CA);
+    // Super belongs to the browser and the system off a Copal machine: a tap
+    // must not open anything, and Super+A (Cmd+A, select all) is left alone.
     press(document, "Meta", "MetaLeft"); up(document, "Meta", "MetaLeft");
-    ok("a tap of Super toggles copal-gui", guiOpen());
-    press(document, "Meta", "MetaLeft"); up(document, "Meta", "MetaLeft");
-    ok("…and a second tap closes it", !guiOpen());
-    press(document, "Meta", "MetaLeft"); press(document, "a", "KeyA", { metaKey: true }); up(document, "Meta", "MetaLeft", { metaKey: false });
-    ok("Super+A opens it once, not twice", guiOpen());
-    press(document, "Escape", "Escape"); press(document, "Escape", "Escape");
+    ok("a tap of Super (Cmd) opens nothing", !guiOpen() && !keysOpen());
+    var ev = new KeyboardEvent("keydown", { key: "a", code: "KeyA", metaKey: true, bubbles: true, cancelable: true });
+    document.dispatchEvent(ev);
+    ok("Super+A (Cmd+A) is left to the browser", !ev.defaultPrevented && !guiOpen());
     var f = wins()[0].querySelector("iframe");
     press(f.contentDocument, "a", "KeyA", CA);
     ok("a shortcut pressed inside a framed page reaches the desktop", guiOpen());

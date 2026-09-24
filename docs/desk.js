@@ -61,7 +61,9 @@
   function withCards(then) {
     if (cards) { then(cards); return; }
     if (!cardsWait) {
-      cardsWait = fetch("guide-cards.json").then(function (r) { return r.ok ? r.json() : {}; })
+      // Stamped by tools/copal-stamp.py, so a changed file is a new address.
+      var v = root.getAttribute("data-cards");
+      cardsWait = fetch("guide-cards.json" + (v ? "?v=" + v : "")).then(function (r) { return r.ok ? r.json() : {}; })
         .catch(function () { return {}; })
         .then(function (c) { cards = c; return c; });
     }
@@ -92,10 +94,10 @@
   bar.setAttribute("role", "toolbar");
   bar.setAttribute("aria-label", "The bar: menus and workspaces");
   var bGui = el("button", "desk-menu", "≡");
-  bGui.title = "Applications — copal-gui (Super+A)";
+  bGui.title = "Applications — copal-gui (Ctrl+Alt+A; Super+A on a Copal machine)";
   bGui.setAttribute("aria-label", bGui.title);
   var bKeys = el("button", "desk-menu keys", "❯_");
-  bKeys.title = "copal-menu (Super+Space; Super+Z for its System pane)";
+  bKeys.title = "copal-menu (Ctrl+Alt+Space; Ctrl+Alt+Z for its System pane)";
   bKeys.setAttribute("aria-label", bKeys.title);
   var wsBox = el("div", "sim-ws");
   var wsTabs = [];
@@ -104,7 +106,7 @@
       var s = el("span", "", String(n));
       s.setAttribute("role", "button");
       s.tabIndex = 0;
-      s.title = "Workspace " + n + " (Super+" + n + ", Ctrl+Alt+" + n + ")";
+      s.title = "Workspace " + n + " (Ctrl+Alt+" + n + ")";
       s.setAttribute("aria-label", "Workspace " + n);
       s.addEventListener("click", function (e) { e.stopPropagation(); showWorkspace(n); });
       s.addEventListener("keydown", function (e) {
@@ -232,7 +234,6 @@
       // A key pressed in a framed page never reaches this document, so the
       // desktop's shortcuts listen there too.
       doc.addEventListener("keydown", onKeyDown);
-      doc.addEventListener("keyup", onKeyUp);
     });
     x.body.appendChild(f);
   }
@@ -368,7 +369,7 @@
     var head = el("header", "desk-head");
     x.name = el("span", "name", x.title);
     var shut = el("button", "shut", "×");
-    shut.title = "Close (Super+Q)";
+    shut.title = "Close (Ctrl+Alt+Q)";
     shut.setAttribute("aria-label", "Close " + x.title);
     shut.addEventListener("click", function (e) { e.stopPropagation(); close(x); });
     head.appendChild(x.name); head.appendChild(shut);
@@ -416,17 +417,18 @@
   });
 
   // ----- keys -----
-  // Copal's own shortcuts, with Super and with the Ctrl+Alt fallbacks it binds
-  // for machines where Super is taken (hyprland.conf): A copal-gui, Space
-  // copal-menu, Z its System pane, Q close the window, 1-5 a workspace. Super
-  // alone toggles copal-gui when it is let go without another key, as a tap
-  // does in Hyprland -- so Super+A does not open the menu and then toggle it.
-  // A browser keeps some Super combinations for itself (Cmd+Q quits it on a
-  // Mac), which is what the Ctrl+Alt ones are for.
-  var superTap = false;
+  // Copal's own Ctrl+Alt shortcuts (hyprland.conf binds them for machines
+  // where Super is taken): A copal-gui, Space copal-menu, Z its System pane,
+  // Q close the window, 1-5 a workspace.
+  //
+  // NOT SUPER, on purpose. On a Copal machine Hyprland takes Super before the
+  // browser sees it; everywhere else Super is Cmd or the Windows key, and the
+  // browser and the system own its combinations -- Cmd+A selects, Cmd+1 picks
+  // a tab, Cmd+Q quits. Taking them over broke those, and a lone Super tap
+  // could not be told apart from a Cmd+Tab the page never saw the rest of:
+  // the menu opened by itself.
   function shortcut(e) {
-    var mod = (e.ctrlKey && e.altKey && !e.metaKey) || (e.metaKey && !e.ctrlKey && !e.altKey);
-    if (!mod) return false;
+    if (!(e.ctrlKey && e.altKey && !e.metaKey)) return false;
     var c = e.code || "";
     if (c === "KeyA") { keys.close(); gui.toggle(); return true; }
     if (c === "Space") { gui.close(); keys.toggle("apps"); return true; }
@@ -437,17 +439,11 @@
     return false;
   }
   function onKeyDown(e) {
-    if (e.key === "Meta" || e.key === "OS") { superTap = true; return; }
-    superTap = false;
     if (shortcut(e)) { e.preventDefault(); return; }
     if (gui.isOpen()) { if (gui.key(e)) e.preventDefault(); return; }
     if (keys.isOpen()) { if (keys.key(e)) e.preventDefault(); }
   }
-  function onKeyUp(e) {
-    if ((e.key === "Meta" || e.key === "OS") && superTap) { superTap = false; keys.close(); gui.toggle(); }
-  }
   document.addEventListener("keydown", onKeyDown);
-  document.addEventListener("keyup", onKeyUp);
 
   // ----- first light -----
   showWorkspace(1);
