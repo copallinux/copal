@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 290 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 210 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 212 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.
   How it is written, checked against a running machine: <a href="terminal-guide-lab-report.html">the lab report</a>.</p>
 </header>
@@ -2523,14 +2523,19 @@ Commands:
 <pre class="syn">gh &lt;command&gt; &lt;subcommand&gt; [flags]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-node" data-s="node server-side javascript runtime programming nodejs">
-<h3><a class="self" href="#c-node"><code>node</code></a> <span class="purpose">server-side JavaScript runtime</span></h3>
+<article class="cmd" id="c-node" data-s="node node.js: run javascript outside the browser, with npm for its packages. programming nodejs">
+<h3><a class="self" href="#c-node"><code>node</code></a> <span class="purpose">Node.js: run JavaScript outside the browser, with npm for its packages.</span></h3>
 <p class="facts">Programming · terminal program · <b>nodejs</b> 24.18.1 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · on the Copal Apps shelf · <a href="man/node.html">man node(1)</a> · <a href="https://nodejs.org/">home</a></p>
 <p class="deps">needs ca-certificates, ada-libs, brotli-libs, c-ares, libcrypto3, icu-libs, nghttp2-libs, simdjson</p>
+<p class="why"><b>On Copal:</b> On Copal because Claude Code runs on it (stage 7 installs it when Claude Code is chosen) and because a checkout builds with npm; the store offers it for JavaScript work of your own.</p>
 <pre class="syn">node [options] [v8-options] [-e string | script.js | -] [--] [arguments ...]
 node inspect [-e string | script.js | - | &lt;host&gt;:&lt;port&gt;] ...
 node [--v8-options]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run a script, or start the prompt and type JavaScript. npm installs a project's packages into its <code>node_modules</code>; <code>npm install -g</code> puts tools in your own prefix, <code>~/.npm-global</code>, which is on PATH.</p>
+<h4>Examples</h4><div class="ex"><code>node</code><span>the prompt; .exit to leave</span></div><div class="ex"><code>node app.js</code><span>run a script</span></div><div class="ex"><code>node -e 'console.log(2 ** 53)'</code><span>one line</span></div><div class="ex"><code>node --watch server.js</code><span>restart when the file changes</span></div><div class="ex"><code>npm init -y &amp;&amp; npm install express</code><span>a project and a package</span></div><div class="ex"><code>npm install -g prettier</code><span>a tool, into ~/.npm-global</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-e, --eval CODE</code></dt><dd>run CODE</dd><dt><code>-p, --print CODE</code></dt><dd>run CODE and print the result</dd><dt><code>-c, --check</code></dt><dd>check the syntax only</dd><dt><code>-i</code></dt><dd>the prompt, even when stdin is not a terminal</dd><dt><code>--watch</code></dt><dd>restart on changes</dd><dt><code>--test</code></dt><dd>run the tests in the project</dd></dl>
+<h4>Notes</h4><ul><li><code>npm install -g</code> never needs doas here: Copal sets npm's global prefix to <code>~/.npm-global</code> for your account (<code>/etc/profile.d/npm-global.sh</code>).</li><li>Packages with native parts compile on install and need <code>build-base</code> and <a href="#c-python3"><code>python3</code></a>; a package shipping glibc binaries will not run on musl.</li></ul>
+<p class="see">See also <code>npm</code>, <a href="#c-python3"><code>python3</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-radio"><h2>Radio</h2>
@@ -3103,13 +3108,18 @@ unison profilename [options]</pre>
 </article>
 </section>
 <section class="sec" id="s-system"><h2>System</h2>
-<article class="cmd facts-only" id="c-btop" data-s="btop resource monitor that shows usage and stats for processor, memory, disks, network, and processes. system btop">
-<h3><a class="self" href="#c-btop"><code>btop</code></a> <span class="purpose">Resource monitor that shows usage and stats for processor, memory, disks, network, and processes.</span></h3>
+<article class="cmd" id="c-btop" data-s="btop a resource monitor with graphs: cpu, memory, disks, network and processes, live. system btop">
+<h3><a class="self" href="#c-btop"><code>btop</code></a> <span class="purpose">A resource monitor with graphs: CPU, memory, disks, network and processes, live.</span></h3>
 <p class="facts">System · terminal program · <b>btop</b> 1.4.6 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · on the Copal Apps shelf · <a href="man/btop.html">man btop(1)</a> · <a href="https://github.com/aristocratos/btop">home</a></p>
+<p class="why"><b>On Copal:</b> The store's richer htop: history graphs for every core, the disks and the network in one screen, with the mouse working throughout.</p>
 <pre class="syn">btop [-c file] [-d] [-f filter] [-l] [-p id] [-t] [-u ms] [--force-utf] [--themes-dir dir]
 
 btop [--default-config | {-h | --help} | {-V | --version}]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Start it; boxes show CPU, memory, disks, network and processes. Click or use the keys; Esc opens the menu with options and help. Numbers 1 to 4 toggle the boxes.</p>
+<h4>Examples</h4><div class="ex"><code>btop</code><span>everything</span></div><div class="ex"><code>btop -p 1</code><span>start with preset 1</span></div><div class="ex"><code>btop -f firefox</code><span>processes filtered to firefox</span></div><div class="ex"><code>btop -t</code><span>plain console mode, 16 colours</span></div><div class="ex"><code>btop -u 500</code><span>update every half second</span></div><div class="ex"><code>1 2 3 4        (in btop) show or hide cpu, memory, network, processes</code></div><div class="ex"><code>f              filter processes</code></div><div class="ex"><code>k              kill the selected process (asks first)</code></div><div class="ex"><code>Esc  q         the menu / quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-p, --preset N</code></dt><dd>start with preset N (0-9)</dd><dt><code>-f, --filter TEXT</code></dt><dd>an initial process filter</dd><dt><code>-t, --tty</code></dt><dd>console mode: ANSI graph symbols, 16 colours</dd><dt><code>-l, --low-color</code></dt><dd>256 colours, no true colour</dd><dt><code>-u, --update MS</code></dt><dd>the update interval</dd><dt><code>-c, --config FILE</code></dt><dd>another config file</dd></dl>
+<h4>Notes</h4><ul><li>Its settings are saved from the menu to <code>~/.config/btop/btop.conf</code>; <code>btop --default-config</code> prints the defaults.</li><li>On the Linux console (no desktop) <code>-t</code> gives graphs that draw correctly.</li></ul>
+<p class="see">See also <a href="#c-htop"><code>htop</code></a>, <a href="#c-copal-tm"><code>copal-tm</code></a></p>
 </article>
 <article class="cmd" id="c-busybox" data-s="busybox one small program that is three hundred commands: sh, sed, awk, vi, wget... system busybox">
 <h3><a class="self" href="#c-busybox"><code>busybox</code></a> <span class="purpose">One small program that is three hundred commands: sh, sed, awk, vi, wget...</span></h3>

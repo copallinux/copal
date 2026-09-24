@@ -22005,6 +22005,7 @@ if [ "$ok" = 1 ]; then
         copal-store manpages $APKS
         # shellcheck disable=SC2086
         copal-store optionals $APKS
+        copal-store access "${DOAS_USER:-}"
     fi
     printf '\n\nDone. The menu will show it next time you open it.\n'
     # The menu opens from a cached list; rebuild it now, as the person who
@@ -29886,6 +29887,8 @@ stage_store() {
 #   copal-store info ID            what it is, where it comes from, how it installs
 #   copal-store install ID...      install (root: doas is asked for)
 #   copal-store manpages PKG...    the man pages of these packages (their origins' -doc)
+#   copal-store access [USER]      the groups installed programs need (plugdev, wireshark,
+#                                  dialout, cdrom, users), and their device and file fixes
 #   copal-store optionals [PKG...|--installed]  the plugins and helpers a package wants;
 #                                  with --installed, add them for everything installed
 #   copal-store remove ID...       and take it away again
@@ -30400,6 +30403,66 @@ optionals_installed() {
     [ -n "$_inst" ] || { note "nothing installed has optionals"; return 0; }
     # shellcheck disable=SC2086
     optionals_for $_inst
+}
+
+# ACCESS. Some programs install fine and then cannot reach what they are
+# for, because Alpine gives the device or the shared files to a group the
+# account is not in: an SDR dongle (plugdev), packet capture (wireshark),
+# ZAngband's and the BSD games' score files (users), a CD burner (cdrom), a
+# serial radio or instrument (dialout). This table says which installed
+# command wants which group; 'copal-store access' adds the account to each
+# and applies the two file fixes that go with them. Stage 12 does the same
+# for a fresh install; this is for everything installed since -- Copal Apps
+# and the menu's Install run it after every install -- and for machines
+# installed before these lines.
+access_table() {
+    cat <<'ACCESS'
+rtl_test|plugdev
+hackrf_info|plugdev
+dumpcap|wireshark
+zangband|users
+robots|users
+cdparanoia|cdrom
+cdrdao|cdrom
+xorriso|cdrom
+cdw|cdrom
+rigctl|dialout
+direwolf|dialout
+radbeeper|dialout
+ACCESS
+}
+
+# The account to give access to: the one that asked through doas or sudo,
+# else the administrator -- the first member of wheel who is not root (a
+# boot-time queue has no one who asked).
+store_user() {
+    _su="${DOAS_USER:-${SUDO_USER:-}}"
+    [ -n "$_su" ] || _su=$(getent group wheel | cut -d: -f4 | tr ',' '\n' | grep -vx root | head -n 1)
+    [ -n "$_su" ] && [ "$_su" != root ] && echo "$_su"
+}
+
+access_fix() {  # [user]
+    _u=${1:-$(store_user)}
+    [ -n "$_u" ] && id "$_u" >/dev/null 2>&1 || { note "no account to give access to"; return 0; }
+    _added=""
+    for _g in $(access_table | while IFS='|' read -r _c _grp; do
+                    command -v "$_c" >/dev/null 2>&1 && echo "$_grp"; done | sort -u); do
+        getent group "$_g" >/dev/null 2>&1 || continue
+        id -nG "$_u" | tr ' ' '\n' | grep -qx "$_g" && continue
+        adduser "$_u" "$_g" >/dev/null 2>&1 && _added="$_added $_g"
+    done
+    [ -z "$_added" ] || note "$_u added to:$_added -- log out and in for it to take effect"
+    # The BSD games look for their scores where the package does not put them.
+    if command -v robots >/dev/null 2>&1 && [ -d /usr/share/bsdgames ] && [ ! -e /var/lib/bsdgames ]; then
+        ln -s /usr/share/bsdgames /var/lib/bsdgames && note "/var/lib/bsdgames -> /usr/share/bsdgames"
+    fi
+    # An RTL2832U is a radio here, not a TV tuner: keep the DVB-T driver off it.
+    if command -v rtl_test >/dev/null 2>&1 && [ ! -e /etc/modprobe.d/copal-rtl-sdr.conf ]; then
+        printf '%s\n' '# Written by Copal: an RTL2832U is used as a radio, not a TV tuner.' \
+            'blacklist dvb_usb_rtl28xxu' 'blacklist rtl2832' 'blacklist rtl2830' 'blacklist rtl2832_sdr' \
+            > /etc/modprobe.d/copal-rtl-sdr.conf && note "/etc/modprobe.d/copal-rtl-sdr.conf written"
+    fi
+    return 0
 }
 
 # A terminal program's man page comes with it: its package's -doc, when the
@@ -32562,8 +32625,9 @@ install_ids() {
                 case "$(printf '%s' "$_row" | cut -d'|' -f9)" in catalogue) catalogue_post "$_id" || _rc=1 ;; esac
                 # A terminal program, its manual.
                 case "$(printf '%s' "$_row" | cut -d'|' -f6)" in t|h) man_pages_for $_apks ;; esac
-                # Its plugins, codecs and helpers.
+                # Its plugins, codecs and helpers, and the groups it needs.
                 optionals_for $_apks
+                access_fix
             else _rc=1; fi
         fi
         # Flathub rows belong to the catalogue, and copal-install knows them.
@@ -32793,6 +32857,7 @@ case "${1:-}" in
     sections) sections | awk -F'|' '{ printf "%-13s %3d programs, %d installed\n", $1, $2, $3 }' ;;
     info)     [ $# -ge 2 ] || die "info needs an id"; info_id "$2" ;;
     install)  shift; [ $# -gt 0 ] || die "install what?"; need_root install "$@"; install_ids "$@" ;;
+    access)   shift; need_root access "$@"; access_fix "${1:-}" ;;
     manpages) shift; [ $# -gt 0 ] || die "man pages for what?"; need_root manpages "$@"
               man_pages_for "$@" ;;
     optionals)
@@ -33419,6 +33484,8 @@ MSG
         say "Optionals: plugins, codecs and helpers for what is installed"
         /usr/local/bin/copal-store optionals --installed || warn "some optionals did not install -- 'doas copal-store optionals --installed' retries"
     fi
+    # And the groups they need: plugdev for SDR dongles, wireshark, dialout...
+    /usr/local/bin/copal-store access "$PI_USER" || true
     if [ "$(copal_profile)" = full ]; then
         # QUEUED, NOT INSTALLED HERE. No desktop is running during the
         # automatic install -- it starts at the reboot that ends it -- and

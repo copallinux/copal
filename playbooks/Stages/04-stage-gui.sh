@@ -911,6 +911,7 @@ if [ "$ok" = 1 ]; then
         copal-store manpages $APKS
         # shellcheck disable=SC2086
         copal-store optionals $APKS
+        copal-store access "${DOAS_USER:-}"
     fi
     printf '\n\nDone. The menu will show it next time you open it.\n'
     # The menu opens from a cached list; rebuild it now, as the person who
