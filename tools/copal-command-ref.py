@@ -867,10 +867,10 @@ def check():
             for f in ([page] if page else []) + subs:
                 text += BS.sub("", run(["mandoc", "-T", "utf8", f]))
         path = which(cmd, e)
-        # A terminal program may open its window instead of answering --help;
-        # the checkouts' own programs all answer it, and their README pages
-        # rarely list every flag.
-        if path and (c.get("mode") != "t" or c.get("readme")):
+        # A terminal program that opens its screen instead of answering --help
+        # has no terminal here (stdin closed, output captured) and is stopped
+        # after four seconds; the rest print their options.
+        if path:
             # Both streams: ssh, resize2fs and orrery print their usage on stderr.
             text += run([path, "--help"], stdin=subprocess.DEVNULL, timeout=4, stderr=subprocess.STDOUT)
         if not text:

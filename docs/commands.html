@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 290 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 52 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 74 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.</p>
 </header>
 <div class="finder">
@@ -1274,18 +1274,28 @@ nethack [ -d directory ] -s [ -v ] [ -p profession ] [ -r race ] [ playernames ]
 </article>
 </section>
 <section class="sec" id="s-internet"><h2>Internet</h2>
-<article class="cmd facts-only" id="c-elinks" data-s="elinks lynx-like alternative character mode www browser internet elinks">
-<h3><a class="self" href="#c-elinks"><code>elinks</code></a> <span class="purpose">lynx-like alternative character mode WWW browser</span></h3>
+<article class="cmd" id="c-elinks" data-s="elinks a text web browser with tabs, menus, and gopher as well as the web. internet elinks">
+<h3><a class="self" href="#c-elinks"><code>elinks</code></a> <span class="purpose">A text web browser with tabs, menus, and Gopher as well as the web.</span></h3>
 <p class="facts">Internet · terminal program · <b>elinks</b> 0.19.1 · stage 12 · The application catalogue · <a href="man/elinks.html">man elinks(1)</a> · <a href="https://github.com/rkd77/elinks">home</a></p>
 <p class="deps">needs libcrypto3, libcurl, libexpat, gpm-libs, libidn2, libintl, libssl3, zlib</p>
+<p class="why"><b>On Copal:</b> One of the catalogue's text browsers, kept at every level: a few hundred kilobytes, it works over SSH with no display, and it opens gopher:// links the smallweb section points at.</p>
 <pre class="syn">elinks [OPTION]... [URL]...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Browse in the terminal with the menus and tabs a graphical browser has. Esc opens the menu bar, so every command can be found without knowing its key. <code>-dump</code> renders a page to plain text for a script.</p>
+<h4>Examples</h4><div class="ex"><code>elinks https://alpinelinux.org</code><span>browse</span></div><div class="ex"><code>elinks gopher://gopher.floodgap.com</code><span>Gopher, in the same browser</span></div><div class="ex"><code>elinks -dump https://example.com</code><span>the page as text, to stdout</span></div><div class="ex"><code>elinks -dump -dump-width 72 URL</code><span>at a fixed width</span></div><div class="ex"><code>g              (in the browser) go to a URL</code></div><div class="ex"><code>t              open a new tab;  &lt; &gt;  move between tabs</code></div><div class="ex"><code>/              search the page</code></div><div class="ex"><code>Esc            the menu bar;  q  quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-dump</code></dt><dd>render the page as text and print it</dd><dt><code>-dump-width N</code></dt><dd>the width -dump lays out to</dd><dt><code>-source</code></dt><dd>print the HTML as it arrives</dd><dt><code>-anonymous</code></dt><dd>restricted: no local files, no downloads</dd><dt><code>-no-connect</code></dt><dd>run without connecting to a running ELinks</dd></dl>
+<h4>Notes</h4><ul><li>No JavaScript: a page that builds itself in script is blank. So are most modern sign-in pages.</li><li>Settings are in the menu (Setup) and saved to <code>~/.config/elinks</code>: change them there rather than editing the file by hand.</li><li>A second <a href="#c-elinks"><code>elinks</code></a> joins the first one's session by default; <code>-no-connect</code> keeps them apart.</li></ul>
+<p class="see">See also <a href="#c-links"><code>links</code></a>, <a href="#c-lynx"><code>lynx</code></a>, <a href="#c-w3m"><code>w3m</code></a>, <a href="#c-bombadillo"><code>bombadillo</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-lftp" data-s="lftp sophisticated file transfer program internet lftp">
-<h3><a class="self" href="#c-lftp"><code>lftp</code></a> <span class="purpose">Sophisticated file transfer program</span></h3>
+<article class="cmd" id="c-lftp" data-s="lftp a file-transfer shell for ftp, sftp and http: mirror folders, resume, queue. internet lftp">
+<h3><a class="self" href="#c-lftp"><code>lftp</code></a> <span class="purpose">A file-transfer shell for FTP, SFTP and HTTP: mirror folders, resume, queue.</span></h3>
 <p class="facts">Internet · terminal program · <b>lftp</b> 4.9.3 · stage 12 · The application catalogue · <a href="man/lftp.html">man lftp(1)</a> · <a href="https://lftp.yar.ru">home</a></p>
 <p class="deps">needs libcrypto3, libncursesw, readline, libssl3, zlib</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's terminal FTP client. It speaks SFTP over ssh too, and mirrors a whole folder in either direction -- the tool for a web host or an old server that offers only FTP.</p>
+<h4>Use</h4><p>Connect, then work with <code>ls</code>, <code>cd</code>, <code>get</code> and <code>put</code> as in a shell. The command to know is <code>mirror</code>: it copies a whole directory tree down, or up with <code>-R</code>, sending only what changed.</p>
+<h4>Examples</h4><div class="ex"><code>lftp sftp://you@example.org</code><span>connect over SFTP</span></div><div class="ex"><code>lftp ftp://ftp.example.org</code><span>anonymous FTP</span></div><div class="ex"><code>lftp -u you ftp.example.org</code><span>FTP with a password prompt</span></div><div class="ex"><code>lftp -c 'open sftp://you@host; mirror site/ ~/site'</code><span>one command, then quit</span></div><div class="ex"><code>mirror REMOTE LOCAL      (in lftp) download a tree</code></div><div class="ex"><code>mirror -R LOCAL REMOTE   upload one</code></div><div class="ex"><code>pget -n 4 big.iso        a file in four parallel pieces</code></div><div class="ex"><code>get -c file              resume a download</code></div><div class="ex"><code>jobs  /  bye             running transfers / quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-u USER[,PASS]</code></dt><dd>log in as USER</dd><dt><code>-p PORT</code></dt><dd>the port</dd><dt><code>-c COMMANDS</code></dt><dd>run these and exit</dd><dt><code>-f FILE</code></dt><dd>run a script of commands</dd><dt><code>-e COMMANDS</code></dt><dd>run these, then stay</dd></dl>
+<h4>Notes</h4><ul><li>Plain <code>ftp://</code> sends the password in the clear. Use <code>sftp://</code> wherever the server has ssh.</li><li><code>mirror</code> without <code>--delete</code> only adds and updates; with it, it removes what the source lacks. Try <code>mirror --dry-run</code> first.</li><li>Settings go in <code>~/.config/lftp/rc</code> (or <code>~/.lftp/rc</code> if that exists), bookmarks with <code>bookmark add NAME</code>.</li></ul>
+<p class="see">See also <a href="#c-rsync"><code>rsync</code></a>, <a href="#c-curl"><code>curl</code></a>, <a href="#c-ssh"><code>ssh</code></a></p>
 </article>
 <article class="cmd" id="c-links" data-s="links a text web browser: tables and frames laid out, menus on f9. internet links">
 <h3><a class="self" href="#c-links"><code>links</code></a> <span class="purpose">A text web browser: tables and frames laid out, menus on F9.</span></h3>
@@ -1299,10 +1309,11 @@ nethack [ -d directory ] -s [ -v ] [ -p profession ] [ -r race ] [ playernames ]
 <h4>Notes</h4><ul><li>Alpine builds links without graphics, so <code>-g</code> answers "Graphics not enabled when compiling": this is the text browser only.</li><li>No JavaScript. A page that builds itself in script is blank here; try <a href="#c-w3m"><code>w3m</code></a> for the same limit with better forms, or a graphical browser.</li><li>No Gopher: for gopher:// use <a href="#c-lynx"><code>lynx</code></a> or <a href="#c-elinks"><code>elinks</code></a>.</li></ul>
 <p class="see">See also <a href="#c-lynx"><code>lynx</code></a>, <a href="#c-w3m"><code>w3m</code></a>, <a href="#c-elinks"><code>elinks</code></a>, <a href="#c-curl"><code>curl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-lynx" data-s="lynx a general purpose distributed information browser for the world wide web internet lynx">
-<h3><a class="self" href="#c-lynx"><code>lynx</code></a> <span class="purpose">a general purpose distributed information browser for the World Wide Web</span></h3>
+<article class="cmd" id="c-lynx" data-s="lynx the oldest text web browser still maintained: web and gopher, keyboard only. internet lynx">
+<h3><a class="self" href="#c-lynx"><code>lynx</code></a> <span class="purpose">The oldest text web browser still maintained: web and Gopher, keyboard only.</span></h3>
 <p class="facts">Internet · terminal program · <b>lynx</b> 2.9.3 · stage 12 · The application catalogue · <a href="man/lynx.html">man lynx(1)</a> · <a href="https://lynx.invisible-island.net/">home</a></p>
 <p class="deps">needs libbz2, libcrypto3, libintl, libncursesw, libssl3, zlib</p>
+<p class="why"><b>On Copal:</b> One of the catalogue's text browsers, kept at every level for use over SSH or on a console. It reads Gopher as well as the web, and its -dump is the classic way to turn a page into text.</p>
 <pre class="syn">lynx [options] [optional paths or URLs]
 
 lynx [options] [path or URL] -get_data
@@ -1314,13 +1325,22 @@ data
 --
 
 Use “lynx -help” to display a complete list of current options.</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Arrows move between links: down and up to the next link, right to follow it, left to go back. It shows a page as a line of text at a time, with no columns or tables laid out, which makes it the most readable of the text browsers with a screen reader.</p>
+<h4>Examples</h4><div class="ex"><code>lynx https://lite.duckduckgo.com</code><span>browse</span></div><div class="ex"><code>lynx gopher://gopher.floodgap.com</code><span>Gopher</span></div><div class="ex"><code>lynx -dump https://example.com</code><span>the page as text, links numbered at the end</span></div><div class="ex"><code>lynx -dump -listonly URL</code><span>only the list of links</span></div><div class="ex"><code>lynx -source URL &gt; page.html</code><span>the HTML</span></div><div class="ex"><code>g              (in the browser) go to a URL</code></div><div class="ex"><code>/              search the page</code></div><div class="ex"><code>o              options;  q  quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-dump</code></dt><dd>print the rendered page and quit</dd><dt><code>-listonly</code></dt><dd>with -dump: the links only</dd><dt><code>-nolist</code></dt><dd>with -dump: no link list at the end</dd><dt><code>-source</code></dt><dd>print the HTML</dd><dt><code>-width N</code></dt><dd>the width -dump lays out to</dd><dt><code>-accept_all_cookies</code></dt><dd>no questions about each cookie</dd></dl>
+<h4>Notes</h4><ul><li>It asks about every cookie. <code>-accept_all_cookies</code>, or set it in <code>o</code> (options) and save.</li><li>No JavaScript and no CSS: the page is the page's text, in order. For a site built for phones, that is often the best way to read it.</li></ul>
+<p class="see">See also <a href="#c-links"><code>links</code></a>, <a href="#c-elinks"><code>elinks</code></a>, <a href="#c-w3m"><code>w3m</code></a>, <a href="#c-curl"><code>curl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-retawq" data-s="retawq a multi-threaded web browser for text terminals internet retawq">
-<h3><a class="self" href="#c-retawq"><code>retawq</code></a> <span class="purpose">a multi-threaded web browser for text terminals</span></h3>
+<article class="cmd" id="c-retawq" data-s="retawq a tiny multi-window text web browser, with a split screen. internet retawq">
+<h3><a class="self" href="#c-retawq"><code>retawq</code></a> <span class="purpose">A tiny multi-window text web browser, with a split screen.</span></h3>
 <p class="facts">Internet · terminal program · <b>retawq</b> 0.2.6c · stage 12 · The application catalogue · <a href="man/retawq.html">man retawq(1)</a> · <a href="https://retawq.sourceforge.net/">home</a></p>
 <p class="deps">needs libcrypto3, libncursesw, libssl3</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The smallest of the catalogue's text browsers, kept at every level: it keeps several pages open at once and shows two side by side, which the others do not.</p>
+<h4>Use</h4><p>Open a page, then more windows with <code>n</code>, and split the screen with <code>2</code> to read two at once. Most commands are one key; Escape cancels any of them.</p>
+<h4>Examples</h4><div class="ex"><code>retawq https://example.com</code><span>browse</span></div><div class="ex"><code>retawq URL1 URL2</code><span>two documents at once</span></div><div class="ex"><code>retawq --dump=https://example.com</code><span>the page as text, to stdout</span></div><div class="ex"><code>retawq --download=URL &gt; file</code><span>fetch a file, no display</span></div><div class="ex"><code>g              (in the browser) go to a URL</code></div><div class="ex"><code>n  C           a new window / close this one</code></div><div class="ex"><code>2  1           split the screen / un-split it;  Tab  between halves</code></div><div class="ex"><code>b  u           bookmarks / the history of URLs</code></div><div class="ex"><code>Q              quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>--dump=URL</code></dt><dd>render the page, write it to stdout, quit</dd><dt><code>--download=URL</code></dt><dd>write the content of URL to stdout, quit</dd><dt><code>--colors=off</code></dt><dd>no colours</dd><dt><code>--console</code></dt><dd>console mode: line by line, no full screen</dd></dl>
+<h4>Notes</h4><ul><li>It is from 2006 and speaks older HTML well and newer HTML less so; a modern site may come out as a column of text in the wrong order.</li><li>The full key list is in <code>/usr/share/doc/retawq/key.html</code> -- open it in retawq itself.</li></ul>
+<p class="see">See also <a href="#c-links"><code>links</code></a>, <a href="#c-lynx"><code>lynx</code></a>, <a href="#c-w3m"><code>w3m</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-speedtest-cli" data-s="speedtest-cli command line interface for testing internet bandwidth using speedtest.net internet speedtest-cli">
 <h3><a class="self" href="#c-speedtest-cli"><code>speedtest-cli</code></a> <span class="purpose">Command line interface for testing internet bandwidth using speedtest.net</span></h3>
@@ -1328,12 +1348,17 @@ Use “lynx -help” to display a complete list of current options.</pre>
 <p class="deps">needs python3</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-w3m" data-s="w3m a text based web browser and pager internet w3m">
-<h3><a class="self" href="#c-w3m"><code>w3m</code></a> <span class="purpose">a text based web browser and pager</span></h3>
+<article class="cmd" id="c-w3m" data-s="w3m a text web browser and pager: tables laid out, good forms, and it pages files too. internet w3m">
+<h3><a class="self" href="#c-w3m"><code>w3m</code></a> <span class="purpose">A text web browser and pager: tables laid out, good forms, and it pages files too.</span></h3>
 <p class="facts">Internet · terminal program · <b>w3m</b> 0.5.6 · stage 12 · The application catalogue · <a href="man/w3m.html">man w3m(1)</a> · <a href="https://sr.ht/~rkta/w3m/">home</a></p>
 <p class="deps">needs libcrypto3, gc, libncursesw, libssl3, zlib</p>
+<p class="why"><b>On Copal:</b> One of the catalogue's text browsers, kept at every level. It lays out tables and fills forms better than the others, and doubles as a pager: w3m file.html, or HTML piped into it.</p>
 <pre class="syn">w3m [OPTION]... [ file | URL ]...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Browse with the keyboard, or read HTML from a file or a pipe. It keeps several pages open as tabs, and its forms handle searches and sign-ins that the simpler browsers stumble on (as long as they need no JavaScript).</p>
+<h4>Examples</h4><div class="ex"><code>w3m https://lite.duckduckgo.com</code><span>browse</span></div><div class="ex"><code>w3m README.html</code><span>a local HTML file</span></div><div class="ex"><code>curl -s URL | w3m -T text/html</code><span>HTML from a pipe</span></div><div class="ex"><code>w3m -dump https://example.com</code><span>the page as text</span></div><div class="ex"><code>w3m -dump -cols 72 URL &gt; page.txt</code><span>at a fixed width</span></div><div class="ex"><code>U              (in the browser) open a URL</code></div><div class="ex"><code>Enter          follow the link;  B  back</code></div><div class="ex"><code>T              a new tab;  { }  between tabs</code></div><div class="ex"><code>/              search;  q  quit (Q without asking)</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-dump</code></dt><dd>print the rendered page and quit</dd><dt><code>-cols N</code></dt><dd>the width for -dump</dd><dt><code>-T TYPE</code></dt><dd>the content type of stdin: text/html</dd><dt><code>-o OPT=VAL</code></dt><dd>set an option for this run</dd><dt><code>-M</code></dt><dd>monochrome</dd></dl>
+<h4>Notes</h4><ul><li>Arrow keys move the cursor, not the page: <code>Space</code> and <code>b</code> page down and up. Links are followed where the cursor is.</li><li><code>o</code> is the options page; changes saved there go to <code>~/.w3m/config</code>.</li></ul>
+<p class="see">See also <a href="#c-links"><code>links</code></a>, <a href="#c-elinks"><code>elinks</code></a>, <a href="#c-lynx"><code>lynx</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-languages"><h2>Languages</h2>
@@ -1585,44 +1610,65 @@ Commands:</pre>
 </article>
 </section>
 <section class="sec" id="s-mail"><h2>Mail</h2>
-<article class="cmd facts-only" id="c-aerc" data-s="aerc a pretty good email client. mail aerc">
-<h3><a class="self" href="#c-aerc"><code>aerc</code></a> <span class="purpose">a pretty good email client.</span></h3>
+<article class="cmd" id="c-aerc" data-s="aerc a modern terminal mail client: tabs, vim-style keys, and a setup wizard. mail aerc">
+<h3><a class="self" href="#c-aerc"><code>aerc</code></a> <span class="purpose">A modern terminal mail client: tabs, vim-style keys, and a setup wizard.</span></h3>
 <p class="facts">Mail · terminal program · <b>aerc</b> 0.21.0 · stage 12 · The application catalogue · <a href="man/aerc.html">man aerc(1)</a> · <a href="https://aerc-mail.org">home</a></p>
 <p class="deps">needs less, ncurses, notmuch-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's newest terminal mail client: it walks you through the account on first start, keeps several mailboxes in tabs, and opens the editor in a terminal inside itself.</p>
 <pre class="syn">aerc [-h] [-v] [-a &lt;name&gt;] [-C &lt;file&gt;] [-A &lt;file&gt;] [-B &lt;file&gt;] [-I] [mailto:&lt;...&gt; |
 mbox:&lt;file&gt; | :&lt;command...&gt;]
 
 For a guided tutorial, use :help tutorial from aerc, or man aerc-tutorial from your terminal.</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Start it; the first time, a wizard asks for your address and servers and writes the account file. After that it is tabs of mailboxes and messages, with the keys and <code>:commands</code> of vim.</p>
+<h4>Examples</h4><div class="ex"><code>aerc</code><span>start; the wizard on first run</span></div><div class="ex"><code>aerc mailto:you@example.org</code><span>compose to an address</span></div><div class="ex"><code>j  k  Enter    (in aerc) move / open a message</code></div><div class="ex"><code>C  Rr  rr      compose / reply / reply to all</code></div><div class="ex"><code>:new-account   run the wizard for another account</code></div><div class="ex"><code>Ctrl-N Ctrl-P  next / previous tab;  q  close a message, or quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-A FILE</code></dt><dd>another accounts.conf</dd><dt><code>-C FILE</code></dt><dd>another aerc.conf</dd><dt><code>-v</code></dt><dd>the version</dd><dt><code>mailto:URL</code></dt><dd>start composing to that address</dd></dl>
+<h4>Notes</h4><ul><li>Accounts are in <code>~/.config/aerc/accounts.conf</code>, passwords included unless a <code>source-cred-cmd</code> fetches them: keep that file private (<code>chmod 600</code>).</li><li>The keys are its <code>binds.conf</code>; <code>:help keys</code> lists what is bound.</li><li>HTML mail shows as text only when a filter is configured; the default filters are in <code>aerc.conf</code>'s <code>[filters]</code> section.</li></ul>
+<p class="see">See also <a href="#c-mutt"><code>mutt</code></a>, <a href="#c-alpine"><code>alpine</code></a>, <a href="#c-vim"><code>vim</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-alpine" data-s="alpine an alternatively licensed program for internet news and email mail alpine">
-<h3><a class="self" href="#c-alpine"><code>alpine</code></a> <span class="purpose">an Alternatively Licensed Program for Internet News and Email</span></h3>
+<article class="cmd" id="c-alpine" data-s="alpine the pine mail reader, continued: menus on screen, imap and smtp built in. mail alpine">
+<h3><a class="self" href="#c-alpine"><code>alpine</code></a> <span class="purpose">The pine mail reader, continued: menus on screen, IMAP and SMTP built in.</span></h3>
 <p class="facts">Mail · terminal program · <b>alpine</b> 2.26 · stage 12 · The application catalogue · <a href="man/alpine.html">man alpine(1)</a> · <a href="https://repo.or.cz/alpine.git">home</a></p>
 <p class="deps">needs libcrypto3, libldap, libncursesw, libssl3</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's gentlest terminal mail client, and the heir to elm, which Alpine no longer packages. Every key it takes is listed at the foot of the screen.</p>
+<h4>Use</h4><p>Set up your account once in Setup, then read, write and file mail with the single-letter commands shown at the bottom of every screen. It talks to an IMAP server for reading and an SMTP server for sending, so the mail stays on the server.</p>
+<h4>Examples</h4><div class="ex"><code>alpine</code><span>start; the main menu</span></div><div class="ex"><code>alpine you@example.org</code><span>straight to composing a message</span></div><div class="ex"><code>alpine -f INBOX</code><span>open a folder directly</span></div><div class="ex"><code>alpine -i</code><span>straight to the message index</span></div><div class="ex"><code>S  C           (in alpine) Setup, then Config: server names, your address</code></div><div class="ex"><code>I  L           the message index / the folder list</code></div><div class="ex"><code>C  R  F        compose / reply / forward</code></div><div class="ex"><code>Ctrl-X         send, from the composer;  Q  quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>ADDRESS</code></dt><dd>start composing to ADDRESS</dd><dt><code>-f FOLDER</code></dt><dd>open FOLDER</dd><dt><code>-i</code></dt><dd>start in the index</dd><dt><code>-I KEYS</code></dt><dd>type these keys at start (a script of commands)</dd><dt><code>-p FILE</code></dt><dd>use FILE as the configuration instead of ~/.pinerc</dd><dt><code>-d N</code></dt><dd>debug level</dd></dl>
+<h4>Notes</h4><ul><li>Server names go in Setup &gt; Config: <code>inbox-path</code> as <code>{imap.example.org/ssl/user=you}INBOX</code>, and <code>smtp-server</code> as <code>smtp.example.org/submit/user=you</code> -- the braces and slashes are alpine's own syntax.</li><li>The configuration is <code>~/.pinerc</code>; the Setup screens write it for you.</li><li>Gmail and most large providers want an app password, not your normal one, for a program like this.</li></ul>
+<p class="see">See also <a href="#c-mutt"><code>mutt</code></a>, <a href="#c-aerc"><code>aerc</code></a>, <a href="#c-mail"><code>mail</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-irssi" data-s="irssi a modular irc client for unix mail irssi">
-<h3><a class="self" href="#c-irssi"><code>irssi</code></a> <span class="purpose">a modular IRC client for UNIX</span></h3>
+<article class="cmd" id="c-irssi" data-s="irssi a terminal irc client: one window per channel, scriptable in perl. mail irssi">
+<h3><a class="self" href="#c-irssi"><code>irssi</code></a> <span class="purpose">A terminal IRC client: one window per channel, scriptable in Perl.</span></h3>
 <p class="facts">Mail · terminal program · <b>irssi</b> 1.4.5 · stage 12 · The application catalogue · <a href="man/irssi.html">man irssi(1)</a> · <a href="https://irssi.org/">home</a></p>
 <p class="deps">needs libcrypto3, glib, libncursesw, libssl3, utf8proc</p>
+<p class="why"><b>On Copal:</b> One of the catalogue's chat clients. IRC is where many free software projects still talk -- Alpine's own channels are on OFTC -- and irssi runs happily in tmux on a machine that stays on.</p>
 <pre class="syn">irssi [--config=PATH] [--home=PATH] [-dv!?] [-c server] [-p port] [-n nickname] [-w password]
 [-h hostname]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Start it, connect to a network, join channels. Each channel is a numbered window: Alt and a number, or <code>/window N</code>, switches to it. Run it inside tmux and detach, and you stay in the channels while you are away.</p>
+<h4>Examples</h4><div class="ex"><code>irssi</code><span>start</span></div><div class="ex"><code>irssi -c irc.oftc.net -n yournick</code><span>connect straight to a network</span></div><div class="ex"><code>/connect irc.oftc.net            (in irssi) connect</code></div><div class="ex"><code>/join #alpine-linux              join a channel</code></div><div class="ex"><code>/msg nick hello                  a private message</code></div><div class="ex"><code>/window 2   or Alt-2             switch window</code></div><div class="ex"><code>/quit                            leave</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-c SERVER</code></dt><dd>connect to SERVER at start</dd><dt><code>-n NICK</code></dt><dd>use NICK</dd><dt><code>-p PORT</code></dt><dd>the port</dd><dt><code>--home DIR</code></dt><dd>another configuration directory</dd></dl>
+<h4>Notes</h4><ul><li><code>/save</code> writes what you set up to <code>~/.irssi/config</code>; without it, a network added with <code>/network add</code> is gone next time.</li><li>Networks increasingly want a registered nick: <code>/msg NickServ help</code> on the network explains its steps.</li><li>Alt-number may be taken by the terminal or the desktop; <code>/window N</code> always works.</li></ul>
+<p class="see">See also <a href="#c-weechat"><code>weechat</code></a>, <a href="#c-tmux"><code>tmux</code></a>, <a href="#c-profanity"><code>profanity</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-mail" data-s="mail send and receive mail mail mailx">
-<h3><a class="self" href="#c-mail"><code>mail</code></a> <span class="purpose">send and receive mail</span></h3>
+<article class="cmd" id="c-mail" data-s="mail send a message from a script, or read local mail, in a line or two. mail mailx">
+<h3><a class="self" href="#c-mail"><code>mail</code></a> <span class="purpose">Send a message from a script, or read local mail, in a line or two.</span></h3>
 <p class="facts">Mail · command-line tool · <b>mailx</b> 8.1.2_git20220412 · stage 12 · The application catalogue · <a href="man/mail.html">man mail(1)</a> · <a href="http://www.opengroup.org/onlinepubs/007908799/xcu/mailx.html">home</a></p>
 <p class="deps">needs libbsd, liblockfile</p>
+<p class="why"><b>On Copal:</b> The catalogue's mail for scripts (mailx), standing in for elm, which Alpine no longer packages. A cron job or a build can mail a result.</p>
 <pre class="syn">mail [-dEIinv] [-a header] [-b bcc-addr] [-c cc-addr] [-r from-addr] [-s subject] [--]
      to-addr ...
 mail [-dEIiNnv] -f [file]
 mail [-dEIiNnv] [-u user]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Pipe a body into <code>mail -s SUBJECT ADDRESS</code> and it is handed to the system's mail transport. Without arguments it reads the local mailbox, <code>/var/mail/$USER</code>, the way system messages are delivered.</p>
+<h4>Examples</h4><div class="ex"><code>echo 'Build done' | mail -s 'copal' you@example.org</code><span>send one line</span></div><div class="ex"><code>mail -s 'Log' you@example.org &lt; build.log</code><span>a file as the body</span></div><div class="ex"><code>mail -c boss@example.org -s 'Report' you@example.org &lt; r.txt</code><span>with a copy</span></div><div class="ex"><code>mail</code><span>read local mail</span></div><div class="ex"><code>doas apk add msmtp</code><span>a way out to real servers</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-s SUBJECT</code></dt><dd>the subject</dd><dt><code>-c ADDRS</code></dt><dd>carbon copies</dd><dt><code>-b ADDRS</code></dt><dd>blind carbon copies</dd><dt><code>-f FILE</code></dt><dd>read FILE as the mailbox</dd><dt><code>-v</code></dt><dd>show the delivery's conversation</dd></dl>
+<h4>Notes</h4><ul><li>On Copal nothing is sent until there is a way out. <a href="#c-mail"><code>mail</code></a> hands the message to <code>/usr/sbin/sendmail</code>, which is BusyBox's, and it only forwards to an SMTP server it is told about. Install <code>msmtp</code>, give it your server in <code>~/.config/msmtp/config</code>, and put <code>set sendmail=/usr/bin/msmtp</code> in <code>~/.mailrc</code>.</li><li>This is BSD mail (mailx), not s-nail or Heirloom mailx: the <code>-S smtp=</code> recipes found online are for those, and do not work here.</li></ul>
+<p class="see">See also <a href="#c-mutt"><code>mutt</code></a>, <a href="#c-alpine"><code>alpine</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-mutt" data-s="mutt the mutt mail user agent mail mutt">
-<h3><a class="self" href="#c-mutt"><code>mutt</code></a> <span class="purpose">The Mutt Mail User Agent</span></h3>
+<article class="cmd" id="c-mutt" data-s="mutt a terminal mail reader configured entirely in text: imap, smtp, and every key rebindable. mail mutt">
+<h3><a class="self" href="#c-mutt"><code>mutt</code></a> <span class="purpose">A terminal mail reader configured entirely in text: IMAP, SMTP, and every key rebindable.</span></h3>
 <p class="facts">Mail · terminal program · <b>mutt</b> 2.3.2 · stage 12 · The application catalogue · <a href="man/mutt.html">man mutt(1)</a> · <a href="http://www.mutt.org">home</a></p>
 <p class="deps">needs libcrypto3, gdbm, libgpg-error, gpgme, libgsasl, libidn2, libintl, libncursesw</p>
+<p class="why"><b>On Copal:</b> The catalogue's configurable terminal mail client, built here with IMAP, SMTP and TLS, so one config file makes it a complete client.</p>
 <pre class="syn">mutt  [-nRyzZ] [-e command] [-F rcfile] [-m type] [-f mailbox]
 
 mutt  [-Enx] [-e command] [-F rcfile] [-H draft] [-i include]
@@ -1638,25 +1684,39 @@ mutt  [-n] [-e command] [-F rcfile] -A alias
 
 mutt  [-n] [-e command] [-F rcfile] -Q variable
 ...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Write a <code>muttrc</code> with your servers, start it, and read mail from an index of messages. Replies and new messages open in your editor (<code>$EDITOR</code>), and are sent when you leave it and confirm.</p>
+<h4>Examples</h4><div class="ex"><code>mutt</code><span>the inbox, from the config</span></div><div class="ex"><code>mutt -f imaps://you@imap.example.org/</code><span>an IMAP mailbox without a config</span></div><div class="ex"><code>mutt -s 'Report' you@example.org &lt; report.txt</code><span>send from a script</span></div><div class="ex"><code>mutt -s 'Photos' -a pic.jpg -- you@example.org &lt; note.txt</code><span>with an attachment</span></div><div class="ex"><code>mutt -v</code><span>the version, and what it was built with</span></div><div class="ex"><code>j  k  Enter    (in mutt) move / open a message</code></div><div class="ex"><code>m  r  g        compose / reply / reply to all</code></div><div class="ex"><code>c              change to another mailbox;  q  quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-f MAILBOX</code></dt><dd>open MAILBOX: a path, or imaps://user@host/</dd><dt><code>-s SUBJECT</code></dt><dd>the subject, when sending from the command line</dd><dt><code>-a FILE -- TO</code></dt><dd>attach FILE (the -- ends the attachments)</dd><dt><code>-F FILE</code></dt><dd>use FILE as the muttrc</dd><dt><code>-n</code></dt><dd>ignore the system configuration</dd><dt><code>-v</code></dt><dd>version and build options</dd></dl>
+<h4>Notes</h4><ul><li>The whole configuration is <code>~/.muttrc</code> (or <code>~/.config/mutt/muttrc</code>). The minimum: <code>set folder</code>, <code>set spoolfile</code>, <code>set smtp_url</code> and <code>set from</code>, with the servers as <code>imaps://</code> and <code>smtps://</code> URLs.</li><li>This build has IMAP, SMTP and OpenSSL but not SASL, so exotic sign-in methods are out; a password or app password works.</li><li>Its editor is <code>$EDITOR</code> -- nvim on a Copal machine with stage 7.</li></ul>
+<p class="see">See also <a href="#c-aerc"><code>aerc</code></a>, <a href="#c-alpine"><code>alpine</code></a>, <a href="#c-mail"><code>mail</code></a>, <a href="#c-vim"><code>vim</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-profanity" data-s="profanity a simple console based xmpp chat client. mail profanity">
-<h3><a class="self" href="#c-profanity"><code>profanity</code></a> <span class="purpose">a simple console based XMPP chat client.</span></h3>
+<article class="cmd" id="c-profanity" data-s="profanity a terminal xmpp (jabber) chat client, with omemo encryption. mail profanity">
+<h3><a class="self" href="#c-profanity"><code>profanity</code></a> <span class="purpose">A terminal XMPP (Jabber) chat client, with OMEMO encryption.</span></h3>
 <p class="facts">Mail · terminal program · <b>profanity</b> 0.18.1 · stage 12 · The application catalogue · <a href="man/profanity.html">man profanity(1)</a> · <a href="https://github.com/profanity-im/profanity">home</a></p>
 <p class="deps">needs libcurl, libgcrypt, glib, libncursesw, libotr, readline, libsignal-protocol-c, sqlite-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's XMPP client: chat on a federated network from a terminal, end to end encrypted, on any machine -- over SSH too.</p>
 <pre class="syn">profanity [-vh] [-l level] [-a account]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Connect with your XMPP address, then chat with contacts or join rooms. Each conversation is a window, switched with Alt and a number. <code>/help</code> lists every command.</p>
+<h4>Examples</h4><div class="ex"><code>profanity</code><span>start</span></div><div class="ex"><code>profanity -a you@example.org</code><span>connect as that account at once</span></div><div class="ex"><code>/connect you@example.org   (in profanity) sign in</code></div><div class="ex"><code>/msg friend@example.org    open a chat</code></div><div class="ex"><code>/join room@conference.example.org   join a room</code></div><div class="ex"><code>/omemo gen                 make this device's encryption keys</code></div><div class="ex"><code>/quit                      leave</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-a ACCOUNT</code></dt><dd>connect with a saved account</dd><dt><code>-l LEVEL</code></dt><dd>log level</dd><dt><code>-v</code></dt><dd>the version</dd></dl>
+<h4>Notes</h4><ul><li><code>/account add NAME</code> saves an account so <code>-a NAME</code> and <code>/connect NAME</code> work; settings go to <code>~/.config/profanity/profrc</code>.</li><li>OMEMO is per device: after <code>/omemo gen</code>, start it in a chat with <code>/omemo start</code>, and trust the other side's fingerprints when asked.</li></ul>
+<p class="see">See also <a href="#c-irssi"><code>irssi</code></a>, <a href="#c-weechat"><code>weechat</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-weechat" data-s="weechat the extensible chat client mail weechat">
-<h3><a class="self" href="#c-weechat"><code>weechat</code></a> <span class="purpose">the extensible chat client</span></h3>
+<article class="cmd" id="c-weechat" data-s="weechat a terminal chat client for irc, with a nick list, mouse support and plugins. mail weechat">
+<h3><a class="self" href="#c-weechat"><code>weechat</code></a> <span class="purpose">A terminal chat client for IRC, with a nick list, mouse support and plugins.</span></h3>
 <p class="facts">Mail · terminal program · <b>weechat</b> 4.9.2 · stage 12 · The application catalogue · <a href="man/weechat.html">man weechat(1)</a> · <a href="https://weechat.org">home</a></p>
 <p class="deps">needs cjson, libcurl, libgcrypt, gnutls, libintl, libncursesw, zlib, zstd-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's other IRC client: more on screen than irssi -- a buffer list, a nick list -- and the same life in tmux on a machine that stays on.</p>
 <pre class="syn">weechat [-a|--no-connect] [-d|--dir &lt;path&gt;] [-t|--temp-dir] [-p|--no-plugin] [-P|--plugins &lt;plugins&gt;] [-r|--run-command &lt;command&gt;] [-s|--no-script] [--upgrade] [debug-option...] [plugin:option...]
 weechat [-c|--colors]
 weechat [-h|--help]
 weechat [-l|--license]
 weechat [-v|--version]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Add a server once, connect, join channels. Every channel and private conversation is a buffer; Alt with the arrows, or Alt and a number, moves between them.</p>
+<h4>Examples</h4><div class="ex"><code>weechat</code><span>start</span></div><div class="ex"><code>/server add oftc irc.oftc.net/6697 -tls   (in weechat) add a network</code></div><div class="ex"><code>/connect oftc                        connect to it</code></div><div class="ex"><code>/join #alpine-linux                  join a channel</code></div><div class="ex"><code>/buffer 3   or Alt-3                 switch buffer</code></div><div class="ex"><code>/set irc.server.oftc.autoconnect on   connect at every start</code></div><div class="ex"><code>/quit                                leave</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-d DIR</code></dt><dd>another configuration directory</dd><dt><code>-r COMMAND</code></dt><dd>run a command after starting</dd><dt><code>-a</code></dt><dd>do not connect automatically this time</dd><dt><code>-v</code></dt><dd>the version</dd></dl>
+<h4>Notes</h4><ul><li>Settings are saved as they change, in <code>~/.config/weechat</code>; <code>/save</code> forces it.</li><li><code>/fset</code> is the settings browser: search a word and change it in place, instead of hunting through <code>/set</code>.</li><li>Passwords belong in <code>/secure</code>, which encrypts them, not in plain <code>/set</code> values.</li></ul>
+<p class="see">See also <a href="#c-irssi"><code>irssi</code></a>, <a href="#c-tmux"><code>tmux</code></a>, <a href="#c-profanity"><code>profanity</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-media"><h2>Media</h2>
@@ -1814,69 +1874,110 @@ ssh-keygen -H [-f known_hosts_file]
 </article>
 </section>
 <section class="sec" id="s-news"><h2>News</h2>
-<article class="cmd facts-only" id="c-newsboat" data-s="newsboat an rss/atom feed reader for text terminals news newsboat">
-<h3><a class="self" href="#c-newsboat"><code>newsboat</code></a> <span class="purpose">an RSS/Atom feed reader for text terminals</span></h3>
+<article class="cmd" id="c-newsboat" data-s="newsboat an rss and atom feed reader for the terminal. news newsboat">
+<h3><a class="self" href="#c-newsboat"><code>newsboat</code></a> <span class="purpose">An RSS and Atom feed reader for the terminal.</span></h3>
 <p class="facts">News · terminal program · <b>newsboat</b> 2.43 · stage 12 · The application catalogue · <a href="man/newsboat.html">man newsboat(1)</a> · <a href="https://newsboat.org/">home</a></p>
 <p class="deps">needs libcurl, libintl, json-c, libncursesw, sqlite-libs, stfl, libxml2</p>
+<p class="why"><b>On Copal:</b> The catalogue's terminal feed reader: every site and channel you follow, in one list of unread items, readable over SSH.</p>
 <pre class="syn">newsboat [-r] [-e] [-i opmlfile] [-u urlfile] [-c cachefile] [-C configfile] [-X] [-o] [-x
 command...] [-h]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>List your feeds' addresses in a file, one per line; newsboat fetches them and shows what is new. Read an item in place, or open it in a browser with <code>o</code>.</p>
+<h4>Examples</h4><div class="ex"><code>mkdir -p ~/.config/newsboat</code></div><div class="ex"><code>echo 'https://alpinelinux.org/atom.xml' &gt;&gt; ~/.config/newsboat/urls</code><span>a feed</span></div><div class="ex"><code>newsboat</code><span>read</span></div><div class="ex"><code>newsboat -r</code><span>refresh every feed at start</span></div><div class="ex"><code>newsboat -i subscriptions.opml</code><span>import another reader's list</span></div><div class="ex"><code>newsboat -e &gt; feeds.opml</code><span>export yours</span></div><div class="ex"><code>newsboat -x reload</code><span>refresh from a script (cron), no screen</span></div><div class="ex"><code>R  r           (in newsboat) reload all / this feed</code></div><div class="ex"><code>Enter  o       read the item / open it in the browser</code></div><div class="ex"><code>n              the next unread item;  A  mark the feed read</code></div><div class="ex"><code>q              back, or quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-r</code></dt><dd>refresh all feeds at start</dd><dt><code>-i FILE</code></dt><dd>import an OPML file</dd><dt><code>-e</code></dt><dd>export the feeds as OPML</dd><dt><code>-x COMMAND</code></dt><dd>run reload or print-unread, without the interface</dd><dt><code>-u FILE</code></dt><dd>another urls file</dd><dt><code>-C FILE</code></dt><dd>another config file</dd></dl>
+<h4>Notes</h4><ul><li>The files are <code>~/.newsboat/urls</code> and <code>~/.newsboat/config</code> -- or, if <code>~/.newsboat</code> does not exist, the same names in <code>~/.config/newsboat</code>.</li><li>A YouTube channel is a feed too: <code>https://www.youtube.com/feeds/videos.xml?channel_id=ID</code>.</li><li><code>o</code> opens <code>$BROWSER</code>; set <code>browser</code> in the config to a text browser, such as <code>links %u</code>, for use over SSH.</li></ul>
+<p class="see">See also <a href="#c-newsraft"><code>newsraft</code></a>, <a href="#c-sfeed"><code>sfeed</code></a>, <a href="#c-links"><code>links</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-newsraft" data-s="newsraft feed reader for terminal news newsraft">
-<h3><a class="self" href="#c-newsraft"><code>newsraft</code></a> <span class="purpose">feed reader for terminal</span></h3>
+<article class="cmd" id="c-newsraft" data-s="newsraft a small, fast feed reader for the terminal, with feeds grouped in sections. news newsraft">
+<h3><a class="self" href="#c-newsraft"><code>newsraft</code></a> <span class="purpose">A small, fast feed reader for the terminal, with feeds grouped in sections.</span></h3>
 <p class="facts">News · terminal program · <b>newsraft</b> 0.37 · stage 12 · The application catalogue · <a href="man/newsraft.html">man newsraft(1)</a> · <a href="https://codeberg.org/newsraft/newsraft">home</a></p>
 <p class="deps">needs libcurl, libexpat, gumbo-parser, sqlite-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's lighter feed reader: newsboat's job in less memory, with sections to update and read feeds in groups.</p>
 <pre class="syn">newsraft [-f FILE1] [-c FILE2] [-d FILE3] [-l FILE4] [-e ACTION] [-v] [-h]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Write a feeds file -- a URL a line, with <code>@ Section</code> lines to group them -- and start it. Four menus: sections, feeds, items, and the pager for reading one.</p>
+<h4>Examples</h4><div class="ex"><code>mkdir -p ~/.config/newsraft</code></div><div class="ex"><code>printf '@ Linux\nhttps://alpinelinux.org/atom.xml\n' &gt;&gt; ~/.config/newsraft/feeds</code></div><div class="ex"><code>newsraft</code><span>read</span></div><div class="ex"><code>newsraft -e reload-all</code><span>refresh everything, no screen (for cron)</span></div><div class="ex"><code>newsraft -e convert-opml-to-feeds &lt; subs.opml &gt;&gt; ~/.config/newsraft/feeds</code></div><div class="ex"><code>R  r           (in newsraft) update all / this feed</code></div><div class="ex"><code>Enter          open;  o  open the link in a browser</code></div><div class="ex"><code>q              back, or quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-f FILE</code></dt><dd>another feeds file</dd><dt><code>-c FILE</code></dt><dd>another config file</dd><dt><code>-e ACTION</code></dt><dd>run ACTION and exit: reload-all, convert-opml-to-feeds, convert-feeds-to-opml</dd><dt><code>-l FILE</code></dt><dd>write a log to FILE (to see why a feed fails)</dd></dl>
+<h4>Notes</h4><ul><li>The feeds file is <code>~/.config/newsraft/feeds</code>; nothing starts until it exists.</li><li>A feed that will not update: <code>newsraft -l log.txt</code>, then look in the log for the HTTP answer.</li></ul>
+<p class="see">See also <a href="#c-newsboat"><code>newsboat</code></a>, <a href="#c-sfeed"><code>sfeed</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-sfeed" data-s="sfeed rss and atom parser news sfeed">
-<h3><a class="self" href="#c-sfeed"><code>sfeed</code></a> <span class="purpose">RSS and Atom parser</span></h3>
+<article class="cmd" id="c-sfeed" data-s="sfeed feeds as plain files: fetch with sfeed_update, read with sfeed_curses or plain text. news sfeed">
+<h3><a class="self" href="#c-sfeed"><code>sfeed</code></a> <span class="purpose">Feeds as plain files: fetch with sfeed_update, read with sfeed_curses or plain text.</span></h3>
 <p class="facts">News · command-line tool · <b>sfeed</b> 2.4 · stage 12 · The application catalogue · <a href="man/sfeed.html">man sfeed(1)</a> · <a href="https://www.codemadness.org/sfeed.html">home</a></p>
 <p class="deps">needs libncursesw</p>
+<p class="why"><b>On Copal:</b> The catalogue's feed reader for people who want the feeds as files: one tab-separated line per item, readable with grep, a script or its own small curses reader.</p>
 <pre class="syn">sfeed [baseurl]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>List feeds in <code>~/.sfeed/sfeedrc</code>, run <code>sfeed_update</code> to fetch them into <code>~/.sfeed/feeds/</code>, and read them with <code>sfeed_curses</code>, or turn them into text, HTML or Atom with the other <code>sfeed_*</code> programs. <a href="#c-sfeed"><code>sfeed</code></a> itself is the parser in the middle: RSS or Atom in, lines out.</p>
+<h4>Examples</h4><div class="ex"><code>mkdir -p ~/.sfeed &amp;&amp; cp /usr/share/doc/sfeed/sfeedrc.example ~/.sfeed/sfeedrc</code><span>a starting config</span></div><div class="ex"><code>sfeed_update</code><span>fetch every feed</span></div><div class="ex"><code>sfeed_curses ~/.sfeed/feeds/*</code><span>read them</span></div><div class="ex"><code>sfeed_plain ~/.sfeed/feeds/* | head</code><span>newest items as plain lines</span></div><div class="ex"><code>curl -s https://alpinelinux.org/atom.xml | sfeed | cut -f2</code><span>the parser alone: titles</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>sfeed_update [RC]</code></dt><dd>fetch the feeds listed in RC (default ~/.sfeed/sfeedrc)</dd><dt><code>sfeed_curses FILES</code></dt><dd>the reader</dd><dt><code>sfeed_plain FILES</code></dt><dd>items as text</dd><dt><code>sfeed_html FILES</code></dt><dd>items as an HTML page</dd><dt><code>sfeed_opml_import</code></dt><dd>OPML in, sfeedrc lines out</dd></dl>
+<h4>Notes</h4><ul><li><code>sfeedrc</code> is a shell script: each feed is a line <code>feed 'name' 'https://...'</code> inside the <code>feeds()</code> function.</li><li>The line format is fixed: time, title, link, content, and more, separated by tabs -- <code>cut -f</code> and <code>awk -F'\t'</code> read it directly.</li></ul>
+<p class="see">See also <a href="#c-newsboat"><code>newsboat</code></a>, <a href="#c-newsraft"><code>newsraft</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ticker" data-s="ticker terminal stock watcher and stock position tracker news ticker">
-<h3><a class="self" href="#c-ticker"><code>ticker</code></a> <span class="purpose">Terminal stock watcher and stock position tracker</span></h3>
+<article class="cmd" id="c-ticker" data-s="ticker live stock and crypto prices in the terminal, with your holdings' gains and losses. news ticker">
+<h3><a class="self" href="#c-ticker"><code>ticker</code></a> <span class="purpose">Live stock and crypto prices in the terminal, with your holdings' gains and losses.</span></h3>
 <p class="facts">News · terminal program · <b>ticker</b> 5.3.0 · stage 12 · The application catalogue · <a href="https://github.com/achannarasappa/ticker">home</a></p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's market watch: a small full-screen table of prices that updates itself, for a spare terminal or a tmux pane.</p>
+<h4>Use</h4><p>Give it the symbols to watch, or keep them -- and what you hold -- in a config file. It refreshes on its own; q quits.</p>
+<h4>Examples</h4><div class="ex"><code>ticker -w AAPL,MSFT,BTC-USD</code><span>watch these</span></div><div class="ex"><code>ticker -w AAPL -i 10</code><span>refresh every 10 seconds</span></div><div class="ex"><code>ticker --show-summary --show-holdings</code><span>with the config's positions</span></div><div class="ex"><code>ticker print</code><span>holdings once, as text, and exit</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-w, --watchlist LIST</code></dt><dd>symbols to watch, comma-separated</dd><dt><code>-i, --interval SECONDS</code></dt><dd>refresh period</dd><dt><code>--config FILE</code></dt><dd>the config (default ~/.ticker.yaml)</dd><dt><code>--show-summary</code></dt><dd>total gain and loss for your positions</dd><dt><code>--show-holdings</code></dt><dd>cost, quantity and weight per position</dd><dt><code>--show-fundamentals</code></dt><dd>open, high, low and volume</dd><dt><code>--sort alpha|value</code></dt><dd>the order of the list</dd></dl>
+<h4>Notes</h4><ul><li>Symbols are Yahoo Finance's: <code>BTC-USD</code> for Bitcoin, <code>^GSPC</code> for the S&amp;P 500, a suffix for other exchanges (<code>VOD.L</code> in London).</li><li>Quotes are delayed by the exchange -- <code>--show-tags</code> says by how much.</li><li>It comes from Alpine's testing repository (<code>ticker@testing</code>).</li></ul>
+<p class="see">See also <a href="#c-tmux"><code>tmux</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-notes"><h2>Notes</h2>
-<article class="cmd facts-only" id="c-aspell" data-s="aspell interactive spell checker notes aspell">
-<h3><a class="self" href="#c-aspell"><code>aspell</code></a> <span class="purpose">interactive spell checker</span></h3>
+<article class="cmd" id="c-aspell" data-s="aspell gnu's spell checker: interactive checking of files, and good suggestions. notes aspell">
+<h3><a class="self" href="#c-aspell"><code>aspell</code></a> <span class="purpose">GNU's spell checker: interactive checking of files, and good suggestions.</span></h3>
 <p class="facts">Notes · command-line tool · <b>aspell</b> 0.60.8.2 · stage 12 · The application catalogue · <a href="man/aspell.html">man aspell(1)</a> · <a href="http://aspell.net/">home</a></p>
 <p class="deps">needs aspell-libs, libintl, libncursesw</p>
+<p class="why"><b>On Copal:</b> The catalogue's other spell checker. Its suggestions for badly mangled words are often better than hunspell's, and it knows the markup of Markdown, HTML and TeX.</p>
 <pre class="syn">aspell [options] &lt;command&gt;</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>aspell check FILE</code> walks through the file, offering replacements for each unknown word; <code>aspell list</code> prints the unknown words for a script.</p>
+<h4>Examples</h4><div class="ex"><code>aspell check letter.txt</code><span>interactive, with suggestions</span></div><div class="ex"><code>aspell -d en_GB check letter.txt</code><span>British spelling</span></div><div class="ex"><code>aspell --mode=markdown check README.md</code><span>skip code and links</span></div><div class="ex"><code>aspell list &lt; letter.txt | sort -u</code><span>the misspelled words, once each</span></div><div class="ex"><code>aspell dicts</code><span>the dictionaries installed</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>check FILE</code></dt><dd>check interactively</dd><dt><code>list</code></dt><dd>read stdin, print the misspelled words</dd><dt><code>-d DICT</code></dt><dd>the dictionary: en, en_US, en_GB, en_CA, en_AU</dd><dt><code>--mode=MODE</code></dt><dd>the markup to skip: markdown, html, tex, email</dd><dt><code>dicts</code></dt><dd>list the installed dictionaries</dd></dl>
+<h4>Notes</h4><ul><li><code>check</code> rewrites the file in place and leaves a <code>.bak</code> beside it.</li><li>English in several spellings is installed (<code>aspell-en</code>); other languages are <code>aspell-de</code>, <code>aspell-fr</code> and so on.</li><li>Your added words are in <code>~/.aspell.en.pws</code>.</li></ul>
+<p class="see">See also <a href="#c-hunspell"><code>hunspell</code></a>, <a href="#c-vim"><code>vim</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-hugo" data-s="hugo build your project notes hugo">
-<h3><a class="self" href="#c-hugo"><code>hugo</code></a> <span class="purpose">Build your project</span></h3>
+<article class="cmd" id="c-hugo" data-s="hugo a static site generator: markdown and templates in, a whole website out, fast. notes hugo">
+<h3><a class="self" href="#c-hugo"><code>hugo</code></a> <span class="purpose">A static site generator: Markdown and templates in, a whole website out, fast.</span></h3>
 <p class="facts">Notes · command-line tool · <b>hugo</b> 0.160.1 · stage 12 · The application catalogue · <a href="man/hugo.html">man hugo(1)</a> · <a href="https://gohugo.io/">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's site builder for a blog, a wiki or a project page: one binary, no runtime, and a site of thousands of pages in seconds.</p>
 <pre class="syn">hugo [flags]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Make a site, add a theme, write content as Markdown under <code>content/</code>, and preview with <code>hugo server</code>. <a href="#c-hugo"><code>hugo</code></a> alone builds the finished site into <code>public/</code>.</p>
+<h4>Examples</h4><div class="ex"><code>hugo new site mysite &amp;&amp; cd mysite</code><span>a new site</span></div><div class="ex"><code>hugo new content posts/first.md</code><span>a page, as a draft</span></div><div class="ex"><code>hugo server -D</code><span>preview at localhost:1313, drafts included</span></div><div class="ex"><code>hugo</code><span>build into ./public</span></div><div class="ex"><code>hugo --minify</code><span>smaller output</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>new site DIR</code></dt><dd>create a site</dd><dt><code>new content PATH</code></dt><dd>create a page from its archetype</dd><dt><code>server</code></dt><dd>serve and rebuild on change; -D includes drafts</dd><dt><code>-D, --buildDrafts</code></dt><dd>include drafts</dd><dt><code>--minify</code></dt><dd>minify the HTML, CSS and JS</dd><dt><code>-d, --destination DIR</code></dt><dd>build somewhere other than public/</dd></dl>
+<h4>Notes</h4><ul><li>A new site has no theme, and builds blank pages: add one under <code>themes/</code> and name it in <code>hugo.toml</code> (<code>theme = "name"</code>).</li><li>Pages made with <code>hugo new</code> start as drafts (<code>draft = true</code>) and are left out of a build until that line changes, or <code>-D</code> is given.</li></ul>
+<p class="see">See also <a href="#c-zola"><code>zola</code></a>, <a href="#c-mdbook"><code>mdbook</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-hunspell" data-s="hunspell spell checker, stemmer and morphological analyzer notes hunspell">
-<h3><a class="self" href="#c-hunspell"><code>hunspell</code></a> <span class="purpose">spell checker, stemmer and morphological analyzer</span></h3>
+<article class="cmd" id="c-hunspell" data-s="hunspell the spell checker behind libreoffice and firefox, from the command line. notes hunspell">
+<h3><a class="self" href="#c-hunspell"><code>hunspell</code></a> <span class="purpose">The spell checker behind LibreOffice and Firefox, from the command line.</span></h3>
 <p class="facts">Notes · command-line tool · <b>hunspell</b> 1.7.3 · stage 12 · The application catalogue · <a href="man/hunspell.html">man hunspell(1)</a> · <a href="https://hunspell.github.io/">home</a></p>
 <p class="deps">needs libhunspell, libintl, libncursesw, readline</p>
+<p class="why"><b>On Copal:</b> The catalogue's spell checker for files and pipes, with American English installed. Programs that check spelling as you type use the same dictionaries.</p>
 <pre class="syn">hunspell [-1aDGHhLlmnOrstvwX] [--check-url] [--check-apostrophe] [-d dict[,dict2,...]]
 [--help] [-i enc] [-p dict] [-vv] [--version]
 [text/OpenDocument/TeX/LaTeX/HTML/SGML/XML/nroff/troff file(s)]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Check a file interactively, with suggestions for each unknown word, or list the misspelled words for a script. <code>-d</code> chooses the dictionary.</p>
+<h4>Examples</h4><div class="ex"><code>hunspell letter.txt</code><span>check it, word by word, with suggestions</span></div><div class="ex"><code>hunspell -l letter.txt</code><span>just the misspelled words</span></div><div class="ex"><code>hunspell -l letter.txt | sort -u</code><span>each once</span></div><div class="ex"><code>echo 'recieve' | hunspell -a</code><span>the pipe protocol: suggestions for a word</span></div><div class="ex"><code>hunspell -D &lt;/dev/null</code><span>which dictionaries are installed</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-d DICT</code></dt><dd>the dictionary: en_US, or another installed one</dd><dt><code>-l</code></dt><dd>list misspelled words only</dd><dt><code>-a</code></dt><dd>ispell pipe mode, for programs</dd><dt><code>-H</code></dt><dd>the input is HTML</dd><dt><code>-t</code></dt><dd>the input is TeX</dd><dt><code>-p FILE</code></dt><dd>your personal word list</dd></dl>
+<h4>Notes</h4><ul><li>Only <code>en_US</code> is installed. Other languages are packages: <code>apk search hunspell-</code> lists them (<code>hunspell-en-gb</code>, <code>hunspell-de-de</code>...).</li><li>Words you accept go into <code>~/.hunspell_en_US</code> (per dictionary); edit it to take one back.</li></ul>
+<p class="see">See also <a href="#c-aspell"><code>aspell</code></a>, <a href="#c-vim"><code>vim</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-mdbook" data-s="mdbook mdbook is a utility to create modern online books from markdown files notes mdbook">
-<h3><a class="self" href="#c-mdbook"><code>mdbook</code></a> <span class="purpose">mdBook is a utility to create modern online books from Markdown files</span></h3>
+<article class="cmd" id="c-mdbook" data-s="mdbook write a book as markdown files and build it into a website. notes mdbook">
+<h3><a class="self" href="#c-mdbook"><code>mdbook</code></a> <span class="purpose">Write a book as Markdown files and build it into a website.</span></h3>
 <p class="facts">Notes · command-line tool · <b>mdbook</b> 0.5.3 · stage 12 · The application catalogue · <a href="https://rust-lang.github.io/mdBook/">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's tool for long-form documentation -- the Rust book is made with it. A folder of Markdown and a table of contents become a searchable site that works offline.</p>
 <pre class="syn">Usage: mdbook [COMMAND]
 Commands:
   init         Creates the boilerplate structure and files for a new book</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>mdbook init</code> makes the skeleton: <code>book.toml</code> and <code>src/</code>, with <code>src/SUMMARY.md</code> as the table of contents. Write chapters as Markdown, list them in the summary, and <code>mdbook serve</code> shows the book in a browser, rebuilding as you save.</p>
+<h4>Examples</h4><div class="ex"><code>mdbook init mybook</code><span>a new book, in ./mybook</span></div><div class="ex"><code>cd mybook &amp;&amp; mdbook serve --open</code><span>write, with a live preview</span></div><div class="ex"><code>mdbook build</code><span>the site, into ./book</span></div><div class="ex"><code>mdbook clean</code><span>remove the built site</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>init [DIR]</code></dt><dd>create a book</dd><dt><code>build</code></dt><dd>build it, into book/</dd><dt><code>serve [--open]</code></dt><dd>serve on localhost:3000, rebuild on change; open the browser</dd><dt><code>watch</code></dt><dd>rebuild on change, no server</dd><dt><code>clean</code></dt><dd>delete the build</dd></dl>
+<h4>Notes</h4><ul><li>A chapter that is not listed in <code>src/SUMMARY.md</code> is not in the book. Adding a line there that names a missing file creates the file.</li><li>The built <code>book/</code> folder is the whole site: copy it to any web server, or open <code>book/index.html</code> from disk.</li></ul>
+<p class="see">See also <a href="#c-hugo"><code>hugo</code></a>, <a href="#c-zola"><code>zola</code></a>, <a href="#c-nvim"><code>nvim</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-vim" data-s="vim vi improved, a programmer's text editor notes vim">
-<h3><a class="self" href="#c-vim"><code>vim</code></a> <span class="purpose">Vi IMproved, a programmer's text editor</span></h3>
+<article class="cmd" id="c-vim" data-s="vim the vim editor: modal editing, everywhere, with spell checking. notes vim">
+<h3><a class="self" href="#c-vim"><code>vim</code></a> <span class="purpose">The Vim editor: modal editing, everywhere, with spell checking.</span></h3>
 <p class="facts">Notes · terminal program · <b>vim</b> 9.2.1091 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/vim.html">man vim(1)</a> · <a href="https://www.vim.org/">home</a></p>
 <p class="deps">needs vim-common, xxd, libncursesw</p>
+<p class="why"><b>On Copal:</b> Stage 7 writes ~/.vimrc -- the half of Copal's editor setup vim and Neovim share: building with F5, the error list, the debugger. The catalogue row adds it with spelling for writing prose.</p>
 <pre class="syn">vim [options] [file ..]
 vim [options] -
 vim [options] -t tag
@@ -1886,16 +1987,25 @@ ex
 view
 gvim gview evim eview
 rvim rview rgvim rgview</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Edit text with Vim's modes: normal mode to move and change, insert mode to type. On Copal, <a href="#c-nvim"><code>nvim</code></a> is the full IDE; <a href="#c-vim"><code>vim</code></a> is the same editing with fewer parts, and the spell checker is where it earns its row.</p>
+<h4>Examples</h4><div class="ex"><code>vim notes.md</code><span>edit</span></div><div class="ex"><code>vim -c 'set spell spelllang=en_us' letter.txt</code><span>with spelling on</span></div><div class="ex"><code>doas apk add vim-tutor &amp;&amp; vimtutor</code><span>the half-hour lesson (a separate package)</span></div><div class="ex"><code>:set spell       (in vim) spell checking on (spelllang=en_gb for British)</code></div><div class="ex"><code>]s  [s           next / previous misspelling</code></div><div class="ex"><code>z=               suggestions for the word under the cursor</code></div><div class="ex"><code>zg               add the word to your own list</code></div><div class="ex"><code>:w  :q  :wq      write / quit / both</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-c CMD</code></dt><dd>run an Ex command after opening the file</dd><dt><code>+N</code></dt><dd>open at line N</dd><dt><code>-d A B</code></dt><dd>diff two files</dd><dt><code>-R</code></dt><dd>read-only</dd><dt><code>-u NONE</code></dt><dd>start with no configuration (to test a problem)</dd></dl>
+<h4>Notes</h4><ul><li>Vim uses its own spell files, not Hunspell's dictionaries. English ships with it; for another language, <code>:set spelllang=de</code> offers to download that file.</li><li><code>~/.vimrc</code> is rewritten when stage 7 runs; your own settings go in <code>~/.vimrc.local</code>, which it reads last.</li><li>Words added with <code>zg</code> are kept in <code>~/.vim/spell/</code>.</li></ul>
+<p class="see">See also <a href="#c-nvim"><code>nvim</code></a>, <a href="#c-hunspell"><code>hunspell</code></a>, <a href="#c-aspell"><code>aspell</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-zola" data-s="zola opionated static site generator notes zola">
-<h3><a class="self" href="#c-zola"><code>zola</code></a> <span class="purpose">Opionated static site generator</span></h3>
+<article class="cmd" id="c-zola" data-s="zola a static site generator with everything built in: templates, sass, search, link checking. notes zola">
+<h3><a class="self" href="#c-zola"><code>zola</code></a> <span class="purpose">A static site generator with everything built in: templates, Sass, search, link checking.</span></h3>
 <p class="facts">Notes · command-line tool · <b>zola</b> 0.22.1 · stage 12 · The application catalogue · <a href="https://github.com/getzola/zola">home</a></p>
 <p class="deps">needs oniguruma</p>
+<p class="why"><b>On Copal:</b> The catalogue's other site builder: one binary like Hugo, with a simpler template language, and <code>zola check</code> to find dead links.</p>
 <pre class="syn">Usage: zola [OPTIONS] &lt;COMMAND&gt;
 Commands:
   init        Create a new Zola project</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>zola init</code> asks a few questions and makes the site; pages are Markdown under <code>content/</code>, templates are Tera under <code>templates/</code>. <code>zola serve</code> previews with live reload; <code>zola build</code> writes <code>public/</code>.</p>
+<h4>Examples</h4><div class="ex"><code>zola init mysite &amp;&amp; cd mysite</code><span>a new site, a few questions</span></div><div class="ex"><code>zola serve</code><span>preview at 127.0.0.1:1111</span></div><div class="ex"><code>zola build</code><span>build into ./public</span></div><div class="ex"><code>zola check</code><span>build without writing, and check every link</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>init DIR</code></dt><dd>create a site</dd><dt><code>serve</code></dt><dd>serve and rebuild on change</dd><dt><code>build</code></dt><dd>build into public/</dd><dt><code>check</code></dt><dd>check the site and its links</dd><dt><code>-r, --root DIR</code></dt><dd>the site's directory</dd><dt><code>-c, --config F</code></dt><dd>another config file</dd></dl>
+<h4>Notes</h4><ul><li>A new site has no templates: pages 404 until there is a <code>templates/index.html</code>, or a theme under <code>themes/</code> named in <code>config.toml</code>.</li><li><code>zola serve</code> listens on localhost only; <code>zola serve -i 0.0.0.0</code> to preview from another machine.</li></ul>
+<p class="see">See also <a href="#c-hugo"><code>hugo</code></a>, <a href="#c-mdbook"><code>mdbook</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-packages"><h2>Packages</h2>

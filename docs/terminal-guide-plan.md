@@ -343,6 +343,19 @@ Each ends with a review of what it produced before the next begins.
   command that links to another program takes that program's page (ninja
   is samu(1)).
 
+### Phase 4, batch 4: the catalogue's Internet, Mail, News and Notes (24 Sep 2026)
+
+- **22 entries**: `elinks`, `lynx`, `w3m`, `retawq`, `lftp`; `alpine`,
+  `mutt`, `aerc`, `mail`, `irssi`, `weechat`, `profanity`; `newsboat`,
+  `newsraft`, `sfeed`, `ticker`; `vim`, `hunspell`, `aspell`, `mdbook`,
+  `hugo`, `zola`.
+- **Found on the way**: `mail` sends nothing on its own -- sendmail is
+  BusyBox's, with no server behind it; msmtp is the way out. Vim's spell
+  checker uses Vim's own files, not the Hunspell dictionaries its row
+  installs; `vimtutor` is a separate package. mutt is built without SASL.
+- **check** reads `--help` for terminal programs too: with stdin closed
+  and a four-second limit, one that opens a screen instead is stopped.
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.
