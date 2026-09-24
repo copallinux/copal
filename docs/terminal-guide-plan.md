@@ -463,15 +463,15 @@ Each ends with a review of what it produced before the next begins.
   installed through `copal-store install`, so the man pages, optionals
   and access path was exercised too.
 - **XMRig removed** from Copal entirely: no crypto mining.
-- **OnionShare** does not install: Alpine's testing package depends on
-  `py3-flask-httpauth`, which no repository has.
+- **OnionShare removed**: Alpine's testing package depends on
+  `py3-flask-httpauth`, which no repository has, so it could not be
+  installed; it is out of Copal Apps until that is fixed upstream.
 - **Store fixes**: `copal-store access` (plugdev, wireshark, cdrom,
   dialout, users); optionals for qemu (`qemu-img`) and scrcpy
   (`android-udev-rules`); scrcpy and adb in plugdev, arduino-cli in
   dialout.
 - **Left**: Copal's own commands (41), which were to come after the core
-  and never did; Security (11) by choice; `lldb`, `pwndbg`, `cl65`,
-  `onionshare-cli`.
+  and never did; Security (11) by choice; `lldb`, `pwndbg` and `cl65`.
 
 ## VII. Risks
 
@@ -567,5 +567,5 @@ graphical (x); unmarked ones are command-line tools.
 - **System** (3): `btop` (t), `fastfetch`, `neofetch`
 - **Terminals** (1): `pwsh` (t)
 - **Tools** (3): `ollama`, `scrcpy`, `tldr`
-- **Transfer** (2): `httrack`, `onionshare-cli`
+- **Transfer** (1): `httrack`
 

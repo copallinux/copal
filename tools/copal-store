@@ -222,7 +222,6 @@ Tools|tldr (tealdeer)|tealdeer@testing|tldr|h|*|Short, example-first help pages 
 Tools|VeraCrypt (encrypted volumes)|veracrypt@source|veracrypt|x|64|Makes an encrypted file or disk that opens as a drive with the right password. The successor to TrueCrypt; mounting asks for your admin password.|https://github.com/veracrypt/VeraCrypt
 Transfer|Deluge (BitTorrent)|deluge|deluge|x|*|A BitTorrent client that grows with plug-ins. Scheduling, labels, blocklists and a web interface are all to hand.|https://github.com/deluge-torrent/deluge
 Transfer|HTTrack (website copier)|httrack@testing|httrack|h|*|Downloads a whole website into a folder. It can then be browsed offline, links and all.|https://github.com/xroche/httrack
-Transfer|OnionShare (share over Tor)|onionshare@testing|onionshare-cli|h|!v6|Shares files or a small website straight from this machine through Tor. No server and no account are needed.|https://github.com/onionshare/onionshare
 Transfer|Persepolis (download manager)|persepolis@source|persepolis|x|!v6|A download manager built on aria2, using many connections per file. Queues, schedules, and video pages through yt-dlp.|https://github.com/persepolisdm/persepolis
 STORETABLE
 }

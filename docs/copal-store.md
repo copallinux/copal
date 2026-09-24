@@ -624,7 +624,6 @@ The entries under the categories of Pi-Apps' own list, plus three that are in it
 | Filezilla | already in Copal | catalogue (Internet) |
 | Https File Server | not ported | a server, outside Pi-Apps' own rules |
 | HTTrack Website Copier | Alpine package, in the store | httrack (edge/testing) |
-| OnionShare | Alpine package, in the store | onionshare (edge/testing; command-line) |
 | Persepolis Download Manager | GitHub, compiled here | persepolisdm/persepolis 5.2.0 over aria2 |
 | qBittorrent | already in Copal | catalogue (Internet) |
 | Snapdrop | not ported | a web service |
