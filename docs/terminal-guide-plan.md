@@ -495,6 +495,22 @@ Each ends with a review of what it produced before the next begins.
   copal-remote, copal-session, copal-splash, copal-ssh, copal-startx,
   copal-times.
 
+### Phase 4, batch 15: Copal's plumbing and the fleet (24 Sep 2026)
+
+- **21 entries**, written from each script's source and never run, apart from
+  the read-only `copal-gpu`, `copal-times total`, `copal-morse -q` and
+  `copal-fleet-agent --self-test`. 274 of 288 commands now have notes.
+- **`copal-code` is the general one again.** Stage 7 wrote it, then
+  overwrote it with the Yodacon builder; that builder is now
+  `copal-yodacon`, and the handbook says so.
+- **check reads what a machine has**: the heredoc wins over `tools/`, since
+  `tools/copal-fleet.sh` is the console and `/usr/bin/copal-fleet` the
+  node's half; heredocs built with `cat >>` are joined; a quoted flag
+  (`"--self-test"`) counts. **`copal-readme-man`'s heredoc had drifted**
+  from tools/; synced, and `make lint` now compares them.
+- **Left**: the Security section (by choice), lldb and pwndbg, and cl65
+  until cc65 is installed.
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.

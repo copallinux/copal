@@ -1092,6 +1092,14 @@ lint: | $(BUILDDIR)
 	    && printf '  ok      copal-fleet-agent in $(PREP) matches tools/\n' \
 	    || { printf '\033[31merror:\033[0m copal-fleet-agent in $(PREP) has drifted -- run: make sync-agent\n'; \
 	         diff -u tools/copal-fleet-agent $(BUILDDIR)/.agent.lint.py | head -20; exit 1; }
+	@sed -n "/^    cat > \/usr\/local\/bin\/copal-readme-man <<'COPALREADMEMAN'$$/,/^COPALREADMEMAN$$/p" $(PREP) \
+	    | sed '1d;$$d' > $(BUILDDIR)/.readme-man.lint
+	@test -s $(BUILDDIR)/.readme-man.lint \
+	    || { printf '\033[31merror:\033[0m could not extract copal-readme-man from $(PREP)\n'; exit 1; }
+	@cmp -s $(BUILDDIR)/.readme-man.lint tools/copal-readme-man \
+	    && printf '  ok      copal-readme-man in $(PREP) matches tools/\n' \
+	    || { printf '\033[31merror:\033[0m copal-readme-man in $(PREP) has drifted -- run: make sync-readme-man\n'; \
+	         diff -u tools/copal-readme-man $(BUILDDIR)/.readme-man.lint | head -20; exit 1; }
 	@rm -f $(BUILDDIR)/.nkeys.lint.py $(BUILDDIR)/.nats.lint.py $(BUILDDIR)/.agent.lint.py
 	@python3 tools/copal-playbooks.py check
 	@python3 tools/copal-command-ref.py check | sed 's/^  //; s/^/  /'

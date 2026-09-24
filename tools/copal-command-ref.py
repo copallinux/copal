@@ -903,12 +903,9 @@ def source_text(cmd):
     """Copal's own commands are never run to read their help: copal-shot
     starts a screenshot, copal-halt shuts down, and most take no --help.
     Their text is their source -- the heredoc copal-prep.sh writes them
-    from, or their file in tools/."""
+    from, else their file in tools/."""
     if cmd == "copal":        # the installer's copy of itself
         return open(PREP, encoding="utf-8", errors="replace").read()
-    for f in (os.path.join(ROOT, "tools", cmd), os.path.join(ROOT, "tools", cmd + ".sh")):
-        if os.path.isfile(f):
-            return open(f, encoding="utf-8", errors="replace").read()
     lines = open(os.path.join(ROOT, "copal-prep.sh"), encoding="utf-8", errors="replace").read().split("\n")
     # Every heredoc written to the file, 'cat >' and 'cat >>' alike: some are
     # built in parts, an unquoted head for the values and a quoted body.
@@ -922,7 +919,15 @@ def source_text(cmd):
                 if l2.strip() == tag:
                     break
                 body.append(l2)
-    return "\n".join(body)
+    if body:
+        return "\n".join(body)
+    # Not written by the installer: its file in tools/. The heredoc wins where
+    # both exist, because it is what a machine has -- copal-fleet in tools/ is
+    # the console ('copal fleet'); /usr/bin/copal-fleet is stage 16's node half.
+    for f in (os.path.join(ROOT, "tools", cmd), os.path.join(ROOT, "tools", cmd + ".sh")):
+        if os.path.isfile(f):
+            return open(f, encoding="utf-8", errors="replace").read()
+    return ""
 
 
 def saved_text(cmd):
@@ -990,7 +995,8 @@ def check():
                 continue
             for flag in re.findall(r"--?[\w][\w-]*", m.group(1).split("=")[0]):
                 # A one-letter flag may be printed glued to its value: dot's -ooutfile.
-                found = lambda f: re.search(r"(^|[\s\[,(|])%s(?![\w-])" % re.escape(f), text) or \
+                # A quote before it too: Copal's sources test "--self-test".
+                found = lambda f: re.search(r"(^|[\s\[,(|\"'])%s(?![\w-])" % re.escape(f), text) or \
                     (len(f) == 2 and re.search(r"(^|[\s\[,(|])%s(<|[a-z]+\b)" % re.escape(f), text))
                 # apk 3 and others: every --X also as --no-X, stated once.
                 if flag.startswith("--no-") and "--no-option" in text and found("--" + flag[5:]):

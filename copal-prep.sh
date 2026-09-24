@@ -9152,6 +9152,13 @@ date=$(git -C "$dir" log -1 --format=%cs -- "$(basename "$readme")" 2>/dev/null 
 [ -n "$date" ] || date=$(date -r "$readme" +%Y-%m-%d)
 repo=$(basename "$(cd "$dir" && pwd)")
 
+# GitHub lets a list start right under a paragraph; lowdown wants a blank
+# line first, or the items run on as one sentence.
+awk '
+/^```/ { fence = !fence }
+!fence && /^[ \t]*([-*+]|[0-9]+\.) / && prev !~ /^[ \t]*$/ && prev !~ /^[ \t]*([-*+]|[0-9]+\.) / \
+    && prev !~ /^[ \t]+[^ \t]/ { print "" }
+{ print; prev = $0 }' "$readme" |
 awk -v names="$(echo "$names" | sed 's/,/, /g')" '
 function strip(s) {
     gsub(/\n/, " ", s)
@@ -9183,14 +9190,16 @@ incomment { if ($0 ~ /-->/) incomment = 0; next }
 head && !fence && /^## / { head = 0 }
 head {
     if (fence) { intro = intro $0 "\n"; next }
-    if ($0 ~ /^# / || $0 ~ /^\[?!\[/) next
+    if ($0 ~ /^# / || $0 ~ /^\[?!\[/ || $0 ~ /^(---+|\*\*\*+|___+)[ \t]*$/) next
     # An HTML header, like copal-tm has, can still hold the tagline.
     if ($0 ~ /^[ \t]*</) { if (desc == "") describe(strip($0)); next }
     if ($0 ~ /^[ \t]*$/) {
         if (para != "") {
             p = strip(para)
-            if (desc == "") describe(p)
-            if (p !~ / · /) intro = intro para "\n"   # not a version line
+            had = desc; if (desc == "") describe(p)
+            # Not a version line, nor the tagline NAME has just taken.
+            if (p !~ / · / && !(had == "" && desc != "" && p ~ ("^" desc "[.!?]?$")))
+                intro = intro para "\n"
             para = ""
         }
         next
@@ -9205,11 +9214,15 @@ head {
 }
 skip { next }
 !fence && (/^[ \t]*<[^>]*>[ \t]*$/ || /^\[?!\[/) { next }
+# A rule between sections is spacing for GitHub; a man page has its own.
+!fence && /^(---+|\*\*\*+|___+)[ \t]*$/ { next }
 { body = body $0 "\n" }
 END {
     if (para != "") intro = intro para "\n"
-    printf "# NAME\n\n%s - %s\n\n# DESCRIPTION\n\n%s\n%s", names, desc, intro, body
-}' "$readme" |
+    printf "# NAME\n\n%s - %s\n\n", names, desc
+    if (intro ~ /[^ \t\n]/) printf "# DESCRIPTION\n\n%s\n", intro
+    printf "%s", body
+}' |
 if [ -n "$md" ]; then cat; else lowdown -s -Tman \
     -M "title=$(echo "$first" | tr a-z A-Z)" -M section=1 -M "date=$date" \
     -M "source=$repo" -M "volume=Copal: the programs in ~/code"; fi
@@ -9846,17 +9859,17 @@ MSG
         || { warn "the X11 development headers did not install -- skipping"; return 0; }
     retune_tmp
 
-    cat > /usr/local/bin/copal-code <<'COPALCODE'
+    cat > /usr/local/bin/copal-yodacon <<'COPALCODE'
 #!/bin/sh
-# copal-code -- Yodacon, with Gonex and Konex inside it, and iusethis.org,
+# copal-yodacon -- Yodacon, with Gonex and Konex inside it, and iusethis.org,
 # checked out into ~/code and built.
 #
 # Stage 7 of copal-init.sh writes this and runs it once as the user. Run it
 # again after a git pull to rebuild. It never pulls, resets or moves a
 # checkout that exists -- the submodules included: that tree is yours.
 #
-#   copal-code           clone what is missing, build everything
-#   copal-code status    what is checked out, and what is built
+#   copal-yodacon           clone what is missing, build everything
+#   copal-yodacon status    what is checked out, and what is built
 #
 # What comes out: ~/code/yodacon/gonex/gonex-bin (the game), Yodacon's own
 # suites run, ~/code/yodacon/vendor/konex/build-release/bin/konex (the 2005
@@ -9872,7 +9885,7 @@ YODACON="$CODE/yodacon"
 GONEX="$YODACON/gonex"
 KONEX="$YODACON/vendor/konex"
 IUSETHIS="$CODE/iusethisorg"
-CACHE="$HOME/.cache/copal-code"
+CACHE="$HOME/.cache/copal-yodacon"
 LOG="$CACHE/build.log"
 export GOTOOLCHAIN=auto TMPDIR="$CACHE/tmp"
 
@@ -9932,7 +9945,7 @@ fail() {  # <what>
 case "${1:-}" in
     status) status; exit 0 ;;
     "") ;;
-    *)  echo "usage: copal-code [status]" >&2; exit 2 ;;
+    *)  echo "usage: copal-yodacon [status]" >&2; exit 2 ;;
 esac
 
 mkdir -p "$CODE" "$CACHE/tmp" || exit 1
@@ -9966,17 +9979,17 @@ say "Done"
 status
 note "play:     cd ~/code/yodacon/gonex && ./gonex-bin    (or Super+C -> Built here -> Gonex)"
 note "          cd ~/code/yodacon/vendor/konex/build-release/bin && ./konex    (or Built here -> Konex)"
-note "rebuild:  copal-code, after a git pull"
+note "rebuild:  copal-yodacon, after a git pull"
 COPALCODE
-    chmod 0755 /usr/local/bin/copal-code
-    note "wrote /usr/local/bin/copal-code"
+    chmod 0755 /usr/local/bin/copal-yodacon
+    note "wrote /usr/local/bin/copal-yodacon"
 
-    say "Running copal-code as $PI_USER  (the Go toolchain download is the slow part)"
-    if su - "$PI_USER" -c copal-code; then
+    say "Running copal-yodacon as $PI_USER  (the Go toolchain download is the slow part)"
+    if su - "$PI_USER" -c copal-yodacon; then
         note "Yodacon, with Gonex and Konex inside it, is in $_h/code/yodacon; iusethis.org beside it"
     else
-        warn "copal-code did not finish -- as $PI_USER, run 'copal-code' to retry;"
-        warn "the log is $_h/.cache/copal-code/build.log"
+        warn "copal-yodacon did not finish -- as $PI_USER, run 'copal-yodacon' to retry;"
+        warn "the log is $_h/.cache/copal-yodacon/build.log"
     fi
 }
 

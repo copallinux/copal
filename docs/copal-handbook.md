@@ -2312,18 +2312,18 @@ Beside it goes [`iusethisorg`](https://github.com/iusethisorg/iusethisorg), the
 iusethis.org site, a static site whose Makefile renders the articles with a
 stdlib Python script; `make check`, the strict build its CI runs, is what the
 stage runs. The
-work is done by `/usr/local/bin/copal-code`, which the stage writes and then
-runs once; run it again after a `git pull` to rebuild, and `copal-code status`
+work is done by `/usr/local/bin/copal-yodacon`, which the stage writes and then
+runs once; run it again after a `git pull` to rebuild, and `copal-yodacon status`
 says what is checked out and built. A checkout that already exists is never
 pulled, reset or moved — the submodules included — only rebuilt.
 
 What it works around, all measured on the aarch64 VM on 4 September 2026:
 
 - Alpine pins `GOTOOLCHAIN=local`, and `gonex` wants Go 1.27 where v3.24
-  ships 1.26.3. `copal-code` sets `GOTOOLCHAIN=auto`, so `go` fetches the
+  ships 1.26.3. `copal-yodacon` sets `GOTOOLCHAIN=auto`, so `go` fetches the
   toolchain `go.mod` names into `~/go` — 248 MB, once.
 - The Go linker scratches in `$TMPDIR`, and a 40 MB link did not fit in a
-  64 MB `/tmp`. `TMPDIR` points under `~/.cache/copal-code`. (Stage 3 now
+  64 MB `/tmp`. `TMPDIR` points under `~/.cache/copal-yodacon`. (Stage 3 now
   sizes `/tmp` at a fifth of RAM rather than a flat 64 MB, for the same
   reason.)
 - Yodacon's `make verify` unpacks the 1997 `.sit` releases with `unar`, which
