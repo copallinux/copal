@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>birdshot(1) · Copal Linux</title>
+<meta name="description" content="birdshot, birdshot-gui - Bird and sky capture for the Raspberry Pi HQ Camera">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-birdshot">birdshot in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">birdshot's README, made a man page by copal-readme-man</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">BIRDSHOT(1)</td>
+    <td class="head-vol">Copal: the programs in ~/code</td>
+    <td class="head-rtitle">BIRDSHOT(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">birdshot, birdshot-gui - Bird and sky capture for the Raspberry Pi
+    HQ Camera</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">An IMX477 on a Compute Module 4, driven properly: metered
+    auto-exposure that holds through a changing sky, quality gates that throw
+    away the frames you would have deleted anyway, and a storage cascade that
+    lets a session run until the <i>last</i> disk fills rather than the first.
+    It replaces the <span class="Li">runCam.sh</span> loop it grew out of, and
+    reads that loop&#x2019;s folders unchanged.</p>
+<p class="Pp">The GUI runs on the Pi&#x2019;s own display; captures land on the
+    eMMC and are pulled to the Mac over the network.</p>
+<div class="Bd-indent">
+<p class="Pp"><b>Release candidate.</b> <span class="Li">1.0.0-rc1</span> is the
+    deployed build, running as described. It is tagged as a candidate rather
+    than a release because formal physical testing has not been completed and
+    the screenshots below are not yet taken &#x2014; see
+    <a class="Lk" href="CHANGELOG.md">CHANGELOG.md</a>. The software itself is
+    in use.</p>
+<p class="Pp"><b>The native line.</b>
+    <a class="Lk" href="native/README.md"><span class="Li">native/</span></a> is
+    <span class="Li">2.0.0-rc1</span> (&#x201C;Migration&#x201D;): the same
+    pipeline rewritten in dependency-free C++17 &#x2014; one static binary for
+    macOS, Windows, Linux and the BSDs, roughly an order of magnitude faster
+    through the identical metering/AE/gates path, and carrying the Horizons
+    layer (solar ephemeris, sunset shoot planning, multi-day alignment) that
+    this line only had on paper. The desktop GUI (Qt 6, optional) rewrites the
+    four faces over the native core, and the first platform camera backend
+    (AVFoundation) captures real frames; V4L2, Media Foundation and libcamera
+    &#x2014; the Pi, the one that cuts the release &#x2014; are the remaining
+    2.0.0 ports. The design docs live with it:
+    <a class="Lk" href="native/ARCHITECTURE.md">ARCHITECTURE.md</a> (the nine
+    rules and the layers), <a class="Lk" href="native/PHYSICS.md">PHYSICS.md</a>
+    (every tuned number and the control that sets it),
+    <a class="Lk" href="native/PARITY.md">PARITY.md</a> (the honest ledger
+    against this tree). This Python tree remains the deployed instrument on the
+    Pi.</p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="What_the_hardware_actually_is"><a class="permalink" href="#What_the_hardware_actually_is">What
+  the hardware actually is</a></h1>
+<p class="Pp">Worth stating plainly, because several of these differ from what
+    you might expect and they drive every design decision below.</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Camera</td>
+    <td><b>IMX477</b>, 4056x3040 (12.3 MP), manual-focus C/CS mount</td>
+  </tr>
+  <tr>
+    <td>Board</td>
+    <td>Compute Module 4, 4 GB, Debian 11 bullseye, 4x Cortex-A72</td>
+  </tr>
+  <tr>
+    <td>Stack</td>
+    <td>libcamera 0.0.5, libcamera-apps 1.2.1, picamera2 0.3.12, Python 3.9</td>
+  </tr>
+  <tr>
+    <td>eMMC</td>
+    <td><b>78 MB/s</b> write, ~16 GB free</td>
+  </tr>
+  <tr>
+    <td>USB stick</td>
+    <td>NTFS over FUSE on a <b>USB 2.0</b> port: <b>~12 MB/s</b> sustained, 59
+      GB</td>
+  </tr>
+  <tr>
+    <td>Network</td>
+    <td>Gigabit to the Mac, 0.7 ms</td>
+  </tr>
+</table>
+<p class="Pp"><b>The USB stick is the slowest storage in the system, not the
+    fastest.</b> Capture goes to the eMMC and is offloaded to USB in the
+    background; writing captures straight to the stick would stall every
+  burst.</p>
+<section class="Ss">
+<h2 class="Ss" id="Measured_capture_rates"><a class="permalink" href="#Measured_capture_rates">Measured
+  capture rates</a></h2>
+<p class="Pp">Sensor readout is not the limit &#x2013; the full-resolution
+    buffer copy and JPEG encode are, and they are memory-bandwidth bound.</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td><b>Mode</b></td>
+    <td><b>Sensor can do</b></td>
+    <td><b>COLLECT</b></td>
+    <td><b></b><b>RAPID</b></td>
+    <td><b>Use for</b></td>
+  </tr>
+  <tr>
+    <td>4056x3040 native</td>
+    <td>10.8 fps</td>
+    <td>3.3</td>
+    <td><b>4.5</b></td>
+    <td>perched birds, treeline, timelapse</td>
+  </tr>
+  <tr>
+    <td>2028x1520 binned</td>
+    <td>41.7 fps</td>
+    <td>8.6</td>
+    <td><b>21.0</b></td>
+    <td>birds in flight (same field of view)</td>
+  </tr>
+  <tr>
+    <td>1332x990 cropped</td>
+    <td>41.7 fps</td>
+    <td>10.4</td>
+    <td><b>34.8</b></td>
+    <td>fastest action</td>
+  </tr>
+  <tr>
+    <td>1920x1080 H.264</td>
+    <td>50 fps</td>
+    <td>&#x2013;</td>
+    <td><b>50</b></td>
+    <td>video (hardware encoder)</td>
+  </tr>
+</table>
+<p class="Pp"><b>COLLECT</b> runs the full pipeline: quality gates,
+    native-resolution focus measurement, <span class="Li">s&lt;N&gt;</span>
+    shutter folders. <b>RAPID</b> strips that back to metering and auto-exposure
+    only and writes flat datestamped files, which is where the 2-3x comes from.
+    Both use the same auto-exposure.</p>
+<p class="Pp">Encode threads are set to 3: measured identical to 6 on this
+    board, and it leaves a core for the capture loop and the GUI.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Folder_naming"><a class="permalink" href="#Folder_naming">Folder
+  naming</a></h1>
+<p class="Pp">The old <span class="Li">runCam.sh</span> convention is preserved
+    exactly. Note this differs from what the directory names suggest at a
+    glance:</p>
+<p class="Pp"></p>
+<pre>s191   = --shutter 19100000 us = 19.1 SECONDS   (not 191 ms)
+s01    =           100000 us   = 0.1 s
+ms1600 =           160000 us   = 160 ms
+ms500  =            50000 us   = 50 ms
+</pre>
+<p class="Pp">So <span class="Li">s&lt;N&gt;</span> is tenths of a second and
+    <span class="Li">ms&lt;N&gt;</span> is tenths of a millisecond. The two
+    ranges overlap, and the old scripts resolved it by using
+    <span class="Li">s</span> only for whole tenths of a second &#x2013; 1600000
+    us is <span class="Li">s16</span>, but 160000 us is
+    <span class="Li">ms1600</span>. That rule is reproduced, including the
+    two-digit zero padding (<span class="Li">s01</span>,
+    <span class="Li">s04</span>).</p>
+<p class="Pp">Bird work runs far shorter than anything in the old set, so the
+    scheme extends downwards with <span class="Li">us&lt;N&gt;</span> below 1
+    ms, where <span class="Li">ms</span> would start rounding away real
+    precision. Your existing <span class="Li">s191</span> night captures still
+    sort correctly alongside.</p>
+<p class="Pp">Auto-exposure produces arbitrary values, so directory names are
+    <b>buckets</b> (100 us steps in the <span class="Li">ms</span> range, 10 us
+    in <span class="Li">us</span>). Every frame&#x2019;s exact exposure is
+    recorded in the session&#x2019;s <span class="Li">index.jsonl</span>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Layout_on_the_Pi"><a class="permalink" href="#Layout_on_the_Pi">Layout
+  on the Pi</a></h1>
+<pre>/home/pi/birdshot/            the application (synced from the Mac)
+/home/pi/birdshot-data/
+<br/>
+  sess-&lt;epoch&gt;/              one directory per COLLECT run
+<br/>
+    ms18/  ms20/  s191/      split by shutter duration, as before
+<br/>
+      2026073113353247.jpg
+<br/>
+    index.jsonl              one JSON line per frame: settings + all metrics
+<br/>
+    session.json             summary written on close
+<br/>
+    _rejected/               only if reject action is &quot;quarantine&quot;
+<br/>
+  tlc-&lt;epoch&gt;/               timelapse runs
+<br/>
+  video/                     H.264 recordings
+<br/>
+  timelapse/                 assembled movies
+<br/>
+  latest.jpg                 small live preview, refreshed ~1 Hz
+</pre>
+<section class="Ss">
+<h2 class="Ss" id="Frame_filenames"><a class="permalink" href="#Frame_filenames">Frame
+  filenames</a></h2>
+<p class="Pp">Every frame, in both COLLECT and RAPID, is named
+    <span class="Li">YYYYMMDDHHMMSScc</span> &#x2013; 16 digits at centisecond
+    resolution:</p>
+<p class="Pp"></p>
+<pre>2026-07-31 13:35:32.47   -&gt;   2026073113353247.jpg
+</pre>
+<p class="Pp">The last four digits are centiseconds within the minute
+    (0000-5999), which is the same string as writing seconds then centiseconds
+    separately, since <span class="Li">seconds * 100 + centiseconds</span> is
+    exactly that count. So
+    <span class="Li">yyyymmddhhmm</span>+<span class="Li">cs</span> and
+    <span class="Li">yyyymmddhhmmss</span>+<span class="Li">cc</span> agree, and
+    the name sorts chronologically as plain text.</p>
+<p class="Pp">One-second naming needed collision suffixes constantly &#x2013;
+    rapid capture runs at up to 35 fps. At 100 slots per second frames land
+    about three apart, so the <span class="Li">_001</span> suffix is now a
+    safety net rather than the normal case. Names are still claimed atomically
+    with <span class="Li">O_EXCL</span>, because three encoder threads finish
+    concurrently.</p>
+<p class="Pp">Frames are written as <span class="Li">.part</span> and renamed
+    once complete, so a sync running on the Mac can never pick up a half-written
+    JPEG.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Getting_started"><a class="permalink" href="#Getting_started">Getting
+  started</a></h1>
+<div class="Bd-indent">
+<p class="Pp">New to it? <a class="Lk" href="docs/GUIDE.md">docs/GUIDE.md</a> is
+    a full tutorial: every mode, what each adjustable number does when you
+    change it, worked example settings for five use cases, and how to set
+    exposure, black and white points.</p>
+</div>
+<p class="Pp">From the Mac, in this directory:</p>
+<p class="Pp"></p>
+<pre>./prototype/sync.sh deploy          # push, install launcher, run the selftest
+./prototype/sync.sh gui             # start the GUI on the Pi's display
+</pre>
+<p class="Pp">Then on the Pi&#x2019;s screen, work through the calibration
+    wizard it offers on first run (about a minute &#x2013; see below).</p>
+<section class="Ss">
+<h2 class="Ss" id="Everyday_commands"><a class="permalink" href="#Everyday_commands">Everyday
+  commands</a></h2>
+<pre>./prototype/sync.sh watch                  # auto-push on every save while developing
+./prototype/sync.sh status                 # dry run: what each direction would change
+./prototype/sync.sh sync                   # two-way, newer file wins
+./prototype/sync.sh selftest               # verify the deployment against the real camera
+./prototype/sync.sh info                   # camera, modes, storage, calibration state
+./prototype/sync.sh logs                   # tail the GUI log
+./prototype/mac/pull-photos.sh watch       # keep pulling new frames to ~/birdshot-data
+./prototype/mac/pull-photos.sh live        # ... and print each file as it lands
+./prototype/mac/assemble.sh ~/birdshot-data/tlc-1730380000 --fps 60
+</pre>
+<p class="Pp"><span class="Li">sync</span> is a convenience, not a
+    conflict-resolving sync engine: it runs rsync
+    <span class="Li">--update</span> both ways, so the newer mtime wins per file
+    and deletions never propagate. Edit on one side at a time. Run
+    <span class="Li">status</span> first if unsure.</p>
+<div class="Bd-indent">
+<p class="Pp">macOS 26 ships <span class="Li">openrsync</span>, not GNU rsync,
+    so the scripts stick to portable flags. They will pick up a Homebrew GNU
+    rsync automatically if you install one.</p>
+</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Headless,_over_SSH"><a class="permalink" href="#Headless,_over_SSH">Headless,
+  over SSH</a></h2>
+<pre>birdshot-cli info
+birdshot-cli capture -n 200          # COLLECT: full pipeline with quality gates
+birdshot-cli rapid -n 500 --res 1    # RAPID: flat YYYYmmddHHMMSS names, ~21 fps
+birdshot-cli timelapse -i 5 -n 720   # one frame every 5 s
+birdshot-cli sessions
+birdshot-cli assemble rapid-1730380000 --fps 60
+birdshot-cli selftest
+</pre>
+<p class="Pp"><span class="Li">BIRDSHOT_PROFILE=1</span> in front of
+    <span class="Li">rapid</span> prints a per-frame breakdown of where the
+    capture loop spends its time &#x2013; useful if a change makes things
+    slower.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Auto-exposure"><a class="permalink" href="#Auto-exposure">Auto-exposure</a></h1>
+<p class="Pp">libcamera&#x2019;s own AGC is switched off permanently. Two
+    reasons, both of which bite here: it needs roughly five frames to
+    re-converge (over a second of wasted burst at these rates), and it meters
+    the whole frame, which against bright sky guarantees the bird comes out a
+    silhouette.</p>
+<p class="Pp">Three mechanisms act together:</p>
+<p class="Pp"><b>Feed-forward from lux.</b> Scene luminance and required
+    exposure are inversely proportional, so one learned constant turns the
+    sensor&#x2019;s own lux reading into an exposure estimate. Swing the camera
+    from treeline to open sky and the feed-forward jumps in a single frame
+    rather than integrating its way there. The constant is learned online from
+    well-exposed frames and persists between runs.</p>
+<p class="Pp"><b>PID feedback in EV space.</b> Error is
+    <span class="Li">log2(target / measured)</span>. Exposure is multiplicative,
+    so a linear controller on raw microseconds would be badly mistuned at one
+    end of the range or the other. Includes a deadband (stops hunting), a slew
+    limit, integral clamping with anti-windup, and EMA smoothing on the
+    measurement so a bird crossing frame does not swing exposure. Above 1.5 EV
+    of error it abandons the PID and jumps straight to the answer &#x2013; this
+    is what removes the &#x201C;AE takes five photos&#x201D; problem.</p>
+<p class="Pp"><b>Highlight priority.</b> The clipping term can only ever push
+    exposure <i>down</i>, and it overrides the brightness term when it fires. It
+    is measured on the <b>subject</b> <b>zone</b>, with the sky held to its own
+    far looser budget (60% by default). Metering whole-frame clipping meant a
+    bright sky always blew past a 2% tolerance, so the term fired on every frame
+    and drove exposure down until the treeline went black &#x2013; the loop sat
+    there dark and never came back.</p>
+<section class="Ss">
+<h2 class="Ss" id="If_auto_exposure_seems_to_stop"><a class="permalink" href="#If_auto_exposure_seems_to_stop">If
+  auto-exposure seems to stop</a></h2>
+<p class="Pp">It used to, and the cause was not the PID. The loop waited for the
+    sensor to report back exactly what it had been asked for before correcting
+    again, and the IMX477 never does: exposure quantises to line times (asking
+    2000 us yields 1986) and analogue gain snaps to its own steps (asking 2.10
+    yields 2.00). Worse, a gain change takes 5-7 frames to reach metadata on
+    this board, not the 2 the docs imply. The wait had no escape, so ordinary
+    quantisation could stall it forever &#x2013; and the one thing that could
+    have corrected it was the loop that had stopped.</p>
+<p class="Pp">Now the wait is bounded, tolerances are relative rather than
+    absolute, and if a request really was clamped the controller re-syncs from
+    whatever the sensor actually did (clearing the integral, which would
+    otherwise be wound up against an unreachable target). Measured over 40 s: 0
+    stalls, 227 corrections, against 41 stalls and 82 corrections before.</p>
+<p class="Pp">&#x201C;Settled&#x201D; also counts a <i>constrained</i>
+    equilibrium &#x2013; when highlight priority and the brightness term pull
+    against each other, which is routine for a dark subject under a blown sky,
+    the error never enters the deadband but the correction goes to zero.
+    Requiring a small error rather than a small correction meant settled never
+    fired in exactly the scene this camera is pointed at, which also stopped the
+    lux constant ever being learned.</p>
+<p class="Pp">Metering is zone-weighted, not average: the top 40% of frame is
+    treated as sky and weighted at 0.15, the rest as subject at 1.0. All tunable
+    in Scene &gt; Exposure and tone.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Shutter/gain_ladder"><a class="permalink" href="#Shutter/gain_ladder">Shutter/gain
+  ladder</a></h2>
+<p class="Pp">Auto-exposure picks the <b>shortest shutter</b> the light allows,
+    so wingbeats stay frozen. As the scene demands more light:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>base gain, shutter lengthens to the motion limit (default 1/500 s)
+      &#x2013; cleanest
+    <p class="Pp"></p>
+  </dd>
+  <dt>2.</dt>
+  <dd>shutter pinned at the motion limit, gain rises to its preferred cap (4x)
+    <p class="Pp"></p>
+  </dd>
+  <dt>3.</dt>
+  <dd>gain pinned, shutter lengthens toward the hard cap &#x2013; blur risk
+      begins
+    <p class="Pp"></p>
+  </dd>
+  <dt>4.</dt>
+  <dd>shutter at the hard cap, gain rises to the sensor maximum &#x2013; last
+      resort</dd>
+</dl>
+<p class="Pp">Both caps are adjustable. Gain is spent before the shutter is
+    allowed past the motion limit, which is the trade you want for birds.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Calibration_wizard"><a class="permalink" href="#Calibration_wizard">Calibration
+  wizard</a></h2>
+<p class="Pp">Runs on first start, and any time from Scene &gt; Exposure and
+    tone. It asks you to point at <b>open sky</b>, then the <b>treeline</b>,
+    then optionally a subject or grey card, and lets the loop settle on
+  each.</p>
+<p class="Pp">The sky-to-treeline gap is the dynamic range the sensor has to
+    straddle, and it sets how much highlight headroom metering must leave
+    &#x2013; a 7 EV gap needs a far more conservative target than a 3 EV one,
+    and guessing that from one frame is exactly what silhouettes birds. Results
+    persist in <span class="Li">~/.config/birdshot/settings.json</span>, along
+    with the last shutter, gain and frame counter, so a restart resumes where
+    you left off.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Quality_gates"><a class="permalink" href="#Quality_gates">Quality
+  gates</a></h1>
+<p class="Pp">Every frame is scored from the free 640x480 luma plane, plus a
+    native-resolution 512x512 centre crop for focus (judging focus on a
+    downscaled preview would hide exactly the softness we are looking for).
+    Verdicts land in <span class="Li">index.jsonl</span>:</p>
+<ul class="Bl-bullet">
+  <li><b>dark</b> &#x2013; p95 below threshold
+    <p class="Pp"></p>
+  </li>
+  <li><b>blown</b> &#x2013; clipping has spread into the <i>subject</i> zone.
+      Clipped sky alone is expected for this subject matter and is deliberately
+      not penalised.
+    <p class="Pp"></p>
+  </li>
+  <li><b>empty</b> &#x2013; no tile anywhere carries real contrast, or the frame
+      is soft. Covers blur, fog, lens cap, and pointing at blank sky.
+    <p class="Pp"></p>
+  </li>
+  <li><b>ok</b> &#x2013; everything else</li>
+</ul>
+<p class="Pp">Rejected frames can be flagged (default &#x2013; keep everything,
+    record the verdict), quarantined into <span class="Li">_rejected/</span>, or
+    dropped. Timelapse assembly uses only frames that passed, which quietly
+    removes the flicker those frames would cause.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="The_interface"><a class="permalink" href="#The_interface">The
+  interface</a></h1>
+<p class="Pp">One window, four <b>faces</b>, switchable from the title bar (or
+    Ctrl+1..4). The deploy decides where you land (<span class="Li">ui_face:
+    auto</span> &#x2014; the Pi boots Field, a git checkout boots Bench, an
+    Alpine/copal desktop boots Camera, a Mac install boots Library;
+    <span class="Li">--face</span> overrides). Every face drives the same engine
+    and the same <span class="Li">settings.json</span>.</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td><b>Face</b></td>
+    <td><b>For</b></td>
+    <td><b>Shows</b></td>
+  </tr>
+  <tr>
+    <td><b>Camera</b></td>
+    <td>the copal desktop, casual use</td>
+    <td>preview, shutter, mode strip, camera picker &#x2014; nothing that needs
+      this README</td>
+  </tr>
+  <tr>
+    <td><b>Field</b></td>
+    <td>the instrument outdoors</td>
+    <td>huge START/STOP, the Bird Flight gate ladder live, storage headroom,
+      outdoor mode</td>
+  </tr>
+  <tr>
+    <td><b>Bench</b></td>
+    <td>tuning</td>
+    <td>the full control rail: three tabs of collapsible sections</td>
+  </tr>
+  <tr>
+    <td><b>Library</b></td>
+    <td>the darkroom</td>
+    <td>sessions, verdict badges, bird takes with their triggers,
+      encode/EXIF/offload</td>
+  </tr>
+</table>
+<p class="Pp">Bench&#x2019;s rail keeps the camera picker, a
+    <b>find-a-setting</b> box, the mode dial and START above three tabs &#x2014;
+    a setting lives with the thing it tunes:</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td><b>Tab</b></td>
+    <td><b>Holds</b></td>
+  </tr>
+  <tr>
+    <td><b>Shoot</b></td>
+    <td>one section per mode: Stills, Rapid, Timelapse, Video, Bird Flight</td>
+  </tr>
+  <tr>
+    <td><b>Scene</b></td>
+    <td>exposure and tone, focus aids, quality gates</td>
+  </tr>
+  <tr>
+    <td><b>Machine</b></td>
+    <td>cascade tiers, paths/offload/unattended start, install health (doctor),
+      EXIF identity</td>
+  </tr>
+</table>
+<p class="Pp">A collapsed section still shows its current setting on one line,
+    so closing things does not hide state. Values that differ from the defaults
+    get an amber label; the rail&#x2019;s footer counts them and
+    <span class="Li">reset...</span> lists and restores them. A
+    <span class="Li">doctor:</span> chip in the status bar carries the same
+    checklist <span class="Li">birdshot-cli doctor</span> prints &#x2014; click
+    it for the full report.</p>
+<p class="Pp">The <b>profile</b> row under the camera picker saves the whole
+    setup &#x2014; camera, exposure, gates, mode, all of it except machine paths
+    &#x2014; under a name, and activating one applies it in a single pick
+    (switching cameras if it names another). Headless:
+    <span class="Li">birdshot-cli profiles list|save|use|delete</span>, or
+    <span class="Li">birdshot-cli --profile &lt;name&gt; &lt;command&gt;</span>
+    for one run.</p>
+<p class="Pp">Webcams get their own capture-size request (Stills &gt; <i>Webcam
+    capture</i>, default <b>best the camera offers</b> &#x2014; devices
+    negotiate down from 1920x1080), the negotiated size shows as
+    <i>Delivering</i>, and saved frames are the camera&#x2019;s native
+    resolution, not the 640x480 analysis copy.</p>
+<p class="Pp">Because the same window now drives an IMX477, a webcam or the
+    synthetic scene, every control is <b>gated by what the selected camera can
+    actually</b> <b>do</b>: modes and sections a backend cannot run grey out
+    with the reason, never hidden and never pretending (the capability names
+    live in <span class="Li">birdshot/backends</span>).</p>
+<p class="Pp">One <b>mode dial</b> (Stills / Rapid / Timelapse / Video / Bird
+    Flight) drives a single START button, and selecting a mode opens its
+    section.</p>
+<p class="Pp"><b>Fullscreen</b> &#x2013; the button,
+    <span class="Li">F11</span>, or a <b>double-click on the image</b>. Every
+    overlay stays live; <span class="Li">Esc</span>, <span class="Li">F11</span>
+    or another double-click returns.</p>
+<section class="Ss">
+<h2 class="Ss" id="Outdoor_mode"><a class="permalink" href="#Outdoor_mode">Outdoor
+  mode</a></h2>
+<p class="Pp">For working in sunlight, where the panel washes out and a bird
+    against bright sky is a low-contrast shape. It contrast-stretches the
+    preview against its own 2nd and 98th percentiles, then burns the
+    frame&#x2019;s gradients in as a bright outline:</p>
+<ul class="Bl-bullet">
+  <li><b>boost</b> &#x2013; the stretched picture with edges drawn over it
+    <p class="Pp"></p>
+  </li>
+  <li><b>edges only</b> &#x2013; structure on a dark field, nothing competing
+      with it</li>
+</ul>
+<p class="Pp">Edges are drawn as <b>alternating yellow and black hazard
+    bands</b>, one pixel thick. Flat yellow disappears against a bright sky and
+    black disappears against shadow; alternating them means one of the two
+    always contrasts, whatever the edge happens to lie on. Band width and
+    sensitivity are adjustable.</p>
+<p class="Pp">Edge sensitivity is relative to the scene&#x2019;s own gradients,
+    so a hazy view still shows its edges rather than going blank. Measured on a
+    real frame, the strength control spans 0.8% to 33% of the frame marked as
+    edges.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Out_of_space"><a class="permalink" href="#Out_of_space">Out
+  of space</a></h2>
+<p class="Pp">When every tier is full, capture stops and a full-window notice
+    says so, lists what each tier has left, and gives the ways to free space. It
+    cannot be dismissed until there is actually room &#x2013; a status-bar line
+    is the wrong place for &#x201C;frames are being lost right now&#x201D;.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Rapid_"><a class="permalink" href="#Rapid_">Rapid &#x2013;
+  fastest single photos</a></h1>
+<p class="Pp">Flat files named <span class="Li">YYYYmmddHHMMSS.jpg</span>, one
+    folder per run, no shutter subdirectories and no quality gates. Because the
+    camera shoots several frames a second and that format only has one-second
+    resolution, the first frame in any second gets the bare name and later ones
+    get <span class="Li">_001</span>, <span class="Li">_002</span> and so on
+    &#x2013; so the exact requested filename is used wherever it is actually
+    unambiguous.</p>
+<p class="Pp">Two strategies:</p>
+<ul class="Bl-bullet">
+  <li><b>continuous</b> (default) encodes as it goes on the worker threads. The
+      full-resolution buffer copy parallelises across them, which is why it is
+      the faster option nearly everywhere. Runs indefinitely.
+    <p class="Pp"></p>
+  </li>
+  <li><b>ram</b> buffers frames in memory and encodes nothing until the burst
+      ends. Measured <i>slower</i> (16.3 vs 21.0 fps binned) because the copy
+      then runs serially on the capture loop. Kept only for when zero disk I/O
+      during the burst matters more than rate. Capacity is shown live from free
+      RAM.</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Encode_"><a class="permalink" href="#Encode_">Encode &#x2013;
+  photos to video (in the Library face)</a></h1>
+<p class="Pp">Takes any folder of images: a rapid run, a timelapse, a
+    <span class="Li">sess-*</span> folder, or one of the old
+    <span class="Li">runCam.sh</span>
+    <span class="Li">s191</span>/<span class="Li">sauto</span> directories
+    &#x2013; those are offered in the dropdown automatically, and Browse takes
+    anything else.</p>
+<p class="Pp">It reports how many images were found and how long the result will
+    be before you commit. Where an <span class="Li">index.jsonl</span> exists
+    you can restrict to frames that passed the quality gates; plain folders just
+    use filename order, which the timestamp-first naming makes chronological.
+    Progress comes from ffmpeg itself, and encodes can be cancelled.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Focus"><a class="permalink" href="#Focus">Focus</a></h1>
+<p class="Pp">The lens is manual with no feedback, so <b>Scene &gt; Focus
+    aids</b> collects the aids that make that workable. Opening the section
+    switches the focus map and readout on automatically, and turns them off when
+    you leave (they cost a Laplacian pass per frame).</p>
+<ul class="Bl-bullet">
+  <li><b>Focus map</b> shades every area of the frame by how much detail the
+      lens is actually resolving there, and rings the sharpest. This is the one
+      that answers &#x201C;which part of this is in focus&#x201D; &#x2013;
+      peaking alone lights up a sharp branch and noisy sky identically.
+    <p class="Pp"></p>
+  </li>
+  <li><b>Sharpness readout</b> overlays a large number with a peak-hold bar on
+      the preview, so you can watch it while turning the ring rather than
+      looking away.
+    <p class="Pp"></p>
+  </li>
+  <li><b>Focus peaking</b> and <b>clipping zebras</b> as before.</li>
+</ul>
+<section class="Ss">
+<h2 class="Ss" id="Calibrating_the_blur_gate"><a class="permalink" href="#Calibrating_the_blur_gate">Calibrating
+  the blur gate</a></h2>
+<p class="Pp">What counts as &#x201C;sharp&#x201D; depends on the lens, the
+    aperture and the subject, so the blur gate is referenced to a frame
+    <i>you</i> call focused: focus carefully, then press <b>Use current view as
+    the sharp reference</b> in Scene &gt; Focus aids (the Library can also
+    anchor it from any indexed frame). The gate is set to half that reading.
+    Until you do, it sits at a floor low enough to reject nothing, which is the
+    safe default &#x2013; a mis-set blur gate that silently discards frames is
+    much worse than one that passes everything.</p>
+<div class="Bd-indent">
+<p class="Pp">The sharpness measure normalises by the <i>focus region&#x2019;s
+    own</i> contrast, not the whole frame&#x2019;s. That distinction matters
+    here: metering deliberately spans bright sky to shadowed treeline, so
+    frame-wide dynamic range is near the full 0-255 while the patch being
+    measured may be flat.</p>
+</div>
+<p class="Pp"><b>Open focus monitor</b> gives you a frameless always-on-top
+    window showing:</p>
+<ul class="Bl-bullet">
+  <li>a <b>1:1 crop of native sensor pixels</b> (100/200/400% zoom) &#x2013; not
+      the preview downscale
+    <p class="Pp"></p>
+  </li>
+  <li><b>focus peaking</b> overlay
+    <p class="Pp"></p>
+  </li>
+  <li>a numeric focus score with a <b>peak-hold</b> marker: turn the ring until
+      the number stops climbing; the yellow marker remembers your best so you
+      can tell when you have gone past it</li>
+</ul>
+<p class="Pp">Full-frame copies are only taken while that window is open.</p>
+<p class="Pp">The main preview additionally offers clipping <b>zebras</b>
+    (magenta) and the metering zone boundary.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Wallpaper_monitor"><a class="permalink" href="#Wallpaper_monitor">Wallpaper
+  monitor</a></h2>
+<p class="Pp">If you want the desktop background to track the camera the way the
+    old script did:</p>
+<p class="Pp"></p>
+<pre>birdshot-wallpaper            # follows latest.jpg, updates every 2 s
+</pre>
+<p class="Pp">The old <span class="Li">pcmanfm --set-wallpaper latest.png</span>
+    mostly did not refresh because pcmanfm caches the wallpaper by path &#x2013;
+    setting the same path twice is a no-op even when the file changed. This
+    alternates between two filenames to defeat that. It shows the 320x240
+    preview though, so it is fine for &#x201C;is the camera still pointed at the
+    tree&#x201D; and useless for focus. Use the focus monitor for focus.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Launchers_and_unattended_operation"><a class="permalink" href="#Launchers_and_unattended_operation">Launchers
+  and unattended operation</a></h1>
+<pre>./prototype/sync.sh install-launchers      # desktop icons + Pi menu entries
+./prototype/sync.sh install-autostart      # launch maximized at every login
+./prototype/sync.sh remove-autostart
+./prototype/sync.sh autowrite status       # is a marked stick present?
+</pre>
+<p class="Pp"><span class="Li">install-launchers</span> puts three icons on the
+    Pi&#x2019;s desktop and two entries under Graphics in the menu:</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td><b>Icon</b></td>
+    <td><b>Launches</b></td>
+  </tr>
+  <tr>
+    <td><b>birdshot</b></td>
+    <td>normally, maximized</td>
+  </tr>
+  <tr>
+    <td><b>birdshot (AUTO)</b></td>
+    <td><span class="Li">--auto</span> &#x2013; honours an
+      <span class="Li">autowrite.yes</span> stick and starts shooting</td>
+  </tr>
+  <tr>
+    <td><b>birdshot (Focus)</b></td>
+    <td>straight to the focus aids (<span class="Li">--tab focus</span>), for
+      setting the lens</td>
+  </tr>
+</table>
+<p class="Pp">They are marked executable and trusted, so PCManFM will not ask
+    &#x201C;this file is not executable&#x201D; on every launch.</p>
+<p class="Pp">The Pi already logs in automatically, so the autostart entry
+    brings birdshot up maximized with no interaction.</p>
+<section class="Ss">
+<h2 class="Ss" id="autowrite.yes"><a class="permalink" href="#autowrite.yes">autowrite.yes</a></h2>
+<p class="Pp">Put a file called <span class="Li">autowrite.yes</span> in the
+    root of a USB stick. On the next launch birdshot finds it, points capture at
+    that stick, starts shooting immediately and copies frames across on a timer.
+    Pull the stick out and it starts normally again. An amber banner across the
+    top of the window says what it decided, so an unattended configuration is
+    never invisible.</p>
+<p class="Pp">The file may be empty (defaults apply) or carry
+    <span class="Li">key=value</span> lines:</p>
+<p class="Pp"></p>
+<pre>mode=continuous        continuous | ram
+res=1                  0 = 4056x3040, 1 = 2028x1520, 2 = 1332x990
+count=0                frame limit, 0 = until stopped
+start=yes              begin capturing on launch
+interval=30            seconds between incremental copies
+delete_after_copy=no   free the eMMC once a copy is verified
+quality=92             JPEG quality
+</pre>
+<p class="Pp">Unknown keys and malformed lines are reported in the log rather
+    than silently ignored &#x2013; a typo in an unattended config is otherwise
+    invisible until you check the card and find it empty.</p>
+<p class="Pp"></p>
+<pre>./prototype/sync.sh autowrite enable /media/pi/ARCHIVE res=1 interval=15
+./prototype/sync.sh autowrite disable /media/pi/ARCHIVE
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Shutdown"><a class="permalink" href="#Shutdown">Shutdown</a></h2>
+<p class="Pp">Unattended runs get killed rather than closed &#x2013; a
+    power-down, a reboot, a <span class="Li">pkill</span>. SIGTERM/SIGINT/SIGHUP
+    are caught and routed through the normal shutdown, which stops capture,
+    drains any pending encodes, closes the session and waits for the final copy
+    to USB to finish. Without that the last stretch of a session would be
+  lost.</p>
+<div class="Bd-indent">
+<p class="Pp"><b>Watch the throughput.</b> The stick sustains about 12 MB/s.
+    Rapid capture at 2028x1520 produces roughly 10 MB/s, so continuous copying
+    only just keeps up and cannot catch up once behind. The status bar shows how
+    many frames the stick is behind and turns amber past 200. For long
+    unattended runs either drop to a smaller resolution, raise the interval, or
+    accept that the copy completes at shutdown rather than during the run.</p>
+</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Cascade_"><a class="permalink" href="#Cascade_">Cascade
+  &#x2013; group capture that clears itself</a></h1>
+<p class="Pp">Frames are written into <b>groups</b> (numbered directories
+    holding a bounded number of frames). When a group is full it is
+    <i>sealed</i>, and background workers copy it down a chain of tiers, verify
+    it, then free the source:</p>
+<p class="Pp"></p>
+<pre>tmpfs 1.9 GB, 459 MB/s  -&gt;  eMMC 16 GB, 60 MB/s  -&gt;  USB 55 GB, 12 MB/s
+</pre>
+<p class="Pp">Every tier clears itself once its contents are safely one level
+    down, so <b>capture</b> <b>runs for as long as the bottom tier has room, not
+    the top one</b>. Videos and assembled movies cascade too &#x2013; they are
+    wrapped as single-item groups once complete, so every output takes the same
+    path down.</p>
+<p class="Pp">The RAM tier is optional: switched off, the chain becomes eMMC
+    -&gt; USB and behaves identically, just without the top buffer. A slider
+    sets how much of RAM the tmpfs tier may use (20-80%), applied by remounting
+    it.</p>
+<div class="Bd-indent">
+<p class="Pp">The practical ceiling is about 70%, not 100%. CMA &#x2013; the
+    camera&#x2019;s contiguous DMA pool &#x2013; is carved from the same
+    MemTotal, and a tmpfs large enough to crowd it makes the camera fail to
+    allocate buffers. The slider shows the safe headroom live and warns past it
+    rather than silently letting you reproduce that crash. Capture never waits
+    on migration &#x2013; the only coupling is sealing a group.</p>
+</div>
+<p class="Pp">Measured: 400 frames at 2028x1520, captured at full rate while
+    migrating underneath, all 400 arriving in the archive with every file size
+    verified and both upper tiers left empty.</p>
+<section class="Ss">
+<h2 class="Ss" id="What_it_does_and_does_not_buy_you"><a class="permalink" href="#What_it_does_and_does_not_buy_you">What
+  it does and does not buy you</a></h2>
+<ul class="Bl-bullet">
+  <li>It does <b>not</b> make capture faster. The eMMC already writes at 60 MB/s
+      against a peak capture demand of ~12 MB/s.
+    <p class="Pp"></p>
+  </li>
+  <li>It does <b>not</b> raise the sustained rate above the slowest tier. The
+      upper tiers absorb bursts; over a long run the cascade shifts data only as
+      fast as the bottom tier accepts it. The section (Machine &gt; Cascade)
+      predicts the run length from your settings and says what the limit is.
+    <p class="Pp"></p>
+  </li>
+  <li>It <b>does</b> let a run outlive any single tier, and it keeps every tier
+      from filling up without you watching it.</li>
+</ul>
+<p class="Pp">For an unbounded run put the Mac at the bottom &#x2013; gigabit is
+    110 MB/s, far above what capture produces:</p>
+<p class="Pp"></p>
+<pre>birdshot-cli cascade --tiers /dev/shm/birdshot,/home/pi/birdshot-data/cascade,user@mac:/Volumes/Birds
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Safety,_because_this_deletes_data"><a class="permalink" href="#Safety,_because_this_deletes_data">Safety,
+  because this deletes data</a></h2>
+<ul class="Bl-bullet">
+  <li>A group is removed from a tier only after it has been copied to the next
+      tier <b>and verified</b> &#x2013; every file present, every size
+      identical. A truncated copy fails verification and nothing is deleted
+      (there is a selftest for exactly this).
+    <p class="Pp"></p>
+  </li>
+  <li>The bottom tier never deletes anything unless <b>ring mode</b> is switched
+      on. Ring mode drops the oldest groups to keep shooting forever; it is the
+      only place birdshot deletes data that exists nowhere else, so it is off by
+      default and labelled as such in the section.
+    <p class="Pp"></p>
+  </li>
+  <li>Sealing is atomic and writer-counted: encoder threads writing into a group
+      hold a reference, and sealing waits for them. Without that a frame could
+      land in a group whose manifest was already written, leaving it unlisted
+      and unverified.
+    <p class="Pp"></p>
+  </li>
+  <li><span class="Li">index.jsonl</span> and
+      <span class="Li">session.json</span> migrate with the groups. Otherwise
+      the metrics index would be stranded on tmpfs and lost at reboot while the
+      frames it describes sat safely on the stick.
+    <p class="Pp"></p>
+  </li>
+  <li>When the top tier fills, capture applies <b>backpressure</b> &#x2013; it
+      pauses for the migrator rather than aborting the run. It only stops when
+      there is genuinely nowhere left for data to go.
+    <p class="Pp"></p>
+  </li>
+  <li>Everything is resumable: groups are self-describing, so a restart picks up
+      whatever was mid-cascade.</li>
+</ul>
+<p class="Pp"></p>
+<pre>birdshot-cli cascade -n 500 -g 200               # 200 frames per group
+birdshot-cli cascade --tiers /dev/shm/birdshot,/home/pi/birdshot-data/cascade --ring
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXIF"><a class="permalink" href="#EXIF">EXIF</a></h1>
+<p class="Pp">Frames are tagged as a <b>preprocessing step</b> before movie
+    assembly, never at capture time &#x2013; rapid capture runs at up to 35 fps
+    and everything needed is already in <span class="Li">index.jsonl</span>, so
+    there is no reason to spend the capture loop&#x2019;s budget on it.</p>
+<p class="Pp"><span class="Li">exiftool</span> is not installed on this Pi and
+    would be the wrong tool anyway: it costs a process spawn per file (~50-100
+    ms), which over a few thousand frames is minutes. <b>piexif</b> is present
+    and injects the APP1 segment straight into the JPEG byte stream &#x2013; no
+    re-encode, so no quality loss. Measured 30 frames in 0.7 s, writing to the
+    NTFS USB stick.</p>
+<p class="Pp">Tick <i>&#x201C;Write EXIF into the source frames
+    first&#x201D;</i> in the Library face&#x2019;s encode panel, or:</p>
+<p class="Pp"></p>
+<pre>birdshot-cli exif rapid-2026073113580718            # tag in place
+birdshot-cli assemble rapid-2026073113580718 --exif # tag, then encode
+</pre>
+<p class="Pp">What gets written:</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td><b>Field</b></td>
+    <td><b>From</b></td>
+  </tr>
+  <tr>
+    <td><span class="Li">DateTimeOriginal</span> +
+      <span class="Li">SubSecTimeOriginal</span></td>
+    <td>the capture instant, to the centisecond</td>
+  </tr>
+  <tr>
+    <td><span class="Li">ExposureTime</span>,
+      <span class="Li">ShutterSpeedValue</span></td>
+    <td>measured shutter</td>
+  </tr>
+  <tr>
+    <td><span class="Li">ISOSpeedRatings</span></td>
+    <td>analogue gain x 100</td>
+  </tr>
+  <tr>
+    <td><span class="Li">Make</span> / <span class="Li">Model</span> /
+      <span class="Li">Software</span></td>
+    <td>Raspberry Pi / IMX477 HQ Camera / birdshot</td>
+  </tr>
+  <tr>
+    <td><span class="Li">FNumber</span>, <span class="Li">FocalLength</span>,
+      <span class="Li">LensModel</span></td>
+    <td>settings &#x2013; the manual C-mount reports nothing</td>
+  </tr>
+  <tr>
+    <td><span class="Li">UserComment</span></td>
+    <td>birdshot&#x2019;s own scoring: verdict, meter, p50/p95, clipping,
+      sharpness, contrast tiles</td>
+  </tr>
+</table>
+<p class="Pp">The sub-second field is why the centisecond filenames matter:
+    <span class="Li">2026073113580741.jpg</span> becomes
+    <span class="Li">13:58:07</span> + subsec <span class="Li">41</span>, so the
+    precision survives into the metadata instead of being rounded away. A
+    selftest asserts the EXIF stamp and the filename agree to the
+  centisecond.</p>
+<p class="Pp">Tagging is idempotent and atomic (written to a sibling, then
+    renamed), so it is safe to re-run and safe to interrupt.</p>
+<div class="Bd-indent">
+<p class="Pp">With the cascade on, frames have usually migrated to the archive
+    by the time you assemble. Sessions are looked up by bare name across every
+    tier, so <span class="Li">birdshot-cli exif rapid-2026073113580718</span>
+    finds it wherever it currently lives.</p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Why_the_eMMC,_and_not_a_ramdisk"><a class="permalink" href="#Why_the_eMMC,_and_not_a_ramdisk">Why
+  the eMMC, and not a ramdisk</a></h1>
+<p class="Pp">Worth stating because it is counter-intuitive: <b>a ramdisk does
+    not make capture</b> <b>faster here.</b> Measured on this board:</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td><b>Target</b></td>
+    <td><b>Write speed</b></td>
+    <td><b>Peak capture demand</b></td>
+  </tr>
+  <tr>
+    <td>tmpfs (<span class="Li">/dev/shm</span>)</td>
+    <td>459 MB/s</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>eMMC</td>
+    <td>60-78 MB/s</td>
+    <td><b>~12 MB/s</b></td>
+  </tr>
+  <tr>
+    <td>USB stick (NTFS, USB 2.0)</td>
+    <td>~12 MB/s</td>
+    <td></td>
+  </tr>
+</table>
+<p class="Pp">The eMMC is already five times faster than the fastest thing we
+    can generate, so it is nowhere near the bottleneck. The real limits are the
+    CMA pool (see below) and, for offload, the USB stick.</p>
+<p class="Pp">RAM staging is still available for two legitimate reasons &#x2013;
+    avoiding eMMC write wear, and eliminating disk jitter entirely:</p>
+<p class="Pp"></p>
+<pre>./prototype/sync.sh ramdisk on      # capture to /dev/shm/birdshot, copy out every 10 s
+./prototype/sync.sh ramdisk status
+./prototype/sync.sh ramdisk off
+</pre>
+<p class="Pp">It sets delete-after-copy, because otherwise 1.9 GB of RAM fills
+    and capture stops. That makes the offload target the constraint: over
+    gigabit to the Mac it keeps up, to the 12 MB/s USB stick it does not. And
+    nothing on a ramdisk survives a power cut.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="A_note_on_CMA"><a class="permalink" href="#A_note_on_CMA">A
+  note on CMA</a></h1>
+<p class="Pp">Camera buffers come from the kernel&#x2019;s contiguous-memory
+    pool, which is 512 MB here and is <b>not</b> ordinary RAM &#x2013; it must
+    be physically contiguous, so it runs out long before free memory suggests.
+    One 4056x3040 still configuration costs 333 MB of it.</p>
+<p class="Pp">This matters because reconfiguring the camera (a resolution
+    change, or switching to video) allocates the new buffers before the old ones
+    are freed. birdshot therefore closes and recreates the camera on every mode
+    change, which costs about a second and is only paid on an actual change.
+    Buffer counts are also scaled by frame size (4 at full resolution, 6
+    otherwise).</p>
+<p class="Pp">If you see <span class="Li">cma_alloc: alloc failed</span> in
+    <span class="Li">dmesg</span>, that is what happened. It can be raised with
+    <span class="Li">cma=</span> in <span class="Li">/boot/cmdline.txt</span>,
+    but the fix above means you should not need to.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Storage_and_offload"><a class="permalink" href="#Storage_and_offload">Storage
+  and offload</a></h1>
+<p class="Pp">Capture writes to the eMMC. Finished sessions are handed to a
+    background rsync that trickles them to the USB stick at low priority, so it
+    never steals CPU from the encode threads. Nothing is deleted from the eMMC
+    unless you enable &#x201C;Delete after a verified copy&#x201D; in Machine
+    &gt; Paths. Capture stops automatically below the free-space floor (2 GB by
+    default).</p>
+<p class="Pp">Your existing files on the stick are untouched &#x2013; offload
+    writes under <span class="Li">/media/pi/ARCHIVE/birdshot/</span>.</p>
+<p class="Pp">If you later want the stick faster, reformatting it from NTFS to
+    ext4 would roughly double it, but it is still on a USB 2.0 port and would
+    remain slower than the eMMC. Pulling to the Mac over gigabit is the faster
+    path for bulk work.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Timelapse"><a class="permalink" href="#Timelapse">Timelapse</a></h1>
+<p class="Pp">Capture at an interval (the Timelapse mode, or
+    <span class="Li">birdshot-cli timelapse</span>), then assemble at 60 fps.
+    Assembly on the Pi is libx264 on four A72 cores and is slow for 12 MP
+    frames; <span class="Li">prototype/mac/assemble.sh</span> does the same job
+    on the Mac with identical frame selection, an order of magnitude faster.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-08-31</td>
+    <td class="foot-os">birdshot</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

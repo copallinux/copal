@@ -325,6 +325,24 @@ Each ends with a review of what it produced before the next begins.
   a rustup command. And `check` accepts clang's `-Wname` flags, documented
   once as `-W<warning>`.
 
+### Phase 4, batch 3: the checkouts, and their man pages (24 Sep 2026)
+
+- **8 entries** for the programs built from `~/code`: `ytq`, `sstr`,
+  `sstr-workspace`, `ascitty`, `birdshot`, `copal-tm`, `orrery`,
+  `radbeeper`, written from each README, `--help` and playbook.
+- **Man pages from READMEs.** `tools/copal-readme-man` keeps the sections
+  about using a program and leaves out the rest (building, licence,
+  status, internals); `lowdown` does the Markdown. NAME lists the programs
+  copal-build recorded for the checkout, one page with a link under each
+  other name. On a machine, stage 7 installs lowdown and copal-build writes
+  the pages into `~/.local/share/man`; `/etc/profile.d/copal-man.sh` puts
+  that on MANPATH after the system's pages. The collector builds the same
+  pages for the site, marked "from its README".
+- **check, sharper**: `--help` read from stderr too (ssh, resize2fs,
+  orrery print usage there), and for the checkouts' terminal programs; a
+  command that links to another program takes that program's page (ninja
+  is samu(1)).
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.

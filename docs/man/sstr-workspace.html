@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sstr-workspace(1) · Copal Linux</title>
+<meta name="description" content="sstr, sstr-workspace, ytq - Static Stream: a stream stopped in a file, and let go again">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-sstr-workspace">sstr-workspace in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">staticstream's README, made a man page by copal-readme-man</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">SSTR(1)</td>
+    <td class="head-vol">Copal: the programs in ~/code</td>
+    <td class="head-rtitle">SSTR(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">sstr, sstr-workspace, ytq - Static Stream: a stream stopped in a
+    file, and let go again</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Light can be slowed until it seems to stand still, and released.
+    What the experiments keep is the pulse&#x2019;s state, written into matter
+    and read back out as light. A static stream does that with bytes. A stream
+    is written into a <span class="Li">.sstr</span> file with its order, its
+    pace and its tolerance for damage intact, and later let go again as a
+    stream:</p>
+<ul class="Bl-bullet">
+  <li>into a new file;
+    <p class="Pp"></p>
+  </li>
+  <li>to a player at the pace it was recorded;
+    <p class="Pp"></p>
+  </li>
+  <li>to VLC or mpv as clients, while it is still being recorded.</li>
+</ul>
+<p class="Pp">Every record is protected by Reed&#x2013;Solomon codes and parity,
+    about 21 % more bytes, and checkpoints are signed with your SSH key. Nothing
+    is encrypted, and nothing is decoded, so no codec is involved.</p>
+<p class="Pp">This repository is the Rust home of the format, of the
+    <span class="Li">sstr</span> command, of <b>ytq</b>, Copal&#x2019;s download
+    queue that watches the clipboard, and of
+    <span class="Li">sstr-workspace</span>, the terminal Workspace over both.
+    ytq archives what it downloads as Static Stream by default, so the two
+    belong together. ytq was a Python program in
+    <a class="Lk" href="https://github.com/vonglurt/copal">copal</a>; phase 2
+    moved every line of it here, and retired that one.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Getting_a_folder_of_captures_back_out"><a class="permalink" href="#Getting_a_folder_of_captures_back_out">Getting
+  a folder of captures back out</a></h1>
+<p class="Pp"><span class="Li">sstr export</span> is the bulk half of
+    <span class="Li">sstr play IN -o FILE</span>: a folder in, the files the
+    captures hold out.</p>
+<p class="Pp"></p>
+<pre>sstr export DIR                  every .sstr in DIR
+sstr export DIR -r               and every folder under it
+sstr export DIR -n               what it would do, writing nothing
+sstr export DIR --into ELSEWHERE write the files somewhere else
+sstr export DIR --remove         delete each capture once its file is
+<br/>
+                                 written and verified
+sstr export A.sstr B.sstr        named captures, as well as folders
+</pre>
+<p class="Pp">The name comes from the capture&#x2019;s own header &#x2014; its
+    <span class="Li">content_type</span> decides <span class="Li">.mp4</span>,
+    <span class="Li">.webm</span>, <span class="Li">.mkv</span>,
+    <span class="Li">.m4a</span>, <span class="Li">.txt</span> &#x2014; which is
+    the same answer the Workspace&#x2019;s Export key gives, because it is the
+    same function. A file already there is skipped and counted, never
+    overwritten and never quietly renamed to a <span class="Li">-1</span> name.
+    Nothing is renamed to the real name until the capture has verified: a
+    damaged capture&#x2019;s recovered bytes stay as
+    <span class="Li">NAME.part</span> with the damage counts printed under them,
+    and the exit status is 1.</p>
+<p class="Pp">In the Workspace, <b>X</b> on a folder is that command line,
+    printed into the Transcript before it runs.</p>
+<p class="Pp"><a class="Lk" href="docs/clipboard-to-share.md">docs/clipboard-to-share.md</a>
+    is the short guide to the workflow this exists for: a URL copied on the Mac,
+    through the SPICE clipboard, into ytq&#x2019;s queue, and out as a file on
+    the folder the Mac shares with the guest.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Settings"><a class="permalink" href="#Settings">Settings</a></h1>
+<p class="Pp"><span class="Li">sstr config</span> is the settings of all three
+    programs: what each one is, which file said so, and how to change it.</p>
+<p class="Pp"></p>
+<pre>sstr config                      every setting, its value, and where it came from
+sstr config get OUTPUT
+sstr config set OUTPUT mp4
+sstr config unset SSTR_KEY
+sstr config --file ytq set OUTPUT sstr     ~/.config/ytq/config instead
+</pre>
+<p class="Pp"><span class="Li">~/.config/copal/media.conf</span> is written by
+    default: it is read by <span class="Li">sstr</span>,
+    <span class="Li">ytq</span> and the Workspace alike.
+    <span class="Li">~/.config/ytq/config</span> is read <i>after</i> it, so a
+    key set in both is a key changed in the first with no effect &#x2014; and
+    <span class="Li">sstr config</span> says so, with the line that closes the
+    gap, rather than leaving you to find out.</p>
+<p class="Pp">A change is a line edit: the line that sets the key is replaced
+    where there is one and appended where there is not, and every other byte of
+    the file &#x2014; which for <span class="Li">media.conf</span> as Copal
+    installs it is three quarters explanation &#x2014; is the byte it already
+    was.</p>
+<p class="Pp">In the Workspace, <b></b><span class="Li"><b>,</b></span><b></b>
+    opens the same thing as a screen: the settings, the value in force, and
+    which file set it. Space walks a value with a short list of choices
+    (<span class="Li">OUTPUT</span>, <span class="Li">AUTOSTART</span>,
+    <span class="Li">SSTR_DEFLATE</span>), <span class="Li">e</span> types one,
+    <span class="Li">u</span> takes the line out, <span class="Li">w</span> aims
+    the next change at the other file.</p>
+<p class="Pp"><b>The screen writes no config file.</b> It builds
+    <span class="Li">sstr config set KEY VALUE</span>, says that line into the
+    Transcript, runs it, and says back what it printed &#x2014; the rule every
+    Service follows, so a change made with one key can be read out of the
+    Transcript and pasted into a setup script.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="The_Workspace"><a class="permalink" href="#The_Workspace">The
+  Workspace&#x2019;s words</a></h1>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td><b>Word</b></td>
+    <td><b>Is</b></td>
+    <td><b>From</b></td>
+  </tr>
+  <tr>
+    <td>Workspace</td>
+    <td>the whole window</td>
+    <td>NeXTSTEP&#x2019;s Workspace Manager</td>
+  </tr>
+  <tr>
+    <td>Browser</td>
+    <td>Miller columns over any folder</td>
+    <td>the File Viewer&#x2019;s Browser view</td>
+  </tr>
+  <tr>
+    <td>Shelf</td>
+    <td>items picked for later</td>
+    <td>the File Viewer&#x2019;s Shelf</td>
+  </tr>
+  <tr>
+    <td>Inspector</td>
+    <td>the selection&#x2019;s header, notes, license and verification</td>
+    <td>Tools &gt; Inspector</td>
+  </tr>
+  <tr>
+    <td>Transcript</td>
+    <td>the running log</td>
+    <td>Smalltalk-80</td>
+  </tr>
+  <tr>
+    <td>Services</td>
+    <td>verbs sent to the selection</td>
+    <td>NeXTSTEP Services</td>
+  </tr>
+</table>
+<p class="Pp">A file is an object and a verb is a message sent to it.
+    <span class="Li">sstr play cap.sstr</span> and Play picked from Services are
+    the same message.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-09-18</td>
+    <td class="foot-os">staticstream</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

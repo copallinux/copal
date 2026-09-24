@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ninja(1) · Copal Linux</title>
+<meta name="description" content="samu – ninja-compatible build tool">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-ninja">ninja in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">samurai 1.2-r8 — man1/samu.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">SAMU(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">SAMU(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><code class="Nm">samu</code> &#x2014;
+    <span class="Nd">ninja-compatible build tool</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">samu</code></td>
+    <td>[<code class="Fl">-C</code> <var class="Ar">dir</var>]
+      [<code class="Fl">-d</code> <var class="Ar">debugflag</var>]
+      [<code class="Fl">-f</code> <var class="Ar">buildfile</var>]
+      [<code class="Fl">-j</code> <var class="Ar">maxjobs</var>]
+      [<code class="Fl">-k</code> <var class="Ar">maxfail</var>]
+      [<code class="Fl">-w</code> <var class="Ar">warnflag=action</var>]
+      [<code class="Fl">-nv</code>] [<var class="Ar">target...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">samu</code></td>
+    <td>[<code class="Fl">-C</code> <var class="Ar">dir</var>]
+      [<code class="Fl">-f</code> <var class="Ar">buildfile</var>]
+      <code class="Fl">-t</code> <code class="Cm">clean</code>
+      [<code class="Fl">-gr</code>] [<var class="Ar">target...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">samu</code></td>
+    <td>[<code class="Fl">-C</code> <var class="Ar">dir</var>]
+      [<code class="Fl">-f</code> <var class="Ar">buildfile</var>]
+      <code class="Fl">-t</code> <code class="Cm">compdb</code>
+      [<code class="Fl">-x</code>] [<var class="Ar">rule...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">samu</code></td>
+    <td>[<code class="Fl">-C</code> <var class="Ar">dir</var>]
+      [<code class="Fl">-f</code> <var class="Ar">buildfile</var>]
+      <code class="Fl">-t</code> <code class="Cm">commands</code>
+      [<var class="Ar">target...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">samu</code></td>
+    <td>[<code class="Fl">-C</code> <var class="Ar">dir</var>]
+      [<code class="Fl">-f</code> <var class="Ar">buildfile</var>]
+      <code class="Fl">-t</code> <code class="Cm">query</code>
+      [<var class="Ar">target...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">samu</code></td>
+    <td>[<code class="Fl">-C</code> <var class="Ar">dir</var>]
+      [<code class="Fl">-f</code> <var class="Ar">buildfile</var>]
+      <code class="Fl">-t</code> <code class="Cm">targets</code>
+      [<code class="Cm">depth</code> [<var class="Ar">maxdepth</var>]]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">samu</code></td>
+    <td>[<code class="Fl">-C</code> <var class="Ar">dir</var>]
+      [<code class="Fl">-f</code> <var class="Ar">buildfile</var>]
+      <code class="Fl">-t</code> <code class="Cm">targets</code>
+      <code class="Cm">rule</code> [<var class="Ar">rulename</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">samu</code></td>
+    <td>[<code class="Fl">-C</code> <var class="Ar">dir</var>]
+      [<code class="Fl">-f</code> <var class="Ar">buildfile</var>]
+      <code class="Fl">-t</code> <code class="Cm">targets</code>
+      <code class="Cm">all</code></td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">samu</code></td>
+    <td><code class="Fl">-t</code> <code class="Cm">list</code></td>
+  </tr>
+</table>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><code class="Nm">samu</code> loads a build manifest from
+    <var class="Ar">buildfile</var> and rebuilds <var class="Ar">targets</var>
+    if they are out of date. If no targets are specified, the manifest's default
+    targets are built. If there are no default targets, the leaf nodes of the
+    dependency graph are built (outputs that have no consuming action).</p>
+<p class="Pp">Targets are out of date if they are older than the generating
+    action's newest input, they have no entry in the build log, or if the
+    command to build the target differs from what was used previously. Targets
+    built with <code class="Cm">generator</code> rules are not rebuilt if the
+    command changes.</p>
+<p class="Pp">If the <code class="Cm">clean</code> tool is used, the targets are
+    cleaned instead. When a target is cleaned, it is removed and are all of its
+    inputs are cleaned. Targets with no generating actions are never removed.
+    Targets built with <b class="Sy">generator</b> rules are only removed if
+    <code class="Fl">-g</code> is specified.</p>
+<p class="Pp">If the <code class="Cm">commands</code> tool is used, a list of
+    shell commands used to build the specified (or default) targets is
+  printed.</p>
+<p class="Pp">If the <code class="Cm">compdb</code> tool is used, a compilation
+    database
+    (<a class="Lk" href="https://clang.llvm.org/docs/JSONCompilationDatabase.html">https://clang.llvm.org/docs/JSONCompilationDatabase.html</a>)
+    is printed instead.</p>
+<p class="Pp">If the <code class="Cm">query</code> tool is used, the inputs and
+    outputs of the targets are printed instead.</p>
+<p class="Pp">If the <code class="Cm">targets</code> tool is used, a list of
+    targets will be displayed, either by rule or by depth. The first argument
+    determines how the targets will be displayed:</p>
+<dl class="Bl-tag">
+  <dt id="depth"><a class="permalink" href="#depth"><code class="Cm">depth</code></a></dt>
+  <dd>An indented tree of targets will be displayed, starting by the root
+      targets (those with no dependent targets), up to the depth specified by
+      <var class="Ar">maxdepth</var> (defaults to 1).</dd>
+  <dt id="rule"><a class="permalink" href="#rule"><code class="Cm">rule</code></a></dt>
+  <dd>If <var class="Ar">rulename</var> is given, a list of targets using the
+      given rule will be displayed. Otherwise, a list of source files will be
+      displayed.</dd>
+  <dt id="all"><a class="permalink" href="#all"><code class="Cm">all</code></a></dt>
+  <dd>A list of all targets will be displayed.</dd>
+</dl>
+<p class="Pp">If the <code class="Cm">list</code> tool is used, a list of
+    available tools is displayed.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<dl class="Bl-tag">
+  <dt id="C"><a class="permalink" href="#C"><code class="Fl">-C</code></a></dt>
+  <dd>Switch working directory to <var class="Ar">dir</var> before
+    building.</dd>
+  <dt id="d"><a class="permalink" href="#d"><code class="Fl">-d</code></a></dt>
+  <dd>Enable a debugging option. This flag may be specified multiple times to
+      enable multiple debugging options. Possible values for
+      <var class="Ar">debugflag</var> are:
+    <dl class="Bl-tag">
+      <dt id="explain"><a class="permalink" href="#explain"><code class="Cm">explain</code></a></dt>
+      <dd>Print messages explaining why outputs were dirty.</dd>
+      <dt id="keepdepfile"><a class="permalink" href="#keepdepfile"><code class="Cm">keepdepfile</code></a></dt>
+      <dd>Don't remove $depfile after it was parsed.</dd>
+      <dt id="keeprsp"><a class="permalink" href="#keeprsp"><code class="Cm">keeprsp</code></a></dt>
+      <dd>Don't remove $rspfile after job completion or failure.</dd>
+    </dl>
+  </dd>
+  <dt id="f"><a class="permalink" href="#f"><code class="Fl">-f</code></a></dt>
+  <dd>Load manifest from <var class="Ar">buildfile</var> instead of
+    build.ninja.</dd>
+  <dt id="j"><a class="permalink" href="#j"><code class="Fl">-j</code></a></dt>
+  <dd>Run up to <var class="Ar">maxjobs</var> jobs in parallel (default based on
+      number of CPUs). If zero, allow unlimited concurrent jobs.</dd>
+  <dt id="k"><a class="permalink" href="#k"><code class="Fl">-k</code></a></dt>
+  <dd>Allow up to <var class="Ar">maxfail</var> job failures. If negative or
+      zero, allow any number of job failures.</dd>
+  <dt id="n"><a class="permalink" href="#n"><code class="Fl">-n</code></a></dt>
+  <dd>Do not actually execute the commands or update the log.</dd>
+  <dt id="v"><a class="permalink" href="#v"><code class="Fl">-v</code></a></dt>
+  <dd>Print full commands instead of just
+      <a class="permalink" href="#description"><b class="Sy" id="description">description</b></a>.</dd>
+  <dt id="w"><a class="permalink" href="#w"><code class="Fl">-w</code></a></dt>
+  <dd>Control how certain errors are handled. If <var class="Ar">warnflag</var>
+      is <code class="Cm">dupbuild</code>, <var class="Ar">action</var>
+      specifies what to do if an output is listed in multiple build edges. If
+      <var class="Ar">action</var> is <code class="Cm">err</code>, treat it like
+      an error and fail. If <var class="Ar">action</var> is
+      <code class="Cm">warn</code>, only print a diagnostic message.</dd>
+  <dt id="t"><a class="permalink" href="#t"><code class="Fl">-t</code></a></dt>
+  <dd>Instead of building, invoke a subtool. All arguments and flags after the
+      subtool are interpreted by the subtool. The currently supported subtools
+      are <code class="Cm">clean</code>, <code class="Cm">compdb</code>, and
+      <code class="Cm">targets</code>.</dd>
+  <dt id="g"><a class="permalink" href="#g"><code class="Fl">-g</code></a></dt>
+  <dd>When cleaning, also clean outputs of <b class="Sy">generator</b>
+    actions.</dd>
+  <dt id="r"><a class="permalink" href="#r"><code class="Fl">-r</code></a></dt>
+  <dd><var class="Ar">targets</var> are interpreted as rules, and all outputs of
+      actions with the specified rule types will be cleaned instead.</dd>
+  <dt id="x"><a class="permalink" href="#x"><code class="Fl">-x</code></a></dt>
+  <dd>When printing a compilation database, replace @$rspfile with
+      $rspfile_content (with &lt;blank&gt; in place of &lt;newline&gt;).</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENVIRONMENT"><a class="permalink" href="#ENVIRONMENT">ENVIRONMENT</a></h1>
+<dl class="Bl-tag">
+  <dt id="SAMUFLAGS"><a class="permalink" href="#SAMUFLAGS"><code class="Ev">SAMUFLAGS</code></a></dt>
+  <dd>Options for <code class="Nm">samu</code> that get applied before those
+      specified on the command-line. The only options allowed in
+      <code class="Ev">SAMUFLAGS</code> are <code class="Fl">-v</code> and
+      <code class="Fl">-j</code>.</dd>
+  <dt id="NINJA_STATUS"><a class="permalink" href="#NINJA_STATUS"><code class="Ev">NINJA_STATUS</code></a></dt>
+  <dd>The status output printed to the left of each rule description, using
+      printf-like conversion specifiers. If unset, the default is &quot;[%s/%t]
+      &quot;.
+    <p class="Pp">Available conversion specifiers:</p>
+    <dl class="Bl-tag">
+      <dt id="_s"><a class="permalink" href="#_s"><code class="Cm">%s</code></a></dt>
+      <dd>Number of started jobs.</dd>
+      <dt id="_f"><a class="permalink" href="#_f"><code class="Cm">%f</code></a></dt>
+      <dd>Number of finished jobs.</dd>
+      <dt id="_t"><a class="permalink" href="#_t"><code class="Cm">%t</code></a></dt>
+      <dd>Total number of jobs.</dd>
+      <dt id="_r"><a class="permalink" href="#_r"><code class="Cm">%r</code></a></dt>
+      <dd>Number of running jobs.</dd>
+      <dt id="_u"><a class="permalink" href="#_u"><code class="Cm">%u</code></a></dt>
+      <dd>Number of remaining jobs.</dd>
+      <dt id="_p"><a class="permalink" href="#_p"><code class="Cm">%p</code></a></dt>
+      <dd>Percentage of completed jobs.</dd>
+      <dt id="_o"><a class="permalink" href="#_o"><code class="Cm">%o</code></a></dt>
+      <dd>Rate of finished jobs per second (to 1 decimal place).</dd>
+      <dt id="_e"><a class="permalink" href="#_e"><code class="Cm">%e</code></a></dt>
+      <dd>Elapsed time in seconds (to 3 decimal places).</dd>
+      <dt id="__"><a class="permalink" href="#__"><code class="Cm">%%</code></a></dt>
+      <dd>The '%' character.</dd>
+    </dl>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><a class="Xr" href="make.html">make(1)</a></p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">October 24, 2020</td>
+    <td class="foot-os">Alpine 3.24.1</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

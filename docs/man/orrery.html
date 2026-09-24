@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>orrery(1) · Copal Linux</title>
+<meta name="description" content="orrery - The Copal fleet’s console — the wall, the seat, the museum interface, and the verbs that act on a room full of machines">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-orrery">orrery in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">orrery's README, made a man page by copal-readme-man</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ORRERY(1)</td>
+    <td class="head-vol">Copal: the programs in ~/code</td>
+    <td class="head-rtitle">ORRERY(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">orrery - The Copal fleet&#x2019;s console &#x2014; the wall, the
+    seat, the museum interface, and the verbs that act on a room full of
+    machines</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">An orrery is a clockwork model that shows many bodies at once and
+    lets you turn a handle to see where they will be. That is the wall. The rest
+    of this program grew out of wanting to reach through it.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="What_it_is"><a class="permalink" href="#What_it_is">What it
+  is</a></h1>
+<p class="Pp">&#x00A7;12 of
+    <span class="Li">copal-alpine-linux/docs/fleet-plan.md</span> names three
+    faces on one read model. This repository is two of them and then some:</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><b>the wall</b></td>
+    <td><span class="Li">orrery --listen</span></td>
+    <td>the web console: a page the gallery screen and a phone can open</td>
+  </tr>
+  <tr>
+    <td><b>the seat</b></td>
+    <td><span class="Li">orrery --seat ID</span></td>
+    <td>one node, full screen, in the terminal you are already in</td>
+  </tr>
+  <tr>
+    <td><b>the museum interface</b></td>
+    <td><span class="Li">orrery --gui</span></td>
+    <td>a native window: a room of machines, a row of verbs, and the panes they
+      open</td>
+  </tr>
+</table>
+<p class="Pp">All three render the same read model, and that model is
+    <span class="Li">copal fleet state</span> and nothing else.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="The_rule_it_inherits"><a class="permalink" href="#The_rule_it_inherits">The
+  rule it inherits</a></h1>
+<p class="Pp"><span class="Li">copal-fleet-console.py</span>&#x2019;s acceptance
+    test was architectural: it opens no socket, holds no credential, knows no
+    subject names, and every screen is a rendering of a command a person could
+    have typed.</p>
+<p class="Pp"><b>Two of those four are no longer true, and the change was
+    deliberate.</b> The seat opens a socket to one node&#x2019;s screen; the
+    museum interface opens SSH, SFTP and RDP with the operator&#x2019;s own
+    certificate. What is intact is the part that mattered: <b>how the console
+    learns things.</b> Every node id, address and fact comes out of
+    <span class="Li">copal fleet state</span>; a node that is not in that
+    document cannot be dialled, and there is no second way of knowing anything.
+    A console that discovered nodes for itself would be a second fleet.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Two_postures"><a class="permalink" href="#Two_postures">Two
+  postures</a></h1>
+<p class="Pp">Read-mostly is a default, not a ceiling. A gallery screen and a
+    phone on a lanyard are two audiences with different rights.</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><b>gallery</b></td>
+    <td>default</td>
+    <td>State, thumbnails. No verb that changes anything.</td>
+  </tr>
+  <tr>
+    <td><b>operator</b></td>
+    <td><span class="Li">--operator TOKEN</span></td>
+    <td>The write verbs as well.</td>
+  </tr>
+</table>
+<p class="Pp">Without a token the write route <b>does not exist</b> rather than
+    answering 403 &#x2014; a route that says &#x201C;forbidden&#x201D; tells a
+    scanner it is there. In the native window the same rule takes a different
+    shape: the gallery posture&#x2019;s dispatch table is empty, so a keystroke
+    that would have been a verb finds nothing to call.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="The_museum_interface"><a class="permalink" href="#The_museum_interface">The
+  museum interface</a></h1>
+<pre>./target/release/orrery --gui --demo --operator x
+</pre>
+<p class="Pp">A room of machines. Click tiles, or click a scene or a tag in the
+    rail to select everything running it. The bar under the lab shows the verbs
+    that can apply to <i>that</i> selection, and the footer says how many are
+    not built.</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td><b>verb</b></td>
+    <td></td>
+    <td><b>what it opens</b></td>
+  </tr>
+  <tr>
+    <td><b>Control</b> <span class="Li">c</span></td>
+    <td>one node</td>
+    <td>the node&#x2019;s desktop, over RDP with mutual TLS</td>
+  </tr>
+  <tr>
+    <td><b>Terminal</b> <span class="Li">t</span></td>
+    <td>one node</td>
+    <td>a shell, in a pane, with no password asked</td>
+  </tr>
+  <tr>
+    <td><b>Exchange</b> <span class="Li">e</span></td>
+    <td>one node</td>
+    <td>a two-pane file browser over SFTP</td>
+  </tr>
+  <tr>
+    <td><b>Send</b> <span class="Li">s</span></td>
+    <td>many</td>
+    <td>one file to every selected node, with a per-node result</td>
+  </tr>
+  <tr>
+    <td><b>Message</b> <span class="Li">m</span></td>
+    <td>many</td>
+    <td>a banner on every selected screen</td>
+  </tr>
+  <tr>
+    <td><b>Run</b> <span class="Li">r</span> &#x00B7; <b>Scene</b>
+      <span class="Li">S</span></td>
+    <td>many</td>
+    <td>the CLI&#x2019;s own verbs, per node</td>
+  </tr>
+  <tr>
+    <td><b>Snapshot</b> <span class="Li">k</span> &#x00B7; <b>Power</b>
+      <span class="Li">p</span></td>
+    <td>many</td>
+    <td>as above, and <span class="Li">power on</span> is the supply rather than
+      ssh</td>
+  </tr>
+  <tr>
+    <td><b>Observe</b> <span class="Li">o</span></td>
+    <td>&#x2014;</td>
+    <td><b>refused</b>, and &#x00A7;5 of <span class="Li">docs/console.md</span>
+      says why</td>
+  </tr>
+</table>
+<p class="Pp">A verb with no transport is <b>absent rather than greyed</b>: the
+    status line says how many, and the bar never draws a button that cannot
+    work. There is one pane at a time and never a window inside the window.</p>
+<p class="Pp"><span class="Li">Cmd-1</span> and <span class="Li">Cmd-2</span>
+    switch between the Lab and <b>Media</b>, which is the SD-card ledger: which
+    card carries which token, which have been written, and a pane that runs
+    <span class="Li">copal-prep.sh</span> on a real terminal so that its two
+    typed <span class="Li">ERASE</span> confirmations happen where they always
+    did. Nothing is answered on the operator&#x2019;s behalf and there is no
+    <span class="Li">--yes</span>.</p>
+<p class="Pp"><span class="Li">--frame PATH</span> renders any of it to a PPM
+    and exits &#x2014; no compositor, no window, no node. Every screenshot in
+    <span class="Li">docs/</span> is a file this produced.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="The_wire"><a class="permalink" href="#The_wire">The
+  wire</a></h1>
+<p class="Pp">Five protocols, written by hand, each proved against somebody
+    else&#x2019;s implementation rather than against a fake of its own
+    assumptions.</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td></td>
+    <td></td>
+    <td><b>proved against</b></td>
+  </tr>
+  <tr>
+    <td><span class="Li">src/crypto.rs</span></td>
+    <td>the primitives</td>
+    <td>published test vectors &#x2014; RFC 7748, 8032, 8439, FIPS 180-4 and
+      197, the NIST GCM cases</td>
+  </tr>
+  <tr>
+    <td><span class="Li">src/ssh.rs</span></td>
+    <td>SSH-2, certificates only</td>
+    <td><b>a real </b><span class="Li"><b>sshd</b></span><b></b> in a container,
+      plus a hand-written server for the lies a real one will not tell</td>
+  </tr>
+  <tr>
+    <td><span class="Li">src/sftp.rs</span></td>
+    <td>SFTP v3, pipelined</td>
+    <td><b>OpenSSH&#x2019;s own
+      </b><span class="Li"><b>sftp-server</b></span><b></b> over a pipe &#x2014;
+      no fake at all</td>
+  </tr>
+  <tr>
+    <td><span class="Li">src/tls.rs</span> +
+      <span class="Li">src/x509.rs</span></td>
+    <td>TLS 1.3, one suite</td>
+    <td><b></b><span class="Li"><b>openssl s_server</b></span><b></b>, including
+      mutual TLS and an AES-only server being refused</td>
+  </tr>
+  <tr>
+    <td><span class="Li">src/rdp.rs</span></td>
+    <td>RDP over TLS</td>
+    <td><b>xrdp</b> &#x2014; 1024&#x00D7;768, 137 rectangles, all of them RLE
+      compressed</td>
+  </tr>
+</table>
+<p class="Pp"><span class="Li">src/profile.rs</span> is the whitelist: one key
+    exchange, one host-key algorithm, one signature algorithm, one cipher
+    offered. A test fails the build if <span class="Li">sha1</span>,
+    <span class="Li">cbc</span>, <span class="Li">rc4</span>,
+    <span class="Li">ssh-rsa</span> or <span class="Li">ecdsa</span> ever
+    appears on a list, and <span class="Li">orrery --profile-sshd</span> prints
+    the same list as <span class="Li">sshd_config</span> lines &#x2014; which
+    <span class="Li">copal-prep.sh</span> writes into the node and
+    <span class="Li">make lint</span> checks for drift. <b>A whitelist that
+    exists in a Rust file and again in a shell heredoc is two</b>
+    <b>whitelists.</b></p>
+<p class="Pp">The host key must be a certificate signed by the fleet CA, naming
+    that node, valid now, with the far end proving it holds the key. There is no
+    trust-on-first-use, no prompt, and no bare-key branch to fall back to.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="The_seat"><a class="permalink" href="#The_seat">The
+  seat</a></h1>
+<p class="Pp">The wall is eight nodes at a glance. The seat is one node, full
+    screen, in the terminal you are already in.</p>
+<p class="Pp"></p>
+<pre>./target/release/orrery --seat museum-01
+</pre>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><b>Observe</b></td>
+    <td><span class="Li">o</span></td>
+    <td>the node&#x2019;s screen, read-only</td>
+  </tr>
+  <tr>
+    <td><b>Control</b></td>
+    <td><span class="Li">c</span></td>
+    <td>keyboard and pointer as well; <span class="Li">Ctrl-]</span> lets
+      go</td>
+  </tr>
+  <tr>
+    <td><b>Exchange</b></td>
+    <td><span class="Li">e</span></td>
+    <td>not built here &#x2014; the native window has it</td>
+  </tr>
+  <tr>
+    <td><b>Terminal</b></td>
+    <td><span class="Li">t</span></td>
+    <td>not built here &#x2014; the native window has it</td>
+  </tr>
+</table>
+<p class="Pp">It renders with half-blocks (<span class="Li">U+2580</span> and
+    24-bit colour) anywhere, and with sixel where the terminal has it.
+    <span class="Li">--fps</span> asks the node for a frame rate; the default is
+    6, because &#x00A7;III-B&#x2019;s finding is that frame rate is the
+    expensive axis.</p>
+<p class="Pp">The seat speaks RFB security type <span class="Li">none</span>
+    only &#x2014; VNC&#x2019;s own authentication is 56-bit DES and an
+    eight-character password, which is not security &#x2014; and asks for Raw
+    and CopyRect only, because every compressed encoding wants zlib.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="The_native_window,_underneath"><a class="permalink" href="#The_native_window,_underneath">The
+  native window, underneath</a></h1>
+<p class="Pp"><span class="Li">--gui</span> is a Wayland client on a node and an
+    AppKit window on a Mac, behind one <span class="Li">Surface</span> trait.
+    <b>The drawing is all software and there is no renderer</b> <b>underneath
+    it</b>: a shared-memory surface is a flat array of pixels, so
+    <span class="Li">draw.rs</span> writes them. On a Zero 2 that is the right
+    trade twice &#x2014; a wall of flat rectangles and small text costs almost
+    nothing to rasterise, and the EGL stack it avoids is both a dependency and a
+    thing that fails differently on every board.</p>
+<p class="Pp"><b>The letters are baked in.</b>
+    <span class="Li">src/font.rs</span> carries two faces of the X.Org
+    <i>misc-fixed</i> font, generated from the PCF by
+    <span class="Li">tools/mkfont.py</span> and committed, because
+    <span class="Li">copal-build</span> on a node must not need Python or a font
+    package. Past Latin-1 exactly seven characters are baked, each one the
+    console actually prints &#x2014; and a test fails the build if the interface
+    reaches for an eighth.</p>
+<p class="Pp"><b>The session word decides the protocol, and that used to be
+    unresolved.</b> <span class="Li">/etc/copal/session</span> holds one word:
+    <span class="Li">x11</span> means x11vnc and RFB,
+    <span class="Li">wayland</span> means an RDP server and
+    <span class="Li">rdp.rs</span>. Neither is a fallback for the other. The
+    console reads the node&#x2019;s own <span class="Li">remote</span> reading
+    rather than probing a port &#x2014; <span class="Li">off</span>,
+    <span class="Li">not installed</span>, <span class="Li">vnc:5900</span> and
+    <span class="Li">rdp:3389</span> are four different sentences.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Running_it"><a class="permalink" href="#Running_it">Running
+  it</a></h1>
+<pre>cargo build --release
+# the lab report's museum, from a fixture -- no fleet required
+./target/release/orrery --demo                       # the wall, on a port
+./target/release/orrery --gui --demo --operator x    # the museum interface
+# against a fleet
+./target/release/orrery --listen 0.0.0.0:8080
+./target/release/orrery --gui --operator x --copal ~/code/copal-alpine-linux
+./target/release/orrery --seat museum-01
+# the node's sshd policy, rendered from src/profile.rs
+./target/release/orrery --profile-sshd
+cargo test
+</pre>
+<p class="Pp">The suites that need somebody else&#x2019;s server run in
+    containers, one script each, and they step aside when what they need is
+    absent:</p>
+<p class="Pp"></p>
+<pre>docker run --rm --platform linux/arm64 -v &quot;$PWD&quot;:/w -w /w \
+<br/>
+    -e CARGO_TARGET_DIR=/tmp/t rust:alpine sh /w/tools/wl-check.sh   # weston
+#                                             ... /w/tools/ssh-check.sh  # sshd
+#                                             ... /w/tools/tls-check.sh  # openssl
+#                                             ... /w/tools/rdp-check.sh  # xrdp
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="What_it_does_not_do,_deliberately"><a class="permalink" href="#What_it_does_not_do,_deliberately">What
+  it does not do, deliberately</a></h1>
+<ul class="Bl-bullet">
+  <li><b>The wall does not proxy VNC.</b> &#x00A7;III-B priced eight VNC
+      sessions on 512 MB boards that are also computing and refused them. The
+      page hands the browser the node&#x2019;s own server; a console that
+      tunnelled pixel traffic would put itself in the exhibit&#x2019;s frame
+      budget.
+    <p class="Pp"></p>
+  </li>
+  <li><b>It does not cache state.</b> <span class="Li">copal fleet state</span>
+      is the answer, and a cache is a second place the fleet&#x2019;s state
+      lives and a thing that goes stale.
+    <p class="Pp"></p>
+  </li>
+  <li><b>It does not offer Control on a selection.</b> Broadcasting keystrokes
+      to eight machines produces divergent state nobody can see; the operation
+      actually wanted is Scene or Run, which are declarative and report per
+      node.
+    <p class="Pp"></p>
+  </li>
+  <li><b>It never mints a credential.</b> The fleet CA signs; this console
+      distributes and verifies. A program holding both would be a program worth
+      stealing.
+    <p class="Pp"></p>
+  </li>
+  <li><b>It does not decode H.264.</b> A video codec has no small correct subset
+      and <span class="Li">libavcodec</span> is not on an Alpine node, so RDP
+      negotiates plain bitmaps with RLE. <span class="Li">docs/wire.md</span>
+      &#x00A7;6 has the arithmetic.</li>
+</ul>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-09-11</td>
+    <td class="foot-os">orrery</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

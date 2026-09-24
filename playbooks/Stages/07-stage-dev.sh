@@ -28,6 +28,8 @@ MSG
     say "C toolchain and debugger"
     apk add build-base gdb
     add_optional git ctags pkgconf
+    # Markdown to man(1): copal-build's pages for the checkouts, from their READMEs.
+    add_optional lowdown
 
     # --- editors -----------------------------------------------------------
     say "Editors"

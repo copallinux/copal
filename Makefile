@@ -869,6 +869,15 @@ sync-store:
 	@printf '  ok      tools/copal-store -> playbooks/Stages/18-stage-store.sh -> $(PREP)\n'
 	@$(MAKE) --no-print-directory lint
 
+## sync-readme-man: copy tools/copal-readme-man into install_copal_build's heredoc.
+sync-readme-man:
+	@python3 -c 'import sys;\
+	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
+	m="    cat > /usr/local/bin/copal-readme-man <<\x27COPALREADMEMAN\x27\n";\
+	i=s.index(m)+len(m);j=s.index("COPALREADMEMAN\n",i);\
+	open(p,"w").write(s[:i]+prog.rstrip("\n")+"\n"+s[j:])' $(PREP) tools/copal-readme-man
+	@printf '  ok      tools/copal-readme-man -> $(PREP)\n'
+
 ## sync-gui: copy tools/copal-gui (the Mint-style menu) into stage 4's heredoc, in its playbook.
 ## sync-apps: copy tools/copal-apps into stage 18's heredoc, in its playbook.
 sync-apps:

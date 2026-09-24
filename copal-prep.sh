@@ -3755,6 +3755,18 @@ install_manuals() {
     add_optional $_mk
     # apropos and whatis read mandoc's database.
     makewhatis_locked
+    # copal-build writes a page for each checkout's programs, from its README,
+    # into ~/.local/share/man. mandoc reads a MANPATH that starts with a colon
+    # as "the usual places, and then these", so the system's pages still come
+    # first. In profile.d rather than ~/.profile: that block is written once,
+    # and a machine installed before this line would never have it.
+    cat > /etc/profile.d/copal-man.sh <<'COPALMAN'
+# Written by Copal (install_manuals): the man pages copal-build makes.
+case ":${MANPATH-}:" in
+    *":$HOME/.local/share/man:"*) ;;
+    *) export MANPATH="${MANPATH-}:$HOME/.local/share/man" ;;
+esac
+COPALMAN
     note "man NAME, and apropos WORD to find one"
 }
 
@@ -9099,6 +9111,110 @@ COPALCODE
 # and a camera application that is cloned and not compiled is a directory.
 install_copal_build() {
     [ -d /usr/local/bin ] || mkdir -p /usr/local/bin 2>/dev/null || return 0
+    # tools/copal-readme-man, copied in by 'make sync-readme-man'.
+    cat > /usr/local/bin/copal-readme-man <<'COPALREADMEMAN'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+#
+# copal-readme-man -- a man(1) page from a checkout's README.md.
+#
+#   copal-readme-man README.md NAME[,NAME...]     the page, as roff, on stdout
+#   copal-readme-man --markdown README.md NAME    what lowdown is given, to review
+#
+# The programs in ~/code have READMEs and no man pages. This makes one, so
+# `man ytq` answers on the machine and the Terminal Guide can link a page:
+# copal-build writes it into ~/.local/share/man beside every program it
+# links, and tools/copal-command-ref.py builds the site's copy from it.
+#
+# A README is written for GitHub, a man page for someone at the prompt, so
+# not all of it comes across. What stays: the sections about using the
+# program. What goes: the title, badges, images and HTML, and the sections a
+# user of an installed program does not need -- building it, its licence,
+# its status and roadmap, its internals. The NAME line lists every program
+# the checkout makes, and its description is the README's first paragraph
+# of prose, first sentence.
+#
+# lowdown does the Markdown; this decides what goes in. Headings move up a
+# level: a README's ## is a man page's section (.SH), its ### a subsection.
+set -eu
+md=
+[ "${1:-}" = --markdown ] && { md=1; shift; }
+[ $# -eq 2 ] || { echo "usage: copal-readme-man README.md NAME[,NAME...]" >&2; exit 2; }
+readme=$1 names=$2
+[ -f "$readme" ] || { echo "copal-readme-man: no $readme" >&2; exit 1; }
+[ -n "$md" ] || command -v lowdown >/dev/null 2>&1 || { echo "copal-readme-man: needs lowdown (apk add lowdown)" >&2; exit 1; }
+
+first=${names%%,*}
+dir=$(dirname "$readme")
+# The README's own date, so the same README makes the same page.
+date=$(git -C "$dir" log -1 --format=%cs -- "$(basename "$readme")" 2>/dev/null || true)
+[ -n "$date" ] || date=$(date -r "$readme" +%Y-%m-%d)
+repo=$(basename "$(cd "$dir" && pwd)")
+
+awk -v names="$(echo "$names" | sed 's/,/, /g')" '
+function strip(s) {
+    gsub(/\n/, " ", s)
+    gsub(/<[^>]*>/, "", s)                       # HTML tags
+    while (match(s, /\[[^]]*\]\([^)]*\)/)) {     # [text](url) -> text
+        t = substr(s, RSTART + 1); t = substr(t, 1, index(t, "]") - 1)
+        s = substr(s, 1, RSTART - 1) t substr(s, RSTART + RLENGTH)
+    }
+    gsub(/\*\*|__|`/, "", s)
+    gsub(/^[ \t]+|[ \t]+$/, "", s)
+    return s
+}
+# Prose, not a version line or a name: its first sentence describes it.
+function describe(p) {
+    if (p ~ / · / || p !~ / [a-z]+ /) return
+    desc = p; sub(/[.!?]( .*)?$/, "", desc)
+}
+# The sections left out, by the start of their heading.
+function skipped(h,   l) {
+    l = tolower(h)
+    return l ~ /^(build|licen[cs]e|contribut|credit|status|where it stands|still open|download|documentation|further reading|module map|layout$|one crate|no external crates|zero dependencies|no dependencies|the architecture|how it works|install|roadmap|changelog)/
+}
+BEGIN { head = 1 }
+/^<!--/ { incomment = 1 }
+incomment { if ($0 ~ /-->/) incomment = 0; next }
+/^```/ { fence = !fence }
+# Before the first ## heading: the title and the prose that introduces the
+# program. The first paragraph of prose gives NAME its description.
+head && !fence && /^## / { head = 0 }
+head {
+    if (fence) { intro = intro $0 "\n"; next }
+    if ($0 ~ /^# / || $0 ~ /^\[?!\[/) next
+    # An HTML header, like copal-tm has, can still hold the tagline.
+    if ($0 ~ /^[ \t]*</) { if (desc == "") describe(strip($0)); next }
+    if ($0 ~ /^[ \t]*$/) {
+        if (para != "") {
+            p = strip(para)
+            if (desc == "") describe(p)
+            if (p !~ / · /) intro = intro para "\n"   # not a version line
+            para = ""
+        }
+        next
+    }
+    para = para $0 "\n"; next
+}
+!fence && /^#+ / {
+    lvl = index($0, " ") - 1; h = substr($0, lvl + 2)
+    if (lvl == 2) skip = skipped(h)
+    if (skip) next
+    body = body substr("#####", 1, lvl - 1) " " strip(h) "\n"; next
+}
+skip { next }
+!fence && (/^[ \t]*<[^>]*>[ \t]*$/ || /^\[?!\[/) { next }
+{ body = body $0 "\n" }
+END {
+    if (para != "") intro = intro para "\n"
+    printf "# NAME\n\n%s - %s\n\n# DESCRIPTION\n\n%s\n%s", names, desc, intro, body
+}' "$readme" |
+if [ -n "$md" ]; then cat; else lowdown -s -Tman \
+    -M "title=$(echo "$first" | tr a-z A-Z)" -M section=1 -M "date=$date" \
+    -M "source=$repo" -M "volume=Copal: the programs in ~/code"; fi
+COPALREADMEMAN
+    chmod 0755 /usr/local/bin/copal-readme-man
     cat > /usr/local/bin/copal-build <<'COPALBUILD'
 #!/bin/sh
 # SPDX-License-Identifier: MIT
@@ -9377,6 +9493,30 @@ entry_for() {  # <checkout name> <program> -> label|command|mode, or nothing
 }
 
 # ---- one checkout -----------------------------------------------------------
+# A man page for what the checkout made, from its README: one page, every
+# program in its NAME line, and a link under each other name, so 'man ytq'
+# and 'man sstr' open the same page. The programs are the ones just recorded
+# in $PROJECTS -- what the menus list, so not a build tool like ascitty-bake
+# -- and the site's copy reads the same record. Quietly nothing where lowdown
+# or the README is missing: a page is a courtesy, never why a build fails.
+write_man() {  # <checkout name> <dir>
+    [ -f "$2/README.md" ] || return 0
+    have copal-readme-man && have lowdown || return 0
+    _progs=$(awk -F'|' -v n="$1" '$1 == n { print $3 }' "$PROJECTS" 2>/dev/null | sort)
+    [ -n "$_progs" ] || return 0
+    _mdir="$HOME/.local/share/man/man1"
+    mkdir -p "$_mdir" || return 0
+    _first=$(printf '%s\n' "$_progs" | head -n 1)
+    copal-readme-man "$2/README.md" "$(printf '%s\n' "$_progs" | paste -sd, -)" > "$_mdir/$_first.1.new" 2>/dev/null \
+        && mv "$_mdir/$_first.1.new" "$_mdir/$_first.1" \
+        || { rm -f "$_mdir/$_first.1.new"; return 0; }
+    for _b in $_progs; do
+        [ "$_b" = "$_first" ] || ln -sf "$_first.1" "$_mdir/$_b.1"
+    done
+    have makewhatis && makewhatis "$HOME/.local/share/man" >/dev/null 2>&1 || true
+    note "man page: man $_first"
+}
+
 build_one() {  # <dir>
     _d="$1"; _n=$(basename "$_d")
     case "$_n" in
@@ -9412,6 +9552,7 @@ build_one() {  # <dir>
         [ -n "$_e" ] && printf '%s|%s\n' "$_n" "$_e" >> "$PROJECTS.new"
     done < "$MADE"
     mv "$PROJECTS.new" "$PROJECTS"
+    write_man "$_n" "$_d"
     if [ -s "$MADE" ]; then
         note "in $BIN: $(tr '\n' ' ' < "$MADE")"
     else
@@ -26049,6 +26190,8 @@ MSG
     say "C toolchain and debugger"
     apk add build-base gdb
     add_optional git ctags pkgconf
+    # Markdown to man(1): copal-build's pages for the checkouts, from their READMEs.
+    add_optional lowdown
 
     # --- editors -----------------------------------------------------------
     say "Editors"

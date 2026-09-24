@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>radbeeper(1) · Copal Linux</title>
+<meta name="description" content="radbeeper - A GQ GMC-320 Plus Geiger-Muller counter on the desk, read from Alpine Linux — and from Copal, its distillation">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-radbeeper">radbeeper in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">radbeeper's README, made a man page by copal-readme-man</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">RADBEEPER(1)</td>
+    <td class="head-vol">Copal: the programs in ~/code</td>
+    <td class="head-rtitle">RADBEEPER(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">radbeeper - A GQ GMC-320 Plus Geiger-Muller counter on the desk,
+    read from Alpine Linux &#x2014; and from Copal, its distillation</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><a class="Lk" href="https://vonglurt.github.io/radbeeper/">vonglurt.github.io/radbeeper</a>
+    &#x2014; this page, the lab reports, and
+    <a class="Lk" href="https://vonglurt.github.io/radbeeper/monitor.html">a
+    live counter&#x2019;s report</a> built from the logs in this repository.</p>
+<p class="Pp"><b>Twenty-four seconds of two counters, in real time</b>, attached
+    to radbeeper service daemon. GUI visuals like analogue dial meters, five
+    averaging windows with the precision of each, a strip of counts that
+    compresses as it ages, three spectra of FFT.</p>
+<p class="Pp">Plug a counter into a machine running Alpine &#x2014; <b>including
+    a VM with the counter</b> <b>passed through, which is what these logs were
+    taken on</b> &#x2014; switch it on, and RadBeeper finds it, shows what it is
+    counting, pulls the history it recorded while nobody was watching, and
+    builds a web page out of the result.</p>
+<p class="Pp"></p>
+<pre>cargo install radbeeper            # or a static binary from the releases page
+doas adduser $USER dialout         # once, then log out and back in
+radbeeper probe                    # it should name your counter
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Fast_track"><a class="permalink" href="#Fast_track">Fast
+  track</a></h1>
+<p class="Pp">With the counter plugged in and switched on:</p>
+<p class="Pp"></p>
+<pre>radbeeper probe      # find it, confirm it's talking
+radbeeper watch      # the monitor -- q to quit
+radbeeper-gui        # or the same counter in a window
+</pre>
+<p class="Pp">That is the whole of it. The <span class="Li">dialout</span> line
+    above is not optional: the serial node is
+    <span class="Li">root:dialout</span> and RadBeeper does not want root.</p>
+<p class="Pp"><b>Only one program can hold the port &#x2014; but only one needs
+    to.</b> The process that has it serves what it reads on a socket beside the
+    log, and <span class="Li">watch</span> asks that socket before it asks
+    <span class="Li">/dev</span>: with the boot service logging, the monitor
+    attaches to it and the port is never touched. Nothing has to be stopped, and
+    the log does not skip a second while you watch. With no service running, the
+    monitor takes the port itself and serves it in turn, so the second window
+    attaches to the first.</p>
+<p class="Pp"><b>No counter yet?</b> <span class="Li">tests/fake_gmc.py</span>
+    puts a synthetic counter on a pseudo-terminal &#x2014; a real Poisson
+    background, because decay is a Poisson process &#x2014; and exercises the
+    serial path as well as the display: <span class="Li">python3
+    tests/fake_gmc.py --cpm 400</span>, then <span class="Li">radbeeper -d
+    /dev/pts/N watch</span>.</p>
+<p class="Pp">Everything else it does</p>
+<p class="Pp"></p>
+<pre>radbeeper service          # log every counter it finds, and serve them all
+radbeeper backfill         # fill the log's gaps from the counter's own flash
+radbeeper random           # 256 bits of hex, out of decay timing
+radbeeper site             # where this counter is, and where it has been
+radbeeper export           # build index.html and random.html from the logs
+radbeeper frames list      # the raw seconds on disk, by month
+radbeeper frames show      # one frame: its seconds, its spectrum, its key
+radbeeper log pull         # download the raw history to .bin and .csv
+radbeeper clock --set      # set the counter's clock from this machine's
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="What_you_need"><a class="permalink" href="#What_you_need">What
+  you need</a></h1>
+<p class="Pp"><b>A GQ GMC-320 Plus, plugged into USB.</b> There is no substitute
+    for it in software: RadBeeper reads a real tube over a real serial port, and
+    every number on the screen comes off the wire.</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><b>The counter</b></td>
+    <td>A <b>GQ GMC-320 Plus</b>. A <b>GMC-300</b> works &#x2014; RadBeeper
+      tries its 57600 baud as well as the 320&#x2019;s 115200 &#x2014; and a 500
+      or 600 will be found and read, but its tube is not an M4011, so give it
+      <span class="Li">--cpm-per-usvh</span> (see
+      docs/reference.md#the-tube-factor the tube factor ).</td>
+  </tr>
+  <tr>
+    <td><b>The cable</b></td>
+    <td>The <b>USB cable that came with it</b>. It is easy to grab a charge-only
+      cable by mistake: one that carries no data leaves you with nothing plugged
+      in as far as Linux is concerned.</td>
+  </tr>
+  <tr>
+    <td><b>The counter, switched on</b></td>
+    <td>The USB-serial chip inside is powered by the counter, not by the bus. A
+      320 that is off, or flat, enumerates as nothing.</td>
+  </tr>
+  <tr>
+    <td><b>A kernel with </b><span class="Li"><b>ch341</b></span><b></b></td>
+    <td>The 320 Plus presents as a CH340 USB-serial device.
+      <span class="Li">linux-lts</span> and <span class="Li">linux-rpi</span>
+      carry the driver; Alpine&#x2019;s <span class="Li">linux-virt</span>
+      <b>does not</b>.</td>
+  </tr>
+  <tr>
+    <td><b>Membership of </b><span class="Li"><b>dialout</b></span><b></b></td>
+    <td>The serial node is <span class="Li">root:dialout</span> and RadBeeper
+      does not want root.</td>
+  </tr>
+</table>
+<p class="Pp">Plug it in, and Linux should say so:</p>
+<p class="Pp"></p>
+<pre>dmesg | tail -5                       # ch341-uart converter now attached to ttyUSB0
+ls -l /dev/ttyUSB*                    # crw-rw---- 1 root dialout ... /dev/ttyUSB0
+</pre>
+<p class="Pp"><b>The kernel is the thing that catches people.</b> These logs
+    were taken from a 320 Plus shared into a VM, and the counter cannot tell the
+    difference &#x2014; but pass the device through to a guest running
+    <span class="Li">linux-virt</span> and it will never appear, however correct
+    the pass-through is:</p>
+<p class="Pp"></p>
+<pre>$ lsusb
+Bus 003 Device 002: ID 1a86:7523  USB2.0-Serial      # the counter is right there
+$ ls /dev/ttyUSB*
+ls: cannot access '/dev/ttyUSB*': No such file or directory
+</pre>
+<p class="Pp"><span class="Li">doas apk add linux-lts</span>, reboot into it,
+    and the same device enumerates as <span class="Li">/dev/ttyUSB0</span>. This
+    is the trap <b>Copal</b> avoids by installing
+    <span class="Li">linux-lts</span> rather than the virt kernel a VM image
+    would otherwise default to.</p>
+<p class="Pp">If <span class="Li">/dev/ttyUSB0</span> still is not there,
+    <a class="Lk" href="docs/troubleshooting.md">Troubleshooting</a> names the
+    four things it can be, and they have four different fixes.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Find_the_counter"><a class="permalink" href="#Find_the_counter">Find
+  the counter</a></h1>
+<pre>radbeeper probe
+</pre>
+<p class="Pp">If it finds nothing, the message says which of four things went
+    wrong, because they have four different fixes &#x2014; see
+    <a class="Lk" href="docs/troubleshooting.md">Troubleshooting</a>.</p>
+<p class="Pp"><span class="Li">radbeeper clock</span> says how far the
+    counter&#x2019;s own clock has drifted from this machine&#x2019;s, and
+    <span class="Li">--set</span> corrects it. It matters for the
+    <a class="Lk" href="docs/the-log.md#backfill-from-the-counters-own-memory">backfill</a>:
+    the timestamps in the counter&#x2019;s flash are its own.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Watch_it"><a class="permalink" href="#Watch_it">Watch
+  it</a></h1>
+<pre>radbeeper watch
+</pre>
+<p class="Pp"><b>The monitor is also the logger.</b> Only one program can hold
+    the counter&#x2019;s port, so the log used to have a hole exactly where
+    somebody was watching. Now <span class="Li">watch</span> does what the
+    service does, with a screen on top: it reads the counter&#x2019;s history on
+    connect and fills the log&#x2019;s gaps, writes a row every thirty seconds
+    through the same code the service uses, appends every random line, and
+    writes <span class="Li">index.html</span> beside the log.
+    <span class="Li">--no-log</span> turns all of that off.</p>
+<p class="Pp"><b>Ten minutes of it, three ways</b>: the first five minutes at a
+    hundred times speed, the hundred seconds after them at ten, and the second
+    the random pool delivered its first line.</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><b>The number, big</b></td>
+    <td>The 30-second CPM in block digits. 3 s is too jumpy to read as a
+      headline and 300 s too slow to react to anything you are doing with your
+      hands.</td>
+  </tr>
+  <tr>
+    <td><b>Five averages</b></td>
+    <td>3 s to see a source come and go under your hand, 30 s to read the room,
+      300 s for a number worth writing down, 3000 s for what the background here
+      actually is, and 30000 s &#x2014; a working day. The counter&#x2019;s own
+      reading is one rolling 60-second count: one number, one time constant, one
+      question answered.</td>
+  </tr>
+  <tr>
+    <td><b>The counts, compressing as they age</b></td>
+    <td>A second a bar at the right, and each panel to its left holds twice as
+      long in a bar. Ten minutes of history in one row of a terminal, at
+      one-second resolution where it matters.</td>
+  </tr>
+  <tr>
+    <td><b>The spectrum</b></td>
+    <td>Three windows at once, looking for anything arriving on a schedule.
+      <b>Flat is the good answer</b> &#x2014; decay is Poisson, and a Poisson
+      process has a flat power spectrum. A peak means something periodic is
+      contaminating the arrivals.</td>
+  </tr>
+  <tr>
+    <td><b>The random line</b></td>
+    <td>256 bits of hex out of decay timing, the moment the pool has measured
+      enough min-entropy to justify them.</td>
+  </tr>
+  <tr>
+    <td><b>The log, scrolling</b></td>
+    <td>The rows as they go to disk, so what is on screen is what is in the
+      file.</td>
+  </tr>
+</table>
+<p class="Pp"><span class="Li">--line</span> prints one line a second for a pipe
+    instead of drawing a screen.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="The_window"><a class="permalink" href="#The_window">The
+  window</a></h1>
+<pre>radbeeper-gui
+</pre>
+<p class="Pp">An instrument cluster: a round dial per counter with a 270-degree
+    sweep on a <b>fixed logarithmic scale</b>, the bands painted on the face at
+    the same thresholds everything else uses, and the reading in digits on the
+    black face under the needle. Beside it the five averaging windows, each with
+    the <b>precision</b> of its own figure. Then the cascade, the spectrum
+    overlay, the emission and its countdown, and the log rows as the server
+    wrote them.</p>
+<p class="Pp">It opens no serial port &#x2014; it <i>cannot</i>, it has no code
+    for one &#x2014; which is exactly what makes it safe to open and close all
+    day while the logging carries on underneath.</p>
+<section class="Ss">
+<h2 class="Ss" id="The_two_meters"><a class="permalink" href="#The_two_meters">The
+  two meters</a></h2>
+<p class="Pp"><b>They answer different questions and neither answers the
+    other.</b></p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><b>RAW</b></td>
+    <td>A needle per counter, each in that counter&#x2019;s colour. A tube that
+      has wandered off is a needle that has wandered off. This is <i>do they
+      agree?</i></td>
+  </tr>
+  <tr>
+    <td><b>COLLECTED</b></td>
+    <td>One needle, carrying three time constants at once. This is <i>what is
+      the room doing?</i></td>
+  </tr>
+</table>
+<p class="Pp">They share a scale, because two dials that don&#x2019;t cannot be
+    compared &#x2014; which is the only reason to draw them side by side.</p>
+<p class="Pp"><b>A dial can show more than one answer at a time and a number
+    cannot.</b> The collected face carries the <b>three seconds</b> its needle
+    points at, the <b>half</b> <b>minute</b> the chrome pointer sits at, and
+    &#x2014; as two arcs outside the bands &#x2014; where the needle has been
+    over the last half minute and minute. The gap between needle and pointer
+    <i>is</i> the trend.</p>
+<p class="Pp">The needle has mass: it leans out fast and settles back slower,
+    the way every moving-coil meter does mechanically. Without it the needle
+    teleports once a second and the eye cannot follow which way it went.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="The_scale_does_not_move"><a class="permalink" href="#The_scale_does_not_move">The
+  scale does not move</a></h2>
+<p class="Pp"><b>Three decades, </b><span class="Li"><b>3 &#x2192;
+    3000</b></span><b> CPM, and it is the same three every time you look.</b>
+    The range used to be picked from a list to suit the current reading, which
+    meant a value sitting near a boundary flipped the whole face back and forth
+    several times a minute &#x2014; every band and every tick jumping with it. A
+    fixed scale cannot do that, and a logarithmic one is the right fixed scale
+    here because the quantity is: background is tens of counts a minute, a
+    source is thousands, and on a linear face the only reading anybody ever
+    takes sits in the bottom tenth.</p>
+<p class="Pp">The decades land on the numbers the bands are named after &#x2014;
+    3 at the bottom stop, 30 a third of the way round, 300 at two thirds, 3000
+    at full &#x2014; with the 2..9 of each decade ticked between them and a
+    heavy mark at every band floor.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="The_bands,_named"><a class="permalink" href="#The_bands,_named">The
+  bands, named</a></h2>
+<p class="Pp">A reading is not &#x201C;above 240&#x201D; &#x2014; it is a
+    <b>warning</b>. The names are printed under the cluster in their own
+    colours, and the floor of each is a mark on the face:</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td></td>
+    <td><b>sweep</b></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><b>attenuated</b> &#x2014; under 3 CPM</td>
+    <td>0%</td>
+    <td>not a clean room: a tube shielded, unplugged or dying</td>
+  </tr>
+  <tr>
+    <td><b>nominal</b> &#x2014; 30</td>
+    <td>33%</td>
+    <td>ordinary background</td>
+  </tr>
+  <tr>
+    <td><b>advisory</b> &#x2014; 120</td>
+    <td>53%</td>
+    <td>worth knowing about, not worth acting on</td>
+  </tr>
+  <tr>
+    <td><b>warning</b> &#x2014; 240</td>
+    <td>63%</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><b>deadly</b> &#x2014; 600</td>
+    <td>77%</td>
+    <td></td>
+  </tr>
+</table>
+<p class="Pp"><b>The floor of </b><b><i>nominal</i></b><b> is 30 and not 0,
+    deliberately.</b> Natural background does not go below a few counts a
+    minute, so a counter reading under 30 is reporting <i>itself</i> rather than
+    the room &#x2014; which is why that band is cold blue and not green, and why
+    the dial&#x2019;s bottom stop is 3 rather than nothing.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Both_themes,_and_it_follows_yours"><a class="permalink" href="#Both_themes,_and_it_follows_yours">Both
+  themes, and it follows yours</a></h2>
+<p class="Pp">Copal writes down which theme is on, so the window <b>asks rather
+    than guesses</b>. <span class="Li">--theme dark</span>,
+    <span class="Li">--theme antiquity</span> or <span class="Li">--theme
+    auto</span> (the default) override it.</p>
+<p class="Pp"><b>The dial faces stay dark in both.</b> Antiquity&#x2019;s own
+    note about itself is that it is <i>dark chrome around light paper</i>, and a
+    black-faced gauge on paper is what the instruments this borrows from
+    actually look like.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="It_fits_what_the_compositor_gives_it"><a class="permalink" href="#It_fits_what_the_compositor_gives_it">It
+  fits what the compositor gives it</a></h2>
+<p class="Pp">A tiling compositor hands this window whatever is left once every
+    other window has had its share. <b>The charts are the instrument, so they
+    are the last thing to</b> <b>go, not the first</b>: the log table goes
+    first, then the spectrum&#x2019;s axis. The dials, the numbers and the two
+    charts keep their shape all the way down &#x2014; and grow into the glass
+    when there is more of it.</p>
+<p class="Pp"><span class="Li">radbeeper hotplug</span> opens the window when it
+    is installed and a terminal running <span class="Li">watch</span> when it is
+    not.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Two_counters"><a class="permalink" href="#Two_counters">Two
+  counters</a></h1>
+<p class="Pp"><b>Plug in a second GMC and </b><span class="Li"><b>radbeeper
+    service</b></span><b> reads both.</b> No flag is needed, and it does not
+    have to be restarted for one: once a log cycle the service looks for a
+    counter that was not there before and adopts it on the spot &#x2014; its own
+    backfill, its own log, its own entropy pool, and a line on the wire telling
+    every attached window.</p>
+<p class="Pp">Two tubes watching one room are two measurements of one number.
+    They do <b>not</b> double the dose &#x2014; what doubles is the
+  evidence:</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><b>Each keeps its own log</b></td>
+    <td>Separate files, keyed by serial. They are separate instruments and the
+      record has to say which said what; a row that averaged two of them would
+      be a reading neither took.</td>
+  </tr>
+  <tr>
+    <td><b>The displays average them</b></td>
+    <td>Every combined figure is the <i>mean</i> across the tubes: the same
+      number one tube would report, measured from twice the arrivals.</td>
+  </tr>
+  <tr>
+    <td><b>The precision is what improves</b></td>
+    <td>Poisson error is 1/sqrt(N), so twice the counts is a factor of root two
+      better. The window prints it: <span class="Li">452 CPM +-21
+      (4.7%)</span>.</td>
+  </tr>
+  <tr>
+    <td><b>The cascade grows one more tier</b></td>
+    <td>Counters on their own clocks interleave, so the strip ends in a tier of
+      <i>arrival</i> rather than of time &#x2014; <span class="Li">1/2</span> of
+      a second with two tubes, <span class="Li">1/9</span> with nine &#x2014;
+      drawn in each tube&#x2019;s own colour.</td>
+  </tr>
+  <tr>
+    <td><b>And a merged record is kept</b></td>
+    <td><span class="Li">cpm-merged-YYYY-MM.tsv</span>, beside the per-counter
+      files: the raw arrivals, the rate of the room, and the interleave. See
+      docs/the-log.md the log .</td>
+  </tr>
+</table>
+<p class="Pp"><b>The interleave is measured, not assumed.</b> Two counters only
+    sharpen <i>time</i> if they disagree about when a second starts, and neither
+    clock can be steered, so the window reports the offset it actually sees:
+    <span class="Li">2 tubes &#x00B7; interleave 0.50s</span>
+    <span class="Li">(100%)</span>. Near zero is two tubes firing together
+    &#x2014; still twice the counts and still the better precision, but no extra
+    resolution in time, and the display says so rather than claiming a
+    half-second bar it has not earned.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Log_it_to_disk"><a class="permalink" href="#Log_it_to_disk">Log
+  it to disk</a></h1>
+<pre>radbeeper service         # what the boot service runs, in the foreground
+</pre>
+<p class="Pp">One row every 30 seconds into a dated file per counter.
+    <span class="Li">watch</span> writes the same rows while it is open, so it
+    does not matter which of the two has the port.</p>
+<p class="Pp">Tabs are invisible and that matters here, because an <b>empty
+    field is not a</b> <b>zero</b> &#x2014; it is a window that was not full
+    yet. <b>The peaks are the point</b>: a row carrying only the averages as
+    they stood at the instant it was written would miss a source that came and
+    went between two rows, which is the one event actually worth having a log
+    for.</p>
+<p class="Pp">Files rotate by month and by counter
+    (<span class="Li">cpm-&lt;serial&gt;-YYYY-MM.tsv</span>), which needs no
+    cron entry and nothing that renames a file while a service is appending to
+    it. State lives in <span class="Li">/var/lib/radbeeper</span> when that is
+    writable &#x2014; <b>not </b><span class="Li"><b>/var/log</b></span><b>,</b>
+    <b>because on Alpine desktops that is commonly a tmpfs</b> and every reboot
+    emptied it. A measurement record is state, not a log to rotate away.</p>
+<p class="Pp"><a class="Lk" href="docs/the-log.md">The log</a> is the full
+    column-by-column account, including the merged record two or more counters
+    produce, the backfill, and where a counter has been.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Random_numbers_out_of_decay"><a class="permalink" href="#Random_numbers_out_of_decay">Random
+  numbers out of decay</a></h1>
+<p class="Pp">The moment a nucleus decays is not determined by anything, which
+    makes a counter the textbook hardware entropy source.</p>
+<p class="Pp"></p>
+<pre>radbeeper random
+</pre>
+<p class="Pp"></p>
+<pre>b17c9c60 d5deeb7b 4b102dfc bec14efc b523818b 18d3ada0 582bd912 e61ff856
+<br/>
+  256 bits, min-entropy 258 measured, from 448 seconds at 0.68 counts/s
+<br/>
+  440 bits is what a Poisson model would have claimed for the same 448 seconds
+<br/>
+  spectrum flat -- the source looks like decay
+</pre>
+<p class="Pp">That second line is the point: <b>the bits are measured, not
+    modelled</b>, and on this tube the textbook model was measurably wrong
+    &#x2014; it claimed 1.15 bits a second where the samples support 0.62. A
+    line therefore arrives about half as often as it used to, and the number on
+    it is one the data will support.</p>
+<p class="Pp">The counts behind every line are written beside it, so anyone can
+    recompute it and check it was not invented:</p>
+<p class="Pp"></p>
+<pre>radbeeper random --check  logs/random-F48824B8207F7E-2026-09.tsv   # the emission log
+radbeeper random --frames logs/random-F48824B8207F7E-2026-09.bin   # the raw seconds
+</pre>
+<p class="Pp"><b>Every emission also keeps its raw material.</b> The
+    <span class="Li">.tsv</span> clamps each second to one hex digit &#x2014;
+    enough to recompute the key, not enough to say what the tube did &#x2014; so
+    the seconds are written unclamped to a <span class="Li">.bin</span> beside
+    it, one byte each, with the gaps where the counter was away. A
+    four-hundred-second frame is about 450 bytes, and each one recomputes the
+    key written inside it. <span class="Li">--no-frames</span> turns it off.</p>
+<div class="Bd-indent">
+<p class="Pp">Treat this as a good physical entropy source, not a certified one.
+    It has not been through a statistical test battery, and 256 bits of
+    accounted min-entropy is a claim about the model of the source, not a proof
+    about the output.</p>
+</div>
+<p class="Pp"><a class="Lk" href="docs/the-random.md">Random numbers out of
+    decay</a> is the full account: the three ways this is normally done wrong,
+    the measurement that replaced the model, and what the serial link&#x2019;s
+    one-second resolution costs.</p>
+<section class="Ss">
+<h2 class="Ss" id="Browsing_the_raw_seconds"><a class="permalink" href="#Browsing_the_raw_seconds">Browsing
+  the raw seconds</a></h2>
+<p class="Pp">Every one of those keys came out of a particular stretch of decay,
+    and that stretch is kept:
+    <span class="Li">random-&lt;serial&gt;-YYYY-MM.bin</span>, appended, one
+    byte for an ordinary second.</p>
+<p class="Pp"></p>
+<pre>radbeeper frames list                     # what is on disk, by month
+radbeeper frames show --seq 124           # one frame: seconds, spectrum, key, link
+radbeeper export --logs logs -o monitor.html --frames-page   # and frames.html
+</pre>
+<p class="Pp"><span class="Li">frames.html</span> is the browser: months, then
+    days, then one frame at a time &#x2013; as a strip of seconds you can zoom
+    into, or as a spectrum, where <b>flat is the</b> <b>good answer</b>. A frame
+    has its own address, so <span class="Li">frames.html#2026-09/124</span>
+    opens that one.</p>
+<p class="Pp">Getting the data out and back in is <span class="Li">frames
+    export</span> and <span class="Li">frames import</span>; an imported frame
+    is recomputed from its own counts before it is written and is relinked into
+    this directory&#x2019;s chain rather than carrying somebody else&#x2019;s.
+    <a class="Lk" href="docs/the-frame-browser.md">Reading the raw record</a> is
+    the full account, including the one thing to know before relying on any of
+    it: only the process holding the serial port writes frames, so a service
+    running an older build records emissions and no frames at all.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Publish_it"><a class="permalink" href="#Publish_it">Publish
+  it</a></h1>
+<pre>radbeeper export --logs logs -o monitor.html
+</pre>
+<p class="Pp">One self-contained page: summary cards, a log-scale plot of counts
+    per minute by the hour, a by-day table, the latest rows, and &#x2014; with
+    two or more counters &#x2014; whether they agree. <b>No JavaScript, no web
+    fonts, no CDN</b>; the chart is SVG the program draws itself.
+    <span class="Li">watch</span> writes it by itself after its backfill, every
+    hour and on quit, so a monitor left open keeps it current.</p>
+<p class="Pp"><span class="Li">random.html</span> is written beside it whenever
+    there are emissions to account for. It is the one claim on the front page a
+    reader cannot check by looking, so the audit gets its own page.</p>
+<p class="Pp">To put it on the web: <b>fork this repository, copy your
+    </b><span class="Li"><b>cpm-*.tsv</b></span><b>,</b>
+    <b></b><span class="Li"><b>random-*.tsv</b></span><b> and
+    </b><span class="Li"><b>sites.tsv</b></span><b> into
+    </b><span class="Li"><b>logs/</b></span><b>, and push.</b> A GitHub Action
+    rebuilds the site and commits it back, with nothing to install in the
+    workflow &#x2014; your counter&#x2019;s report lands at
+    <span class="Li">/monitor.html</span>, and <span class="Li">/</span> is this
+    page, rendered.</p>
+<p class="Pp"></p>
+<pre>make site          # build the whole site locally
+make site-serve    # and look at it on http://127.0.0.1:8765/
+</pre>
+<p class="Pp"><a class="Lk" href="docs/running-it.md">Running it</a> covers the
+    boot service, one log directory two programs can both write, and publishing
+    in more detail.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Commands"><a class="permalink" href="#Commands">Commands</a></h1>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><span class="Li">probe</span></td>
+    <td>find the counter and say what it is</td>
+  </tr>
+  <tr>
+    <td><span class="Li">watch</span></td>
+    <td>the monitor, logging while it is open; <span class="Li">--no-log</span>
+      to only watch</td>
+  </tr>
+  <tr>
+    <td><span class="Li">clock</span></td>
+    <td>how far the counter&#x2019;s clock is out; <span class="Li">--set</span>
+      corrects it</td>
+  </tr>
+  <tr>
+    <td><span class="Li">cpm</span></td>
+    <td>one 30-second average, for a script. Takes 30 s, and says so</td>
+  </tr>
+  <tr>
+    <td><span class="Li">service</span></td>
+    <td>monitor and log every counter found; dormant when there is nothing to
+      read</td>
+  </tr>
+  <tr>
+    <td><span class="Li">hotplug</span></td>
+    <td>sit in the session, open the monitor on plug-in</td>
+  </tr>
+  <tr>
+    <td><span class="Li">backfill</span></td>
+    <td>fill the log&#x2019;s gaps from the counter&#x2019;s flash</td>
+  </tr>
+  <tr>
+    <td><span class="Li">random</span></td>
+    <td>256 bits from decay timing, with the accounting for it</td>
+  </tr>
+  <tr>
+    <td><span class="Li">random --frames F</span></td>
+    <td>the raw seconds behind those lines, and whether they still
+      recompute</td>
+  </tr>
+  <tr>
+    <td><span class="Li">recompute</span></td>
+    <td>fill long-window columns in existing logs from their own counts</td>
+  </tr>
+  <tr>
+    <td><span class="Li">site</span></td>
+    <td>where a counter is, and where it has been</td>
+  </tr>
+  <tr>
+    <td><span class="Li">export</span></td>
+    <td>build <span class="Li">index.html</span> and
+      <span class="Li">random.html</span> from the logs</td>
+  </tr>
+  <tr>
+    <td><span class="Li">pages</span></td>
+    <td>build the landing page and the lab reports from the documents</td>
+  </tr>
+  <tr>
+    <td><span class="Li">frames list</span> / <span class="Li">show</span></td>
+    <td>the raw frames on disk by month, and one frame in full</td>
+  </tr>
+  <tr>
+    <td><span class="Li">frames export</span> /
+      <span class="Li">import</span></td>
+    <td>those frames out as bytes, a table or json &#x2014; and back in,
+      recomputed first</td>
+  </tr>
+  <tr>
+    <td><span class="Li">frames verify</span></td>
+    <td>every key and every chain link, from genesis</td>
+  </tr>
+  <tr>
+    <td><span class="Li">log info</span> / <span class="Li">log pull</span></td>
+    <td>how much history the flash holds, and download it</td>
+  </tr>
+</table>
+<p class="Pp">Options: <span class="Li">--source sim</span>,
+    <span class="Li">--sim-cpm</span>, <span class="Li">--seed</span>,
+    <span class="Li">--spans 3,30,300</span>,
+    <span class="Li">--cpm-per-usvh</span>, <span class="Li">--log-every</span>,
+    <span class="Li">--duration</span>, <span class="Li">--clock-offset</span>,
+    <span class="Li">--backfill-bytes</span>, <span class="Li">--max-gap</span>,
+    <span class="Li">--entropy-bits</span>, <span class="Li">--device</span>,
+    <span class="Li">--baud</span>, <span class="Li">--no-log</span>,
+    <span class="Li">--no-backfill</span>, <span class="Li">--no-export</span>,
+    <span class="Li">--no-frames</span>, <span class="Li">--entropy-bits</span>,
+    <span class="Li">--frames-page</span>, <span class="Li">--month</span>,
+    <span class="Li">--seq</span>,
+    <span class="Li">--json</span>/<span class="Li">--tsv</span>/<span class="Li">--bin</span>.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-09-20</td>
+    <td class="foot-os">radbeeper</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

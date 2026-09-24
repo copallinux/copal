@@ -47,13 +47,16 @@ STAGES = os.path.join(ROOT, "playbooks", "Stages")
 FACTS = os.path.join(ROOT, "docs", "commands", "facts.json")
 MANDIR = os.path.join(ROOT, "docs", "man")
 BENCH = os.path.expanduser("~/.cache/copal-store/prefix")
+CODE = os.path.expanduser("~/code")
 
 ORDER = ("core", "copal", "catalogue", "store")   # the first origin names the entry
 
 
 def run(argv, **kw):
     try:
-        return subprocess.run(argv, capture_output=True, text=True, errors="replace",
+        if "stderr" not in kw:
+            kw["stderr"] = subprocess.PIPE
+        return subprocess.run(argv, stdout=subprocess.PIPE, text=True, errors="replace",
                               timeout=kw.pop("timeout", 30), **kw).stdout
     except (OSError, subprocess.TimeoutExpired):
         return ""
@@ -325,6 +328,44 @@ def man_page(cmd):
     return mp if mp and os.path.exists(mp) else None
 
 
+# The programs in ~/code have READMEs, not man pages: copal-build makes one
+# from the README (tools/copal-readme-man), and so does the site, from the
+# same record of what each checkout made.
+PROJECTS = os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share"),
+                        "copal", "projects")
+README_MAN = os.path.join(ROOT, "tools", "copal-readme-man")
+README_CACHE = os.path.expanduser("~/.cache/copal-command-ref/man1")
+
+
+def checkout_of(cmd):
+    """(checkout, its programs) for a program copal-build made, or None."""
+    rows = [l.rstrip("\n").split("|") for l in open(PROJECTS)] if os.path.exists(PROJECTS) else []
+    n = next((r[0] for r in rows if len(r) > 2 and r[2] == cmd), None)
+    if not n or not os.path.exists(os.path.join(CODE, n, "README.md")):
+        return None
+    return n, sorted(r[2] for r in rows if r[0] == n and len(r) > 2)
+
+
+def readme_page(cmd, checkout):
+    """The man page copal-build would write for cmd, as a file: roff."""
+    n, progs = checkout
+    os.makedirs(README_CACHE, exist_ok=True)
+    out = os.path.join(README_CACHE, cmd + ".1")
+    roff = run([README_MAN, os.path.join(CODE, n, "README.md"), ",".join(progs)], timeout=60)
+    if not roff.strip():
+        return None
+    with open(out, "w") as f:
+        f.write(roff)
+    return out
+
+
+def man_source(c):
+    """Where a command's man page is: the system's, or one made from a README."""
+    if c.get("readme"):
+        return readme_page(c["cmd"], checkout_of(c["cmd"]) or (c["readme"], [c["cmd"]]))
+    return os.path.join("/usr/share/man", c["man"])
+
+
 def install_stage(pkg):
     """The stage whose install line names the package."""
     pat = re.compile(r"(add_optional|try_add|apk add)\b[^#]*[\s'\"]%s(@\w+)?($|[\s'\"\\;|&)])" % re.escape(pkg))
@@ -406,15 +447,26 @@ def collect():
                 got.add(c["stage"])
             c["stage"] = first_run(got)
         mp = man_page(cmd)
+        # A link to another program has that program's page: ninja is samu.
+        real = os.path.basename(os.path.realpath(c["path"])) if c["path"] else cmd
+        if not mp and real not in (cmd, "busybox", "coreutils"):
+            mp = man_page(real)
         # An applet's namesake in section 7 or 5 is another thing: ip(7) is
         # the socket API, not BusyBox's ip.
         if pkg == "busybox" and not (mp and re.search(r"/man[18]/", mp)):
             mp = man_page("busybox")
             c["applet"] = True
-        if mp:
+        co = None if mp else checkout_of(cmd)
+        if co and os.access(README_MAN, os.X_OK) and which("lowdown", e):
+            c["readme"] = co[0]
+            mp = readme_page(cmd, co)
+            if mp:
+                c["man"] = "man1/%s.1" % cmd
+                c["man_name"], c["synopsis"] = man_sections(mp)
+        elif mp:
             c["man"] = os.path.relpath(mp, "/usr/share/man")
             c["man_name"], c["synopsis"] = man_sections(mp)
-        elif c["path"] and c.get("mode") == "h" and c["origin"] != "copal":
+        if not c.get("man") and c["path"] and c.get("mode") == "h" and c["origin"] != "copal":
             c["synopsis"] = help_usage(c["path"])
         c["gallery"] = os.path.exists(os.path.join(ROOT, "docs", "img", "gallery", cmd + ".jpg"))
         c.pop("path", None)
@@ -471,7 +523,9 @@ def man_html():
     d = datetime.date.today()
     today = "%s %d, %d" % (d.strftime("%B"), d.day, d.year)
     for c in cmds:
-        src = os.path.join("/usr/share/man", c["man"])
+        src = man_source(c)
+        if not src:
+            continue
         body = run(["mandoc", "-T", "html", "-I", "os=Alpine %s" % facts.get("alpine", ""),
                     "-O", "fragment,man=%N.html", src], timeout=60)
         # A page with no date of its own gets today's from mandoc, which
@@ -485,7 +539,9 @@ def man_html():
                       body)
         page = PAGE % {"title": html_escape("%s(%s)" % (c["cmd"], c["man"].split("/")[0][3:])),
                        "desc": html_escape(c.get("man_name", "")), "anchor": c["cmd"], "cmd": html_escape(c["cmd"]),
-                       "src": html_escape("%s %s — %s, Alpine %s" % (c.get("source_package") or c.get("package", ""),
+                       "src": html_escape("%s's README, made a man page by copal-readme-man" % c["readme"]
+                                          if c.get("readme") else
+                                          "%s %s — %s, Alpine %s" % (c.get("source_package") or c.get("package", ""),
                                           c.get("version", "") or "", c["man"], facts.get("alpine", ""))),
                        "body": body}
         with open(os.path.join(MANDIR, c["cmd"] + ".html"), "w") as f:
@@ -635,7 +691,8 @@ def entry_html(c, note, known, stages):
         f.append("on the Copal Apps shelf")
     if c.get("man"):
         sec = c["man"].split("/")[0][3:]
-        f.append('<a href="man/%s.html">man %s(%s)</a>' % (cmd, "busybox" if c.get("applet") else esc(cmd), sec))
+        f.append('<a href="man/%s.html">man %s(%s)</a>%s' % (cmd, "busybox" if c.get("applet") else esc(cmd), sec,
+                                                          ", from its README" if c.get("readme") else ""))
     if c.get("webpage"):
         f.append('<a href="%s">home</a>' % esc(c["webpage"]))
     h.append('<p class="facts">%s</p>' % " · ".join(x for x in f if x))
@@ -803,14 +860,19 @@ def check():
         text = ""
         if c.get("man"):
             # The page, and its subcommands' pages (apk-add(8) for apk add).
-            page = os.path.join("/usr/share/man", c["man"])
+            page = man_source(c) or ""
             d = os.path.dirname(page)
-            subs = sorted(os.path.join(d, f) for f in os.listdir(d) if f.startswith(cmd + "-"))
-            for f in [page] + subs:
+            subs = [] if c.get("readme") or not page else \
+                sorted(os.path.join(d, f) for f in os.listdir(d) if f.startswith(cmd + "-"))
+            for f in ([page] if page else []) + subs:
                 text += BS.sub("", run(["mandoc", "-T", "utf8", f]))
         path = which(cmd, e)
-        if path and c.get("mode") != "t":
-            text += run([path, "--help"], stdin=subprocess.DEVNULL, timeout=4)
+        # A terminal program may open its window instead of answering --help;
+        # the checkouts' own programs all answer it, and their README pages
+        # rarely list every flag.
+        if path and (c.get("mode") != "t" or c.get("readme")):
+            # Both streams: ssh, resize2fs and orrery print their usage on stderr.
+            text += run([path, "--help"], stdin=subprocess.DEVNULL, timeout=4, stderr=subprocess.STDOUT)
         if not text:
             warns.append("%s: nothing to check its options against here" % where)
             continue
