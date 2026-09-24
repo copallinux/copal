@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 290 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 94 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 112 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.</p>
 </header>
 <div class="finder">
@@ -1091,24 +1091,39 @@ nano [options] [[+[crCR]{/|?}string] file]...</pre>
 </article>
 </section>
 <section class="sec" id="s-engineering"><h2>Engineering</h2>
-<article class="cmd facts-only" id="c-admesh" data-s="admesh a program for processing triangulated solid meshes engineering admesh">
-<h3><a class="self" href="#c-admesh"><code>admesh</code></a> <span class="purpose">a program for processing triangulated solid meshes</span></h3>
+<article class="cmd" id="c-admesh" data-s="admesh check an stl mesh, and repair it: close holes, fix normals, remove stray facets. engineering admesh">
+<h3><a class="self" href="#c-admesh"><code>admesh</code></a> <span class="purpose">Check an STL mesh, and repair it: close holes, fix normals, remove stray facets.</span></h3>
 <p class="facts">Engineering · command-line tool · <b>admesh</b> 0.98.5 · stage 12 · The application catalogue · <a href="man/admesh.html">man admesh(1)</a> · <a href="https://github.com/admesh/admesh">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's STL doctor: a model that a slicer rejects or prints wrong usually has a hole or a flipped face, and admesh reports and fixes both.</p>
 <pre class="syn">admesh [OPTION]... file</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run it on an STL to see its statistics and problems. With options it repairs, scales, rotates or merges, and writes the result with <code>--write-binary-stl</code> or <code>--write-ascii-stl</code>.</p>
+<h4>Examples</h4><div class="ex"><code>admesh part.stl</code><span>check: size, facets, errors found</span></div><div class="ex"><code>admesh -b fixed.stl part.stl</code><span>repair everything, write binary STL</span></div><div class="ex"><code>admesh --scale=25.4 -b mm.stl inch.stl</code><span>inches to millimetres</span></div><div class="ex"><code>admesh --x-rotate=90 -b up.stl part.stl</code><span>stand it up</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-b, --write-binary-stl=F</code></dt><dd>write the result as binary STL</dd><dt><code>-a, --write-ascii-stl=F</code></dt><dd>write it as ASCII STL</dd><dt><code>-f, --fill-holes</code></dt><dd>fill holes in the mesh</dd><dt><code>-d, --normal-directions</code></dt><dd>fix facets facing the wrong way</dd><dt><code>-u, --remove-unconnected</code></dt><dd>remove facets with no neighbours</dd><dt><code>-e, --exact</code></dt><dd>join edges that match exactly</dd><dt><code>--scale=FACTOR</code></dt><dd>scale the model</dd><dt><code>--x-rotate=DEG</code></dt><dd>rotate about X (also --y-rotate, --z-rotate)</dd><dt><code>--merge=FILE</code></dt><dd>add another STL into this one</dd></dl>
+<h4>Notes</h4><ul><li>With no repair options it runs all of them; name one or more to run only those.</li><li>It reads both ASCII and binary STL; binary output is several times smaller.</li></ul>
+<p class="see">See also <a href="#c-solvespace-cli"><code>solvespace-cli</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ngspice" data-s="ngspice circuit simulator derived from spice3f5 engineering ngspice">
-<h3><a class="self" href="#c-ngspice"><code>ngspice</code></a> <span class="purpose">circuit simulator derived from SPICE3f5</span></h3>
+<article class="cmd" id="c-ngspice" data-s="ngspice spice circuit simulation: transient, ac and dc analysis of a netlist. engineering ngspice">
+<h3><a class="self" href="#c-ngspice"><code>ngspice</code></a> <span class="purpose">SPICE circuit simulation: transient, AC and DC analysis of a netlist.</span></h3>
 <p class="facts">Engineering · command-line tool · <b>ngspice</b> 46 · stage 12 · The application catalogue · <a href="man/ngspice.html">man ngspice(1)</a> · <a href="https://ngspice.sourceforge.net/">home</a></p>
 <p class="deps">needs python3, libx11, libxaw, libxt, libgomp, libncursesw, readline</p>
+<p class="why"><b>On Copal:</b> The catalogue's circuit simulator, the standard open one: check a filter, an amplifier or a power supply before building it.</p>
 <pre class="syn">ngspice [options] [file ...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Describe the circuit as a netlist -- components, the nodes they join, their values -- and the analyses to run. Interactively it plots results as ASCII; in batch mode it writes them for another program to plot.</p>
+<h4>Examples</h4><div class="ex"><code>ngspice rc.cir</code><span>load it, then 'run' and 'plot v(out)'</span></div><div class="ex"><code>ngspice -b rc.cir</code><span>batch: run and print, no prompt</span></div><div class="ex"><code>ngspice -b -r out.raw rc.cir</code><span>batch, results to a rawfile</span></div><div class="ex"><code>ngspice -b -o log.txt rc.cir</code><span>batch, output to a log</span></div><div class="ex"><code>run            (at the prompt) run the analyses in the netlist</code></div><div class="ex"><code>plot v(out)    plot a node's voltage</code></div><div class="ex"><code>print v(out)   print it as numbers</code></div><div class="ex"><code>quit           leave</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-b, --batch</code></dt><dd>run and exit</dd><dt><code>-r, --rawfile FILE</code></dt><dd>write the results to FILE</dd><dt><code>-o, --output FILE</code></dt><dd>write the output to FILE</dd><dt><code>-i, --interactive</code></dt><dd>stay interactive even with a file on stdin</dd><dt><code>-n, --no-spiceinit</code></dt><dd>ignore .spiceinit files</dd></dl>
+<h4>Notes</h4><ul><li>A netlist's first line is its title and is never read as a component -- a first component there silently disappears.</li><li><code>gnuplot out v(out)</code> at the prompt draws the plot with gnuplot, which the catalogue's Science section installs.</li></ul>
+<p class="see">See also <a href="#c-gnuplot"><code>gnuplot</code></a>, <a href="#c-python3"><code>python3</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-solvespace-cli" data-s="solvespace-cli a parametric 3d cad program engineering solvespace">
-<h3><a class="self" href="#c-solvespace-cli"><code>solvespace-cli</code></a> <span class="purpose">A parametric 3D CAD program</span></h3>
+<article class="cmd" id="c-solvespace-cli" data-s="solvespace-cli solvespace from the command line: export and render .slvs models without the window. engineering solvespace">
+<h3><a class="self" href="#c-solvespace-cli"><code>solvespace-cli</code></a> <span class="purpose">SolveSpace from the command line: export and render .slvs models without the window.</span></h3>
 <p class="facts">Engineering · command-line tool · <b>solvespace</b> 3.2 · stage 12 · The application catalogue · <a href="https://solvespace.com">home</a></p>
 <p class="deps">needs mesa-gl, atkmm2.28, cairo, fontconfig, freetype, gtk+3.0, gtkmm3, glib</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's scripted CAD: the SolveSpace window designs a part, and this turns it into STL, a drawing or a picture in a Makefile.</p>
+<h4>Use</h4><p>Name a command and the <code>.slvs</code> files to apply it to. <code>--output</code> is a pattern: <code>%</code> becomes each input file's name.</p>
+<h4>Examples</h4><div class="ex"><code>solvespace-cli export-mesh --output %.stl part.slvs</code><span>a mesh for a slicer</span></div><div class="ex"><code>solvespace-cli export-view --view top --output %-top.svg part.slvs</code><span>a 2D drawing</span></div><div class="ex"><code>solvespace-cli thumbnail --output %.png --size 400x400 --view isometric part.slvs</code></div><div class="ex"><code>solvespace-cli regenerate part.slvs</code><span>reload imports, regenerate, save</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>export-mesh</code></dt><dd>a triangle mesh (STL, OBJ...)</dd><dt><code>export-view</code></dt><dd>a 2D view (SVG, DXF, PDF...), --view VIEW</dd><dt><code>export-surfaces</code></dt><dd>exact surfaces (STEP)</dd><dt><code>thumbnail</code></dt><dd>a rendered picture, --size WxH</dd><dt><code>regenerate</code></dt><dd>reload, regenerate and save</dd><dt><code>-o, --output PAT</code></dt><dd>the output name: % is the input's name</dd><dt><code>-v, --view DIR</code></dt><dd>top, bottom, left, right, front, back, isometric</dd><dt><code>-t, --chord-tol N</code></dt><dd>how finely curves become straight segments</dd></dl>
+<h4>Notes</h4><ul><li>The output format follows the extension of <code>--output</code>: <code>.stl</code> or <code>.obj</code> for a mesh, <code>.svg</code>, <code>.dxf</code> or <code>.pdf</code> for a view.</li><li><code>--chord-tol</code> is in millimetres for exports: smaller is smoother and larger.</li></ul>
+<p class="see">See also <a href="#c-admesh"><code>admesh</code></a>, <code>solvespace</code></p>
 </article>
 </section>
 <section class="sec" id="s-files"><h2>Files</h2>
@@ -1160,11 +1175,16 @@ nano [options] [[+[crCR]{/|?}string] file]...</pre>
 </article>
 </section>
 <section class="sec" id="s-games"><h2>Games</h2>
-<article class="cmd facts-only" id="c-adventure" data-s="adventure an exploration game games bsd-games">
-<h3><a class="self" href="#c-adventure"><code>adventure</code></a> <span class="purpose">an exploration game</span></h3>
+<article class="cmd" id="c-adventure" data-s="adventure colossal cave adventure: the first text adventure, from 1977. games bsd-games">
+<h3><a class="self" href="#c-adventure"><code>adventure</code></a> <span class="purpose">Colossal Cave Adventure: the first text adventure, from 1977.</span></h3>
 <p class="facts">Games · terminal program · <b>bsd-games</b> 3.3 · stage 4 · X.Org, i3, a terminal and a browser · <a href="man/adventure.html">man adventure(6)</a> · <a href="https://bsd-games.sourceforge.io/">home</a></p>
 <p class="deps">needs libncursesw</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Part of the catalogue's BSD games (bsd-games): the ancestor of Zork and of every text adventure since, typed a command at a time.</p>
+<h4>Use</h4><p>Read the description, type a command of one or two words -- <code>go north</code>, <code>get lamp</code>, <code>open grate</code> -- and read what happens. Map the cave on paper as you go; that is how it was meant to be played.</p>
+<h4>Examples</h4><div class="ex"><code>adventure</code><span>start (answer "no" to the instructions, or read them)</span></div><div class="ex"><code>enter building     (in the cave) move, by direction or by place</code></div><div class="ex"><code>get lamp           take things;  inventory  what you carry</code></div><div class="ex"><code>look               describe the place again</code></div><div class="ex"><code>save               stop here, to continue later</code></div><div class="ex"><code>quit               end the game, with a score</code></div>
+<h4>Options</h4><dl class="opts"></dl>
+<h4>Notes</h4><ul><li>The first thing to do is take the lamp. The cave is dark.</li><li>It understands the first five letters of a word: <code>inven</code> is inventory.</li><li><code>help</code> and <code>info</code> are commands too: the game explains itself.</li></ul>
+<p class="see">See also <a href="#c-frotz"><code>frotz</code></a>, <a href="#c-nethack"><code>nethack</code></a></p>
 </article>
 <article class="cmd" id="c-angband" data-s="angband angband: a hundred-level descent to morgoth, in the lineage of moria. games angband">
 <h3><a class="self" href="#c-angband"><code>angband</code></a> <span class="purpose">Angband: a hundred-level descent to Morgoth, in the lineage of Moria.</span></h3>
@@ -1177,18 +1197,28 @@ nano [options] [[+[crCR]{/|?}string] file]...</pre>
 <h4>Notes</h4><ul><li>Your saves and settings are in <code>~/.angband</code>, not in <code>/usr/share</code>.</li><li><code>-n</code> without <code>-u</code> replaces the default character. Name a new one: <code>angband -n -uSomeone</code>.</li><li>It comes from Alpine's testing repository (<code>angband@testing</code>).</li></ul>
 <p class="see">See also <a href="#c-zangband"><code>zangband</code></a>, <a href="#c-nethack"><code>nethack</code></a>, <a href="#c-brogue"><code>brogue</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-asciiquarium" data-s="asciiquarium an aquarium/sea animation in ascii art games asciiquarium">
-<h3><a class="self" href="#c-asciiquarium"><code>asciiquarium</code></a> <span class="purpose">An aquarium/sea animation in ASCII art</span></h3>
+<article class="cmd" id="c-asciiquarium" data-s="asciiquarium an aquarium in the terminal: fish, sharks, a castle and bubbles, animated. games asciiquarium">
+<h3><a class="self" href="#c-asciiquarium"><code>asciiquarium</code></a> <span class="purpose">An aquarium in the terminal: fish, sharks, a castle and bubbles, animated.</span></h3>
 <p class="facts">Games · terminal program · <b>asciiquarium</b> 1.1 · stage 12 · The application catalogue · <a href="https://robobunny.com/projects/asciiquarium/html/">home</a></p>
 <p class="deps">needs perl, perl-term-animation</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> One of the catalogue's toys: something alive in a spare terminal or a tmux pane, and a quick test of a terminal's colours and speed.</p>
+<h4>Use</h4><p>Run it, watch, press <code>q</code> to leave. It fills the terminal at whatever size it is, and redraws when the window changes.</p>
+<h4>Examples</h4><div class="ex"><code>asciiquarium</code><span>watch</span></div><div class="ex"><code>q          (while running) quit</code></div><div class="ex"><code>p          pause</code></div><div class="ex"><code>r          redraw</code></div>
+<h4>Options</h4><dl class="opts"></dl>
+<h4>Notes</h4><ul><li>It is a Perl program: the first frame takes a moment on a Pi.</li><li>It ignores <code>--help</code> and simply starts.</li></ul>
+<p class="see">See also <a href="#c-cmatrix"><code>cmatrix</code></a>, <a href="#c-cbonsai"><code>cbonsai</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-atc" data-s="atc air traffic controller game games bsd-games">
-<h3><a class="self" href="#c-atc"><code>atc</code></a> <span class="purpose">air traffic controller game</span></h3>
+<article class="cmd" id="c-atc" data-s="atc air traffic control: route planes through your airspace without a collision. games bsd-games">
+<h3><a class="self" href="#c-atc"><code>atc</code></a> <span class="purpose">Air Traffic Control: route planes through your airspace without a collision.</span></h3>
 <p class="facts">Games · terminal program · <b>bsd-games</b> 3.3 · stage 4 · X.Org, i3, a terminal and a browser · <a href="man/atc.html">man atc(6)</a> · <a href="https://bsd-games.sourceforge.io/">home</a></p>
 <p class="deps">needs libncursesw</p>
+<p class="why"><b>On Copal:</b> Part of the catalogue's BSD games, and the best of them -- unplayable until you have read <code>man atc</code>, and excellent afterwards.</p>
 <pre class="syn">atc [-u?lstp] [-gf game name] [-r random seed]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Planes enter at the edges; guide each to its exit or airport at the right altitude, and keep them apart. Every command starts with the plane's letter, then the action and its value, and Enter sends it; <code>?</code> lists what may come next at any point.</p>
+<h4>Examples</h4><div class="ex"><code>atc</code><span>the default airspace</span></div><div class="ex"><code>atc -l</code><span>the airspaces there are</span></div><div class="ex"><code>atc Killer</code><span>a harder one</span></div><div class="ex"><code>atc -s</code><span>the scores</span></div><div class="ex"><code>man atc</code><span>read this first</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-l</code></dt><dd>list the scenarios</dd><dt><code>-s</code></dt><dd>print the score table</dd><dt><code>SCENARIO</code></dt><dd>play that airspace: Default, Atlantis, Killer, OHare</dd></dl>
+<h4>Notes</h4><ul><li><code>ba5</code> sends plane b to 5000 feet; <code>btd</code> turns it to heading east. Directions are the eight keys around <code>s</code>: <code>w</code> north, <code>e</code> north-east, <code>d</code> east, round to <code>q</code> north-west.</li><li>Planes enter at 7000 feet and must leave through their exit at 9000, or land at their airport by going to 0 directly over it.</li></ul>
+<p class="see">See also <a href="#c-robots"><code>robots</code></a>, <a href="#c-snake"><code>snake</code></a></p>
 </article>
 <article class="cmd" id="c-brogue" data-s="brogue brogue: a roguelike made to be learned -- twenty-six levels, no classes, beautiful in a terminal. games brogue">
 <h3><a class="self" href="#c-brogue"><code>brogue</code></a> <span class="purpose">Brogue: a roguelike made to be learned -- twenty-six levels, no classes, beautiful in a terminal.</span></h3>
@@ -1201,40 +1231,61 @@ nano [options] [[+[crCR]{/|?}string] file]...</pre>
 <h4>Notes</h4><ul><li><code>x</code> explores the level for you until something interesting happens; most of the game is choosing when to stop.</li><li>Every game is recorded; recordings, saves and scores are kept in <code>~/.local/share/brogue</code>.</li></ul>
 <p class="see">See also <a href="#c-nethack"><code>nethack</code></a>, <a href="#c-angband"><code>angband</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-cbonsai" data-s="cbonsai grow bonsai trees in your terminal games cbonsai">
-<h3><a class="self" href="#c-cbonsai"><code>cbonsai</code></a> <span class="purpose">grow bonsai trees in your terminal</span></h3>
+<article class="cmd" id="c-cbonsai" data-s="cbonsai grow a bonsai tree in the terminal, slowly, or print one. games cbonsai">
+<h3><a class="self" href="#c-cbonsai"><code>cbonsai</code></a> <span class="purpose">Grow a bonsai tree in the terminal, slowly, or print one.</span></h3>
 <p class="facts">Games · command-line tool · <b>cbonsai</b> 1.4.2 · stage 12 · The application catalogue · <a href="man/cbonsai.html">man cbonsai(6)</a> · <a href="https://gitlab.com/jallbrit/cbonsai">home</a></p>
 <p class="deps">needs libncursesw, libpanelw</p>
+<p class="why"><b>On Copal:</b> One of the catalogue's toys: a different tree every time, as a screensaver or as the first thing a new shell prints.</p>
 <pre class="syn">cbonsai [OPTION]...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>With no options it draws a finished tree. <code>-l</code> shows it growing; <code>-S</code> is the screensaver, growing tree after tree until a key is pressed.</p>
+<h4>Examples</h4><div class="ex"><code>cbonsai</code><span>a tree, finished</span></div><div class="ex"><code>cbonsai -l</code><span>watch it grow</span></div><div class="ex"><code>cbonsai -S</code><span>screensaver: one tree after another</span></div><div class="ex"><code>cbonsai -p -m "$(fortune -s)"</code><span>print a tree with a saying beside it</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-l, --live</code></dt><dd>show each step of growth</dd><dt><code>-t, --time=SECS</code></dt><dd>the delay between steps with -l</dd><dt><code>-i, --infinite</code></dt><dd>keep growing trees</dd><dt><code>-S, --screensaver</code></dt><dd>-l and -i together, quit on any key</dd><dt><code>-m, --message=STR</code></dt><dd>a message beside the tree</dd><dt><code>-p, --print</code></dt><dd>print the tree and leave it on the terminal</dd><dt><code>-L, --life=N</code></dt><dd>how big it grows (default 32)</dd></dl>
+<h4>Notes</h4><ul><li><code>-p</code> makes it usable in a shell's start-up: the tree stays on screen above the prompt.</li></ul>
+<p class="see">See also <a href="#c-asciiquarium"><code>asciiquarium</code></a>, <a href="#c-cmatrix"><code>cmatrix</code></a>, <a href="#c-fortune"><code>fortune</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-cmatrix" data-s="cmatrix cmatrix games cmatrix">
-<h3><a class="self" href="#c-cmatrix"><code>cmatrix</code></a> <span class="purpose">CMatrix</span></h3>
+<article class="cmd" id="c-cmatrix" data-s="cmatrix the falling green characters of the matrix, in the terminal. games cmatrix">
+<h3><a class="self" href="#c-cmatrix"><code>cmatrix</code></a> <span class="purpose">The falling green characters of The Matrix, in the terminal.</span></h3>
 <p class="facts">Games · terminal program · <b>cmatrix</b> 2.0 · stage 12 · The application catalogue · <a href="man/cmatrix.html">man cmatrix(1)</a> · <a href="https://github.com/abishekvashok/cmatrix">home</a></p>
 <p class="deps">needs libncursesw</p>
+<p class="why"><b>On Copal:</b> One of the catalogue's toys, and a screensaver for a console with nothing else to show.</p>
 <pre class="syn">cmatrix [-abBflohnsmVx] [-u update] [-C color]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run it and watch; <code>q</code> quits. Keys change it while it runs: speed, colour, boldness.</p>
+<h4>Examples</h4><div class="ex"><code>cmatrix</code><span>watch</span></div><div class="ex"><code>cmatrix -s</code><span>screensaver: any key ends it</span></div><div class="ex"><code>cmatrix -b -C blue</code><span>bold, in blue</span></div><div class="ex"><code>cmatrix -u 2</code><span>faster (0 fastest, 9 slowest)</span></div><div class="ex"><code>cmatrix -a</code><span>smooth, asynchronous columns</span></div><div class="ex"><code>0-9        (while running) speed</code></div><div class="ex"><code>! @ # $ % ^ &amp; )   red, green, yellow, blue, magenta, cyan, white, ...</code></div><div class="ex"><code>q          quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-s</code></dt><dd>screensaver mode: exit on the first key</dd><dt><code>-b / -B</code></dt><dd>some / all characters bold</dd><dt><code>-C COLOR</code></dt><dd>green, red, blue, white, yellow, cyan, magenta, black</dd><dt><code>-u N</code></dt><dd>the delay, 0 to 9</dd><dt><code>-a</code></dt><dd>asynchronous scroll</dd><dt><code>-l</code></dt><dd>Linux console mode, with the matrix font</dd><dt><code>-m</code></dt><dd>lambda mode: every character is a lambda</dd></dl>
+<h4>Notes</h4><ul><li><code>-l</code> changes the console font and only makes sense on a text console, not in a terminal window.</li></ul>
+<p class="see">See also <a href="#c-asciiquarium"><code>asciiquarium</code></a>, <a href="#c-cbonsai"><code>cbonsai</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-figlet" data-s="figlet display large characters made up of ordinary screen characters games figlet">
-<h3><a class="self" href="#c-figlet"><code>figlet</code></a> <span class="purpose">display large characters made up of ordinary screen characters</span></h3>
+<article class="cmd" id="c-figlet" data-s="figlet print text in large letters made of characters. games figlet">
+<h3><a class="self" href="#c-figlet"><code>figlet</code></a> <span class="purpose">Print text in large letters made of characters.</span></h3>
 <p class="facts">Games · command-line tool · <b>figlet</b> 2.2.5 · stage 12 · The application catalogue · <a href="man/figlet.html">man figlet(6)</a> · <a href="http://www.figlet.org/">home</a></p>
+<p class="why"><b>On Copal:</b> One of the catalogue's toys, and useful: a banner at the top of a script's output, a login message, a heading in a README.</p>
 <pre class="syn">figlet [ -cklnoprstvxDELNRSWX ] [ -d fontdirectory ]
        [ -f fontfile ] [ -m layoutmode ]
        [ -w outputwidth ] [ -C controlfile ]
        [ -I infocode ] [ message ]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Give it the words; it prints them large. <code>-f</code> chooses the font; <code>showfigfonts</code> shows them all.</p>
+<h4>Examples</h4><div class="ex"><code>figlet Copal</code><span>big text, the standard font</span></div><div class="ex"><code>figlet -f slant Copal</code><span>another font</span></div><div class="ex"><code>figlet -c -w 80 'Hello, world'</code><span>centred on 80 columns</span></div><div class="ex"><code>showfigfonts | less</code><span>every font, as a sample</span></div><div class="ex"><code>echo Build done | figlet</code><span>from a pipe</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-f FONT</code></dt><dd>the font: standard, slant, banner, big, small, script...</dd><dt><code>-c</code></dt><dd>centre the text</dd><dt><code>-r</code></dt><dd>right-justify it</dd><dt><code>-w N</code></dt><dd>the output width</dd><dt><code>-t</code></dt><dd>use the terminal's width</dd><dt><code>-k</code></dt><dd>kerning: letters close, not overlapping</dd></dl>
+<h4>Notes</h4><ul><li>The fonts are in <code>/usr/share/figlet/fonts</code>; <code>figlist</code> names them.</li><li>A long line wraps at 80 columns unless <code>-w</code> or <code>-t</code> says otherwise.</li></ul>
+<p class="see">See also <a href="#c-fortune"><code>fortune</code></a>, <a href="#c-cbonsai"><code>cbonsai</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-fortune" data-s="fortune print a random, hopefully interesting, adage games fortune">
-<h3><a class="self" href="#c-fortune"><code>fortune</code></a> <span class="purpose">print a random, hopefully interesting, adage</span></h3>
+<article class="cmd" id="c-fortune" data-s="fortune print a random saying: quotations, jokes, limericks, star trek. games fortune">
+<h3><a class="self" href="#c-fortune"><code>fortune</code></a> <span class="purpose">Print a random saying: quotations, jokes, limericks, Star Trek.</span></h3>
 <p class="facts">Games · command-line tool · <b>fortune</b> 0.1 · stage 12 · The application catalogue · <a href="man/fortune.html">man fortune(6)</a> · <a href="https://git.sr.ht/~ahills/fortune">home</a></p>
 <p class="deps">needs libbsd</p>
+<p class="why"><b>On Copal:</b> One of the catalogue's toys, and a tradition: the saying a new terminal greets you with.</p>
 <pre class="syn">fortune [-aefilosw] [-m pattern] [[N%] file/directory/all]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run it and a saying is printed. Name a collection to choose from it alone; <code>-s</code> keeps it to a line or two.</p>
+<h4>Examples</h4><div class="ex"><code>fortune</code><span>a saying</span></div><div class="ex"><code>fortune -s</code><span>a short one</span></div><div class="ex"><code>fortune startrek</code><span>from one collection</span></div><div class="ex"><code>fortune -m 'computer'</code><span>every saying that matches</span></div><div class="ex"><code>fortune -f</code><span>the collections, and their sizes</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-s</code></dt><dd>short sayings only</dd><dt><code>-l</code></dt><dd>long ones only</dd><dt><code>-m PATTERN</code></dt><dd>print every saying matching PATTERN</dd><dt><code>-i</code></dt><dd>ignore case, with -m</dd><dt><code>-f</code></dt><dd>list the files it would choose from</dd><dt><code>-o</code></dt><dd>only the potentially offensive ones</dd><dt><code>-a</code></dt><dd>all of them, offensive included</dd></dl>
+<h4>Notes</h4><ul><li>The collections are in <code>/usr/share/fortune</code>: fortunes, fortunes2, limerick, recipes, startrek, zippy.</li><li>To greet every new terminal, add <code>fortune -s</code> to the end of <code>~/.profile.local</code>.</li></ul>
+<p class="see">See also <a href="#c-cbonsai"><code>cbonsai</code></a>, <a href="#c-figlet"><code>figlet</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-frotz" data-s="frotz interpreter for infocom and other z-machine games games frotz">
-<h3><a class="self" href="#c-frotz"><code>frotz</code></a> <span class="purpose">interpreter for Infocom and other Z-Machine games</span></h3>
+<article class="cmd" id="c-frotz" data-s="frotz a z-machine interpreter: plays infocom's text adventures and everything written for it since. games frotz">
+<h3><a class="self" href="#c-frotz"><code>frotz</code></a> <span class="purpose">A Z-machine interpreter: plays Infocom's text adventures and everything written for it since.</span></h3>
 <p class="facts">Games · command-line tool · <b>frotz</b> 2.55 · stage 12 · The application catalogue · <a href="man/frotz.html">man frotz(6)</a> · <a href="https://davidgriffith.gitlab.io/frotz/">home</a></p>
 <p class="deps">needs libao, libmodplug, libncursesw, libsamplerate, libsndfile</p>
+<p class="why"><b>On Copal:</b> The catalogue's interactive-fiction player. It ships with no stories; thousands are free on the Interactive Fiction Archive, and Zork I to III are freely distributed.</p>
 <pre class="syn">frotz [options] file [blorb_file]
 
 At least one file must be specified on the command line.  This can be either a plain Z-code
@@ -1250,20 +1301,34 @@ Z-code file is contained within.  If not found, then Frotz will complain and exi
 An alternatively-named Blorb file can be supplied as the optional second parameter to the
 command line invocation.
 ...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Give it a story file -- <code>.z3</code>, <code>.z5</code>, <code>.z8</code> -- and play by typing commands. <code>save</code> and <code>restore</code> work inside the story, to a file you name.</p>
+<h4>Examples</h4><div class="ex"><code>frotz zork1.z5</code><span>play</span></div><div class="ex"><code>frotz -w 80 story.z8</code><span>at a fixed width</span></div><div class="ex"><code>frotz -d story.z5</code><span>no colours</span></div><div class="ex"><code>look  inventory    (in the story) the usual commands</code></div><div class="ex"><code>save  restore      to and from a file you name</code></div><div class="ex"><code>undo               take back the last move, in stories that allow it</code></div><div class="ex"><code>quit               leave</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-d</code></dt><dd>disable colour</dd><dt><code>-w N</code></dt><dd>the screen width</dd><dt><code>-h N</code></dt><dd>the screen height</dd><dt><code>-l N</code></dt><dd>the left margin</dd><dt><code>-L FILE</code></dt><dd>load a saved game at start</dd><dt><code>-e</code></dt><dd>enable sound</dd></dl>
+<h4>Notes</h4><ul><li>Where to find stories: ifarchive.org (the Interactive Fiction Archive), and ifdb.org to choose one. Most are one file; download it and play.</li><li>Glulx stories (<code>.gblorb</code>, <code>.ulx</code>) need a different interpreter; frotz is the Z-machine only.</li></ul>
+<p class="see">See also <a href="#c-adventure"><code>adventure</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-hangman" data-s="hangman computer version of the game hangman games bsd-games">
-<h3><a class="self" href="#c-hangman"><code>hangman</code></a> <span class="purpose">computer version of the game hangman</span></h3>
+<article class="cmd" id="c-hangman" data-s="hangman hangman, against the system dictionary. games bsd-games">
+<h3><a class="self" href="#c-hangman"><code>hangman</code></a> <span class="purpose">Hangman, against the system dictionary.</span></h3>
 <p class="facts">Games · terminal program · <b>bsd-games</b> 3.3 · stage 4 · X.Org, i3, a terminal and a browser · <a href="man/hangman.html">man hangman(6)</a> · <a href="https://bsd-games.sourceforge.io/">home</a></p>
 <p class="deps">needs libncursesw</p>
+<p class="why"><b>On Copal:</b> Part of the catalogue's BSD games. It draws its words from /usr/share/dict/words, which Copal links to the English word list.</p>
 <pre class="syn">hangman [-d wordlist] [-m minlen]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Guess the hidden word a letter at a time; seven wrong guesses and the figure is complete.</p>
+<h4>Examples</h4><div class="ex"><code>hangman</code><span>play, words from the system dictionary</span></div><div class="ex"><code>hangman -m 8</code><span>only words of 8 letters or more</span></div><div class="ex"><code>hangman -d words.txt</code><span>words from your own list</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-d FILE</code></dt><dd>the word list (default /usr/share/dict/words)</dd><dt><code>-m N</code></dt><dd>the shortest word length</dd></dl>
+<h4>Notes</h4><ul><li>"unable to open dictionary file /usr/share/dict/words" means the word list is missing: stage 18 links it to <code>american-english</code> from <code>words-en</code>.</li></ul>
+<p class="see">See also <a href="#c-fortune"><code>fortune</code></a>, <a href="#c-robots"><code>robots</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-klondike" data-s="klondike klondike solitaire card game games bsd-games">
-<h3><a class="self" href="#c-klondike"><code>klondike</code></a> <span class="purpose">Klondike solitaire card game</span></h3>
+<article class="cmd" id="c-klondike" data-s="klondike klondike solitaire, in a terminal, with the keyboard. games bsd-games">
+<h3><a class="self" href="#c-klondike"><code>klondike</code></a> <span class="purpose">Klondike solitaire, in a terminal, with the keyboard.</span></h3>
 <p class="facts">Games · terminal program · <b>bsd-games</b> 3.3 · stage 4 · X.Org, i3, a terminal and a browser · <a href="man/klondike.html">man klondike(6)</a> · <a href="https://bsd-games.sourceforge.io/">home</a></p>
 <p class="deps">needs libncursesw</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Part of the catalogue's BSD games: patience for a terminal session.</p>
+<h4>Use</h4><p>The standard patience: build the foundations up by suit from the aces, moving cards between the seven columns in descending, alternating colours. Keys name the piles; the screen lists them.</p>
+<h4>Examples</h4><div class="ex"><code>klondike</code><span>play</span></div>
+<h4>Options</h4><dl class="opts"></dl>
+<h4>Notes</h4><ul><li>The keys are shown on the screen as you play; <code>?</code> if they are not.</li><li><a href="#c-ttysolitaire"><code>ttysolitaire</code></a> is the same game drawn with box characters, and it counts passes through the deck.</li></ul>
+<p class="see">See also <a href="#c-ttysolitaire"><code>ttysolitaire</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-moon-buggy" data-s="moon-buggy drive some car across the moon games moon-buggy">
 <h3><a class="self" href="#c-moon-buggy"><code>moon-buggy</code></a> <span class="purpose">drive some car across the moon</span></h3>
@@ -1287,31 +1352,51 @@ nethack [ -d directory ] -s [ -v ] [ -p profession ] [ -r race ] [ playernames ]
 <h4>Notes</h4><ul><li>Options go in <code>~/.nethackrc</code>: <code>OPTIONS=number_pad:1</code> for the numeric keypad, <code>OPTIONS=color</code>, <code>OPTIONS=autopickup,pickup_types:$</code>.</li><li><code>S</code> saves; next time, the same name picks up where you left.</li><li>A Valkyrie is the gentlest start.</li></ul>
 <p class="see">See also <a href="#c-brogue"><code>brogue</code></a>, <a href="#c-angband"><code>angband</code></a>, <a href="#c-zangband"><code>zangband</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-robots" data-s="robots fight off villainous robots games bsd-games">
-<h3><a class="self" href="#c-robots"><code>robots</code></a> <span class="purpose">fight off villainous robots</span></h3>
+<article class="cmd" id="c-robots" data-s="robots escape the robots: every move, they step toward you, and collide into junk. games bsd-games">
+<h3><a class="self" href="#c-robots"><code>robots</code></a> <span class="purpose">Escape the robots: every move, they step toward you, and collide into junk.</span></h3>
 <p class="facts">Games · terminal program · <b>bsd-games</b> 3.3 · stage 4 · X.Org, i3, a terminal and a browser · <a href="man/robots.html">man robots(6)</a> · <a href="https://bsd-games.sourceforge.io/">home</a></p>
 <p class="deps">needs libncursesw</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Part of the catalogue's BSD games: a five-minute puzzle, in any terminal, with a score table.</p>
+<h4>Use</h4><p>Robots (<code>+</code>) move one step toward you (<code>@</code>) each turn. When two collide, or one walks into a junk heap (<code>*</code>), they die: a point each. Clear the field and the next one starts. You have no weapon, only a teleporter.</p>
+<h4>Examples</h4><div class="ex"><code>robots</code><span>play</span></div><div class="ex"><code>h j k l y u b n   (in the game) move, diagonals included</code></div><div class="ex"><code>.  or Space       stay where you are for a turn</code></div><div class="ex"><code>t                 teleport, somewhere random</code></div><div class="ex"><code>q                 quit</code></div>
+<h4>Options</h4><dl class="opts"></dl>
+<h4>Notes</h4><ul><li>Standing still is a move: the robots close in and, lined up right, pile into each other.</li><li>Scores are shared in <code>/usr/share/bsdgames</code> by the group <code>users</code>; Copal links the path the game expects and adds you to the group from 24 Sep 2026. Before that, a score was shown and then lost.</li></ul>
+<p class="see">See also <a href="#c-snake"><code>snake</code></a>, <a href="#c-atc"><code>atc</code></a>, <a href="#c-nethack"><code>nethack</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-sl" data-s="sl cure your bad habit of mistyping games sl">
-<h3><a class="self" href="#c-sl"><code>sl</code></a> <span class="purpose">cure your bad habit of mistyping</span></h3>
+<article class="cmd" id="c-sl" data-s="sl a steam locomotive crosses the screen -- for when you typed sl instead of ls. games sl">
+<h3><a class="self" href="#c-sl"><code>sl</code></a> <span class="purpose">A steam locomotive crosses the screen -- for when you typed sl instead of ls.</span></h3>
 <p class="facts">Games · command-line tool · <b>sl</b> 5.02 · stage 12 · The application catalogue · <a href="man/sl.html">man sl(1)</a> · <a href="https://github.com/mtoyoda/sl">home</a></p>
 <p class="deps">needs libncursesw</p>
+<p class="why"><b>On Copal:</b> One of the catalogue's toys: the classic punishment for a typo. It cannot be interrupted, which is the point.</p>
 <pre class="syn">sl [ -alFc ]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Mistype <code>ls</code> as <a href="#c-sl"><code>sl</code></a>, and wait.</p>
+<h4>Examples</h4><div class="ex"><code>sl</code><span>a train</span></div><div class="ex"><code>sl -l</code><span>a little one</span></div><div class="ex"><code>sl -F</code><span>it flies</span></div><div class="ex"><code>sl -a</code><span>an accident</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-a</code></dt><dd>an accident: people cry for help</dd><dt><code>-l</code></dt><dd>a little locomotive</dd><dt><code>-F</code></dt><dd>it flies</dd><dt><code>-c</code></dt><dd>C51 instead of D51</dd></dl>
+<h4>Notes</h4><ul><li>Ctrl-C does not stop it. It ends when the train has passed.</li></ul>
+<p class="see">See also <a href="#c-cmatrix"><code>cmatrix</code></a>, <a href="#c-asciiquarium"><code>asciiquarium</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-snake" data-s="snake display chase game games bsd-games">
-<h3><a class="self" href="#c-snake"><code>snake</code></a> <span class="purpose">display chase game</span></h3>
+<article class="cmd" id="c-snake" data-s="snake collect the money and reach the exit, with a snake after you. games bsd-games">
+<h3><a class="self" href="#c-snake"><code>snake</code></a> <span class="purpose">Collect the money and reach the exit, with a snake after you.</span></h3>
 <p class="facts">Games · terminal program · <b>bsd-games</b> 3.3 · stage 4 · X.Org, i3, a terminal and a browser · <a href="man/snake.html">man snake(6)</a> · <a href="https://bsd-games.sourceforge.io/">home</a></p>
 <p class="deps">needs libncursesw</p>
+<p class="why"><b>On Copal:</b> Part of the catalogue's BSD games: not the phone game, the older one, where you are the one being chased.</p>
 <pre class="syn">snake [width height] [-s]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>You are the <code>@</code>. Pick up the money (<code>$</code>) -- a new one appears each time -- and leave through the exit (<code>#</code>) before the snake (<code>S</code> and its <code>s</code> body) catches you. As you get richer, the snake gets hungrier.</p>
+<h4>Examples</h4><div class="ex"><code>snake</code><span>play, on the whole screen</span></div><div class="ex"><code>snake 60 20</code><span>a smaller field: width, height</span></div><div class="ex"><code>snake -s</code><span>the scores, and exit</span></div><div class="ex"><code>h j k l  or arrows   (in the game) move</code></div><div class="ex"><code>Space                warp out of a tight spot, at a price</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>WIDTH HEIGHT</code></dt><dd>the size of the field (default: the screen)</dd><dt><code>-s</code></dt><dd>print the scores and exit</dd></dl>
+<h4>Notes</h4><ul><li>Only leaving by the exit scores. Being eaten is worth nothing.</li><li>Scores go in the shared table (<code>/usr/share/bsdgames</code>), kept from 24 Sep 2026 for members of <code>users</code>, which Copal adds you to.</li></ul>
+<p class="see">See also <a href="#c-robots"><code>robots</code></a>, <a href="#c-atc"><code>atc</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ttysolitaire" data-s="ttysolitaire ncurses-based klondike solitaire game games tty-solitaire">
-<h3><a class="self" href="#c-ttysolitaire"><code>ttysolitaire</code></a> <span class="purpose">ncurses-based klondike solitaire game</span></h3>
+<article class="cmd" id="c-ttysolitaire" data-s="ttysolitaire klondike solitaire drawn with box characters, played with vi keys. games tty-solitaire">
+<h3><a class="self" href="#c-ttysolitaire"><code>ttysolitaire</code></a> <span class="purpose">Klondike solitaire drawn with box characters, played with vi keys.</span></h3>
 <p class="facts">Games · terminal program · <b>tty-solitaire</b> 1.4.1 · stage 12 · The application catalogue · <a href="https://github.com/mpereira/tty-solitaire">home</a></p>
 <p class="deps">needs libncursesw</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's nicer-looking terminal patience: real card shapes in any terminal, over SSH included.</p>
+<h4>Use</h4><p>Standard Klondike: build down in alternating colours on the seven columns, up by suit from the aces on the foundations. The cursor moves between piles; a card is picked up and put down with one key.</p>
+<h4>Examples</h4><div class="ex"><code>ttysolitaire</code><span>play</span></div><div class="ex"><code>ttysolitaire -p 1</code><span>one pass through the deck: harder</span></div><div class="ex"><code>ttysolitaire --four-color-deck</code><span>a colour per suit</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-p, --passes N</code></dt><dd>passes through the deck (default 3)</dd><dt><code>--four-color-deck</code></dt><dd>a distinct colour for each suit</dd><dt><code>--no-background-color</code></dt><dd>no green table</dd></dl>
+<h4>Notes</h4><ul><li>The command is <a href="#c-ttysolitaire"><code>ttysolitaire</code></a>, one word; the package is <code>tty-solitaire</code>.</li><li>It installs no documentation; the keys are in the README at github.com/mpereira/tty-solitaire.</li></ul>
+<p class="see">See also <a href="#c-klondike"><code>klondike</code></a></p>
 </article>
 <article class="cmd" id="c-zangband" data-s="zangband zangband: angband with a wilderness, towns, and zelazny's amber above the dungeon. games zangband">
 <h3><a class="self" href="#c-zangband"><code>zangband</code></a> <span class="purpose">ZAngband: Angband with a wilderness, towns, and Zelazny's Amber above the dungeon.</span></h3>
@@ -2203,13 +2288,18 @@ with an SDR receiver.</pre>
 </article>
 </section>
 <section class="sec" id="s-retro"><h2>Retro</h2>
-<article class="cmd facts-only" id="c-mednafen" data-s="mednafen a command-line multi-system emulator retro mednafen">
-<h3><a class="self" href="#c-mednafen"><code>mednafen</code></a> <span class="purpose">A command-line multi-system emulator</span></h3>
+<article class="cmd" id="c-mednafen" data-s="mednafen one emulator for many consoles: nes, snes, game boy, mega drive, pc engine, playstation, saturn. retro mednafen">
+<h3><a class="self" href="#c-mednafen"><code>mednafen</code></a> <span class="purpose">One emulator for many consoles: NES, SNES, Game Boy, Mega Drive, PC Engine, PlayStation, Saturn.</span></h3>
 <p class="facts">Retro · command-line tool · <b>mednafen</b> 1.32.1 · stage 12 · The application catalogue · <a href="https://mednafen.github.io/">home</a></p>
 <p class="deps">needs libflac, sdl2, alsa-lib, zlib</p>
+<p class="why"><b>On Copal:</b> The catalogue's multi-system emulator: one command for most of the classic consoles, accurate enough for the demanding ones, driven entirely from the keyboard.</p>
 <pre class="syn">Usage: /usr/bin/mednafen [OPTION]... [FILE]
 Options:</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Give it a game file (a ROM, or a CD image's .cue) and it picks the system from the file. It opens a window; F1 shows the keys. Settings are command-line switches named after the settings in its config file.</p>
+<h4>Examples</h4><div class="ex"><code>mednafen game.nes</code><span>play</span></div><div class="ex"><code>mednafen game.cue</code><span>a CD game, from its cue sheet</span></div><div class="ex"><code>mednafen -video.fs 1 game.sfc</code><span>full screen</span></div><div class="ex"><code>mednafen -force_module md game.bin</code><span>say which system when the file does not</span></div><div class="ex"><code>F1          (in the game) the list of keys</code></div><div class="ex"><code>Alt-Shift-1 configure controller 1's buttons</code></div><div class="ex"><code>F5  F7      save state / load state</code></div><div class="ex"><code>Alt-Enter   full screen</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-force_module NAME</code></dt><dd>the system: nes, snes, gb, gba, md, pce, psx, ss...</dd><dt><code>-which_medium N</code></dt><dd>which disc, for a multi-disc game</dd><dt><code>-soundrecord FILE</code></dt><dd>record the sound to a WAV</dd><dt><code>-help</code></dt><dd>the options it takes on the command line</dd></dl>
+<h4>Notes</h4><ul><li>PlayStation, Saturn and PC Engine CD need the console's BIOS files, which cannot be distributed: they go in <code>~/.mednafen/firmware/</code>, and mednafen names the file it wants when one is missing.</li><li>Every setting in <code>~/.mednafen/mednafen.cfg</code> is also a switch: <code>-psx.bios_na FILE</code>, <code>-video.driver opengl</code>.</li><li>Games are yours to bring: only dump cartridges and discs you own.</li></ul>
+<p class="see">See also <a href="#c-copal-store"><code>copal-store</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-science"><h2>Science</h2>

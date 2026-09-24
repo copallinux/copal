@@ -374,6 +374,22 @@ Each ends with a review of what it produced before the next begins.
 - **check** reads `--help-extra` when `--help` points to it, falls back to
   `-h`, and accepts `--[no-]name` and glued `-u<name>` / `-ooutfile`.
 
+### Phase 4, batch 6: the rest of Games, Retro, Engineering (24 Sep 2026)
+
+- **18 entries**: `adventure`, `robots`, `hangman`, `snake`, `klondike`,
+  `atc`, `frotz`, `ttysolitaire`, `asciiquarium`, `cmatrix`, `cbonsai`,
+  `fortune`, `figlet`, `sl`; `mednafen`; `ngspice`, `admesh`,
+  `solvespace-cli`.
+- **A catalogue fix**: bsd-games' robots, snake, atc and adventure look for
+  their scores in `/var/lib/bsdgames`; the package puts the files in
+  `/usr/share/bsdgames`, group `users`. A score was shown and lost. Stage 12
+  links the path and adds the account to `users` -- one block with
+  ZAngband's fix.
+- **check earned its keep**: robots and snake options written from other
+  BSD versions (`robots -a -r -t`, `snake -w -l`) were caught; this
+  version's robots takes none, and snake takes WIDTH HEIGHT. Keys the
+  programs do not document (ttysolitaire) are left out, not guessed.
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.

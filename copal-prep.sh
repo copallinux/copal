@@ -27718,15 +27718,22 @@ MSG
     dev_write_kate_config
     dev_write_emacs_config
     seed_app_configs
-    # ZAngband: Alpine installs /usr/lib/zangband group 'users' and
-    # group-writable, and the game not setgid -- so it starts only for a
-    # member of 'users'. Anyone else gets "Cannot create the
-    # '/usr/lib/zangband/apex/scores.raw' file!" and a fatal error before the
-    # title screen (found on the bench, 24 Sep 2026).
-    if command -v zangband >/dev/null 2>&1 && id "$PI_USER" >/dev/null 2>&1 \
+    # The terminal games whose shared files belong to the group 'users',
+    # group-writable, with the games not setgid: they work fully only for a
+    # member (found on the bench, 24 Sep 2026).
+    #   ZAngband  /usr/lib/zangband -- without it, "Cannot create the
+    #             '/usr/lib/zangband/apex/scores.raw' file!" and a fatal
+    #             error before the title screen.
+    #   bsd-games robots, snake, atc, adventure look for their scores in
+    #             /var/lib/bsdgames; the package puts the files in
+    #             /usr/share/bsdgames, so a score was shown and then lost.
+    if command -v robots >/dev/null 2>&1 && [ -d /usr/share/bsdgames ] && [ ! -e /var/lib/bsdgames ]; then
+        ln -s /usr/share/bsdgames /var/lib/bsdgames && note "/var/lib/bsdgames -> /usr/share/bsdgames (the games' scores)"
+    fi
+    if { command -v zangband || command -v robots; } >/dev/null 2>&1 && id "$PI_USER" >/dev/null 2>&1 \
        && ! id -nG "$PI_USER" | tr ' ' '\n' | grep -qx users; then
         adduser "$PI_USER" users >/dev/null 2>&1 \
-            && note "$PI_USER added to users, for ZAngband's score files (next login)" \
+            && note "$PI_USER added to users, for the games' score files (next login)" \
             || warn "could not add $PI_USER to users -- ZAngband needs it: adduser $PI_USER users"
     fi
     offer_source_builds
