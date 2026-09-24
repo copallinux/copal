@@ -1,0 +1,20 @@
+# What each level chooses that is not a stage: the lines stage 4 and stage 12
+# read through level_choice (generated into copal-prep.sh by 'make
+# sync-playbooks'). One level per line:
+#
+#   level|browser|withhold
+#
+# browser   the graphical browser stage 4 installs when nobody is at the
+#           keyboard: brave, firefox-esr, chromium or badwolf. Brave only
+#           where Flathub publishes it (x86_64, aarch64); anywhere else
+#           stage 4 takes badwolf, whatever this says.
+# withhold  graphical browsers stage 12's 'everything' leaves out at this
+#           level, space-separated: at full, three more engines beside
+#           Brave and Firefox ESR are only card and menu clutter.
+#
+# The terminal and the file manager are not here: they are chosen by the
+# session (foot first on Wayland, urxvt on X) and by what is installed, not
+# by level, in stage 4's desktop helpers.
+server|badwolf|
+medium|badwolf|
+full|brave|dillo netsurf badwolf

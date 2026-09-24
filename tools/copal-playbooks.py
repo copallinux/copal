@@ -44,7 +44,9 @@
 # named after the playbook (stage-gui -> stage_gui). They are generated back
 # into copal-prep.sh: the functions into one marked region, auto_manifest in
 # manifest order (the order a level runs in), and stage_levels, from which
-# seq_for_profile makes each level's sequence.
+# seq_for_profile makes each level's sequence. playbooks/Stages/levels.list
+# holds what a level chooses that is not a stage (its browser, the browsers
+# it withholds), generated as level_choice.
 #
 # A CODE playbook (origin: code, source: clone URL) is a project checked out
 # into ~/code and built there by copal-build. It is a row on the store's Code
@@ -361,6 +363,33 @@ def manifest(books, order):
     return out, levels
 
 
+BROWSERS = ("brave", "firefox-esr", "chromium", "badwolf")
+
+
+def level_choices():
+    """playbooks/Stages/levels.list: level|browser|withhold, one line per level."""
+    rows, errs = {}, []
+    for l in open(os.path.join(PB, "Stages", "levels.list")):
+        if not l.strip() or l.startswith("#"):
+            continue
+        f = l.rstrip("\n").split("|")
+        if len(f) != 3 or f[0] not in LEVELS or f[0] in rows:
+            errs.append("Stages/levels.list: bad line: " + l.strip())
+            continue
+        if f[1] not in BROWSERS:
+            errs.append("Stages/levels.list: %s: browser %r is not one of %s" % (f[0], f[1], " ".join(BROWSERS)))
+        rows[f[0]] = f
+    errs += ["Stages/levels.list: no line for level " + v for v in LEVELS if v not in rows]
+    code = ["level_choice() {  # <level> <browser|withhold>; empty for any other level",
+            "    case \"$1:$2\" in"]
+    for v in LEVELS:
+        if v in rows:
+            code.append("        %s:browser)  echo %s ;;" % (v, rows[v][1]))
+            code.append("        %s:withhold) echo \"%s\" ;;" % (v, rows[v][2]))
+    code += ["    esac", "}"]
+    return code, errs
+
+
 def catalogue_posts(books):
     cats = [b for b in books if b["proj"].get("origin") == "catalogue" and b["body"]]
     code = []
@@ -446,8 +475,10 @@ def main():
         order = [l.split()[0] for l in open(os.path.join(PB, "Stages", "order.list"))
                  if l.strip() and not l.startswith("#")]
         man, lev = manifest(books, order)
+        lc, lerrs = level_choices()
+        cerrs = cerrs + lerrs
         newprep = splice(newprep, "stages", funcs)
-        newprep = splice(newprep, "manifest", man + [""] + lev)
+        newprep = splice(newprep, "manifest", man + [""] + lev + [""] + lc)
     if cerrs:
         for e in cerrs:
             print("error: " + e)

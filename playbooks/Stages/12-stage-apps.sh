@@ -151,9 +151,13 @@ MSG
              # The TEXT browsers stay at every level: links, elinks, w3m, lynx
              # and retawq are a few hundred kB each, they work over SSH with
              # no display at all, and they are tools rather than browsers.
-             if [ "$(copal_profile)" = full ]; then
-                 _excl="$_excl|dillo|netsurf|badwolf"
-                 note "full install: Brave and Firefox ESR only -- skipping Dillo, NetSurf, BadWolf"
+             #
+             # Which browsers a level withholds is data, not code:
+             # playbooks/Stages/levels.list, generated as level_choice.
+             _wh=$(level_choice "$(copal_profile)" withhold)
+             if [ -n "$_wh" ]; then
+                 _excl="$_excl|$(echo $_wh | tr ' ' '|')"
+                 note "$(copal_profile) install: skipping $_wh -- withheld at this level"
              fi
              _want=$(catalogue_available \
                      | grep -vE "\|($_excl)\|" \

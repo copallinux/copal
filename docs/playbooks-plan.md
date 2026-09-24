@@ -156,8 +156,15 @@ Four slices, each checked before the next:
   embedded scripts parsing under busybox. One fault found on the way: lint
   took the catalogue from every `catalogue()` in the file, and winebox has
   one of its own, so it now stops at the first.
-  **Left**: the browser, terminal and file-manager choices as level data;
-  then the gate -- a full-monty VM built from the assembled script matches
+  Then the level choices: `playbooks/Stages/levels.list` says, per level,
+  the browser stage 4 installs unattended (full: Brave; server and medium:
+  BadWolf) and the browsers stage 12's 'everything' withholds (full: Dillo,
+  NetSurf, BadWolf), generated as `level_choice`; stages 4 and 12 read it
+  instead of testing for `full`. Checked under busybox: every level (and
+  none, and an unknown one) on x86_64, aarch64, armv7 and armhf, 20 cases,
+  chooses as before. The terminal and file manager stay where they are:
+  they follow the session and what is installed, not the level.
+  **Left**: the gate -- a full-monty VM built from the assembled script matches
   today's (package list, `/usr/local` file list, menu audit). That check
   needs a fresh VM, built on the Mac.
 

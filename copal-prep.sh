@@ -6119,10 +6119,15 @@ MSG
             # lands here too (stage 17 declines itself later), and there is no
             # Brave build for that architecture from any source, so it takes
             # BadWolf alone like the other levels.
+            #
+            # Which browser each level takes is data, not code:
+            # playbooks/Stages/levels.list, generated as level_choice.
             if [ "${AUTO:-0}" = 1 ]; then
-                case "$(copal_profile):$_arch" in
-                    full:x86_64|full:aarch64) AUTO_DEFAULT=v ;;
-                    *)                        AUTO_DEFAULT=b ;;
+                case "$(level_choice "$(copal_profile)" browser):$_arch" in
+                    brave:x86_64|brave:aarch64) AUTO_DEFAULT=v ;;
+                    firefox-esr:*)              AUTO_DEFAULT=f ;;
+                    chromium:*)                 AUTO_DEFAULT=c ;;
+                    *)                          AUTO_DEFAULT=b ;;
                 esac
             fi
             ask "Choose [f/c/b/v/n]:"
@@ -27452,9 +27457,13 @@ MSG
              # The TEXT browsers stay at every level: links, elinks, w3m, lynx
              # and retawq are a few hundred kB each, they work over SSH with
              # no display at all, and they are tools rather than browsers.
-             if [ "$(copal_profile)" = full ]; then
-                 _excl="$_excl|dillo|netsurf|badwolf"
-                 note "full install: Brave and Firefox ESR only -- skipping Dillo, NetSurf, BadWolf"
+             #
+             # Which browsers a level withholds is data, not code:
+             # playbooks/Stages/levels.list, generated as level_choice.
+             _wh=$(level_choice "$(copal_profile)" withhold)
+             if [ -n "$_wh" ]; then
+                 _excl="$_excl|$(echo $_wh | tr ' ' '|')"
+                 note "$(copal_profile) install: skipping $_wh -- withheld at this level"
              fi
              _want=$(catalogue_available \
                      | grep -vE "\|($_excl)\|" \
@@ -32919,6 +32928,17 @@ stage_levels() {  # N|the levels that run stage N
 16|server medium full
 13|server medium full
 LEVELS
+}
+
+level_choice() {  # <level> <browser|withhold>; empty for any other level
+    case "$1:$2" in
+        server:browser)  echo badwolf ;;
+        server:withhold) echo "" ;;
+        medium:browser)  echo badwolf ;;
+        medium:withhold) echo "" ;;
+        full:browser)  echo brave ;;
+        full:withhold) echo "dillo netsurf badwolf" ;;
+    esac
 }
 # <<< playbooks: manifest
 
