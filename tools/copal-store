@@ -1775,6 +1775,150 @@ store_bundle() {
 }
 store_bundles() { echo "full-monty starter"; }
 
+# The catalogue programs' postconfiguration, the same bodies stage 12 runs.
+# ---- playbooks/Mail/claws-mail.sh
+# Claws Mail skips its wizard when accountrc exists. protocol 3 is
+# IMAP4, ssl_* 1 is TLS on connect, and the IMAP folder tree is
+# declared in folderlist.xml or the account has nowhere to appear.
+# Only when answers.txt names a mail address.
+claws_mail_post() {
+    [ -n "${PI_MAIL_ADDRESS:-}" ] || return 0
+    _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
+    _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
+    _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    cat > "$_t" <<CLAWS
+[Account: 1]
+account_name=$PI_MAIL_ADDRESS
+is_default=1
+name=$_mname
+address=$PI_MAIL_ADDRESS
+protocol=3
+receive_server=$_imap
+smtp_server=$_smtp
+user_id=$PI_MAIL_ADDRESS
+password=
+use_mail_command=0
+ssl_imap=1
+ssl_smtp=1
+use_smtp_auth=1
+smtp_user_id=$PI_MAIL_ADDRESS
+set_imapport=1
+imap_port=993
+set_smtpport=1
+smtp_port=465
+imap_directory=
+imap_subsonly=1
+CLAWS
+    seed_home_if_absent .claws-mail/accountrc "$_t"
+    cat > "$_t" <<FOLD
+<?xml version="1.0" encoding="UTF-8"?>
+<folderlist>
+  <folder type="imap" name="$PI_MAIL_ADDRESS" path="imapcache/$_imap/$PI_MAIL_ADDRESS" account_id="1" />
+  <folder type="mh" name="Mail" path="Mail" />
+</folderlist>
+FOLD
+    seed_home_if_absent .claws-mail/folderlist.xml "$_t"
+}
+# ---- playbooks/Internet/firefox-esr.sh
+# Firefox ESR: no welcome tab, no "make me the default", no telemetry.
+# A policies file in the distribution directory; read on every start.
+firefox_esr_post() {
+    if [ -d /usr/lib/firefox-esr ] && [ ! -f /usr/lib/firefox-esr/distribution/policies.json ]; then
+        mkdir -p /usr/lib/firefox-esr/distribution
+        cat > /usr/lib/firefox-esr/distribution/policies.json <<'POL'
+{ "policies": {
+    "OverrideFirstRunPage": "",
+    "OverridePostUpdatePage": "",
+    "DisableTelemetry": true,
+    "DontCheckDefaultBrowser": true,
+    "NoDefaultBookmarks": true } }
+POL
+        note "/usr/lib/firefox-esr/distribution/policies.json"
+    fi
+}
+# ---- playbooks/Editors/kate.sh
+# Kate: its welcome view in every new window. Only when copal has not
+# already written a katerc (stage 7 does, with the LSP client); then the
+# line is added there instead.
+kate_post() {
+    printf '[General]\nShow welcome view for new window=false\n' > "$_t"
+    seed_home_if_absent .config/katerc "$_t"
+}
+# ---- playbooks/Internet/qbittorrent.sh
+# qBittorrent: the "Legal Notice" box on first start (verified), and no
+# vanishing into the tray: on i3 the bar has no tray, so a window closed
+# "to the tray" is simply gone until the process is killed.
+qbittorrent_post() {
+    printf '[LegalNotice]\nAccepted=true\n\n[Preferences]\nGeneral\\CloseToTray=false\nGeneral\\MinimizeToTray=false\nGeneral\\SystrayEnabled=false\n' > "$_t"
+    seed_home_if_absent .config/qBittorrent/qBittorrent.conf "$_t"
+}
+# ---- playbooks/Mail/thunderbird.sh
+# Thunderbird: an account is nothing but prefs. profiles.ini names a
+# profile, user.js inside it declares IMAP (993, TLS), SMTP (465, TLS)
+# and a Local Folders store; the first start opens on the Inbox and
+# asks for the password once. The numeric codes are Thunderbird's:
+# socketType 3 = SSL/TLS, authMethod 3 = normal password. Only when
+# answers.txt names a mail address; otherwise it keeps its wizard.
+thunderbird_post() {
+    [ -n "${PI_MAIL_ADDRESS:-}" ] || return 0
+    _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
+    _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
+    _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    printf '[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default\nIsRelative=1\nPath=copal.default\nDefault=1\n' > "$_t"
+    seed_home_if_absent .thunderbird/profiles.ini "$_t"
+    cat > "$_t" <<TB
+user_pref("mail.accountmanager.accounts", "account1,account2");
+user_pref("mail.accountmanager.defaultaccount", "account1");
+user_pref("mail.accountmanager.localfoldersserver", "server2");
+user_pref("mail.account.account1.identities", "id1");
+user_pref("mail.account.account1.server", "server1");
+user_pref("mail.account.account2.server", "server2");
+user_pref("mail.server.server1.type", "imap");
+user_pref("mail.server.server1.hostname", "$_imap");
+user_pref("mail.server.server1.port", 993);
+user_pref("mail.server.server1.socketType", 3);
+user_pref("mail.server.server1.authMethod", 3);
+user_pref("mail.server.server1.userName", "$PI_MAIL_ADDRESS");
+user_pref("mail.server.server1.name", "$PI_MAIL_ADDRESS");
+user_pref("mail.server.server2.type", "none");
+user_pref("mail.server.server2.hostname", "Local Folders");
+user_pref("mail.server.server2.name", "Local Folders");
+user_pref("mail.identity.id1.fullName", "$_mname");
+user_pref("mail.identity.id1.useremail", "$PI_MAIL_ADDRESS");
+user_pref("mail.identity.id1.smtpServer", "smtp1");
+user_pref("mail.smtpservers", "smtp1");
+user_pref("mail.smtp.defaultserver", "smtp1");
+user_pref("mail.smtpserver.smtp1.hostname", "$_smtp");
+user_pref("mail.smtpserver.smtp1.port", 465);
+user_pref("mail.smtpserver.smtp1.try_ssl", 3);
+user_pref("mail.smtpserver.smtp1.authMethod", 3);
+user_pref("mail.smtpserver.smtp1.username", "$PI_MAIL_ADDRESS");
+user_pref("mail.shell.checkDefaultClient", false);
+user_pref("app.donation.eoy.version.viewed", 99);
+TB
+    seed_home_if_absent .thunderbird/copal.default/user.js "$_t"
+}
+# ---- playbooks/Notes/zim.sh
+# Zim: without a notebook the first window is "Add Notebook". One in
+# ~/Notebooks/Notes, registered as the default, and it opens on a page.
+zim_post() {
+    printf '[NotebookList]\nDefault=~/Notebooks/Notes\n\n[Notebook 1]\nuri=~/Notebooks/Notes\nname=Notes\n' > "$_t"
+    seed_home_if_absent .config/zim/notebooks.list "$_t"
+    printf '[Notebook]\nversion=0.4\nname=Notes\nhome=Home\n' > "$_t"
+    seed_home_if_absent Notebooks/Notes/notebook.zim "$_t"
+}
+catalogue_post_for() {  # <program id> -- its post, if it has one
+    case "$1" in
+        claws-mail) claws_mail_post ;;
+        firefox-esr) firefox_esr_post ;;
+        kate) kate_post ;;
+        qbittorrent) qbittorrent_post ;;
+        thunderbird) thunderbird_post ;;
+        zim) zim_post ;;
+        *) return 0 ;;
+    esac
+}
+
 # The catalogue's graphical programs: id|about|home, for Copal Apps (rows()).
 catalogue_abouts() {
     cat <<'CATABOUTS'
@@ -2142,6 +2286,26 @@ EOF
     done
 }
 
+# A CATALOGUE PROGRAM'S POST, when Copal Apps installs it: the same step
+# stage 12 runs (catalogue_post_for, from its playbook). It reads the
+# installer's answers from /boot/copal.conf -- the mail account, which
+# stage 1 wrote there, values already cleaned -- and seeds every home that
+# lacks the file, never one that has it.
+seed_home_if_absent() {  # <relative path> <source file> -- the installer's name for seed_homes
+    seed_homes "$1" < "$2"
+}
+catalogue_post() {  # <program id>
+    [ "$(id -u)" = 0 ] || return 0            # seeding homes is root's; a bench has no post
+    # shellcheck disable=SC1091
+    [ -r /boot/copal.conf ] && . /boot/copal.conf
+    W="${W:-$(mktemp -d)}"; _t=$(mktemp); _rcp=0
+    store_event "$1" post start
+    catalogue_post_for "$1" || _rcp=1
+    rm -f "$_t"
+    if [ $_rcp = 0 ]; then store_event "$1" post ok; else store_event "$1" post failed; fi
+    return $_rcp
+}
+
 # ONE EVENT: <playbook or id> <step> <state> [extra JSON members]. Steps are
 # run, program, deps, pre, install, post; states start, ok, failed. Never
 # fatal: a progress view that cannot be written to is not a failed install.
@@ -2304,7 +2468,12 @@ install_ids() {
             esac
         done
         # shellcheck disable=SC2086
-        [ -z "$_apks" ] || apk_install $_apks || _rc=1
+        if [ -n "$_apks" ]; then
+            if apk_install $_apks; then
+                # A catalogue program is finished by its playbook's post.
+                case "$(printf '%s' "$_row" | cut -d'|' -f9)" in catalogue) catalogue_post "$_id" || _rc=1 ;; esac
+            else _rc=1; fi
+        fi
         # Flathub rows belong to the catalogue, and copal-install knows them.
         # shellcheck disable=SC2086
         [ -z "$_flat" ] || { have copal-install && copal-install $_flat; } || _rc=1

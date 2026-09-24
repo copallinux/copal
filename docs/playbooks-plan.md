@@ -123,14 +123,24 @@ Four slices, each checked before the next:
   the real home (13 s, every event, the checkout left clean). Two faults
   found and fixed on the way: a build failure that read as success, and a
   summary that ended the script for a build with no file list.
-- **4b: a catalogue program's `post` from Copal Apps**, not only from stage
-  12 -- which needs the installer's answers (the mail account) where the
-  store can read them.
-- **4c: the program fix-ups in stages 4, 10 and 17 into `pre` and `post`**:
-  radbeeper's serial group, udev rule, boot service and VM kernel (stage 10),
-  ytq's settings, Brave and the default browser, the terminal and
-  file-manager choices -- each moved with the side-by-side check phase 3
-  used.
+- **4b, done: a catalogue program's `post` from Copal Apps.** The six posts
+  are generated into copal-store as well (`catalogue_post_for`), from the same
+  playbooks; installing a catalogue program runs its post, reading the
+  installer's answers from `/boot/copal.conf` (where stage 1 wrote the mail
+  account) and seeding every home that lacks the file. Checked: each of the
+  six, run the store's way and the installer's under stubs, writes identical
+  files.
+- **4c, begun: program setup out of the stages.** `install_radbeeper`
+  (stage 10: the serial group, udev rule, boot service and the VM's kernel)
+  is `radbeeper_pre` in radbeeper's playbook, and `install_ytq` is
+  `staticstream_post`; `make sync-playbooks` gathers them into a marked region
+  of copal-prep.sh and stage 10 calls them by those names. Checked: both
+  bodies identical to the functions they replaced (162 and 25 lines), and
+  every other line of code in the installer unchanged. They use the
+  installer's helpers, so they run from the stages, not yet from the store.
+  **Left for 4d**: Brave and the default browser, which stage 4 chooses by
+  level rather than by program, and the terminal and file-manager choices,
+  which are the desktop's.
 - **4d: the stages as bundles**, checked the way the plan says: a full-monty
   VM built from the assembled script matches today's -- package list,
   `/usr/local` file list, menu audit. That check needs a fresh VM, built on

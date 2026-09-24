@@ -21211,6 +21211,234 @@ GUIDE
 # gets there, and naming it explicitly costs nothing when it does not.
 #
 # So: a wrapper that fills in the path, leaves everything else to yt-dlp, and
+# The ~/code projects' own system setup, from their playbooks (playbooks/Code/,
+# NAME_pre and NAME_post), gathered by 'make sync-playbooks'.
+# >>> playbooks: code-steps -- generated from playbooks/ by 'make sync-playbooks'; edit those, not this
+# ---- playbooks/Code/radbeeper.sh
+radbeeper_pre() {
+    say "radbeeper -- a Geiger counter on USB"
+    cat <<'MSG'
+
+    A GQ GMC-320 and its relatives: what it is counting now, against five
+    time constants at once, and the history it recorded while unattended.
+
+      radbeeper probe        find the counter and say what it is
+      radbeeper watch        the monitor: 3s / 30s / 5m / 50m / working day
+      radbeeper log pull     download the stored history to .bin and .csv
+
+    The counter's own <GETCPM>> is one number with one time constant. Five
+    windows answer five questions -- 3s follows a source as you move it,
+    30s reads the room, 300s is worth writing down -- so radbeeper counts the
+    blips itself from the per-second heartbeat and averages them here.
+
+    The program is built, not shipped:  copal-build radbeeper
+    (from ~/code/radbeeper, which copal-code clones). This stage sets up the
+    dialout group, the boot service, the udev rule and the autostart line.
+
+MSG
+
+    # THE KERNEL, WHICH IS THE THIRD FAILURE AND THE EXPENSIVE ONE. The
+    # comment above this function sets it out: Alpine's linux-virt binds no
+    # USB serial adapter at all, so a counter passed through to a VM running
+    # it can never appear. The device enumerates -- lsusb shows the CH340 --
+    # and there is simply no driver to claim it, so dmesg is silent and every
+    # guide on the internet tells you to check the cable.
+    #
+    # This stage used to only DESCRIBE that. radbeeper's own README said
+    # "Copal installs the linux-lts Alpine package, so a Copal machine has
+    # the driver already", and nothing here installed any kernel at all. The
+    # sentence is true now.
+    #
+    # ONLY IN A VM, AND ONLY WHEN linux-lts IS NOT ALREADY THERE. Real
+    # hardware runs linux-lts or linux-rpi and both carry ch341, so there is
+    # nothing to do -- and a Pi must NOT be handed linux-lts. The test is the
+    # running kernel's own name, which ends in -virt exactly when this
+    # matters. It does not reboot anything: a kernel takes effect when the
+    # machine next starts, and choosing that moment is the operator's.
+    case "$(uname -r)" in
+        *-virt)
+            if apk info -e linux-lts >/dev/null 2>&1; then
+                note "linux-lts is installed"
+                grub_default_lts
+            elif apk add linux-lts >/dev/null 2>&1; then
+                note "installed linux-lts -- linux-virt has no ch341, so a passed-through counter could never appear"
+                grub_default_lts
+            else
+                warn "could not install linux-lts -- under linux-virt a USB counter cannot be found, however good the pass-through"
+            fi ;;
+    esac
+
+    # The Python radbeeper this function used to write -- 3,741 lines of it --
+    # retired. radbeeper is Rust now, one crate at the root of
+    # ~/code/radbeeper, which copal-code clones and copal-build compiles.
+    #
+    # It is removed only when it is the file Copal wrote -- its header is
+    # unmistakable -- so a radbeeper someone put there themselves is left
+    # alone. The one-file Python is not lost either: it is still in that
+    # checkout, beside the crate, as the oracle the port is checked against
+    # and as the owner of export, site, recompute, hotplug, window, --plain
+    # and --source sim, which have no Rust counterpart yet.
+    if [ -f /usr/local/bin/radbeeper ] && \
+       head -8 /usr/local/bin/radbeeper | grep -q 'a GQ GMC Geiger-Muller counter on the desk'; then
+        rm -f /usr/local/bin/radbeeper
+        note "removed the Python radbeeper from /usr/local/bin -- it is Rust now, from ~/code/radbeeper"
+    fi
+
+    # AND YET THE PATH STAYS. Three things here name /usr/local/bin/radbeeper
+    # and none of them can name anything else: the OpenRC service runs as
+    # root before any user's session exists, the udev rule fires as root, and
+    # the autostart line runs as whoever is logged in. A per-user
+    # ~/.local/bin is the wrong answer for the first two.
+    #
+    # So this writes a SHIM there, and the shim's whole job is to find the
+    # native binary and exec it -- copal-build's ~/.local/bin first, then a
+    # cargo install, then a static release binary dropped in by hand. Until
+    # one of those exists the shim exits non-zero with a sentence saying how
+    # to make it exist, which is exactly what the service's start_pre already
+    # treats as "no counter": it records the reason and stays dormant. So a
+    # machine that has never built radbeeper boots clean and says why.
+    cat > /usr/local/bin/radbeeper <<'RADBEEPERSHIM'
+#!/bin/sh
+# Written by copal-prep.sh: find the native radbeeper and run it.
+#
+# radbeeper is a Rust crate at the root of ~/code/radbeeper. This shim exists
+# because the boot service, the udev rule and the desktop autostart all have
+# to name one absolute path, and the binary itself lives wherever it was
+# built or installed.
+set -eu
+for c in \
+    "${HOME:-}/.local/bin/radbeeper" \
+    "${HOME:-}/.cargo/bin/radbeeper" \
+    /home/*/.local/bin/radbeeper \
+    /home/*/.cargo/bin/radbeeper \
+    /usr/local/lib/radbeeper/radbeeper
+do
+    [ -n "$c" ] && [ -x "$c" ] && exec "$c" "$@"
+done
+echo "radbeeper: the native binary is not built yet." >&2
+echo "  build it:    copal-build radbeeper        (from ~/code/radbeeper)" >&2
+echo "  or fetch it: cargo install radbeeper" >&2
+echo "  or take a static one: https://github.com/vonglurt/radbeeper/releases" >&2
+exit 127
+RADBEEPERSHIM
+    chmod 0755 /usr/local/bin/radbeeper
+    note "wrote the /usr/local/bin/radbeeper shim -- it runs the native build"
+
+    # The serial node is root:dialout. Being in the group is the difference
+    # between a working monitor and EACCES, and it takes a fresh login, which
+    # is worth saying now rather than being discovered later.
+    if [ -n "${PI_USER:-}" ] && id "$PI_USER" >/dev/null 2>&1; then
+        if getent group dialout >/dev/null 2>&1; then
+            if id -nG "$PI_USER" 2>/dev/null | tr ' ' '\n' | grep -qx dialout; then
+                note "$PI_USER is already in the dialout group"
+            else
+                adduser "$PI_USER" dialout >/dev/null 2>&1 \
+                    && note "$PI_USER added to dialout (takes effect at the next login)" \
+                    || warn "could not add $PI_USER to dialout -- do it by hand: adduser $PI_USER dialout"
+            fi
+        else
+            warn "no dialout group on this system -- the serial node may be owned by uucp instead"
+        fi
+    fi
+
+    # The boot service. It probes once; finding nothing it records why and
+    # does NOT start, which is the whole design: a USB device that is not
+    # plugged in will not become plugged in because a daemon asked again four
+    # seconds later. OpenRC reports it stopped and the next boot tries again.
+    cat > /etc/init.d/radbeeper <<'RADBEEPERRC'
+#!/sbin/openrc-run
+# radbeeper -- the Geiger counter monitor.
+#
+# Dormant is the normal state on a machine with no counter plugged in: this
+# service is STOPPED then, on purpose, having written the reason to
+# /var/lib/radbeeper/status. It looks again at the next boot, and
+# `rc-service radbeeper start` picks it up the moment you plug one in.
+name="radbeeper"
+description="Geiger counter monitor (dormant when no counter is present)"
+command="/usr/local/bin/radbeeper"
+command_args="service"
+command_background=true
+# THE SERVICE AND THE PERSON WRITE THE SAME LOG, so the service's files have
+# to be writable by the group that person is in.
+#
+# This runs as root; `radbeeper watch` runs as you. Both log, deliberately --
+# only one program can hold the serial port, so the monitor does the logging
+# while it has it, and the log used to have a hole exactly where somebody was
+# watching. That only works if watch can APPEND to the file the service
+# created. Without this umask root's default 022 makes it rw-r--r--, being in
+# dialout buys nothing, and watch comes up saying NOT LOGGING: Permission
+# denied -- reopening the hole the shared log was built to close.
+umask=002
+pidfile="/run/radbeeper.pid"
+output_log="/var/log/radbeeper/service.log"
+error_log="/var/log/radbeeper/service.log"
+
+depend() {
+	after coldplug udev-postmount modules
+	need localmount
+}
+
+# ---- playbooks/Code/staticstream.sh
+# ytq: a queue in front of yt-dlp, fed by the clipboard.
+#
+# The habit it replaces is the terminal with twelve yt-dlp commands pasted into
+# it, each waiting on the last. Copy a link and press Super+Shift+Y ('ytq
+# clip'), or copy it while the ytq window is focused, and it is checked (can
+# yt-dlp get it, and at what resolution?) and queued. 'ytq run' or the window
+# downloads; once ~/.config/ytq/auto exists, a background runner starts by
+# itself and leaves again when the queue is empty. Autostart is the user's to
+# switch on, so this installer does not create that file. Downloads run one at
+# a time -- queue.json is shared under a lock and run.lock admits one
+# downloader -- best video plus best audio, merged to MP4 by ffmpeg, and kept
+# as a Static Stream capture unless OUTPUT says otherwise. A failure goes to
+# the back of the queue for one more try; a failure that reads as a login, an
+# age gate or a bot check opens Brave on the URL and, once you have signed in
+# there and run 'ytq cookies' (or pressed 'c'), retries once through yt-brave.
+#
+# YTQ IS NO LONGER WRITTEN HERE. It was one Python file this function wrote
+# into /usr/local/bin. It is Rust now, in the staticstream checkout at
+# ~/code/staticstream, and copal-build compiles it into ~/.local/bin beside
+# sstr and sstr-workspace. ~/.local/bin comes before /usr/local/bin on Copal's
+# PATH, so that is the ytq Super+Shift+Y and every typed 'ytq' reach. The
+# queue file, both locks, the log, the settings and the commands are the same
+# ones, which is how the two were run side by side until the Rust one passed
+# every comparison; what changed is that a download is kept as a .sstr by
+# default. The Python ytq is kept as the specification those comparisons still
+# run against, at staticstream's tests/reference/ytq.py.
+#
+# What is still this function's business is everything around ytq: yt-dlp
+# itself, /etc/yt-dlp.conf so a yt-dlp run by hand names files the same way,
+# yt-brave for the cookie retry, and the programs ytq calls out to --
+# wl-clipboard and xclip to read the clipboard, xdotool to ask X11 which
+# window has focus, libnotify to say a download is done.
+staticstream_post() {
+    command -v yt-dlp >/dev/null 2>&1 || return 0
+    [ -x /usr/local/bin/yt-brave ] || install_ytbrave
+    write_ytdlp_conf
+    add_optional wl-clipboard xclip xdotool libnotify
+
+    # The Python ytq this function used to write, retired. It is removed only
+    # when it is the file Copal wrote -- its header is unmistakable -- so a ytq
+    # someone put there themselves is left alone.
+    if [ -f /usr/local/bin/ytq ] && \
+       head -8 /usr/local/bin/ytq | grep -q 'a yt-dlp download queue that watches the clipboard'; then
+        rm -f /usr/local/bin/ytq
+        note "removed the Python ytq from /usr/local/bin -- ytq is Rust now, from ~/code/staticstream"
+    fi
+
+    write_media_conf
+
+    note "ytq -- a download queue: Super+Shift+Y queues the clipboard's URL, 'ytq run' downloads"
+    note "  it is built from ~/code/staticstream:  copal-build staticstream   (into ~/.local/bin)"
+    note "  to have it start downloading by itself:  touch ~/.config/ytq/auto   (ytq --help)"
+    note "  what a download leaves:  OUTPUT in ~/.config/copal/media.conf   (mp4 as installed)"
+    note "  the Workspace over what it keeps:  Super+Shift+A, or 'sstr-workspace'  -- the archive"
+    note "  and the queue in one Browser, with Play, Verify, Export and Text on one key;"
+    note "  X over a folder exports every capture in it  (or 'sstr export DIR' in a shell)"
+}
+
+# <<< playbooks: code-steps
+
 # takes a profile name for people with more than one.
 install_ytbrave() {
     command -v yt-dlp >/dev/null 2>&1 || return 0
@@ -21322,63 +21550,6 @@ YTBRAVE
     note "yt-brave -- yt-dlp with Brave's cookies. 'yt-brave --list' shows profiles."
 }
 
-# ytq: a queue in front of yt-dlp, fed by the clipboard.
-#
-# The habit it replaces is the terminal with twelve yt-dlp commands pasted into
-# it, each waiting on the last. Copy a link and press Super+Shift+Y ('ytq
-# clip'), or copy it while the ytq window is focused, and it is checked (can
-# yt-dlp get it, and at what resolution?) and queued. 'ytq run' or the window
-# downloads; once ~/.config/ytq/auto exists, a background runner starts by
-# itself and leaves again when the queue is empty. Autostart is the user's to
-# switch on, so this installer does not create that file. Downloads run one at
-# a time -- queue.json is shared under a lock and run.lock admits one
-# downloader -- best video plus best audio, merged to MP4 by ffmpeg, and kept
-# as a Static Stream capture unless OUTPUT says otherwise. A failure goes to
-# the back of the queue for one more try; a failure that reads as a login, an
-# age gate or a bot check opens Brave on the URL and, once you have signed in
-# there and run 'ytq cookies' (or pressed 'c'), retries once through yt-brave.
-#
-# YTQ IS NO LONGER WRITTEN HERE. It was one Python file this function wrote
-# into /usr/local/bin. It is Rust now, in the staticstream checkout at
-# ~/code/staticstream, and copal-build compiles it into ~/.local/bin beside
-# sstr and sstr-workspace. ~/.local/bin comes before /usr/local/bin on Copal's
-# PATH, so that is the ytq Super+Shift+Y and every typed 'ytq' reach. The
-# queue file, both locks, the log, the settings and the commands are the same
-# ones, which is how the two were run side by side until the Rust one passed
-# every comparison; what changed is that a download is kept as a .sstr by
-# default. The Python ytq is kept as the specification those comparisons still
-# run against, at staticstream's tests/reference/ytq.py.
-#
-# What is still this function's business is everything around ytq: yt-dlp
-# itself, /etc/yt-dlp.conf so a yt-dlp run by hand names files the same way,
-# yt-brave for the cookie retry, and the programs ytq calls out to --
-# wl-clipboard and xclip to read the clipboard, xdotool to ask X11 which
-# window has focus, libnotify to say a download is done.
-install_ytq() {
-    command -v yt-dlp >/dev/null 2>&1 || return 0
-    [ -x /usr/local/bin/yt-brave ] || install_ytbrave
-    write_ytdlp_conf
-    add_optional wl-clipboard xclip xdotool libnotify
-
-    # The Python ytq this function used to write, retired. It is removed only
-    # when it is the file Copal wrote -- its header is unmistakable -- so a ytq
-    # someone put there themselves is left alone.
-    if [ -f /usr/local/bin/ytq ] && \
-       head -8 /usr/local/bin/ytq | grep -q 'a yt-dlp download queue that watches the clipboard'; then
-        rm -f /usr/local/bin/ytq
-        note "removed the Python ytq from /usr/local/bin -- ytq is Rust now, from ~/code/staticstream"
-    fi
-
-    write_media_conf
-
-    note "ytq -- a download queue: Super+Shift+Y queues the clipboard's URL, 'ytq run' downloads"
-    note "  it is built from ~/code/staticstream:  copal-build staticstream   (into ~/.local/bin)"
-    note "  to have it start downloading by itself:  touch ~/.config/ytq/auto   (ytq --help)"
-    note "  what a download leaves:  OUTPUT in ~/.config/copal/media.conf   (mp4 as installed)"
-    note "  the Workspace over what it keeps:  Super+Shift+A, or 'sstr-workspace'  -- the archive"
-    note "  and the queue in one Browser, with Play, Verify, Export and Text on one key;"
-    note "  X over a folder exports every capture in it  (or 'sstr export DIR' in a shell)"
-}
 
 # ~/.config/copal/media.conf -- the settings sstr, ytq and the Workspace share.
 #
@@ -21560,168 +21731,6 @@ grub_default_lts() {
     fi
 }
 
-install_radbeeper() {
-    say "radbeeper -- a Geiger counter on USB"
-    cat <<'MSG'
-
-    A GQ GMC-320 and its relatives: what it is counting now, against five
-    time constants at once, and the history it recorded while unattended.
-
-      radbeeper probe        find the counter and say what it is
-      radbeeper watch        the monitor: 3s / 30s / 5m / 50m / working day
-      radbeeper log pull     download the stored history to .bin and .csv
-
-    The counter's own <GETCPM>> is one number with one time constant. Five
-    windows answer five questions -- 3s follows a source as you move it,
-    30s reads the room, 300s is worth writing down -- so radbeeper counts the
-    blips itself from the per-second heartbeat and averages them here.
-
-    The program is built, not shipped:  copal-build radbeeper
-    (from ~/code/radbeeper, which copal-code clones). This stage sets up the
-    dialout group, the boot service, the udev rule and the autostart line.
-
-MSG
-
-    # THE KERNEL, WHICH IS THE THIRD FAILURE AND THE EXPENSIVE ONE. The
-    # comment above this function sets it out: Alpine's linux-virt binds no
-    # USB serial adapter at all, so a counter passed through to a VM running
-    # it can never appear. The device enumerates -- lsusb shows the CH340 --
-    # and there is simply no driver to claim it, so dmesg is silent and every
-    # guide on the internet tells you to check the cable.
-    #
-    # This stage used to only DESCRIBE that. radbeeper's own README said
-    # "Copal installs the linux-lts Alpine package, so a Copal machine has
-    # the driver already", and nothing here installed any kernel at all. The
-    # sentence is true now.
-    #
-    # ONLY IN A VM, AND ONLY WHEN linux-lts IS NOT ALREADY THERE. Real
-    # hardware runs linux-lts or linux-rpi and both carry ch341, so there is
-    # nothing to do -- and a Pi must NOT be handed linux-lts. The test is the
-    # running kernel's own name, which ends in -virt exactly when this
-    # matters. It does not reboot anything: a kernel takes effect when the
-    # machine next starts, and choosing that moment is the operator's.
-    case "$(uname -r)" in
-        *-virt)
-            if apk info -e linux-lts >/dev/null 2>&1; then
-                note "linux-lts is installed"
-                grub_default_lts
-            elif apk add linux-lts >/dev/null 2>&1; then
-                note "installed linux-lts -- linux-virt has no ch341, so a passed-through counter could never appear"
-                grub_default_lts
-            else
-                warn "could not install linux-lts -- under linux-virt a USB counter cannot be found, however good the pass-through"
-            fi ;;
-    esac
-
-    # The Python radbeeper this function used to write -- 3,741 lines of it --
-    # retired. radbeeper is Rust now, one crate at the root of
-    # ~/code/radbeeper, which copal-code clones and copal-build compiles.
-    #
-    # It is removed only when it is the file Copal wrote -- its header is
-    # unmistakable -- so a radbeeper someone put there themselves is left
-    # alone. The one-file Python is not lost either: it is still in that
-    # checkout, beside the crate, as the oracle the port is checked against
-    # and as the owner of export, site, recompute, hotplug, window, --plain
-    # and --source sim, which have no Rust counterpart yet.
-    if [ -f /usr/local/bin/radbeeper ] && \
-       head -8 /usr/local/bin/radbeeper | grep -q 'a GQ GMC Geiger-Muller counter on the desk'; then
-        rm -f /usr/local/bin/radbeeper
-        note "removed the Python radbeeper from /usr/local/bin -- it is Rust now, from ~/code/radbeeper"
-    fi
-
-    # AND YET THE PATH STAYS. Three things here name /usr/local/bin/radbeeper
-    # and none of them can name anything else: the OpenRC service runs as
-    # root before any user's session exists, the udev rule fires as root, and
-    # the autostart line runs as whoever is logged in. A per-user
-    # ~/.local/bin is the wrong answer for the first two.
-    #
-    # So this writes a SHIM there, and the shim's whole job is to find the
-    # native binary and exec it -- copal-build's ~/.local/bin first, then a
-    # cargo install, then a static release binary dropped in by hand. Until
-    # one of those exists the shim exits non-zero with a sentence saying how
-    # to make it exist, which is exactly what the service's start_pre already
-    # treats as "no counter": it records the reason and stays dormant. So a
-    # machine that has never built radbeeper boots clean and says why.
-    cat > /usr/local/bin/radbeeper <<'RADBEEPERSHIM'
-#!/bin/sh
-# Written by copal-prep.sh: find the native radbeeper and run it.
-#
-# radbeeper is a Rust crate at the root of ~/code/radbeeper. This shim exists
-# because the boot service, the udev rule and the desktop autostart all have
-# to name one absolute path, and the binary itself lives wherever it was
-# built or installed.
-set -eu
-for c in \
-    "${HOME:-}/.local/bin/radbeeper" \
-    "${HOME:-}/.cargo/bin/radbeeper" \
-    /home/*/.local/bin/radbeeper \
-    /home/*/.cargo/bin/radbeeper \
-    /usr/local/lib/radbeeper/radbeeper
-do
-    [ -n "$c" ] && [ -x "$c" ] && exec "$c" "$@"
-done
-echo "radbeeper: the native binary is not built yet." >&2
-echo "  build it:    copal-build radbeeper        (from ~/code/radbeeper)" >&2
-echo "  or fetch it: cargo install radbeeper" >&2
-echo "  or take a static one: https://github.com/vonglurt/radbeeper/releases" >&2
-exit 127
-RADBEEPERSHIM
-    chmod 0755 /usr/local/bin/radbeeper
-    note "wrote the /usr/local/bin/radbeeper shim -- it runs the native build"
-
-    # The serial node is root:dialout. Being in the group is the difference
-    # between a working monitor and EACCES, and it takes a fresh login, which
-    # is worth saying now rather than being discovered later.
-    if [ -n "${PI_USER:-}" ] && id "$PI_USER" >/dev/null 2>&1; then
-        if getent group dialout >/dev/null 2>&1; then
-            if id -nG "$PI_USER" 2>/dev/null | tr ' ' '\n' | grep -qx dialout; then
-                note "$PI_USER is already in the dialout group"
-            else
-                adduser "$PI_USER" dialout >/dev/null 2>&1 \
-                    && note "$PI_USER added to dialout (takes effect at the next login)" \
-                    || warn "could not add $PI_USER to dialout -- do it by hand: adduser $PI_USER dialout"
-            fi
-        else
-            warn "no dialout group on this system -- the serial node may be owned by uucp instead"
-        fi
-    fi
-
-    # The boot service. It probes once; finding nothing it records why and
-    # does NOT start, which is the whole design: a USB device that is not
-    # plugged in will not become plugged in because a daemon asked again four
-    # seconds later. OpenRC reports it stopped and the next boot tries again.
-    cat > /etc/init.d/radbeeper <<'RADBEEPERRC'
-#!/sbin/openrc-run
-# radbeeper -- the Geiger counter monitor.
-#
-# Dormant is the normal state on a machine with no counter plugged in: this
-# service is STOPPED then, on purpose, having written the reason to
-# /var/lib/radbeeper/status. It looks again at the next boot, and
-# `rc-service radbeeper start` picks it up the moment you plug one in.
-name="radbeeper"
-description="Geiger counter monitor (dormant when no counter is present)"
-command="/usr/local/bin/radbeeper"
-command_args="service"
-command_background=true
-# THE SERVICE AND THE PERSON WRITE THE SAME LOG, so the service's files have
-# to be writable by the group that person is in.
-#
-# This runs as root; `radbeeper watch` runs as you. Both log, deliberately --
-# only one program can hold the serial port, so the monitor does the logging
-# while it has it, and the log used to have a hole exactly where somebody was
-# watching. That only works if watch can APPEND to the file the service
-# created. Without this umask root's default 022 makes it rw-r--r--, being in
-# dialout buys nothing, and watch comes up saying NOT LOGGING: Permission
-# denied -- reopening the hole the shared log was built to close.
-umask=002
-pidfile="/run/radbeeper.pid"
-output_log="/var/log/radbeeper/service.log"
-error_log="/var/log/radbeeper/service.log"
-
-depend() {
-	after coldplug udev-postmount modules
-	need localmount
-}
 
 start_pre() {
 	checkpath -d -m 0755 /var/log/radbeeper
@@ -22043,12 +22052,12 @@ MSG
     say "Video and audio downloads"
     install_ytdlp || warn "yt-dlp not installed -- re-run stage 10 to try again"
     install_ytbrave
-    install_ytq
+    staticstream_post
     # THE GUIDE IS WRITTEN WHATEVER THE THREE ABOVE DID, because it is a text
     # file and not a part of installing anything. It used to be the last line
     # of install_ytdlp, which returns early when there is no network, when the
     # package will not add, when python3 is missing, when the download fails,
-    # and when the answer is to skip -- and install_ytq, the other place it
+    # and when the answer is to skip -- and staticstream_post, the other place it
     # might have been written from, returns at once if yt-dlp is not there.
     # So a machine that already had yt-dlp kept whichever guide it was given
     # the first time, however many times stage 10 was re-run. Found two days
@@ -22153,7 +22162,7 @@ MOUNTDSK
     note "mountdsk IMAGE       browse a disk image as a directory (read-only)"
     note "mountdsk -u          unmount it again"
 
-    install_radbeeper
+    radbeeper_pre
 
     say "Stage 10 complete."
     note "Getting files in and out of a Mini vMac disk: ~/minivmac/shared.sh"
@@ -25147,6 +25156,150 @@ store_bundle() {
 }
 store_bundles() { echo "full-monty starter"; }
 
+# The catalogue programs' postconfiguration, the same bodies stage 12 runs.
+# ---- playbooks/Mail/claws-mail.sh
+# Claws Mail skips its wizard when accountrc exists. protocol 3 is
+# IMAP4, ssl_* 1 is TLS on connect, and the IMAP folder tree is
+# declared in folderlist.xml or the account has nowhere to appear.
+# Only when answers.txt names a mail address.
+claws_mail_post() {
+    [ -n "${PI_MAIL_ADDRESS:-}" ] || return 0
+    _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
+    _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
+    _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    cat > "$_t" <<CLAWS
+[Account: 1]
+account_name=$PI_MAIL_ADDRESS
+is_default=1
+name=$_mname
+address=$PI_MAIL_ADDRESS
+protocol=3
+receive_server=$_imap
+smtp_server=$_smtp
+user_id=$PI_MAIL_ADDRESS
+password=
+use_mail_command=0
+ssl_imap=1
+ssl_smtp=1
+use_smtp_auth=1
+smtp_user_id=$PI_MAIL_ADDRESS
+set_imapport=1
+imap_port=993
+set_smtpport=1
+smtp_port=465
+imap_directory=
+imap_subsonly=1
+CLAWS
+    seed_home_if_absent .claws-mail/accountrc "$_t"
+    cat > "$_t" <<FOLD
+<?xml version="1.0" encoding="UTF-8"?>
+<folderlist>
+  <folder type="imap" name="$PI_MAIL_ADDRESS" path="imapcache/$_imap/$PI_MAIL_ADDRESS" account_id="1" />
+  <folder type="mh" name="Mail" path="Mail" />
+</folderlist>
+FOLD
+    seed_home_if_absent .claws-mail/folderlist.xml "$_t"
+}
+# ---- playbooks/Internet/firefox-esr.sh
+# Firefox ESR: no welcome tab, no "make me the default", no telemetry.
+# A policies file in the distribution directory; read on every start.
+firefox_esr_post() {
+    if [ -d /usr/lib/firefox-esr ] && [ ! -f /usr/lib/firefox-esr/distribution/policies.json ]; then
+        mkdir -p /usr/lib/firefox-esr/distribution
+        cat > /usr/lib/firefox-esr/distribution/policies.json <<'POL'
+{ "policies": {
+    "OverrideFirstRunPage": "",
+    "OverridePostUpdatePage": "",
+    "DisableTelemetry": true,
+    "DontCheckDefaultBrowser": true,
+    "NoDefaultBookmarks": true } }
+POL
+        note "/usr/lib/firefox-esr/distribution/policies.json"
+    fi
+}
+# ---- playbooks/Editors/kate.sh
+# Kate: its welcome view in every new window. Only when copal has not
+# already written a katerc (stage 7 does, with the LSP client); then the
+# line is added there instead.
+kate_post() {
+    printf '[General]\nShow welcome view for new window=false\n' > "$_t"
+    seed_home_if_absent .config/katerc "$_t"
+}
+# ---- playbooks/Internet/qbittorrent.sh
+# qBittorrent: the "Legal Notice" box on first start (verified), and no
+# vanishing into the tray: on i3 the bar has no tray, so a window closed
+# "to the tray" is simply gone until the process is killed.
+qbittorrent_post() {
+    printf '[LegalNotice]\nAccepted=true\n\n[Preferences]\nGeneral\\CloseToTray=false\nGeneral\\MinimizeToTray=false\nGeneral\\SystrayEnabled=false\n' > "$_t"
+    seed_home_if_absent .config/qBittorrent/qBittorrent.conf "$_t"
+}
+# ---- playbooks/Mail/thunderbird.sh
+# Thunderbird: an account is nothing but prefs. profiles.ini names a
+# profile, user.js inside it declares IMAP (993, TLS), SMTP (465, TLS)
+# and a Local Folders store; the first start opens on the Inbox and
+# asks for the password once. The numeric codes are Thunderbird's:
+# socketType 3 = SSL/TLS, authMethod 3 = normal password. Only when
+# answers.txt names a mail address; otherwise it keeps its wizard.
+thunderbird_post() {
+    [ -n "${PI_MAIL_ADDRESS:-}" ] || return 0
+    _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
+    _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
+    _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    printf '[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default\nIsRelative=1\nPath=copal.default\nDefault=1\n' > "$_t"
+    seed_home_if_absent .thunderbird/profiles.ini "$_t"
+    cat > "$_t" <<TB
+user_pref("mail.accountmanager.accounts", "account1,account2");
+user_pref("mail.accountmanager.defaultaccount", "account1");
+user_pref("mail.accountmanager.localfoldersserver", "server2");
+user_pref("mail.account.account1.identities", "id1");
+user_pref("mail.account.account1.server", "server1");
+user_pref("mail.account.account2.server", "server2");
+user_pref("mail.server.server1.type", "imap");
+user_pref("mail.server.server1.hostname", "$_imap");
+user_pref("mail.server.server1.port", 993);
+user_pref("mail.server.server1.socketType", 3);
+user_pref("mail.server.server1.authMethod", 3);
+user_pref("mail.server.server1.userName", "$PI_MAIL_ADDRESS");
+user_pref("mail.server.server1.name", "$PI_MAIL_ADDRESS");
+user_pref("mail.server.server2.type", "none");
+user_pref("mail.server.server2.hostname", "Local Folders");
+user_pref("mail.server.server2.name", "Local Folders");
+user_pref("mail.identity.id1.fullName", "$_mname");
+user_pref("mail.identity.id1.useremail", "$PI_MAIL_ADDRESS");
+user_pref("mail.identity.id1.smtpServer", "smtp1");
+user_pref("mail.smtpservers", "smtp1");
+user_pref("mail.smtp.defaultserver", "smtp1");
+user_pref("mail.smtpserver.smtp1.hostname", "$_smtp");
+user_pref("mail.smtpserver.smtp1.port", 465);
+user_pref("mail.smtpserver.smtp1.try_ssl", 3);
+user_pref("mail.smtpserver.smtp1.authMethod", 3);
+user_pref("mail.smtpserver.smtp1.username", "$PI_MAIL_ADDRESS");
+user_pref("mail.shell.checkDefaultClient", false);
+user_pref("app.donation.eoy.version.viewed", 99);
+TB
+    seed_home_if_absent .thunderbird/copal.default/user.js "$_t"
+}
+# ---- playbooks/Notes/zim.sh
+# Zim: without a notebook the first window is "Add Notebook". One in
+# ~/Notebooks/Notes, registered as the default, and it opens on a page.
+zim_post() {
+    printf '[NotebookList]\nDefault=~/Notebooks/Notes\n\n[Notebook 1]\nuri=~/Notebooks/Notes\nname=Notes\n' > "$_t"
+    seed_home_if_absent .config/zim/notebooks.list "$_t"
+    printf '[Notebook]\nversion=0.4\nname=Notes\nhome=Home\n' > "$_t"
+    seed_home_if_absent Notebooks/Notes/notebook.zim "$_t"
+}
+catalogue_post_for() {  # <program id> -- its post, if it has one
+    case "$1" in
+        claws-mail) claws_mail_post ;;
+        firefox-esr) firefox_esr_post ;;
+        kate) kate_post ;;
+        qbittorrent) qbittorrent_post ;;
+        thunderbird) thunderbird_post ;;
+        zim) zim_post ;;
+        *) return 0 ;;
+    esac
+}
+
 # The catalogue's graphical programs: id|about|home, for Copal Apps (rows()).
 catalogue_abouts() {
     cat <<'CATABOUTS'
@@ -25514,6 +25667,26 @@ EOF
     done
 }
 
+# A CATALOGUE PROGRAM'S POST, when Copal Apps installs it: the same step
+# stage 12 runs (catalogue_post_for, from its playbook). It reads the
+# installer's answers from /boot/copal.conf -- the mail account, which
+# stage 1 wrote there, values already cleaned -- and seeds every home that
+# lacks the file, never one that has it.
+seed_home_if_absent() {  # <relative path> <source file> -- the installer's name for seed_homes
+    seed_homes "$1" < "$2"
+}
+catalogue_post() {  # <program id>
+    [ "$(id -u)" = 0 ] || return 0            # seeding homes is root's; a bench has no post
+    # shellcheck disable=SC1091
+    [ -r /boot/copal.conf ] && . /boot/copal.conf
+    W="${W:-$(mktemp -d)}"; _t=$(mktemp); _rcp=0
+    store_event "$1" post start
+    catalogue_post_for "$1" || _rcp=1
+    rm -f "$_t"
+    if [ $_rcp = 0 ]; then store_event "$1" post ok; else store_event "$1" post failed; fi
+    return $_rcp
+}
+
 # ONE EVENT: <playbook or id> <step> <state> [extra JSON members]. Steps are
 # run, program, deps, pre, install, post; states start, ok, failed. Never
 # fatal: a progress view that cannot be written to is not a failed install.
@@ -25676,7 +25849,12 @@ install_ids() {
             esac
         done
         # shellcheck disable=SC2086
-        [ -z "$_apks" ] || apk_install $_apks || _rc=1
+        if [ -n "$_apks" ]; then
+            if apk_install $_apks; then
+                # A catalogue program is finished by its playbook's post.
+                case "$(printf '%s' "$_row" | cut -d'|' -f9)" in catalogue) catalogue_post "$_id" || _rc=1 ;; esac
+            else _rc=1; fi
+        fi
         # Flathub rows belong to the catalogue, and copal-install knows them.
         # shellcheck disable=SC2086
         [ -z "$_flat" ] || { have copal-install && copal-install $_flat; } || _rc=1

@@ -40,8 +40,10 @@
 # A CODE playbook (origin: code, source: clone URL) is a project checked out
 # into ~/code and built there by copal-build. It is a row on the store's Code
 # shelf whose install field is NAME@clone; 'copal-store install' clones and
-# builds it as the person, never as root. It has no body: its system setup is
-# in the stage that needs it until phase 4 moves it.
+# builds it as the person, never as root. Its body is at most NAME_pre and
+# NAME_post -- the system setup it needs (a udev rule, a service, a config) --
+# gathered into a marked region of copal-prep.sh, where the stage that sets it
+# up calls them; they use the installer's helpers, so the store does not.
 import os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -139,7 +141,9 @@ def validate(books):
         if code and any(g.get("install") != name + "@clone" for g in b["progs"]):
             errs.append("%s: a code playbook installs as %s@clone" % (rel, name))
         if code and b["body"]:
-            errs.append("%s: a code playbook has no body yet" % rel)
+            for n in shell_names(b["body"]):
+                if n not in (fname(name) + "_pre", fname(name) + "_post"):
+                    errs.append("%s: a code playbook defines only %s_pre and %s_post, not %s" % (rel, fname(name), fname(name), n))
         if p.get("origin") not in (None, "catalogue", "code"):
             errs.append("%s: origin %r" % (rel, p.get("origin")))
         for g in b["progs"]:
@@ -163,7 +167,7 @@ def validate(books):
         is_src = any((name + "@source") in g.get("install", "").split() for g in b["progs"])
         if is_src and not re.search(r"^" + re.escape(name) + r"_install\(\) \{", b["body"], re.M):
             errs.append("%s: builds from source but has no %s_install" % (rel, name))
-        if not is_src and not cat and b["body"]:
+        if not is_src and not cat and not code and b["body"]:
             errs.append("%s: a store apk playbook with a body (the store runs none)" % rel)
         if cat and b["body"]:
             for n in shell_names(b["body"]):
@@ -223,7 +227,9 @@ def generate(books):
     rows.sort(key=lambda r: (r.split("|")[0], r.split("|")[1].lower()))
     table = ["store_table() {", "    cat <<'STORETABLE'"] + rows + ["STORETABLE", "}"]
 
-    src = [b for b in books if b["body"] and b["proj"].get("origin") != "catalogue"]
+    # Recipes are the store's own source builds: a catalogue or code playbook's
+    # body is its pre/post, which lives in copal-prep.sh, not here.
+    src = [b for b in books if b["body"] and b["proj"].get("origin") not in ("catalogue", "code")]
     code = []
     for b in sorted(src, key=lambda b: b["proj"]["playbook"]):
         n, p = b["proj"]["playbook"], b["proj"]
@@ -248,6 +254,17 @@ def generate(books):
         code.append('        %s) echo "%s" ;;' % (name, " ".join(members)))
     code += ['        *) return 1 ;;', "    esac", "}",
              "store_bundles() { echo \"%s\"; }" % " ".join(bundles())]
+    # The catalogue's posts again, here: installing one of its programs from
+    # Copal Apps runs the same step stage 12 does.
+    posts = sorted((b for b in books if b["proj"].get("origin") == "catalogue" and b["body"]),
+                   key=lambda b: b["proj"]["playbook"])
+    code += ["", "# The catalogue programs' postconfiguration, the same bodies stage 12 runs."]
+    for b in posts:
+        code += ["# ---- " + os.path.relpath(b["path"], ROOT), b["body"]]
+    code += ["catalogue_post_for() {  # <program id> -- its post, if it has one", '    case "$1" in']
+    for b in posts:
+        code.append("        %s) %s_post ;;" % (b["progs"][0]["program"], fname(b["proj"]["playbook"])))
+    code += ["        *) return 0 ;;", "    esac", "}"]
     cats = [b for b in books if b["proj"].get("origin") == "catalogue"]
     code += ["", "# The catalogue's graphical programs: id|about|home, for Copal Apps (rows()).",
              "catalogue_abouts() {", "    cat <<'CATABOUTS'"]
@@ -281,6 +298,14 @@ def catalogue_rows(books, prep):
         at = max([i for i, l in enumerate(out) if l.split("|")[0] == g["shelf"]] or [len(out) - 1])
         out.insert(at + 1, row)
     return prep[:a] + "\n".join(out) + prep[z:], errs
+
+
+def code_steps(books):
+    code = []
+    for b in sorted((b for b in books if b["proj"].get("origin") == "code" and b["body"]),
+                    key=lambda b: b["proj"]["playbook"]):
+        code += ["# ---- " + os.path.relpath(b["path"], ROOT), b["body"], ""]
+    return code
 
 
 def catalogue_posts(books):
@@ -361,6 +386,7 @@ def main():
     prep = open(PREP).read()
     newprep, cerrs = catalogue_rows(books, prep)
     newprep = splice(newprep, "catalogue-post", catalogue_posts(books))
+    newprep = splice(newprep, "code-steps", code_steps(books))
     if cerrs:
         for e in cerrs:
             print("error: " + e)
