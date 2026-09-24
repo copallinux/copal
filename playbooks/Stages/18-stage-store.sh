@@ -453,6 +453,7 @@ nano|nano-syntax
 nnn|nnn-plugins mediainfo atool
 py3-matplotlib|py3-matplotlib-gtk3 py3-matplotlib-tk
 python3|python3-tkinter python3-idle
+py3-lsp-server|py3-pyflakes py3-pycodestyle
 qpdf|qpdf-fix-qdf
 ranger|highlight mediainfo atool ffmpegthumbnailer poppler-utils w3m-image
 screen|screen-message

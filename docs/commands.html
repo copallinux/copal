@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 290 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 179 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 193 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.</p>
 </header>
 <div class="finder">
@@ -598,20 +598,26 @@ nvim [options] -q [errorfile]</pre>
 </article>
 </section>
 <section class="sec" id="s-devtools"><h2>Devtools</h2>
-<article class="cmd facts-only" id="c-bear" data-s="bear a tool to generate compilation database for clang tooling. devtools bear">
-<h3><a class="self" href="#c-bear"><code>bear</code></a> <span class="purpose">a tool to generate compilation database for Clang tooling.</span></h3>
+<article class="cmd" id="c-bear" data-s="bear record a build's compiler calls into compile_commands.json, for clangd and other tools. devtools bear">
+<h3><a class="self" href="#c-bear"><code>bear</code></a> <span class="purpose">Record a build's compiler calls into compile_commands.json, for clangd and other tools.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>bear</b> 4.1.5 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/bear.html">man bear(1)</a> · <a href="https://github.com/rizsotto/Bear">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's bridge between a Makefile and the editor: clangd needs each file's flags, and a plain make build does not write them down. Bear watches the build and does.</p>
 <pre class="syn">bear [OPTIONS] [--] [BUILD_COMMAND...]
 
 bear intercept [OPTIONS] [--] BUILD_COMMAND...
 
 bear semantic [OPTIONS]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Put <code>bear --</code> in front of the build command. Afterwards <code>compile_commands.json</code> sits in the current folder, and clangd -- in Neovim, Helix or Geany -- understands the project.</p>
+<h4>Examples</h4><div class="ex"><code>bear -- make</code><span>record a make build</span></div><div class="ex"><code>make clean &amp;&amp; bear -- make -j4</code><span>a full rebuild, so every file is seen</span></div><div class="ex"><code>bear --append -- make extra</code><span>add to an existing file</span></div><div class="ex"><code>bear --output build/cc.json -- make</code><span>write it somewhere else</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--</code></dt><dd>everything after is the build command</dd><dt><code>--output FILE</code></dt><dd>where to write (default compile_commands.json)</dd><dt><code>--append</code></dt><dd>add to the file instead of replacing it</dd></dl>
+<h4>Notes</h4><ul><li>Only files that are compiled during the run are recorded: after a <a href="#c-make"><code>make</code></a> that had nothing to do, the file is empty. Clean first.</li><li>CMake and Meson write the same file themselves; Bear is for builds that do not.</li></ul>
+<p class="see">See also <a href="#c-clangd"><code>clangd</code></a>, <a href="#c-make"><code>make</code></a>, <a href="#c-cmake"><code>cmake</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ccache" data-s="ccache a fast c/c++ compiler cache devtools ccache">
-<h3><a class="self" href="#c-ccache"><code>ccache</code></a> <span class="purpose">a fast C/C++ compiler cache</span></h3>
+<article class="cmd" id="c-ccache" data-s="ccache a compiler cache: a rebuild of unchanged code takes seconds instead of minutes. devtools ccache">
+<h3><a class="self" href="#c-ccache"><code>ccache</code></a> <span class="purpose">A compiler cache: a rebuild of unchanged code takes seconds instead of minutes.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>ccache</b> 4.13.6 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/ccache.html">man ccache(1)</a> · <a href="https://ccache.dev/">home</a></p>
 <p class="deps">needs hiredis, libxxhash, zstd-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's rebuild accelerator -- worth most on a Pi, where compiling is slow and the same sources are often built again after a <code>make clean</code> or a branch switch.</p>
 <pre class="syn">ccache [ccache options]
 ccache [KEY=VALUE ...] compiler [compiler options]
 compiler [compiler options]
@@ -619,13 +625,22 @@ compiler [compiler options]
 The first form takes options described in COMMAND LINE OPTIONS below. The second form invokes
 the compiler, optionally using configuration options as KEY=VALUE arguments. In the third
 form, ccache is masquerading as the compiler as described in RUN MODES.</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Put it in front of the compiler. It remembers each compilation's result by its inputs; the same file with the same flags later comes from the cache. It is not switched on by default.</p>
+<h4>Examples</h4><div class="ex"><code>CC="ccache gcc" make</code><span>one build, through the cache</span></div><div class="ex"><code>export PATH=/usr/lib/ccache/bin:$PATH</code><span>every gcc/cc call, from now on</span></div><div class="ex"><code>cmake -B build -DCMAKE_C_COMPILER_LAUNCHER=ccache</code><span>for a CMake project</span></div><div class="ex"><code>ccache -s</code><span>hits, misses and cache size</span></div><div class="ex"><code>ccache -C</code><span>empty the cache</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-s, --show-stats</code></dt><dd>statistics: hits, misses, size</dd><dt><code>-z, --zero-stats</code></dt><dd>reset the statistics</dd><dt><code>-C, --clear</code></dt><dd>empty the cache</dd><dt><code>-M, --max-size SIZE</code></dt><dd>set the cache limit, e.g. 5G</dd><dt><code>-p, --show-config</code></dt><dd>the settings in force</dd></dl>
+<h4>Notes</h4><ul><li>The cache is <code>~/.cache/ccache</code>, 5 GB at most by default; on a small card, <code>ccache -M 1G</code>.</li><li><code>/usr/lib/ccache/bin</code> holds links named gcc, cc, g++ and the rest, which is what makes the PATH method cover everything.</li></ul>
+<p class="see">See also <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-clang"><code>clang</code></a>, <a href="#c-make"><code>make</code></a>, <a href="#c-cmake"><code>cmake</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-cgdb" data-s="cgdb the curses debugger devtools cgdb">
-<h3><a class="self" href="#c-cgdb"><code>cgdb</code></a> <span class="purpose">The Curses Debugger</span></h3>
+<article class="cmd" id="c-cgdb" data-s="cgdb gdb with a source window above it, in the terminal: see the code as you step. devtools cgdb">
+<h3><a class="self" href="#c-cgdb"><code>cgdb</code></a> <span class="purpose">gdb with a source window above it, in the terminal: see the code as you step.</span></h3>
 <p class="facts">Devtools · terminal program · <b>cgdb</b> 0.8.0 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://cgdb.github.io/">home</a></p>
 <p class="deps">needs gdb, libncursesw, readline</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's lightweight debugging front end: gdb's commands, with the current line shown in the source -- the simplest way to see where a program is, over SSH or on a console.</p>
+<h4>Use</h4><p>Start it as you would gdb. The top half shows the source with the current line marked; the bottom half is gdb itself. Escape moves to the source window, <code>i</code> back to gdb.</p>
+<h4>Examples</h4><div class="ex"><code>cgdb ./prog</code><span>debug a program</span></div><div class="ex"><code>cgdb -- --args ./prog -v in.txt</code><span>gdb options after --</span></div><div class="ex"><code>cgdb -d gdb-multiarch ./arm-binary</code><span>with another gdb</span></div><div class="ex"><code>Esc            (in cgdb) to the source window: vi keys to move, / to search</code></div><div class="ex"><code>Space          (source window) set or clear a breakpoint on this line</code></div><div class="ex"><code>i              back to the gdb window</code></div><div class="ex"><code>break / run / next / step / print    (gdb window) as in gdb</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-d DEBUGGER</code></dt><dd>the gdb to run</dd><dt><code>--</code></dt><dd>the rest goes to gdb</dd></dl>
+<h4>Notes</h4><ul><li>Build with <code>-g</code>: without debug information there is no source to show.</li><li>Its settings go in <code>~/.config/cgdb/cgdbrc</code> (for example <code>set syntax=on</code>, or a colour scheme).</li></ul>
+<p class="see">See also <a href="#c-gdb"><code>gdb</code></a>, <a href="#c-lldb"><code>lldb</code></a>, <a href="#c-pwndbg"><code>pwndbg</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-cl65" data-s="cl65 compiler suite for 6502 based processors devtools cc65">
 <h3><a class="self" href="#c-cl65"><code>cl65</code></a> <span class="purpose">Compiler Suite for 6502 based processors</span></h3>
@@ -658,10 +673,11 @@ Run a Script
 <h4>Notes</h4><ul><li>The cache remembers. A changed compiler or a library installed after the first configure is not noticed until <code>--fresh</code> or <code>rm -rf build</code>.</li><li>"Could NOT find Foo": install the library's <code>-dev</code> package (<code>apk search -e foo-dev</code>), then configure again with <code>--fresh</code>.</li><li><code>CMAKE_BUILD_TYPE</code> is empty by default: no optimisation and no debug information. Say <code>Debug</code> or <code>Release</code>.</li></ul>
 <p class="see">See also <a href="#c-ninja"><code>ninja</code></a>, <a href="#c-make"><code>make</code></a>, <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-clang"><code>clang</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-cppcheck" data-s="cppcheck tool for static c/c++ code analysis devtools cppcheck">
-<h3><a class="self" href="#c-cppcheck"><code>cppcheck</code></a> <span class="purpose">Tool for static C/C++ code analysis</span></h3>
+<article class="cmd" id="c-cppcheck" data-s="cppcheck static analysis for c and c++: find bugs the compiler does not warn about. devtools cppcheck">
+<h3><a class="self" href="#c-cppcheck"><code>cppcheck</code></a> <span class="purpose">Static analysis for C and C++: find bugs the compiler does not warn about.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>cppcheck</b> 2.21.0 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/cppcheck.html">man cppcheck(1)</a> · <a href="https://cppcheck.sourceforge.io/">home</a></p>
 <p class="deps">needs pcre, tinyxml2</p>
+<p class="why"><b>On Copal:</b> The catalogue's C checker: out-of-bounds indexes, leaks, null pointers and uninitialised variables, found by reading the code, without running it.</p>
 <pre class="syn">cppcheck [--check-config] [--check-library] [-D&lt;id&gt;] [-U&lt;id&gt;] [--disable=&lt;id&gt;]
          [--enable=&lt;id&gt;] [--error-exitcode=&lt;n&gt;] [--errorlist] [--exitcode-suppress=&lt;spec&gt;]
          [--exitcode-suppressions=&lt;file&gt;] [--file-list=&lt;file&gt;] [--filesdir] [--force]
@@ -674,20 +690,34 @@ Run a Script
          [--showtime=&lt;mode&gt;] [--std=&lt;id&gt;] [--suppress=&lt;spec&gt;] [--suppressions-list=&lt;file&gt;]
          [--suppress-xml=&lt;.xml file&gt;] [--template='&lt;text&gt;'] [--verbose] [--version] [--xml]
          [--xml-version=&lt;version&gt;]] [file or path] ...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Point it at files or a folder. By default it reports only errors it is sure of; <code>--enable</code> widens it to warnings, style and performance.</p>
+<h4>Examples</h4><div class="ex"><code>cppcheck src/</code><span>errors only</span></div><div class="ex"><code>cppcheck --enable=all src/</code><span>warnings, style, performance too</span></div><div class="ex"><code>cppcheck --enable=warning,performance --std=c17 src/</code></div><div class="ex"><code>cppcheck --project=compile_commands.json</code><span>with the real flags, from bear or cmake</span></div><div class="ex"><code>cppcheck --xml src/ 2&gt; report.xml &amp;&amp; cppcheck-htmlreport --file=report.xml --report-dir=html</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>--enable=LIST</code></dt><dd>warning, style, performance, portability, all</dd><dt><code>--std=STD</code></dt><dd>the language standard: c11, c17, c++17...</dd><dt><code>--project=FILE</code></dt><dd>read files and flags from compile_commands.json</dd><dt><code>-I DIR</code></dt><dd>an include directory</dd><dt><code>--suppress=ID</code></dt><dd>silence one kind of message</dd><dt><code>-j N</code></dt><dd>use N threads</dd><dt><code>--xml</code></dt><dd>XML output, for the HTML report</dd></dl>
+<h4>Notes</h4><ul><li><code>--enable=all</code> also reports <code>missingInclude</code> for system headers; <code>--suppress=missingIncludeSystem</code> quiets it.</li><li><code>cppcheck-gui</code> and <code>cppcheck-htmlreport</code> come with its optionals.</li></ul>
+<p class="see">See also <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-clang"><code>clang</code></a>, <a href="#c-valgrind"><code>valgrind</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ctags" data-s="ctags generate tag files for source code devtools ctags">
-<h3><a class="self" href="#c-ctags"><code>ctags</code></a> <span class="purpose">Generate tag files for source code</span></h3>
+<article class="cmd" id="c-ctags" data-s="ctags universal ctags: index a project's definitions, so an editor can jump to them. devtools ctags">
+<h3><a class="self" href="#c-ctags"><code>ctags</code></a> <span class="purpose">Universal Ctags: index a project's definitions, so an editor can jump to them.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>ctags</b> 6.2.1 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/ctags.html">man ctags(1)</a> · <a href="https://ctags.io/">home</a></p>
 <p class="deps">needs jansson, yaml</p>
+<p class="why"><b>On Copal:</b> Stage 7 installs it: the tags file lets vim and Neovim jump to a function's definition in any language, even where no language server exists.</p>
 <pre class="syn">ctags [&lt;options&gt;] [&lt;source_file(s)&gt;]
 etags [&lt;options&gt;] [&lt;source_file(s)&gt;]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run it at the top of a project; it writes a <code>tags</code> file. In vim or Neovim, Ctrl-] on a name jumps to where it is defined, Ctrl-T jumps back.</p>
+<h4>Examples</h4><div class="ex"><code>ctags -R .</code><span>index the whole project into ./tags</span></div><div class="ex"><code>ctags -R --exclude=build .</code><span>leaving out a folder</span></div><div class="ex"><code>ctags --list-languages</code><span>the languages it knows</span></div><div class="ex"><code>ctags -x --kinds-c=f main.c</code><span>the functions in one file, as a table</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-R</code></dt><dd>recurse into folders</dd><dt><code>--exclude=PATTERN</code></dt><dd>leave matching paths out</dd><dt><code>-f FILE</code></dt><dd>write to FILE instead of ./tags</dd><dt><code>--languages=LIST</code></dt><dd>index only these languages</dd><dt><code>--list-languages</code></dt><dd>list the languages</dd><dt><code>-x</code></dt><dd>print a cross-reference table instead of a file</dd></dl>
+<h4>Notes</h4><ul><li>Re-run it after large changes: the tags file does not update itself.</li><li>Add <code>tags</code> to <code>.gitignore</code>; it is generated, and large.</li></ul>
+<p class="see">See also <a href="#c-nvim"><code>nvim</code></a>, <a href="#c-vim"><code>vim</code></a>, <a href="#c-clangd"><code>clangd</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-doxygen" data-s="doxygen documentation system for various programming languages devtools doxygen">
-<h3><a class="self" href="#c-doxygen"><code>doxygen</code></a> <span class="purpose">documentation system for various programming languages</span></h3>
+<article class="cmd" id="c-doxygen" data-s="doxygen generate reference documentation -- html, with call graphs -- from comments in source code. devtools doxygen">
+<h3><a class="self" href="#c-doxygen"><code>doxygen</code></a> <span class="purpose">Generate reference documentation -- HTML, with call graphs -- from comments in source code.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>doxygen</b> 1.17.0 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/doxygen.html">man doxygen(1)</a> · <a href="https://www.doxygen.nl/">home</a></p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's API documenter for C, C++ and more: comments above functions become a browsable site, with diagrams drawn by Graphviz.</p>
+<h4>Use</h4><p>Make a configuration file once with <code>-g</code>, set the project's name and input folder in it, then run doxygen: the site appears in <code>html/</code>.</p>
+<h4>Examples</h4><div class="ex"><code>doxygen -g</code><span>write a Doxyfile with every setting explained</span></div><div class="ex"><code>doxygen</code><span>build from ./Doxyfile</span></div><div class="ex"><code>doxygen -g - | grep -E '^(INPUT|RECURSIVE) '</code><span>the settings to look at first</span></div><div class="ex"><code>xdg-open html/index.html</code><span>read the result</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-g [FILE]</code></dt><dd>write a template configuration (default Doxyfile)</dd><dt><code>-u [FILE]</code></dt><dd>update an old configuration to this version</dd><dt><code>-s</code></dt><dd>with -g or -u: leave out the explanatory comments</dd></dl>
+<h4>Notes</h4><ul><li>Out of the box it documents only commented items; <code>EXTRACT_ALL = YES</code> in the Doxyfile lists everything.</li><li><code>HAVE_DOT = YES</code> turns on call and include graphs, drawn with Graphviz, which is installed.</li><li>Comments it reads start with <code>/**</code> or <code>///</code>.</li></ul>
+<p class="see">See also <a href="#c-dot"><code>dot</code></a>, <a href="#c-mdbook"><code>mdbook</code></a></p>
 </article>
 <article class="cmd" id="c-gdb" data-s="gdb the gnu debugger: stop a program, step through it, look at its state. devtools gdb">
 <h3><a class="self" href="#c-gdb"><code>gdb</code></a> <span class="purpose">The GNU debugger: stop a program, step through it, look at its state.</span></h3>
@@ -701,9 +731,10 @@ etags [&lt;options&gt;] [&lt;source_file(s)&gt;]</pre>
 <h4>Notes</h4><ul><li>Attaching to a process needs <a href="#c-doas"><code>doas</code></a>: ptrace is limited to a process's own children here (<code>kernel.yama.ptrace_scope</code> is 1).</li><li>Core dumps are off (<code>ulimit -c</code> is 0). <code>ulimit -c unlimited</code> in the shell first, and a crash leaves <code>core</code> beside the program.</li><li>In Neovim: F9 sets a breakpoint on the current line, F4 opens Termdebug, F8 / F10 / F11 continue, step over, step into.</li><li>For Rust, <code>rust-gdb</code> prints Rust types properly; Go is better served by <a href="#c-dlv"><code>dlv</code></a>.</li></ul>
 <p class="see">See also <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-valgrind"><code>valgrind</code></a>, <a href="#c-nvim"><code>nvim</code></a>, <a href="#c-cgdb"><code>cgdb</code></a>, <a href="#c-lldb"><code>lldb</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-just" data-s="just 🤖 just a command runner - https://github.com/casey/just devtools just">
-<h3><a class="self" href="#c-just"><code>just</code></a> <span class="purpose">🤖 Just a command runner - https://github.com/casey/just</span></h3>
+<article class="cmd" id="c-just" data-s="just a command runner: a project's recipes -- build, test, deploy -- in a justfile. devtools just">
+<h3><a class="self" href="#c-just"><code>just</code></a> <span class="purpose">A command runner: a project's recipes -- build, test, deploy -- in a justfile.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>just</b> 1.48.1 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/just.html">man just(1)</a> · <a href="https://github.com/casey/just">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's make for tasks rather than files: named recipes, arguments, and no tabs-versus-spaces trap.</p>
 <pre class="syn">just [--alias-style] [--allow-missing] [--ceiling] [--check] [--chooser] [--clear-shell-args]
 [--color] [--command-color] [--cygpath] [--dotenv-filename] [-E|--dotenv-path] [-n|--dry-run]
 [--dump-format] [--explain] [-g|--global-justfile] [--group] [--highlight] [-f|--justfile]
@@ -713,7 +744,11 @@ etags [&lt;options&gt;] [&lt;source_file(s)&gt;]</pre>
 [--fmt] [--groups] [--init] [--json] [-l|--list] [--man] [-s|--show] [--summary] [--usage]
 [--variables] [--tempdir] [--timestamp] [--timestamp-format] [-u|--unsorted] [--unstable]
 [-v|--verbose]... [-d|--working-directory] [--yes] [-h|--help] [-V|--version] [ARGUMENTS]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Write recipes in a <code>justfile</code>; <code>just NAME</code> runs one, <a href="#c-just"><code>just</code></a> runs the first. Each recipe is a list of shell lines.</p>
+<h4>Examples</h4><div class="ex"><code>just --list</code><span>the recipes here</span></div><div class="ex"><code>just</code><span>the default (first) recipe</span></div><div class="ex"><code>just test</code><span>one recipe</span></div><div class="ex"><code>just deploy pi</code><span>with an argument</span></div><div class="ex"><code>just --dry-run build</code><span>what it would run</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-l, --list</code></dt><dd>list the recipes</dd><dt><code>-n, --dry-run</code></dt><dd>print the commands, run nothing</dd><dt><code>-f, --justfile F</code></dt><dd>use another justfile</dd><dt><code>--choose</code></dt><dd>pick a recipe from a list</dd><dt><code>-v</code></dt><dd>print each command as it runs</dd></dl>
+<h4>Notes</h4><ul><li>A justfile recipe: a name and a colon, then the lines indented under it -- spaces or tabs, either works.</li><li>Unlike make, just does not compare file times: a recipe always runs.</li></ul>
+<p class="see">See also <a href="#c-make"><code>make</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-lldb" data-s="lldb lldb documentation devtools lldb">
 <h3><a class="self" href="#c-lldb"><code>lldb</code></a> <span class="purpose">LLDB Documentation</span></h3>
@@ -722,10 +757,11 @@ etags [&lt;options&gt;] [&lt;source_file(s)&gt;]</pre>
 <pre class="syn">lldb [options] executable</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-ltrace" data-s="ltrace a library call tracer devtools ltrace">
-<h3><a class="self" href="#c-ltrace"><code>ltrace</code></a> <span class="purpose">A library call tracer</span></h3>
+<article class="cmd" id="c-ltrace" data-s="ltrace watch the library calls a program makes: what it asks of libc and other libraries. devtools ltrace">
+<h3><a class="self" href="#c-ltrace"><code>ltrace</code></a> <span class="purpose">Watch the library calls a program makes: what it asks of libc and other libraries.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>ltrace</b> 0.7.3 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/ltrace.html">man ltrace(1)</a> · <a href="https://www.ltrace.org/">home</a></p>
 <p class="deps">needs libelf</p>
+<p class="why"><b>On Copal:</b> strace's companion one level up: where strace shows the kernel calls, ltrace shows <code>malloc</code>, <code>strcmp</code>, <code>getenv</code> and the rest -- which settings a program reads and what it compares.</p>
 <pre class="syn">ltrace [-e filter|-L] [-l|--library=library_pattern] [-x filter] [-S] [-b|--no-signals] [-i]
 [-w|--where=nr] [-r|-t|-tt|-ttt] [-T] [-F filename] [-A maxelts] [-s strsize] [-C|--demangle]
 [-a|--align column] [-n|--indent nr] [-o|--output filename] [-D|--debug mask] [-u username]
@@ -737,18 +773,32 @@ filename] [-f] [-p pid] [[--] command [arg ...]]
 ltrace -V|--version
 
 ltrace -h|--help</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run a program under it; each call into a shared library prints with its arguments and return value. <code>-c</code> counts them instead.</p>
+<h4>Examples</h4><div class="ex"><code>ltrace ./prog</code><span>every library call</span></div><div class="ex"><code>ltrace -c ./prog</code><span>a count of calls, and their time</span></div><div class="ex"><code>ltrace -e getenv ./prog</code><span>which environment variables it reads</span></div><div class="ex"><code>ltrace -f -o calls.txt ./prog</code><span>children too, into a file</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-c</code></dt><dd>count calls instead of printing them</dd><dt><code>-e FILTER</code></dt><dd>only these calls</dd><dt><code>-f</code></dt><dd>follow child processes</dd><dt><code>-o FILE</code></dt><dd>write to FILE</dd><dt><code>-p PID</code></dt><dd>attach to a running process</dd><dt><code>-S</code></dt><dd>system calls too</dd></dl>
+<h4>Notes</h4><ul><li>It sees calls into shared libraries only: a statically linked program shows nothing.</li><li>Attaching with <code>-p</code> needs root, like strace.</li></ul>
+<p class="see">See also <a href="#c-strace"><code>strace</code></a>, <a href="#c-gdb"><code>gdb</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-lua-language-server" data-s="lua-language-server language server for lua devtools lua-language-server">
-<h3><a class="self" href="#c-lua-language-server"><code>lua-language-server</code></a> <span class="purpose">Language Server for Lua</span></h3>
+<article class="cmd" id="c-lua-language-server" data-s="lua-language-server the lua language server: completion, types, and errors as you type, in any editor. devtools lua-language-server">
+<h3><a class="self" href="#c-lua-language-server"><code>lua-language-server</code></a> <span class="purpose">The Lua language server: completion, types, and errors as you type, in any editor.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>lua-language-server</b> 3.16.1 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://github.com/LuaLS/lua-language-server">home</a></p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Stage 7's server for Lua, which Neovim starts for .lua files -- the language Copal's own Neovim configuration is written in.</p>
+<h4>Use</h4><p>The editor runs it; there is nothing to start by hand. From the shell, <code>--check</code> runs its diagnostics over a folder and reports what it finds.</p>
+<h4>Examples</h4><div class="ex"><code>lua-language-server --check=.</code><span>the diagnostics for this folder</span></div><div class="ex"><code>lua-language-server --check=. --check_format=pretty</code><span>readable, to stdout</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--check=DIR</code></dt><dd>run the diagnostics over DIR</dd><dt><code>--check_format=FMT</code></dt><dd>pretty (to stdout) or json (to a file)</dd></dl>
+<h4>Notes</h4><ul><li>In Neovim it warns that <a href="#c-vim"><code>vim</code></a> is an undefined global until told the code runs inside Neovim: a <code>.luarc.json</code> with <code>{"diagnostics.globals": ["vim"]}</code>.</li><li>A project's settings go in <code>.luarc.json</code> at its root.</li></ul>
+<p class="see">See also <a href="#c-lua5.4"><code>lua5.4</code></a>, <a href="#c-nvim"><code>nvim</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-meson" data-s="meson a high productivity build system devtools meson">
-<h3><a class="self" href="#c-meson"><code>meson</code></a> <span class="purpose">a high productivity build system</span></h3>
+<article class="cmd" id="c-meson" data-s="meson a build system: configure a project into a build folder, then build it with ninja. devtools meson">
+<h3><a class="self" href="#c-meson"><code>meson</code></a> <span class="purpose">A build system: configure a project into a build folder, then build it with ninja.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>meson</b> 1.11.1 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/meson.html">man meson(1)</a> · <a href="https://mesonbuild.com">home</a></p>
 <p class="deps">needs samurai, python3</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Stage 7's Meson, for the many C, C++ and GNOME projects that build with it -- several of Copal Apps' source builds among them.</p>
+<h4>Use</h4><p>Two steps, as with CMake: <code>meson setup</code> configures into a build folder, <code>meson compile</code> (or <code>ninja -C build</code>) builds. Options are set at setup and changed later with <code>meson configure</code>.</p>
+<h4>Examples</h4><div class="ex"><code>meson setup build</code><span>configure into ./build</span></div><div class="ex"><code>meson setup build --buildtype=release</code><span>optimised</span></div><div class="ex"><code>meson compile -C build</code><span>build (runs ninja)</span></div><div class="ex"><code>meson test -C build</code><span>the tests</span></div><div class="ex"><code>meson configure build</code><span>every option and its value</span></div><div class="ex"><code>meson configure build -Dfoo=enabled</code><span>change one</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>setup DIR</code></dt><dd>configure into DIR</dd><dt><code>compile -C DIR</code></dt><dd>build</dd><dt><code>test -C DIR</code></dt><dd>run the tests</dd><dt><code>install -C DIR</code></dt><dd>install (doas for /usr/local)</dd><dt><code>configure DIR</code></dt><dd>show or change options (-Dname=value)</dd><dt><code>setup --buildtype=T</code></dt><dd>debug, debugoptimized, release</dd><dt><code>setup --reconfigure</code></dt><dd>set up again in an existing folder</dd></dl>
+<h4>Notes</h4><ul><li><code>meson setup</code> prints which optional dependencies it found and which it did not: that list says which features the build will have.</li><li>It writes <code>compile_commands.json</code> in the build folder for clangd.</li></ul>
+<p class="see">See also <a href="#c-ninja"><code>ninja</code></a>, <a href="#c-cmake"><code>cmake</code></a>, <a href="#c-make"><code>make</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-pwndbg" data-s="pwndbg exploit development and reverse engineering with gdb &amp; lldb made easy devtools pwndbg">
 <h3><a class="self" href="#c-pwndbg"><code>pwndbg</code></a> <span class="purpose">Exploit Development and Reverse Engineering with GDB &amp; LLDB Made Easy</span></h3>
@@ -756,32 +806,48 @@ ltrace -h|--help</pre>
 <p class="deps">needs python3, py3-capstone, py3-cparser, py3-elftools, py3-hatchling, py3-psutil, py3-pygments, py3-requests</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-pylsp" data-s="pylsp python implementation of the language server protocol, fork of python-language-server devtools py3-lsp-server">
-<h3><a class="self" href="#c-pylsp"><code>pylsp</code></a> <span class="purpose">python implementation of the language server protocol, fork of python-language-server</span></h3>
+<article class="cmd" id="c-pylsp" data-s="pylsp the python language server: completion, go-to-definition and lint for python, in any editor. devtools py3-lsp-server">
+<h3><a class="self" href="#c-pylsp"><code>pylsp</code></a> <span class="purpose">The Python language server: completion, go-to-definition and lint for Python, in any editor.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>py3-lsp-server</b> 1.14.0 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://github.com/python-lsp/python-lsp-server">home</a></p>
 <p class="deps">needs py3-docstring-to-markdown, py3-jedi, py3-lsp-jsonrpc, py3-pluggy, py3-setuptools, py3-ujson, py3-whatthepatch, py3-yapf</p>
+<p class="why"><b>On Copal:</b> Stage 7's server for Python, which Neovim and Helix start for .py files: definitions, references and hover documentation.</p>
 <pre class="syn">usage: pylsp [-h] [--tcp] [--ws] [--host HOST] [--port PORT]
              [--check-parent-process] [--log-config LOG_CONFIG |
              --log-file LOG_FILE] [-v] [-V]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>The editor runs it over stdin and stdout; there is nothing to start by hand. It finds modules as the Python it runs under does, so a project's virtual environment should be active when the editor starts.</p>
+<h4>Examples</h4><div class="ex"><code>pylsp --help</code><span>its options</span></div><div class="ex"><code>. .venv/bin/activate &amp;&amp; nvim app.py</code><span>the editor sees the venv's packages</span></div><div class="ex"><code>pylsp -v --log-file /tmp/pylsp.log</code><span>a verbose log, to see what it does</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--tcp</code></dt><dd>serve over TCP instead of stdio</dd><dt><code>--host / --port</code></dt><dd>where, with --tcp</dd><dt><code>--log-file FILE</code></dt><dd>write its log to FILE</dd><dt><code>-v</code></dt><dd>more detail in the log</dd></dl>
+<h4>Notes</h4><ul><li>Its checks come from plugins: pyflakes (errors) and pycodestyle (style), which Copal installs with it as optionals from 24 Sep 2026.</li><li>Settings are passed by the editor, not a file of its own.</li></ul>
+<p class="see">See also <a href="#c-python3"><code>python3</code></a>, <a href="#c-nvim"><code>nvim</code></a>, <a href="#c-hx"><code>hx</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-shellcheck" data-s="shellcheck shell script analysis tool devtools shellcheck">
-<h3><a class="self" href="#c-shellcheck"><code>shellcheck</code></a> <span class="purpose">Shell script analysis tool</span></h3>
+<article class="cmd" id="c-shellcheck" data-s="shellcheck find bugs in shell scripts: quoting, portability, and the traps sh is full of. devtools shellcheck">
+<h3><a class="self" href="#c-shellcheck"><code>shellcheck</code></a> <span class="purpose">Find bugs in shell scripts: quoting, portability, and the traps sh is full of.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>shellcheck</b> 0.11.0 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/shellcheck.html">man shellcheck(1)</a> · <a href="https://github.com/koalaman/shellcheck">home</a></p>
 <p class="deps">needs libffi, gmp</p>
+<p class="why"><b>On Copal:</b> The catalogue's shell linter, and the one Copal's own scripts are written against: most of Copal is POSIX sh, and shellcheck knows which sh a script says it is.</p>
 <pre class="syn">shellcheck [OPTIONS...]  FILES...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run it on a script; each finding has a code (SC2086 and so on), a line, and an explanation. The script's first line decides the dialect it checks: <code>#!/bin/sh</code> is held to POSIX, <code>#!/bin/bash</code> allows bash.</p>
+<h4>Examples</h4><div class="ex"><code>shellcheck script.sh</code><span>check one script</span></div><div class="ex"><code>shellcheck -s sh script.sh</code><span>as POSIX sh, whatever its first line</span></div><div class="ex"><code>shellcheck -x script.sh</code><span>follow the files it sources</span></div><div class="ex"><code>shellcheck -f diff script.sh | patch -p1</code><span>apply the fixes it can make</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-s SHELL</code></dt><dd>check as sh, bash, dash or ksh</dd><dt><code>-x</code></dt><dd>follow <code>source</code>d files</dd><dt><code>-e CODES</code></dt><dd>exclude these codes</dd><dt><code>-S LEVEL</code></dt><dd>minimum severity: error, warning, info, style</dd><dt><code>-f FORMAT</code></dt><dd>output format: tty, gcc, json, diff</dd></dl>
+<h4>Notes</h4><ul><li>A finding can be silenced for one line with a comment above it: <code># shellcheck disable=SC2086</code>, with the reason beside it.</li><li>Every code has a page explaining it: search "shellcheck SC2086".</li></ul>
+<p class="see">See also <a href="#c-shfmt"><code>shfmt</code></a>, <a href="#c-busybox"><code>busybox</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-shfmt" data-s="shfmt format shell programs devtools shfmt">
-<h3><a class="self" href="#c-shfmt"><code>shfmt</code></a> <span class="purpose">Format shell programs</span></h3>
+<article class="cmd" id="c-shfmt" data-s="shfmt format shell scripts consistently -- and parse them, which catches syntax errors. devtools shfmt">
+<h3><a class="self" href="#c-shfmt"><code>shfmt</code></a> <span class="purpose">Format shell scripts consistently -- and parse them, which catches syntax errors.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>shfmt</b> 3.13.1 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/shfmt.html">man shfmt(1)</a> · <a href="https://mvdan.cc/sh">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's shell formatter, shellcheck's partner: one style for every script in a project, applied by a command, not by hand.</p>
 <pre class="syn">shfmt [flags] [path...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>With no options it prints the script reformatted. <code>-d</code> shows the changes as a diff, <code>-w</code> writes them back. Indentation and style are options.</p>
+<h4>Examples</h4><div class="ex"><code>shfmt -d script.sh</code><span>what it would change</span></div><div class="ex"><code>shfmt -w script.sh</code><span>change it in place</span></div><div class="ex"><code>shfmt -i 4 -w *.sh</code><span>four spaces of indent</span></div><div class="ex"><code>shfmt -l .</code><span>list the files that are not formatted</span></div><div class="ex"><code>shfmt -p -d script.sh</code><span>hold it to POSIX sh</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-d</code></dt><dd>print a diff instead of the result</dd><dt><code>-w</code></dt><dd>write the result back to the file</dd><dt><code>-l</code></dt><dd>list files whose formatting differs</dd><dt><code>-i N</code></dt><dd>indent with N spaces (0 means tabs, the default)</dd><dt><code>-p</code></dt><dd>POSIX sh only (same as -ln posix)</dd><dt><code>-ln LANG</code></dt><dd>the dialect: bash, posix, mksh, bats</dd><dt><code>-ci</code></dt><dd>indent switch cases</dd></dl>
+<h4>Notes</h4><ul><li>A syntax error stops it with the line and column: <code>shfmt -d</code> doubles as a quick check that a script parses.</li><li>It reads an <code>.editorconfig</code>, so a project's indentation can live there instead of in options.</li></ul>
+<p class="see">See also <a href="#c-shellcheck"><code>shellcheck</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-strace" data-s="strace trace system calls and signals devtools strace">
-<h3><a class="self" href="#c-strace"><code>strace</code></a> <span class="purpose">trace system calls and signals</span></h3>
+<article class="cmd" id="c-strace" data-s="strace watch the system calls a program makes: which files it opens, what fails, and why. devtools strace">
+<h3><a class="self" href="#c-strace"><code>strace</code></a> <span class="purpose">Watch the system calls a program makes: which files it opens, what fails, and why.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>strace</b> 6.19 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/strace.html">man strace(1)</a> · <a href="https://strace.io">home</a></p>
 <p class="deps">needs libdw</p>
+<p class="why"><b>On Copal:</b> The catalogue's answer to "it just says error": strace shows the file a program could not find, the permission it was refused, the address it could not reach.</p>
 <pre class="syn">strace [-ACdffhikkqqrtttTvVwxxyyYzZ] [-a column] [-b execve] [-e expr]... [-I n] [-o file]
        [-O overhead] [-p pid]... [-P path]... [-s strsize] [-S sortby] [-U columns]
        [-X format] [--seccomp-bpf] [--stack-trace-frame-limit=limit] [--syscall-limit=limit]
@@ -792,7 +858,11 @@ strace -c [-dfwzZ] [-b execve] [-e expr]... [-I n] [-O overhead] [-p pid]... [
        -p pid | [-DDD] [-E var[=val]]... [-u username] command [args] }
 
 strace --tips[=format]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run a program under it, or attach to one running. Each system call prints as a line: the call, its arguments, and its result -- a failure shows its error name, such as ENOENT (no such file).</p>
+<h4>Examples</h4><div class="ex"><code>strace -f -e trace=openat ./prog 2&gt;&amp;1 | grep ENOENT</code><span>files it looked for and missed</span></div><div class="ex"><code>strace -c ls /</code><span>a summary: which calls, how often, how long</span></div><div class="ex"><code>strace -o trace.txt -f ./prog</code><span>everything, into a file</span></div><div class="ex"><code>strace -e trace=network curl -s example.com &gt;/dev/null</code><span>its network calls</span></div><div class="ex"><code>doas strace -p $(pidof prog)</code><span>attach to a running process</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-f</code></dt><dd>follow child processes too</dd><dt><code>-e trace=SET</code></dt><dd>only these calls: openat, network, file, process...</dd><dt><code>-o FILE</code></dt><dd>write the trace to FILE</dd><dt><code>-c</code></dt><dd>count calls and time instead of printing them</dd><dt><code>-p PID</code></dt><dd>attach to a running process</dd><dt><code>-s N</code></dt><dd>show strings up to N characters (default 32)</dd><dt><code>-t / -T</code></dt><dd>timestamps / time spent in each call</dd></dl>
+<h4>Notes</h4><ul><li>Attaching to a process needs root (<code>ptrace_scope</code> is 1); tracing a program you start yourself does not.</li><li><code>strace-tui</code>, one of its optionals, browses a saved trace file interactively.</li></ul>
+<p class="see">See also <a href="#c-ltrace"><code>ltrace</code></a>, <a href="#c-gdb"><code>gdb</code></a>, <a href="#c-valgrind"><code>valgrind</code></a></p>
 </article>
 <article class="cmd" id="c-valgrind" data-s="valgrind run a program under a checker that catches memory errors and leaks. devtools valgrind">
 <h3><a class="self" href="#c-valgrind"><code>valgrind</code></a> <span class="purpose">Run a program under a checker that catches memory errors and leaks.</span></h3>
