@@ -33,6 +33,7 @@ PATH when it exists, so its builds count as installed.
 """
 
 import datetime
+from html import unescape as html_unescape
 import gzip
 import json
 import os
@@ -48,6 +49,14 @@ FACTS = os.path.join(ROOT, "docs", "commands", "facts.json")
 MANDIR = os.path.join(ROOT, "docs", "man")
 BENCH = os.path.expanduser("~/.cache/copal-store/prefix")
 CODE = os.path.expanduser("~/code")
+# Each command's --help, as the installed version printed it: with the site's
+# man pages, what check reads on a machine that is not a Copal install.
+HELPDIR = os.path.join(ROOT, "docs", "commands", "help")
+# Programs that do something other than print on --help: mine, serve, boot.
+NO_HELP = {"xmrig", "ollama", "waydroid", "asciiquarium", "sl", "cmatrix"}
+# Colours, cursor codes, and OSC 8 links -- coreutils 9.11 wraps each option
+# in one, ended by BEL or by ESC \.
+ANSI = re.compile(r"\x1b(\[[0-9;?]*[a-zA-Z]|[()][A-Z0-9]|\][^\x07\x1b]*(\x07|\x1b\\)|[=>])")
 
 ORDER = ("core", "copal", "catalogue", "store")   # the first origin names the entry
 
@@ -852,6 +861,49 @@ def render():
     return 0
 
 
+def help_text(path):
+    """What --help prints, both streams; --help-extra too where it points."""
+    kw = dict(stdin=subprocess.DEVNULL, timeout=4, stderr=subprocess.STDOUT, cwd="/tmp")
+    t = run([path, "--help"], **kw)
+    if "--help-extra" in t:
+        t += run([path, "--help-extra"], **kw)
+    return ANSI.sub("", t)
+
+
+def help_snapshot():
+    """docs/commands/help/<cmd>.txt: every command's --help, on a Copal machine."""
+    facts = json.load(open(FACTS))["commands"]
+    e = env()
+    os.makedirs(HELPDIR, exist_ok=True)
+    keep = set()
+    for c in facts:
+        path = which(c["cmd"], e)
+        if not path or c["cmd"] in NO_HELP:
+            continue
+        t = help_text(path)
+        if t.strip() and len(t) < 200000:
+            with open(os.path.join(HELPDIR, c["cmd"] + ".txt"), "w") as f:
+                f.write(t)
+            keep.add(c["cmd"] + ".txt")
+    for f in os.listdir(HELPDIR):
+        if f not in keep:
+            os.remove(os.path.join(HELPDIR, f))
+    print("  ok      %d help texts -> docs/commands/help/" % len(keep))
+    return 0
+
+
+def saved_text(cmd):
+    """Off a Copal machine: the site's man page, as text, and the saved --help."""
+    t = ""
+    page = os.path.join(MANDIR, cmd + ".html")
+    if os.path.exists(page):
+        t += html_unescape(re.sub(r"<[^>]+>", " ", open(page).read()))
+    h = os.path.join(HELPDIR, cmd + ".txt")
+    if os.path.exists(h):
+        t += open(h).read()
+    return t
+
+
 def check():
     """Every note names a command in the inventory, has the header and the
     sections; on a Copal machine, every option it lists is in the man page
@@ -871,28 +923,28 @@ def check():
         for k in ("use", "examples"):
             if not n["secs"].get(k):
                 errs.append("%s: no '## %s' section" % (where, k.capitalize()))
-        if not on_machine:
-            continue
         c = facts[cmd]
         text = ""
-        if c.get("man"):
-            # The page, and its subcommands' pages (apk-add(8) for apk add).
-            page = man_source(c) or ""
-            d = os.path.dirname(page)
-            subs = [] if c.get("readme") or not page else \
-                sorted(os.path.join(d, f) for f in os.listdir(d) if f.startswith(cmd + "-"))
-            for f in ([page] if page else []) + subs:
-                text += BS.sub("", run(["mandoc", "-T", "utf8", f]))
-        path = which(cmd, e)
-        # A terminal program that opens its screen instead of answering --help
-        # has no terminal here (stdin closed, output captured) and is stopped
-        # after four seconds; the rest print their options.
-        if path:
-            # Both streams: ssh, resize2fs and orrery print their usage on stderr.
-            text += run([path, "--help"], stdin=subprocess.DEVNULL, timeout=4, stderr=subprocess.STDOUT)
-            # tesseract keeps half its options behind --help-extra.
-            if "--help-extra" in text:
-                text += run([path, "--help-extra"], stdin=subprocess.DEVNULL, timeout=4, stderr=subprocess.STDOUT)
+        path = None
+        if not on_machine:
+            # What the last Copal machine saved: its man pages and --help.
+            text = saved_text(cmd)
+        else:
+            if c.get("man"):
+                # The page, and its subcommands' pages (apk-add(8) for apk add).
+                page = man_source(c) or ""
+                d = os.path.dirname(page)
+                subs = [] if c.get("readme") or not page else \
+                    sorted(os.path.join(d, f) for f in os.listdir(d) if f.startswith(cmd + "-"))
+                for f in ([page] if page else []) + subs:
+                    text += BS.sub("", run(["mandoc", "-T", "utf8", f]))
+            path = which(cmd, e)
+            # A terminal program that opens its screen instead of answering
+            # --help has no terminal here (stdin closed, output captured) and is
+            # stopped after four seconds; the rest print their options, on
+            # either stream (ssh, resize2fs and orrery use stderr).
+            if path:
+                text += help_text(path)
         if not text:
             warns.append("%s: nothing to check its options against here" % where)
             continue
@@ -926,7 +978,8 @@ def check():
     for x in errs:
         print("\033[31merror:\033[0m " + x)
     if not errs:
-        print("  ok      %d notes: in the inventory, complete%s" % (len(notes()), ", options checked" if on_machine else ""))
+        print("  ok      %d notes: in the inventory, complete, options checked%s"
+              % (len(notes()), "" if on_machine else " (against the saved pages and --help)"))
     return 1 if errs else 0
 
 
@@ -949,6 +1002,8 @@ def main(argv):
         return collect()
     if argv[1] == "man-html":
         return man_html()
+    if argv[1] == "help-snapshot":
+        return help_snapshot()
     if argv[1] == "render":
         return render()
     if argv[1] == "check":

@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 290 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 119 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 136 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.</p>
 </header>
 <div class="finder">
@@ -1141,30 +1141,45 @@ nano [options] [[+[crCR]{/|?}string] file]...</pre>
 <pre class="syn">jdupes [ options ] DIRECTORIES ...</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-mc" data-s="mc visual shell for unix-like systems. files mc">
-<h3><a class="self" href="#c-mc"><code>mc</code></a> <span class="purpose">Visual shell for Unix-like systems.</span></h3>
+<article class="cmd" id="c-mc" data-s="mc midnight commander: a two-panel file manager for the terminal, with a viewer and an editor. files mc">
+<h3><a class="self" href="#c-mc"><code>mc</code></a> <span class="purpose">Midnight Commander: a two-panel file manager for the terminal, with a viewer and an editor.</span></h3>
 <p class="facts">Files · terminal program · <b>mc</b> 4.8.33 · stage 4 · X.Org, i3, a terminal and a browser · <a href="man/mc.html">man mc(1)</a> · <a href="https://midnight-commander.org">home</a></p>
 <p class="deps">needs e2fsprogs-libs, glib, gpm-libs, libintl, slang, libssh2</p>
+<p class="why"><b>On Copal:</b> The catalogue's terminal file manager, and the first one Copal's menus open for files when there is no desktop. Its skin follows Copal's theme.</p>
 <pre class="syn">mc [-abcCdfhPstuUVx] [-l log] [dir1 [dir2]] [-e [file] ...] [-v file]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Two panels, a folder in each. Select files on one side and copy or move them to the other with a function key; the keys are listed along the bottom. The command line under the panels still works as a shell.</p>
+<h4>Examples</h4><div class="ex"><code>mc</code><span>the two panels</span></div><div class="ex"><code>mc ~/Downloads /media/usb</code><span>open these two folders</span></div><div class="ex"><code>mcedit notes.txt</code><span>its editor on its own</span></div><div class="ex"><code>mcview big.log</code><span>its viewer on its own</span></div><div class="ex"><code>Tab            (in mc) switch panels</code></div><div class="ex"><code>Insert         select a file</code></div><div class="ex"><code>F5  F6  F8     copy / move / delete the selection</code></div><div class="ex"><code>F3  F4         view / edit</code></div><div class="ex"><code>F10            quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-b</code></dt><dd>monochrome</dd><dt><code>-d</code></dt><dd>no mouse</dd><dt><code>-u</code></dt><dd>no subshell (a faster start)</dd><dt><code>-e FILE</code></dt><dd>edit FILE, as mcedit</dd><dt><code>-v FILE</code></dt><dd>view FILE, as mcview</dd></dl>
+<h4>Notes</h4><ul><li>A function key the terminal keeps for itself has an Esc equivalent: Esc then 0 is F10, Esc then 5 is F5.</li><li>Ctrl-O hides the panels to show the shell underneath, and brings them back.</li><li>Settings are in <code>~/.config/mc/ini</code>; Copal writes only its <code>skin=</code> line.</li></ul>
+<p class="see">See also <a href="#c-nnn"><code>nnn</code></a>, <a href="#c-ranger"><code>ranger</code></a>, <a href="#c-rsync"><code>rsync</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-nnn" data-s="nnn the unorthodox terminal file manager. files nnn">
-<h3><a class="self" href="#c-nnn"><code>nnn</code></a> <span class="purpose">The unorthodox terminal file manager.</span></h3>
+<article class="cmd" id="c-nnn" data-s="nnn a tiny, fast terminal file manager, driven from the keyboard. files nnn">
+<h3><a class="self" href="#c-nnn"><code>nnn</code></a> <span class="purpose">A tiny, fast terminal file manager, driven from the keyboard.</span></h3>
 <p class="facts">Files · terminal program · <b>nnn</b> 5.2 · stage 12 · The application catalogue · <a href="man/nnn.html">man nnn(1)</a> · <a href="https://github.com/jarun/nnn">home</a></p>
 <p class="deps">needs libncursesw, readline</p>
+<p class="why"><b>On Copal:</b> The catalogue's lightest file manager: it starts at once even on a Pi Zero, and stays out of the way.</p>
 <pre class="syn">nnn [-aAcCdDeEfgHJKnQrRSuUVxz0h] [-b key] [-F val] [-l val] [-p file] [-P key] [-s name]
     [-t secs] [-T key] [PATH]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Move through folders with the arrows or h j k l, and open a file with Enter. Space selects; the selection can then be copied or moved into the folder you are in.</p>
+<h4>Examples</h4><div class="ex"><code>nnn</code><span>the current folder</span></div><div class="ex"><code>nnn ~/Music</code><span>a folder</span></div><div class="ex"><code>nnn -d</code><span>with details: size, date, permissions</span></div><div class="ex"><code>nnn -H</code><span>show hidden files</span></div><div class="ex"><code>h j k l        (in nnn) back / down / up / open</code></div><div class="ex"><code>Space          select;  a  select all</code></div><div class="ex"><code>p  v           copy / move the selection here</code></div><div class="ex"><code>/              filter by name</code></div><div class="ex"><code>?              every key;  q  quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-d</code></dt><dd>detail mode</dd><dt><code>-H</code></dt><dd>show hidden files</dd><dt><code>-e</code></dt><dd>open text files in $EDITOR, in the terminal</dd><dt><code>-o</code></dt><dd>open files only on Enter</dd></dl>
+<h4>Notes</h4><ul><li>It opens files with <code>xdg-open</code>; without a desktop, <code>-e</code> keeps text files in <code>$EDITOR</code>.</li><li>Quitting does not change the shell's folder: that takes the small <code>quitcd</code> shell function from nnn's documentation.</li></ul>
+<p class="see">See also <a href="#c-mc"><code>mc</code></a>, <a href="#c-ranger"><code>ranger</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ranger" data-s="ranger vim-inspired filemanager for the console files ranger">
-<h3><a class="self" href="#c-ranger"><code>ranger</code></a> <span class="purpose">VIM-inspired filemanager for the console</span></h3>
+<article class="cmd" id="c-ranger" data-s="ranger a terminal file manager in columns, with previews and vi keys. files ranger">
+<h3><a class="self" href="#c-ranger"><code>ranger</code></a> <span class="purpose">A terminal file manager in columns, with previews and vi keys.</span></h3>
 <p class="facts">Files · terminal program · <b>ranger</b> 1.9.4 · stage 12 · The application catalogue · <a href="man/ranger.html">man ranger(1)</a> · <a href="https://ranger.github.io/">home</a></p>
 <p class="deps">needs python3</p>
+<p class="why"><b>On Copal:</b> The catalogue's file manager with the most on screen: the parent folder, the current one and a preview side by side.</p>
 <pre class="syn">ranger [--version] [--help] [--debug] [--clean] [--cachedir=directory] [--confdir=directory]
 [--datadir=directory] [--copy-config=which] [--choosefile=target] [--choosefiles=target]
 [--choosedir=target] [--selectfile=filepath] [--show-only-dirs] [--list-unused-keys]
 [--list-tagged-files=tag] [--profile] [--cmd=command] [path ...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Three columns: the parent folder, the current one, and a preview of what is selected. h and l move out and in; Enter opens. Commands start with <code>:</code>, as in vim.</p>
+<h4>Examples</h4><div class="ex"><code>ranger</code><span>the current folder</span></div><div class="ex"><code>ranger ~/Documents</code><span>a folder</span></div><div class="ex"><code>ranger --copy-config=all</code><span>write its config files, to edit</span></div><div class="ex"><code>h j k l        (in ranger) out / down / up / in</code></div><div class="ex"><code>Space          mark a file</code></div><div class="ex"><code>yy  pp         copy / paste</code></div><div class="ex"><code>zh             show hidden files</code></div><div class="ex"><code>q              quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>--copy-config=WHICH</code></dt><dd>copy the default config into ~/.config/ranger</dd><dt><code>--choosefile=FILE</code></dt><dd>pick a file, and write its path to FILE</dd><dt><code>--cmd=CMD</code></dt><dd>run a ranger command at start</dd></dl>
+<h4>Notes</h4><ul><li>Text previews work out of the box; previews of images and PDFs need helper programs.</li><li><code>S</code> opens a shell in the current folder; <code>exit</code> returns to ranger.</li></ul>
+<p class="see">See also <a href="#c-mc"><code>mc</code></a>, <a href="#c-nnn"><code>nnn</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-rdfind" data-s="rdfind finds duplicate files files rdfind">
 <h3><a class="self" href="#c-rdfind"><code>rdfind</code></a> <span class="purpose">finds duplicate files</span></h3>
@@ -2576,21 +2591,31 @@ rc-update [-u, --update] [-v, --verbose] show [runlevel ...]</pre>
 </article>
 </section>
 <section class="sec" id="s-sharing"><h2>Sharing</h2>
-<article class="cmd facts-only" id="c-croc" data-s="croc easily and securely send things from one computer to another sharing croc">
-<h3><a class="self" href="#c-croc"><code>croc</code></a> <span class="purpose">Easily and securely send things from one computer to another</span></h3>
+<article class="cmd" id="c-croc" data-s="croc send a file or a folder to another computer, with a code phrase, from one command. sharing croc">
+<h3><a class="self" href="#c-croc"><code>croc</code></a> <span class="purpose">Send a file or a folder to another computer, with a code phrase, from one command.</span></h3>
 <p class="facts">Sharing · command-line tool · <b>croc</b> 10.2.2 · stage 12 · The application catalogue · <a href="https://github.com/schollz/croc">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's quickest way to hand a file to someone: no shared network, accounts or server set-up. Encrypted end to end.</p>
 <pre class="syn">USAGE:
    croc [GLOBAL OPTIONS] [COMMAND] [COMMAND OPTIONS] [filename(s) or folder]
    USAGE EXAMPLES:</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>The sender runs <code>croc send FILE</code> and gets a code phrase. The receiver runs croc with that phrase, on any machine with croc, and the file arrives. Both sides meet through a relay, which never sees the contents.</p>
+<h4>Examples</h4><div class="ex"><code>croc send photo.jpg</code><span>prints a code phrase to pass on</span></div><div class="ex"><code>croc send ~/Documents/report</code><span>a whole folder</span></div><div class="ex"><code>croc send --text 'meet at 3'</code><span>a line of text</span></div><div class="ex"><code>CROC_SECRET=7-lemon-orbit-jazz croc</code><span>receive, with the phrase you were given</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>send FILE...</code></dt><dd>send files or folders</dd><dt><code>send --text T</code></dt><dd>send a line of text instead of a file</dd><dt><code>send --code P</code></dt><dd>choose the phrase yourself</dd><dt><code>--yes</code></dt><dd>accept without asking (receiving)</dd><dt><code>--relay ADDR</code></dt><dd>use another relay, such as your own</dd><dt><code>--classic</code></dt><dd>accept the phrase as an argument (less safe)</dd></dl>
+<h4>Notes</h4><ul><li>On Linux the phrase goes in <code>CROC_SECRET</code>, not on the command line, where other users could see it in the process list: croc refuses it as an argument and says so. <code>--classic</code> restores the old way.</li><li>The default relay is a public one run by croc's author; <code>croc relay</code> runs your own.</li></ul>
+<p class="see">See also <a href="#c-rsync"><code>rsync</code></a>, <a href="#c-syncthing"><code>syncthing</code></a>, <a href="#c-darkhttpd"><code>darkhttpd</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-darkhttpd" data-s="darkhttpd a simple, single-threaded, static content webserver sharing darkhttpd">
-<h3><a class="self" href="#c-darkhttpd"><code>darkhttpd</code></a> <span class="purpose">A simple, single-threaded, static content webserver</span></h3>
+<article class="cmd" id="c-darkhttpd" data-s="darkhttpd serve a folder over http, with one command and no configuration. sharing darkhttpd">
+<h3><a class="self" href="#c-darkhttpd"><code>darkhttpd</code></a> <span class="purpose">Serve a folder over HTTP, with one command and no configuration.</span></h3>
 <p class="facts">Sharing · command-line tool · <b>darkhttpd</b> 1.17 · stage 12 · The application catalogue · <a href="https://unix4lyfe.org/darkhttpd/">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's smallest web server: share a folder of files on the LAN for a minute, or preview a static site from its output folder.</p>
 <pre class="syn">usage:	/usr/bin/darkhttpd /path/to/wwwroot [flags]
 flags:	--port number (default: 8080, or 80 if running as root)
 		Specifies which port to listen on for connections.</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Give it a folder; it serves it on port 8080 until Ctrl-C, with a listing of the files where there is no index.html.</p>
+<h4>Examples</h4><div class="ex"><code>darkhttpd ~/Public</code><span>http://this-machine:8080/</span></div><div class="ex"><code>darkhttpd public --port 8000</code><span>a built site, on port 8000</span></div><div class="ex"><code>darkhttpd . --addr 127.0.0.1</code><span>this machine only</span></div><div class="ex"><code>darkhttpd ~/Public --no-listing</code><span>no folder listings</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--port N</code></dt><dd>the port (default 8080)</dd><dt><code>--addr IP</code></dt><dd>listen on one address only (default: all)</dd><dt><code>--no-listing</code></dt><dd>do not list folders without an index.html</dd><dt><code>--index FILE</code></dt><dd>the index file (default index.html)</dd><dt><code>--log FILE</code></dt><dd>write an access log</dd></dl>
+<h4>Notes</h4><ul><li>By default it listens on every address, so anyone on the network can read the folder. <code>--addr 127.0.0.1</code> keeps it to this machine.</li><li>It serves files as they are: no PHP, no uploads, no passwords.</li><li>A service is installed too (<code>/etc/init.d/darkhttpd</code>) for serving a folder permanently; <code>/etc/conf.d/darkhttpd</code> says which.</li></ul>
+<p class="see">See also <a href="#c-hugo"><code>hugo</code></a>, <a href="#c-zola"><code>zola</code></a>, <a href="#c-croc"><code>croc</code></a>, <a href="#c-python3"><code>python3</code></a></p>
 </article>
 <article class="cmd" id="c-rsync" data-s="rsync copy and synchronise files, locally or over ssh, sending only differences. sharing rsync">
 <h3><a class="self" href="#c-rsync"><code>rsync</code></a> <span class="purpose">Copy and synchronise files, locally or over SSH, sending only differences.</span></h3>
@@ -2618,20 +2643,26 @@ Access via rsync daemon:
 <h4>Notes</h4><ul><li>The trailing slash is the whole question. <code>src/</code> copies the contents of src; <code>src</code> copies the directory itself, into the destination.</li><li><code>--delete</code> with the wrong direction or a missing slash deletes the wrong files. Run it with <code>-n</code> first.</li><li><code>-a</code> does not keep hard links, ACLs or extended attributes; add <code>-HAX</code> for a system copy, as the snapshot stage does.</li></ul>
 <p class="see">See also <a href="#c-ssh"><code>ssh</code></a>, <a href="#c-lftp"><code>lftp</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-smbd" data-s="smbd server to provide smb/cifs services to clients sharing samba-server">
-<h3><a class="self" href="#c-smbd"><code>smbd</code></a> <span class="purpose">server to provide SMB/CIFS services to clients</span></h3>
+<article class="cmd" id="c-smbd" data-s="smbd samba's file server: share folders with windows and macos machines over smb. sharing samba-server">
+<h3><a class="self" href="#c-smbd"><code>smbd</code></a> <span class="purpose">Samba's file server: share folders with Windows and macOS machines over SMB.</span></h3>
 <p class="facts">Sharing · command-line tool · <b>samba-server</b> 4.23.8 · stage 12 · The application catalogue · <a href="man/smbd.html">man smbd(8)</a> · <a href="https://www.samba.org/">home</a></p>
 <p class="deps">needs samba-client-libs, samba-common, samba-common-server-libs, samba-libs, samba-util-libs, libauth-samba, libwbclient, acl</p>
+<p class="why"><b>On Copal:</b> The catalogue's way to make the Pi's files appear in Finder or Explorer like any network drive. Alpine's default configuration already shares each user's home folder, once the user has a Samba password.</p>
 <pre class="syn">smbd [-D|--daemon] [-i|--interactive] [-F|--foreground] [--no-process-group]
  [-b|--build-options] [-p &lt;port number(s)&gt;] [-P &lt;profiling level&gt;] [-d &lt;debug level&gt;]
  [--debug-stdout] [--configfile=&lt;configuration file&gt;] [--option=&lt;name&gt;=&lt;value&gt;]
  [-l|--log-basename &lt;log directory&gt;] [--leak-report] [--leak-report-full] [-V|--version]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Give your account a Samba password, start the service, and connect from the other machine: <code>smb://PI/yourname</code> in macOS Finder (Cmd-K), or <code>\\PI\yourname</code> in Windows Explorer. More shares are sections in <code>/etc/samba/smb.conf</code>.</p>
+<h4>Examples</h4><div class="ex"><code>doas smbpasswd -a $USER</code><span>a Samba password for your account (once)</span></div><div class="ex"><code>doas rc-service samba start</code><span>start it now</span></div><div class="ex"><code>doas rc-update add samba</code><span>and at every boot</span></div><div class="ex"><code>testparm -s</code><span>check smb.conf, and print what is in force</span></div><div class="ex"><code>smbd -b | head</code><span>how this Samba was built</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-F, --foreground</code></dt><dd>run in the foreground (for debugging)</dd><dt><code>-i, --interactive</code></dt><dd>run interactively, logging to the terminal</dd><dt><code>-s, --configfile=F</code></dt><dd>another configuration file</dd><dt><code>-b, --build-options</code></dt><dd>print the build options</dd><dt><code>-V, --version</code></dt><dd>the version</dd></dl>
+<h4>Notes</h4><ul><li>The Samba password is separate from your login password: <code>smbpasswd</code> sets it, and a share refuses you until it is set.</li><li>The service is <code>samba</code>, which starts smbd and nmbd together; the command itself is rarely run by hand.</li><li>A share for a folder of its own: <code>[music]</code> then <code>path = /home/you/Music</code> and <code>read only = no</code> in <code>smb.conf</code>, then <code>doas rc-service samba restart</code>.</li></ul>
+<p class="see">See also <a href="#c-sshfs"><code>sshfs</code></a>, <a href="#c-syncthing"><code>syncthing</code></a>, <a href="#c-rc-service"><code>rc-service</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-sshfs" data-s="sshfs filesystem client based on ssh sharing sshfs">
-<h3><a class="self" href="#c-sshfs"><code>sshfs</code></a> <span class="purpose">filesystem client based on SSH</span></h3>
+<article class="cmd" id="c-sshfs" data-s="sshfs mount a folder from another machine over ssh, and use it like a local one. sharing sshfs">
+<h3><a class="self" href="#c-sshfs"><code>sshfs</code></a> <span class="purpose">Mount a folder from another machine over SSH, and use it like a local one.</span></h3>
 <p class="facts">Sharing · command-line tool · <b>sshfs</b> 3.7.6 · stage 12 · The application catalogue · <a href="man/sshfs.html">man sshfs(1)</a> · <a href="https://github.com/libfuse/sshfs">home</a></p>
 <p class="deps">needs openssh-client, fuse3, fuse3-libs, glib</p>
+<p class="why"><b>On Copal:</b> The catalogue's network folder with nothing to set up on the other side: anywhere you can ssh to, you can mount. No root needed on Copal.</p>
 <pre class="syn">To mount a filesystem:
 
    sshfs [user@]host:[dir] mountpoint [options]
@@ -2642,12 +2673,17 @@ To unmount it:
 
    fusermount3 -u mountpoint   # Linux
    umount mountpoint           # OS X, FreeBSD</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Mount a remote folder onto an empty local one; programs then read and write it as if it were here. Unmount with <code>fusermount3 -u</code> when done.</p>
+<h4>Examples</h4><div class="ex"><code>mkdir -p ~/mnt/pi</code></div><div class="ex"><code>sshfs pi:/home/you/Music ~/mnt/pi</code><span>mount</span></div><div class="ex"><code>sshfs -o reconnect pi:Music ~/mnt/pi</code><span>survive a dropped connection</span></div><div class="ex"><code>sshfs -p 2222 you@example.org:/srv ~/mnt/srv</code><span>sshd on another port</span></div><div class="ex"><code>fusermount3 -u ~/mnt/pi</code><span>unmount</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-p PORT</code></dt><dd>the SSH port</dd><dt><code>-o reconnect</code></dt><dd>reconnect after the connection drops</dd><dt><code>-o idmap=user</code></dt><dd>show the remote files as yours</dd><dt><code>-o follow_symlinks</code></dt><dd>follow links on the remote side</dd><dt><code>-f</code></dt><dd>stay in the foreground (to see errors)</dd></dl>
+<h4>Notes</h4><ul><li>Unmounting is <code>fusermount3 -u</code>, not <code>umount</code>: a plain user may not umount.</li><li>Everything goes through ssh, so <code>~/.ssh/config</code> hosts and keys work: <code>sshfs pi:</code> is enough when <code>pi</code> is a host there.</li><li>A folder full of large files is slow to list over a slow link; for copying many files, <a href="#c-rsync"><code>rsync</code></a> is faster.</li></ul>
+<p class="see">See also <a href="#c-ssh"><code>ssh</code></a>, <a href="#c-smbd"><code>smbd</code></a>, <a href="#c-rsync"><code>rsync</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-syncthing" data-s="syncthing syncthing sharing syncthing">
-<h3><a class="self" href="#c-syncthing"><code>syncthing</code></a> <span class="purpose">Syncthing</span></h3>
+<article class="cmd" id="c-syncthing" data-s="syncthing keep folders in sync between your machines, directly, with no server in between. sharing syncthing">
+<h3><a class="self" href="#c-syncthing"><code>syncthing</code></a> <span class="purpose">Keep folders in sync between your machines, directly, with no server in between.</span></h3>
 <p class="facts">Sharing · command-line tool · <b>syncthing</b> 2.1.0 · stage 12 · The application catalogue · <a href="man/syncthing.html">man syncthing(1)</a> · <a href="https://syncthing.net/">home</a></p>
 <p class="deps">needs sqlite-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's continuous sync: a folder on the Pi and the same folder on the Mac or a phone stay identical, over the LAN or the internet, encrypted.</p>
 <pre class="syn">syncthing [serve]
           [--home=&lt;dir&gt; | --config=&lt;dir&gt; --data=&lt;dir&gt;]
           [--allow-newer-config] [--audit] [--auditfile=&lt;file|-|--&gt;]
@@ -2663,15 +2699,24 @@ To unmount it:
           [--paused] [--unpaused]
           [--version] [--help] [--debug-*]
 ...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run it as yourself; it serves a web page at 127.0.0.1:8384 where you add the other machines (by their device ID) and choose which folders to share. After that it works in the background.</p>
+<h4>Examples</h4><div class="ex"><code>syncthing</code><span>start it (and open the web page)</span></div><div class="ex"><code>syncthing serve --no-browser</code><span>start without opening a browser</span></div><div class="ex"><code>syncthing device-id</code><span>this machine's ID, to give the others</span></div><div class="ex"><code>syncthing paths</code><span>where its config and database are</span></div><div class="ex"><code>syncthing browser</code><span>open its web page in the browser</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>serve</code></dt><dd>run it (the default command) --no-browser         with serve: do not open the web page --gui-address=URL    with serve: the page elsewhere, e.g. 0.0.0.0:8384</dd><dt><code>device-id</code></dt><dd>print this device's ID</dd><dt><code>paths</code></dt><dd>where its files are</dd><dt><code>-H, --home=PATH</code></dt><dd>another config and database directory</dd></dl>
+<h4>Notes</h4><ul><li>Run it as yourself, not the system service: the service runs as the user <a href="#c-syncthing"><code>syncthing</code></a>, which cannot read or write your home folder. <code>exec-once = syncthing serve --no-browser</code> in <code>~/.config/hypr/local.conf</code> starts it with the desktop.</li><li>To see the web page from another machine, an SSH tunnel keeps it private: <code>ssh -L 8384:127.0.0.1:8384 pi</code>, then browse to localhost:8384 there.</li><li>A deleted file is deleted everywhere. Turn on file versioning for a folder if that worries you.</li></ul>
+<p class="see">See also <a href="#c-rsync"><code>rsync</code></a>, <a href="#c-unison"><code>unison</code></a>, <a href="#c-croc"><code>croc</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-unison" data-s="unison a multi-platform bi-directional file synchronization tool sharing unison">
-<h3><a class="self" href="#c-unison"><code>unison</code></a> <span class="purpose">a multi-platform bi-directional file synchronization tool</span></h3>
+<article class="cmd" id="c-unison" data-s="unison two-way file synchronisation: changes on either side are carried to the other. sharing unison">
+<h3><a class="self" href="#c-unison"><code>unison</code></a> <span class="purpose">Two-way file synchronisation: changes on either side are carried to the other.</span></h3>
 <p class="facts">Sharing · command-line tool · <b>unison</b> 2.54.0 · stage 12 · The application catalogue · <a href="man/unison.html">man unison(1)</a> · <a href="https://www.cis.upenn.edu/~bcpierce/unison/">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's two-way sync, run when you choose -- for a laptop and a Pi that both change the same folder. Where rsync mirrors one way, unison merges both, and asks about conflicts.</p>
 <pre class="syn">unison [options]
 unison root1 root2 [options]
 unison profilename [options]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Name two roots -- local folders, or one over ssh -- and unison compares them with what it saw last time, proposes what to copy each way, and asks about anything changed on both sides.</p>
+<h4>Examples</h4><div class="ex"><code>unison ~/docs ssh://pi//home/you/docs</code><span>sync, asking</span></div><div class="ex"><code>unison -batch ~/docs ssh://pi//home/you/docs</code><span>no questions: skip conflicts</span></div><div class="ex"><code>unison -auto ~/docs /media/usb/docs</code><span>accept non-conflicts, ask the rest</span></div><div class="ex"><code>unison work</code><span>the profile ~/.unison/work.prf</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-batch</code></dt><dd>ask nothing; conflicting files are skipped</dd><dt><code>-auto</code></dt><dd>accept the default actions, ask only about conflicts</dd><dt><code>-ui text</code></dt><dd>the text interface (the default here)</dd><dt><code>-path P</code></dt><dd>sync only P, within the roots</dd><dt><code>-ignore P</code></dt><dd>leave P out (as a pattern) -prefer ROOT on a conflict, take ROOT's version</dd></dl>
+<h4>Notes</h4><ul><li>Both machines need the same unison version -- 2.54 here -- or it refuses to talk.</li><li>The double slash in <code>ssh://pi//home/you/docs</code> is an absolute path; a single one would be relative to your home on <code>pi</code>.</li><li>A profile saves the roots and options: <code>root = ...</code> lines in <code>~/.unison/NAME.prf</code>, then <code>unison NAME</code>.</li></ul>
+<p class="see">See also <a href="#c-rsync"><code>rsync</code></a>, <a href="#c-syncthing"><code>syncthing</code></a>, <a href="#c-ssh"><code>ssh</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-smallweb"><h2>Smallweb</h2>
@@ -2735,14 +2780,19 @@ btop [--default-config | {-h | --help} | {-V | --version}]</pre>
 <h4>Notes</h4><ul><li>The answers online are mostly for GNU. BusyBox applets take fewer options, and some take an option and ignore it: <code>blkid -s UUID -o value</code> prints the whole line and exits 0 -- it once put a device path where a UUID belonged in Copal's grub.cfg. Check with <code>busybox APPLET --help</code>.</li><li><code>/bin/sh</code> is BusyBox <code>ash</code>, not bash: no arrays, no <code>[[ ]]</code> in scripts that start <code>#!/bin/sh</code>. Your login shell may be bash; scripts are not.</li><li>There is one manual page for all of it -- <code>man busybox</code> -- and each applet's section in it is short. <code>--help</code> is usually quicker.</li><li>Installing the GNU package (<code>findutils</code>, <code>sed</code>, <code>gawk</code>...) replaces the link; <code>apk del</code> puts BusyBox's back.</li></ul>
 <p class="see">See also <a href="#c-ip"><code>ip</code></a>, <a href="#c-logread"><code>logread</code></a>, <a href="#c-apk"><code>apk</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-delta" data-s="delta syntax-highlighting pager for git and diff output system delta">
-<h3><a class="self" href="#c-delta"><code>delta</code></a> <span class="purpose">Syntax-highlighting pager for git and diff output</span></h3>
+<article class="cmd" id="c-delta" data-s="delta a pager for git diffs: syntax colour, word-level changes, line numbers, side by side. system delta">
+<h3><a class="self" href="#c-delta"><code>delta</code></a> <span class="purpose">A pager for git diffs: syntax colour, word-level changes, line numbers, side by side.</span></h3>
 <p class="facts">System · command-line tool · <b>delta</b> 0.19.2 · stage 12 · The application catalogue · <a href="https://dandavison.github.io/delta/">home</a></p>
 <p class="deps">needs libgit2, oniguruma</p>
+<p class="why"><b>On Copal:</b> The catalogue's diff viewer. Set as git's pager, it makes every git diff, show and log -p easier to read, in any terminal.</p>
 <pre class="syn">Usage: delta [OPTIONS] [MINUS_FILE] [PLUS_FILE]
 Arguments:
   [MINUS_FILE]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Set it once as git's pager, and git uses it for everything it pages. It also reads any diff from a pipe, or compares two files itself.</p>
+<h4>Examples</h4><div class="ex"><code>git config --global core.pager delta</code><span>git's pager, from now on</span></div><div class="ex"><code>git config --global interactive.diffFilter 'delta --color-only'</code><span>and in git add -p</span></div><div class="ex"><code>git diff</code><span>now through delta</span></div><div class="ex"><code>delta -s old.txt new.txt</code><span>two files, side by side</span></div><div class="ex"><code>diff -u a b | delta</code><span>any unified diff</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-s, --side-by-side</code></dt><dd>the two versions in columns</dd><dt><code>-n, --line-numbers</code></dt><dd>line numbers down the side</dd><dt><code>--navigate</code></dt><dd>n and N jump between files in the pager</dd><dt><code>--dark / --light</code></dt><dd>for the terminal's background</dd><dt><code>--syntax-theme NAME</code></dt><dd>the colours; --list-syntax-themes lists them</dd></dl>
+<h4>Notes</h4><ul><li>Put settings in <code>~/.gitconfig</code> under <code>[delta]</code>: <code>side-by-side = true</code>, <code>line-numbers = true</code>.</li><li>On Copal's light terminal theme, <code>--light</code> (or <code>light = true</code> in the config) keeps the colours readable.</li></ul>
+<p class="see">See also <a href="#c-git"><code>git</code></a>, <a href="#c-tig"><code>tig</code></a>, <a href="#c-lazygit"><code>lazygit</code></a></p>
 </article>
 <article class="cmd" id="c-dmesg" data-s="dmesg read the kernel's message buffer: hardware, drivers, and what went wrong. system dmesg">
 <h3><a class="self" href="#c-dmesg"><code>dmesg</code></a> <span class="purpose">Read the kernel's message buffer: hardware, drivers, and what went wrong.</span></h3>
@@ -2784,25 +2834,40 @@ dmesg --console-off</pre>
 <pre class="syn">fastfetch [OPTIONS...]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-gitui" data-s="gitui blazing fast terminal client for git system gitui">
-<h3><a class="self" href="#c-gitui"><code>gitui</code></a> <span class="purpose">Blazing fast terminal client for git</span></h3>
+<article class="cmd" id="c-gitui" data-s="gitui a fast terminal interface for git, in tabs: status, log, files, stashes. system gitui">
+<h3><a class="self" href="#c-gitui"><code>gitui</code></a> <span class="purpose">A fast terminal interface for git, in tabs: status, log, files, stashes.</span></h3>
 <p class="facts">System · terminal program · <b>gitui</b> 0.28.1 · stage 12 · The application catalogue · <a href="https://github.com/extrawurst/gitui">home</a></p>
 <p class="deps">needs libgit2, oniguruma, libssh2, libssl3</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's other git interface: quick to start on large repositories, with every key it takes shown at the bottom.</p>
+<h4>Use</h4><p>Start it in a repository. Tabs along the top -- Status, Log, Files, Stashing, Stashes -- switch with the number keys; the bar at the bottom lists the keys for the current view.</p>
+<h4>Examples</h4><div class="ex"><code>gitui</code><span>the repository here</span></div><div class="ex"><code>gitui -d ~/code/copal/.git</code><span>another repository</span></div><div class="ex"><code>1-5            (in gitui) switch tabs</code></div><div class="ex"><code>Enter          stage or unstage a file (Status)</code></div><div class="ex"><code>c              commit</code></div><div class="ex"><code>Esc / q        back / quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-d, --directory DIR</code></dt><dd>the git directory to open</dd><dt><code>-t, --theme FILE</code></dt><dd>a theme file from its config directory</dd><dt><code>-l, --logging</code></dt><dd>write a log (to find a problem)</dd></dl>
+<h4>Notes</h4><ul><li>Its key bindings and theme are files in <code>~/.config/gitui</code>.</li><li>It does what git does: a push that needs a password or a key follows git's own settings.</li></ul>
+<p class="see">See also <a href="#c-git"><code>git</code></a>, <a href="#c-lazygit"><code>lazygit</code></a>, <a href="#c-tig"><code>tig</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-htop" data-s="htop interactive process viewer system htop">
-<h3><a class="self" href="#c-htop"><code>htop</code></a> <span class="purpose">interactive process viewer</span></h3>
+<article class="cmd" id="c-htop" data-s="htop an interactive process viewer: cpu, memory, and every process, live. system htop">
+<h3><a class="self" href="#c-htop"><code>htop</code></a> <span class="purpose">An interactive process viewer: CPU, memory, and every process, live.</span></h3>
 <p class="facts">System · terminal program · <b>htop</b> 3.5.3 · stage 4 · X.Org, i3, a terminal and a browser · <a href="man/htop.html">man htop(1)</a> · <a href="https://htop.dev/">home</a></p>
 <p class="deps">needs lsof, libncursesw</p>
+<p class="why"><b>On Copal:</b> The task manager on Copal's i3 desktop, where Super+T opens it, and the first thing to run when a machine feels slow.</p>
 <pre class="syn">htop [-dCFhpustvH]
 pcp-htop [-dCFhpustvH] [--host/-h host]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>The meters at the top show each core, memory and swap; the list below shows the processes, the busiest first. Keys along the bottom sort, search and filter the list.</p>
+<h4>Examples</h4><div class="ex"><code>htop</code><span>everything</span></div><div class="ex"><code>htop -u $USER</code><span>only your processes</span></div><div class="ex"><code>htop -t</code><span>as a tree: which started which</span></div><div class="ex"><code>htop -p 1234,5678</code><span>only these process IDs</span></div><div class="ex"><code>F3  F4         (in htop) search / filter</code></div><div class="ex"><code>F5             tree view</code></div><div class="ex"><code>F6             sort by a column</code></div><div class="ex"><code>F10            quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-u USER</code></dt><dd>only USER's processes</dd><dt><code>-t, --tree</code></dt><dd>start in tree view</dd><dt><code>-p PIDS</code></dt><dd>only these processes</dd><dt><code>-d N</code></dt><dd>the update delay, in tenths of a second</dd><dt><code>-s COLUMN</code></dt><dd>sort by COLUMN</dd></dl>
+<h4>Notes</h4><ul><li>F2 is the setup screen: meters, columns and colours, saved to <code>~/.config/htop/htoprc</code>.</li><li>Memory shown as "used" leaves out the page cache; a nearly full bar of cache is normal.</li></ul>
+<p class="see">See also <a href="#c-copal-tm"><code>copal-tm</code></a>, <a href="#c-btop"><code>btop</code></a>, <a href="#c-rc-status"><code>rc-status</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-lazygit" data-s="lazygit simple terminal ui for git commands system lazygit">
-<h3><a class="self" href="#c-lazygit"><code>lazygit</code></a> <span class="purpose">Simple terminal UI for git commands</span></h3>
+<article class="cmd" id="c-lazygit" data-s="lazygit a terminal interface for git: stage, commit, branch, rebase and push from panels. system lazygit">
+<h3><a class="self" href="#c-lazygit"><code>lazygit</code></a> <span class="purpose">A terminal interface for git: stage, commit, branch, rebase and push from panels.</span></h3>
 <p class="facts">System · terminal program · <b>lazygit</b> 0.48.0 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://github.com/jesseduffield/lazygit">home</a></p>
 <p class="deps">needs git</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's git interface, and the one Copal's Neovim opens with Space g g, in a window over the editor.</p>
+<h4>Use</h4><p>Start it in a repository. Panels on the left show status, files, branches, commits and stashes; the right shows what the selection is. Keys act on the selection, and the foot of the screen lists them.</p>
+<h4>Examples</h4><div class="ex"><code>lazygit</code><span>the repository here</span></div><div class="ex"><code>lazygit -p ~/code/copal</code><span>another repository</span></div><div class="ex"><code>lazygit -f README.md</code><span>the history of one file</span></div><div class="ex"><code>Space          (in lazygit) stage or unstage the file</code></div><div class="ex"><code>c              commit the staged changes</code></div><div class="ex"><code>P  p           push / pull</code></div><div class="ex"><code>Tab / 1-5      move between panels</code></div><div class="ex"><code>?              every key here;  q  quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-p, --path DIR</code></dt><dd>the repository to open</dd><dt><code>-f, --filter PATH</code></dt><dd>only the history that touches PATH</dd><dt><code>-c, --config</code></dt><dd>print the default config</dd><dt><code>-cd, --print-config-dir</code></dt><dd>where its config lives</dd></dl>
+<h4>Notes</h4><ul><li>Its config is <code>~/.config/lazygit/config.yml</code>; <code>lazygit -c</code> prints every setting with its default, to copy from.</li><li>Whatever it does is ordinary git: <code>git log</code> and <code>git status</code> in a shell show the same repository.</li></ul>
+<p class="see">See also <a href="#c-git"><code>git</code></a>, <a href="#c-gitui"><code>gitui</code></a>, <a href="#c-tig"><code>tig</code></a>, <a href="#c-nvim"><code>nvim</code></a></p>
 </article>
 <article class="cmd" id="c-lbu" data-s="lbu save a ram-resident alpine system's changes to disk (the apkovl). system alpine-conf">
 <h3><a class="self" href="#c-lbu"><code>lbu</code></a> <span class="purpose">Save a RAM-resident Alpine system's changes to disk (the apkovl).</span></h3>
@@ -2858,17 +2923,23 @@ pcp-htop [-dCFhpustvH] [--host/-h host]</pre>
 <h4>Notes</h4><ul><li>An answer file is a shell script it sources: <code>KEYMAPOPTS</code>, <code>HOSTNAMEOPTS</code>, <code>INTERFACESOPTS</code>, <code>USEROPTS</code>, <code>DISKOPTS</code> and so on. There is no variable for the root password; Copal answers that prompt itself.</li><li>Run over SSH, it leaves the network running while it rewrites the settings, so the connection you are using is not cut from under you.</li><li>The other setup scripts are in <code>/usr/sbin</code>: <code>ls /usr/sbin/setup-*</code>. Each has its own man page: <code>man setup-interfaces</code>.</li></ul>
 <p class="see">See also <a href="#c-lbu"><code>lbu</code></a>, <a href="#c-doas"><code>doas</code></a>, <a href="#c-wpa_passphrase"><code>wpa_passphrase</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-sha224sum" data-s="sha224sum sha224sum system coreutils">
-<h3><a class="self" href="#c-sha224sum"><code>sha224sum</code></a> <span class="purpose">sha224sum</span></h3>
+<article class="cmd" id="c-sha224sum" data-s="sha224sum compute or check sha-224 checksums; its siblings do md5 and the other sha sizes. system coreutils">
+<h3><a class="self" href="#c-sha224sum"><code>sha224sum</code></a> <span class="purpose">Compute or check SHA-224 checksums; its siblings do MD5 and the other SHA sizes.</span></h3>
 <p class="facts">System · command-line tool · <b>coreutils</b> 9.11 · stage 12 · The application catalogue · <a href="man/sha224sum.html">man sha224sum(1)</a> · <a href="https://www.gnu.org/software/coreutils/">home</a></p>
 <p class="deps">needs coreutils-env, coreutils-fmt, coreutils-sha512sum, acl-libs, libattr, libcrypto3, utmps-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's row for GNU coreutils' checksum tools: prove a download or a copied file is exactly what it should be. Copal's own downloads are checked against sha256 sums the same way.</p>
 <pre class="syn">sha224sum [OPTIONS] [FILE]...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Give it files and it prints a checksum for each. Save those lines to a file, and <code>-c</code> later checks the files against it. <code>sha256sum</code> is the one most downloads publish; <code>md5sum</code>, <code>sha1sum</code> and <code>sha512sum</code> work alike.</p>
+<h4>Examples</h4><div class="ex"><code>sha224sum photo.jpg</code><span>one checksum</span></div><div class="ex"><code>sha256sum alpine.iso</code><span>the size most downloads publish</span></div><div class="ex"><code>sha256sum *.iso &gt; SUMS</code><span>save checksums for later</span></div><div class="ex"><code>sha256sum -c SUMS</code><span>check the files against them</span></div><div class="ex"><code>echo 'HASH  file.iso' | sha256sum -c # check against a published hash</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-c, --check</code></dt><dd>read checksums from a file and check them</dd><dt><code>--quiet</code></dt><dd>with -c: print only failures</dd><dt><code>--status</code></dt><dd>with -c: print nothing; the exit code says</dd><dt><code>-b, --binary</code></dt><dd>read in binary mode (the same on Linux)</dd></dl>
+<h4>Notes</h4><ul><li>The line format is the hash, two spaces, then the file name; <code>-c</code> needs exactly that.</li><li>MD5 and SHA-1 catch accidents, not tampering. For checking a download's authenticity, use SHA-256 or longer.</li></ul>
+<p class="see">See also <a href="#c-curl"><code>curl</code></a>, <a href="#c-rsync"><code>rsync</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-tig" data-s="tig text-mode interface for git system tig">
-<h3><a class="self" href="#c-tig"><code>tig</code></a> <span class="purpose">text-mode interface for Git</span></h3>
+<article class="cmd" id="c-tig" data-s="tig a text-mode browser for git history: the log, each commit's diff, blame. system tig">
+<h3><a class="self" href="#c-tig"><code>tig</code></a> <span class="purpose">A text-mode browser for git history: the log, each commit's diff, blame.</span></h3>
 <p class="facts">System · terminal program · <b>tig</b> 2.6.1 · stage 12 · The application catalogue · <a href="man/tig.html">man tig(1)</a> · <a href="https://jonas.github.io/tig/">home</a></p>
 <p class="deps">needs git, libncursesw, pcre2</p>
+<p class="why"><b>On Copal:</b> The catalogue's git history reader: faster than scrolling <code>git log -p</code>, and its blame view walks back through a line's past.</p>
 <pre class="syn">tig        [options] [revisions] [--] [paths]
 tig log    [options] [revisions] [--] [paths]
 tig show   [options] [revisions] [--] [paths]
@@ -2879,7 +2950,11 @@ tig refs   [options]
 tig stash  [options]
 tig status
 tig &lt;      [Git command output]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>With no arguments it lists the commits; Enter opens one's diff in a split below. It takes the same arguments as <code>git log</code>, and has views for blame, status and refs.</p>
+<h4>Examples</h4><div class="ex"><code>tig</code><span>the log</span></div><div class="ex"><code>tig README.md</code><span>commits that touched one file</span></div><div class="ex"><code>tig blame src/main.c</code><span>who changed each line</span></div><div class="ex"><code>tig status</code><span>stage and unstage, like git add -p</span></div><div class="ex"><code>tig --all</code><span>every branch</span></div><div class="ex"><code>Enter          (in tig) open the selection</code></div><div class="ex"><code>j k            move;  q  back, or quit</code></div><div class="ex"><code>/              search</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>blame FILE</code></dt><dd>the blame view</dd><dt><code>status</code></dt><dd>the status view</dd><dt><code>refs</code></dt><dd>branches and tags</dd><dt><code>--all</code></dt><dd>every ref, not just the current branch</dd><dt><code>PATH</code></dt><dd>only commits touching PATH</dd></dl>
+<h4>Notes</h4><ul><li>In the blame view, a comma on a line moves blame to the commit before it: the way to follow a line back.</li><li>Settings go in <code>~/.tigrc</code> (or <code>~/.config/tig/config</code>).</li></ul>
+<p class="see">See also <a href="#c-git"><code>git</code></a>, <a href="#c-lazygit"><code>lazygit</code></a>, <a href="#c-gitui"><code>gitui</code></a>, <a href="#c-delta"><code>delta</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-terminals"><h2>Terminals</h2>
@@ -2959,14 +3034,19 @@ screen -r sessionowner/[[pid.]tty[.host]]</pre>
 <pre class="syn">scrcpy [options]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-scrot" data-s="scrot command line screen capture utility tools scrot">
-<h3><a class="self" href="#c-scrot"><code>scrot</code></a> <span class="purpose">command line screen capture utility</span></h3>
+<article class="cmd" id="c-scrot" data-s="scrot take a screenshot on an x11 desktop: the screen, a window, or a region. tools scrot">
+<h3><a class="self" href="#c-scrot"><code>scrot</code></a> <span class="purpose">Take a screenshot on an X11 desktop: the screen, a window, or a region.</span></h3>
 <p class="facts">Tools · command-line tool · <b>scrot</b> 2.0.0 · stage 12 · The application catalogue · <a href="man/scrot.html">man scrot(1)</a> · <a href="https://github.com/resurrecting-open-source-projects/scrot">home</a></p>
 <p class="deps">needs imlib2, libx11, libxcomposite, libxfixes, libxrandr</p>
+<p class="why"><b>On Copal:</b> The screenshot tool for Copal's i3 desktop, which runs on X11. On the Hyprland desktop (Wayland) it cannot see the screen: there, Super+Shift+S (copal-shot) and grim do the job.</p>
 <pre class="syn">scrot [-bcfhimopuvz] [-a X,Y,W,H] [-C NAME] [-D DISPLAY] [-d SEC] [-e CMD]
       [-k OPT] [-l STYLE] [-M NUM] [-n OPTS] [-q NUM] [-s OPTS] [-t % | WxH]
       [-w NUM] [[-F] FILE]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>With no arguments it saves the whole screen as a PNG in the current folder, named by the date and time. <code>-s</code> lets you drag out a region, <code>-u</code> takes the focused window, <code>-d</code> waits first.</p>
+<h4>Examples</h4><div class="ex"><code>scrot</code><span>the whole screen, into this folder</span></div><div class="ex"><code>scrot ~/Pictures/%Y-%m-%d-%H%M%S.png # to a named file</code></div><div class="ex"><code>scrot -s</code><span>drag out a region</span></div><div class="ex"><code>scrot -u -d 3</code><span>the focused window, after 3 seconds</span></div><div class="ex"><code>scrot -e 'mv $f ~/Pictures/'</code><span>run a command on the saved file</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-s, --select</code></dt><dd>choose a region, or click a window</dd><dt><code>-u, --focused</code></dt><dd>the focused window</dd><dt><code>-d, --delay SEC</code></dt><dd>wait SEC seconds first</dd><dt><code>-c, --count</code></dt><dd>show a countdown with -d</dd><dt><code>-p, --pointer</code></dt><dd>include the mouse pointer</dd><dt><code>-e, --exec CMD</code></dt><dd>run CMD on the saved image ($f is its name)</dd><dt><code>-q, --quality N</code></dt><dd>image quality, 1-100</dd></dl>
+<h4>Notes</h4><ul><li>On Wayland it saves a black or empty picture, or fails: it asks the X server for the screen, which only holds X programs. Use <code>grim</code> (the whole screen), <code>grim -g "$(slurp)"</code> (a region) or Super+Shift+S.</li><li><code>%Y</code>, <code>%m</code> and the other date codes in the file name come from strftime.</li></ul>
+<p class="see">See also <a href="#c-copal-shot"><code>copal-shot</code></a>, <a href="#c-tesseract"><code>tesseract</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-tldr" data-s="tldr very fast implementation of tldr in rust tools tealdeer">
 <h3><a class="self" href="#c-tldr"><code>tldr</code></a> <span class="purpose">Very fast implementation of tldr in Rust</span></h3>
@@ -2987,12 +3067,17 @@ screen -r sessionowner/[[pid.]tty[.host]]</pre>
 <h4>Notes</h4><ul><li>Scrolling with the mouse wheel shows the terminal's scrollback, not the pane's, until <code>set -g mouse on</code> is in <code>~/.tmux.conf</code> (or <code>~/.config/tmux/tmux.conf</code>). Copal writes no tmux config: these are tmux's defaults.</li><li>A session survives a lost SSH connection, not a reboot.</li><li>Inside Neovim, Escape feels slow under tmux: <code>set -sg escape-time 10</code> in the config fixes it.</li></ul>
 <p class="see">See also <a href="#c-ssh"><code>ssh</code></a>, <a href="#c-abduco"><code>abduco</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-x11vnc" data-s="x11vnc allow vnc connections to real x11 displays version: 0.9.17, lastmod: 2025-04-11 tools x11vnc">
-<h3><a class="self" href="#c-x11vnc"><code>x11vnc</code></a> <span class="purpose">allow VNC connections to real X11 displays version: 0.9.17, lastmod: 2025-04-11</span></h3>
+<article class="cmd" id="c-x11vnc" data-s="x11vnc share a running x11 desktop over vnc, so another machine can see and control it. tools x11vnc">
+<h3><a class="self" href="#c-x11vnc"><code>x11vnc</code></a> <span class="purpose">Share a running X11 desktop over VNC, so another machine can see and control it.</span></h3>
 <p class="facts">Tools · terminal program · <b>x11vnc</b> 0.9.17 · stage 12 · The application catalogue · <a href="man/x11vnc.html">man x11vnc(1)</a> · <a href="https://github.com/LibVNC/x11vnc">home</a></p>
 <p class="deps">needs libx11, libxdamage, libxext, libxfixes, libxi, libxinerama, libxrandr, libxtst</p>
+<p class="why"><b>On Copal:</b> The catalogue's screen sharing for Copal's i3 desktop (X11): help someone at the Pi from your Mac, with a VNC viewer. It shares the session already on screen rather than starting a new one.</p>
 <pre class="syn">x11vnc [OPTION]...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run it inside the X session you want to share; it listens on port 5900. Connect with a VNC viewer -- macOS has one built in: <code>vnc://pi</code> in Finder's Connect to Server. Set a password first, and prefer an SSH tunnel to the open port.</p>
+<h4>Examples</h4><div class="ex"><code>x11vnc -storepasswd</code><span>set a password (in ~/.vnc/passwd)</span></div><div class="ex"><code>x11vnc -rfbauth ~/.vnc/passwd -display :0 -forever</code></div><div class="ex"><code>x11vnc -localhost -rfbauth ~/.vnc/passwd -display :0</code><span>only through a tunnel</span></div><div class="ex"><code>ssh -L 5900:localhost:5900 pi</code><span>the tunnel, from the other machine</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-display :0</code></dt><dd>the X display to share</dd><dt><code>-rfbauth FILE</code></dt><dd>require the password stored in FILE</dd><dt><code>-storepasswd</code></dt><dd>store a VNC password</dd><dt><code>-localhost</code></dt><dd>accept only local connections (use an SSH tunnel)</dd><dt><code>-forever</code></dt><dd>keep serving after a viewer disconnects</dd><dt><code>-shared</code></dt><dd>allow several viewers at once</dd><dt><code>-viewonly</code></dt><dd>viewers can watch, not control</dd></dl>
+<h4>Notes</h4><ul><li>It shares X11 only. The Hyprland desktop is Wayland, where it sees nothing useful; share the i3 session, or reach the Pi over SSH.</li><li>Without <code>-rfbauth</code>, anyone who can reach port 5900 gets the desktop. With <code>-localhost</code> and an SSH tunnel, only someone who can log in by SSH can.</li></ul>
+<p class="see">See also <a href="#c-ssh"><code>ssh</code></a>, <a href="#c-orrery"><code>orrery</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-transfer"><h2>Transfer</h2>

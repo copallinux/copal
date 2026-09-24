@@ -390,6 +390,24 @@ Each ends with a review of what it produced before the next begins.
   version's robots takes none, and snake takes WIDTH HEIGHT. Keys the
   programs do not document (ttysolitaire) are left out, not guessed.
 
+### Phase 4, batches 7 and 8: Science; Files, System, Sharing, Tools (24 Sep 2026)
+
+- **Batch 7, 7 entries**: `pdflatex`, `octave`, `maxima`, `gnuplot`, `gp`,
+  `Singular`, `R`. Security (11) skipped at the author's request: those
+  commands keep their facts only.
+- **Batch 8, 17 entries**: `mc`, `nnn`, `ranger`; `htop`, `sha224sum`,
+  `lazygit`, `gitui`, `tig`, `delta`; `syncthing`, `croc`, `darkhttpd`,
+  `smbd`, `sshfs`, `unison`; `scrot`, `x11vnc`.
+- **Found on the way**: Syncthing 2 made `device-id` and `serve` commands,
+  and its system service runs as the user `syncthing`, which cannot reach
+  your home; croc takes the receiving phrase only from `CROC_SECRET` on
+  Linux; darkhttpd listens on every address unless told; scrot and x11vnc
+  are X11-only, so on Hyprland they see nothing (grim and copal-shot do the
+  screenshots there).
+- **check**: coreutils 9.11 wraps each option in its `--help` in an OSC 8
+  link ended by `ESC \`, which hid `-b` from the option check; the
+  escape stripping handles it.
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.
