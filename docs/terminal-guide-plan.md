@@ -309,6 +309,22 @@ Each ends with a review of what it produced before the next begins.
   `mandoc.db` corrupt on the bench. `install_manuals` and the store now
   take the same lock.
 
+### Phase 4, batch 2: the development core (24 Sep 2026)
+
+- **17 entries**, finishing the core list: `git`, `gcc`, `clang`, `make`,
+  `cmake`, `ninja`, `gdb`, `valgrind`, `nvim`, `cargo`, `go`, `python3`,
+  `pip`, `hyprctl`, `wpctl`, `pactl`, `bluetoothctl`. The safe examples run
+  on the bench, the Go cross-build for a Zero included.
+- **Found on the way**: no sanitizer runtimes for gcc or clang on Alpine
+  (valgrind is the memory checker); `ninja` is samurai, without `-t graph`;
+  pip refuses outside a venv (PEP 668); `ptrace_scope` 1 and core dumps off;
+  `pipewire-spa-bluez` is not installed, so Bluetooth headphones pair but
+  PipeWire cannot play to them.
+- **Two fixes**: the collector's PATH leaves out this account's own
+  directories but `~/.local/bin` -- the bench's rustup had made `cargo`
+  a rustup command. And `check` accepts clang's `-Wname` flags, documented
+  once as `-W<warning>`.
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.

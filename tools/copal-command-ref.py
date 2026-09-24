@@ -221,6 +221,13 @@ def inventory():
 # The facts
 def env():
     e = dict(os.environ)
+    # What a Copal machine has, not what this account added: ~/.cargo/bin's
+    # rustup shadows Alpine's cargo on the bench. ~/.local/bin stays -- the
+    # checkouts' programs are linked there.
+    home = os.path.expanduser("~")
+    keep = os.path.join(home, ".local", "bin")
+    e["PATH"] = ":".join(d for d in e.get("PATH", "").split(":")
+                         if d == keep or not (d + "/").startswith(home + "/"))
     if os.path.isdir(os.path.join(BENCH, "bin")):
         e["PATH"] = os.path.join(BENCH, "bin") + ":" + e.get("PATH", "")
     return e
@@ -815,6 +822,9 @@ def check():
                 found = lambda f: re.search(r"(^|[\s\[,(|])%s(?![\w-])" % re.escape(f), text)
                 # apk 3 and others: every --X also as --no-X, stated once.
                 if flag.startswith("--no-") and "--no-option" in text and found("--" + flag[5:]):
+                    continue
+                # clang: every -Wname, stated once as -W<warning>.
+                if re.match(r"-W[a-z]", flag) and "-W<warning>" in text:
                     continue
                 if not found(flag):
                     errs.append("%s: %s is not in %s's man page or --help" % (where, flag, cmd))

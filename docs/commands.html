@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 289 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 27 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 44 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.</p>
 </header>
 <div class="finder">
@@ -271,22 +271,32 @@
 <pre class="syn">openmpt123 [options] [--] file1 [file2] ...</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-pactl" data-s="pactl control a running pulseaudio sound server audio pulseaudio-utils">
-<h3><a class="self" href="#c-pactl"><code>pactl</code></a> <span class="purpose">Control a running PulseAudio sound server</span></h3>
+<article class="cmd" id="c-pactl" data-s="pactl pulseaudio's control command, answered here by pipewire. audio pulseaudio-utils">
+<h3><a class="self" href="#c-pactl"><code>pactl</code></a> <span class="purpose">PulseAudio's control command, answered here by PipeWire.</span></h3>
 <p class="facts">Audio · <b>pulseaudio-utils</b> 17.0 · stage 10 · Wireless, audio, capture and disks · <a href="man/pactl.html">man pactl(1)</a> · <a href="https://www.freedesktop.org/wiki/Software/PulseAudio/">home</a></p>
 <p class="deps">needs libintl, libpulse, libsndfile, libxcb</p>
+<p class="why"><b>On Copal:</b> Copal runs pipewire-pulse, so programs written for PulseAudio work unchanged -- and pactl, which most answers online use, works too. For everyday volume and output, wpctl is the native tool.</p>
 <pre class="syn">pactl [options] COMMAND [ARGS ...]
 
 pactl --help
 
 pactl --version</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>List the outputs (sinks) and inputs (sources) by name, change their volume, and move a playing stream from one device to another. The special names <code>@DEFAULT_SINK@</code> and <code>@DEFAULT_SOURCE@</code> save looking them up.</p>
+<h4>Examples</h4><div class="ex"><code>pactl info</code><span>the server: PipeWire, via pulse</span></div><div class="ex"><code>pactl list short sinks</code><span>outputs, one line each</span></div><div class="ex"><code>pactl set-sink-volume @DEFAULT_SINK@ +5%</code><span>louder</span></div><div class="ex"><code>pactl set-sink-mute @DEFAULT_SINK@ toggle</code><span>mute</span></div><div class="ex"><code>pactl set-default-sink alsa_output.platform-hdmi</code><span>a named output as default</span></div><div class="ex"><code>pactl list short sink-inputs</code><span>what is playing right now</span></div><div class="ex"><code>pactl move-sink-input 42 @DEFAULT_SINK@</code><span>move stream 42 to the default output</span></div><div class="ex"><code>pactl subscribe</code><span>watch events as they happen</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>info</code></dt><dd>the server and its defaults</dd><dt><code>list [short] TYPE</code></dt><dd>sinks, sources, sink-inputs, cards, modules</dd><dt><code>set-sink-volume NAME VOL</code></dt><dd>50%, +5%, -5%</dd><dt><code>set-sink-mute NAME 1|0|toggle</code></dt><dd>mute</dd><dt><code>set-default-sink NAME</code></dt><dd>the default output</dd><dt><code>move-sink-input N SINK</code></dt><dd>move a playing stream</dd><dt><code>-f, --format=json</code></dt><dd>JSON output</dd></dl>
+<h4>Notes</h4><ul><li><code>pactl info</code> saying "Server Name: PulseAudio (on PipeWire ...)" is right: it is PipeWire's pulse layer. There is no PulseAudio daemon, and <code>pulseaudio -k</code> answers are not for this system.</li><li>"Connection refused": no PipeWire in this session -- over SSH, say. See <a href="#c-wpctl"><code>wpctl</code></a>.</li></ul>
+<p class="see">See also <a href="#c-wpctl"><code>wpctl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-wpctl" data-s="wpctl session / policy manager implementation for pipewire audio wireplumber">
-<h3><a class="self" href="#c-wpctl"><code>wpctl</code></a> <span class="purpose">Session / policy manager implementation for PipeWire</span></h3>
+<article class="cmd" id="c-wpctl" data-s="wpctl control pipewire's audio: volume, mute, and which device plays. audio wireplumber">
+<h3><a class="self" href="#c-wpctl"><code>wpctl</code></a> <span class="purpose">Control PipeWire's audio: volume, mute, and which device plays.</span></h3>
 <p class="facts">Audio · <b>wireplumber</b> 0.5.15 · stage 10 · Wireless, audio, capture and disks · <a href="https://pipewire.org/">home</a></p>
 <p class="deps">needs glib, libintl, lua5.4-libs, pipewire-libs, wireplumber-libs</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Copal's sound is PipeWire with WirePlumber, started with each session by copal-audio-start. The desktop's volume keys are wpctl commands; so is changing the output from HDMI to headphones.</p>
+<h4>Use</h4><p><code>wpctl status</code> lists the devices -- sinks are outputs, sources are inputs -- each with an ID number, and marks the default with <code>*</code>. Every other command takes an ID, or <code>@DEFAULT_AUDIO_SINK@</code> for the current output.</p>
+<h4>Examples</h4><div class="ex"><code>wpctl status</code><span>devices, IDs, the default</span></div><div class="ex"><code>wpctl get-volume @DEFAULT_AUDIO_SINK@</code><span>the output's volume</span></div><div class="ex"><code>wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+</code><span>up 5% (5%- for down)</span></div><div class="ex"><code>wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+ # up, but never past 100%</code></div><div class="ex"><code>wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle</code><span>mute, and back</span></div><div class="ex"><code>wpctl set-default 48</code><span>make device 48 the output</span></div><div class="ex"><code>wpctl inspect 48</code><span>everything about it</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>status</code></dt><dd>the whole graph: devices, sinks, sources, streams</dd><dt><code>get-volume ID</code></dt><dd>the volume, 1.00 being 100%</dd><dt><code>set-volume ID VOL[%][+-]</code></dt><dd>set, or step up or down</dd><dt><code>set-mute ID 1|0|toggle</code></dt><dd>mute, unmute, toggle</dd><dt><code>set-default ID</code></dt><dd>the default output or input</dd><dt><code>inspect ID</code></dt><dd>all of a node's properties</dd><dt><code>set-volume -l N ID VOL</code></dt><dd>go no higher than N (1.0 = 100%)</dd></dl>
+<h4>Notes</h4><ul><li>"Could not connect to PipeWire": no PipeWire is running for this user in this session -- typical over SSH or on a console. Run it from the desktop's terminal, or start it with <a href="#c-copal-audio-start"><code>copal-audio-start</code></a>.</li><li>IDs change between sessions. In a script, use <code>@DEFAULT_AUDIO_SINK@</code> and <code>@DEFAULT_AUDIO_SOURCE@</code>, not numbers.</li><li>The RTKit warnings it prints first ("RTKit error ... ServiceUnknown") are harmless: there is no RTKit on Copal, and audio runs without it.</li></ul>
+<p class="see">See also <a href="#c-pactl"><code>pactl</code></a>, <a href="#c-bluetoothctl"><code>bluetoothctl</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-xmp" data-s="xmp extended module player audio xmp">
 <h3><a class="self" href="#c-xmp"><code>xmp</code></a> <span class="purpose">Extended Module Player</span></h3>
@@ -409,19 +419,25 @@ osage [options] [files]</pre>
 </article>
 </section>
 <section class="sec" id="s-desktop"><h2>Desktop</h2>
-<article class="cmd facts-only" id="c-hyprctl" data-s="hyprctl utility for controlling parts of hyprland from a cli or a script desktop hyprland">
-<h3><a class="self" href="#c-hyprctl"><code>hyprctl</code></a> <span class="purpose">Utility for controlling parts of Hyprland from a CLI or a script</span></h3>
+<article class="cmd" id="c-hyprctl" data-s="hyprctl ask the running hyprland about its windows, monitors and settings, and change them. desktop hyprland">
+<h3><a class="self" href="#c-hyprctl"><code>hyprctl</code></a> <span class="purpose">Ask the running Hyprland about its windows, monitors and settings, and change them.</span></h3>
 <p class="facts">Desktop · <b>hyprland</b> 0.54.3 · stage 17 · Hyprland and the Antiquity theme · <a href="man/hyprctl.html">man hyprctl(1)</a> · <a href="https://hypr.land">home</a></p>
 <p class="deps">needs mesa-egl, mesa-gles, libxcursor, aquamarine, cairo, libdrm, mesa-gbm, glib</p>
+<p class="why"><b>On Copal:</b> Stage 17's desktop is Hyprland. hyprctl is how to find a monitor's name, a window's class for a rule, or why a line in the config was not accepted -- and to try a setting before writing it down.</p>
 <pre class="syn">hyprctl [(opt)flags] [command] [(opt)args]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Query (<code>monitors</code>, <code>clients</code>, <code>activewindow</code>), or act (<code>dispatch</code>, <code>keyword</code>, <code>reload</code>). A <code>keyword</code> change lasts until the next reload; to keep it, put the same line in <code>~/.config/hypr/local.conf</code>.</p>
+<h4>Examples</h4><div class="ex"><code>hyprctl monitors all</code><span>every output, its name and modes</span></div><div class="ex"><code>hyprctl clients</code><span>every window: class, title, workspace</span></div><div class="ex"><code>hyprctl activewindow</code><span>the focused one (click it first)</span></div><div class="ex"><code>hyprctl configerrors</code><span>what the config got wrong</span></div><div class="ex"><code>hyprctl reload</code><span>re-read the config</span></div><div class="ex"><code>hyprctl dispatch workspace 3</code><span>do what a key would do</span></div><div class="ex"><code>hyprctl keyword general:gaps_out 0</code><span>change a setting until the next reload</span></div><div class="ex"><code>hyprctl -j clients</code><span>the same as JSON, for a script</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>monitors [all]</code></dt><dd>outputs; all includes the disabled ones</dd><dt><code>clients</code></dt><dd>windows</dd><dt><code>activewindow</code></dt><dd>the focused window</dd><dt><code>workspaces</code></dt><dd>workspaces and what is on them</dd><dt><code>binds</code></dt><dd>every key binding</dd><dt><code>configerrors</code></dt><dd>config lines that failed</dd><dt><code>reload</code></dt><dd>reload the configuration</dd><dt><code>dispatch NAME ARGS</code></dt><dd>run a dispatcher: workspace, exec, killactive...</dd><dt><code>keyword NAME VALUE</code></dt><dd>set a config value for now</dd><dt><code>-j</code></dt><dd>JSON output</dd><dt><code>--batch 'A; B'</code></dt><dd>several commands in one call</dd></dl>
+<h4>Notes</h4><ul><li><code>~/.config/hypr/hyprland.conf</code> is rewritten each time stage 17 runs. Your changes go in <code>local.conf</code>, which it sources last, so they win; Hyprland reloads on save.</li><li>Hyprland 0.54 reads only the <code>.conf</code> dialect. The <code>hyprland.lua</code> beside it is upstream's original, for 0.55 and later.</li><li>A window rule needs the window's class: open it, then <code>hyprctl clients</code> and read <code>class:</code>.</li></ul>
+<p class="see">See also <a href="#c-copal-desk"><code>copal-desk</code></a>, <a href="#c-copal-theme"><code>copal-theme</code></a>, <a href="#c-copal-shot"><code>copal-shot</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-development"><h2>Development</h2>
-<article class="cmd facts-only" id="c-gcc" data-s="gcc gnu project c and c++ compiler development gcc">
-<h3><a class="self" href="#c-gcc"><code>gcc</code></a> <span class="purpose">GNU project C and C++ compiler</span></h3>
+<article class="cmd" id="c-gcc" data-s="gcc the gnu c and c++ compiler. development gcc">
+<h3><a class="self" href="#c-gcc"><code>gcc</code></a> <span class="purpose">The GNU C and C++ compiler.</span></h3>
 <p class="facts">Development · <b>gcc</b> 15.2.0 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/gcc.html">man gcc(1)</a> · <a href="https://gcc.gnu.org">home</a></p>
 <p class="deps">needs binutils, libgcc-static, libgomp, libatomic, gmp, isl25, mpc1, mpfr4</p>
+<p class="why"><b>On Copal:</b> Stage 7 installs build-base -- gcc, make and the musl headers -- because most things built on a Copal machine start here: the checkouts in ~/code, the store's source builds, your own programs.</p>
 <pre class="syn">gcc [-c|-S|-E] [-std=standard]
     [-g] [-pg] [-Olevel]
     [-Wwarn...] [-Wpedantic]
@@ -432,47 +448,76 @@ osage [options] [files]</pre>
 
 Only the most useful options are listed here; see below for the remainder.  g++ accepts
 mostly the same options as gcc.</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Compile C (<a href="#c-gcc"><code>gcc</code></a>) or C++ (<code>g++</code>) source into a program, or into object files for a larger build. Warnings on and debug information in is the right default while writing; optimisation for the version you keep.</p>
+<h4>Examples</h4><div class="ex"><code>gcc -Wall -Wextra -g hello.c -o hello</code><span>compile, warnings on, debuggable</span></div><div class="ex"><code>./hello</code><span>run it</span></div><div class="ex"><code>gcc -O2 -o hello hello.c</code><span>optimised</span></div><div class="ex"><code>g++ -std=c++20 -Wall main.cpp -o main</code><span>C++, a chosen standard</span></div><div class="ex"><code>gcc -c util.c</code><span>object file only, for linking later</span></div><div class="ex"><code>gcc main.o util.o -lm -o prog</code><span>link, with the maths library</span></div><div class="ex"><code>gcc -static hello.c -o hello</code><span>one file, no shared libraries</span></div><div class="ex"><code>cd ~/dev/hello &amp;&amp; make run</code><span>Copal's sample project</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-o FILE</code></dt><dd>name the output</dd><dt><code>-c</code></dt><dd>compile only, make a .o</dd><dt><code>-g</code></dt><dd>debug information, for gdb</dd><dt><code>-O2</code></dt><dd>optimise; -O0 for none, -Os for size</dd><dt><code>-Wall -Wextra</code></dt><dd>the warnings worth having</dd><dt><code>-std=c17</code></dt><dd>the language standard: c89 c99 c11 c17 c23, c++17 c++20 c++23</dd><dt><code>-I DIR</code></dt><dd>another directory of headers</dd><dt><code>-L DIR -lNAME</code></dt><dd>link libNAME from DIR</dd><dt><code>-static</code></dt><dd>link everything in</dd><dt><code>-E</code></dt><dd>preprocess only</dd></dl>
+<h4>Notes</h4><ul><li>The C library is musl, not glibc. Code that uses glibc extensions (<code>execinfo.h</code>'s <code>backtrace</code>, some <code>_GNU_SOURCE</code> corners) will not find them. A binary built on Debian will not run here, nor the reverse.</li><li><code>-fsanitize=address</code> and <code>-fsanitize=undefined</code> fail to link: Alpine ships no sanitizer runtimes. Use <a href="#c-valgrind"><code>valgrind</code></a> for memory errors.</li><li><code>-static</code> is cheap and reliable on musl -- a static binary copies to another Copal machine of the same architecture and runs.</li><li>Missing header? The library's <code>-dev</code> package has it: <code>apk add openssl-dev</code> for <code>openssl/ssl.h</code>.</li></ul>
+<p class="see">See also <a href="#c-clang"><code>clang</code></a>, <a href="#c-make"><code>make</code></a>, <a href="#c-gdb"><code>gdb</code></a>, <a href="#c-valgrind"><code>valgrind</code></a>, <a href="#c-cmake"><code>cmake</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-git" data-s="git the stupid content tracker development git">
-<h3><a class="self" href="#c-git"><code>git</code></a> <span class="purpose">the stupid content tracker</span></h3>
+<article class="cmd" id="c-git" data-s="git version control: keep a project's history, branch it, and share it. development git">
+<h3><a class="self" href="#c-git"><code>git</code></a> <span class="purpose">Version control: keep a project's history, branch it, and share it.</span></h3>
 <p class="facts">Development · <b>git</b> 2.54.0 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/git.html">man git(1)</a> · <a href="https://www.git-scm.com/">home</a></p>
 <p class="deps">needs libcurl, libexpat, pcre2, zlib</p>
+<p class="why"><b>On Copal:</b> Stage 7 clones your repositories into ~/code with it, and sets its identity from the answers given on the Mac. copal-code pulls and rebuilds every checkout through it; Copal itself is a git checkout.</p>
 <pre class="syn">git [-v | --version] [-h | --help] [-C &lt;path&gt;] [-c &lt;name&gt;=&lt;value&gt;]
     [--exec-path[=&lt;path&gt;]] [--html-path] [--man-path] [--info-path]
     [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]
     [--no-optional-locks] [--no-advice] [--bare] [--git-dir=&lt;path&gt;]
     [--work-tree=&lt;path&gt;] [--namespace=&lt;name&gt;] [--config-env=&lt;name&gt;=&lt;envvar&gt;]
     &lt;command&gt; [&lt;args&gt;]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Record changes as commits, move between versions, and exchange them with a remote such as GitHub. The daily loop is short: <code>status</code>, <code>add</code>, <code>commit</code>, <code>pull</code>, <code>push</code>.</p>
+<h4>Examples</h4><div class="ex"><code>git status</code><span>what changed, what is staged</span></div><div class="ex"><code>git add -p</code><span>stage changes a piece at a time</span></div><div class="ex"><code>git commit -m 'Fix the menu order'</code><span>record them</span></div><div class="ex"><code>git pull --rebase</code><span>bring in others' work, yours on top</span></div><div class="ex"><code>git push</code><span>send your commits</span></div><div class="ex"><code>git log --oneline --graph -20</code><span>recent history as a tree</span></div><div class="ex"><code>git diff HEAD~1</code><span>what the last commit changed</span></div><div class="ex"><code>git switch -c try-this</code><span>a new branch, and onto it</span></div><div class="ex"><code>git restore file.c</code><span>throw away uncommitted edits to a file</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>status</code></dt><dd>the working tree against the last commit</dd><dt><code>add -p</code></dt><dd>stage hunk by hunk, asking for each</dd><dt><code>commit -m MSG</code></dt><dd>commit with a message; --amend to redo the last one</dd><dt><code>pull --rebase</code></dt><dd>fetch, then replay your commits on top</dd><dt><code>log --oneline</code></dt><dd>one line per commit; --graph draws the branches</dd><dt><code>diff / diff --staged</code></dt><dd>unstaged / staged changes</dd><dt><code>switch -c NAME</code></dt><dd>create a branch and switch to it</dd><dt><code>restore FILE</code></dt><dd>discard working-tree changes; --staged to unstage</dd><dt><code>stash / stash pop</code></dt><dd>set changes aside, and bring them back</dd><dt><code>remote -v</code></dt><dd>where fetch and push go</dd></dl>
+<h4>Notes</h4><ul><li>Stage 7 clones over SSH when it can and over HTTPS when it cannot. HTTPS checkouts pull but cannot push without a token: make a key (<code>ssh-keygen -t ed25519</code>), add its <code>.pub</code> to GitHub, then <code>git remote set-url origin git@github.com:you/thing.git</code>.</li><li>The identity comes from stage 1's answers: <code>git config --global user.email</code> shows it, and sets it.</li><li><code>git restore</code> and <code>git reset --hard</code> discard work with no undo. When unsure, <code>git stash</code> first: it keeps the changes where you can get them back.</li><li>With <a href="#c-delta"><code>delta</code></a> installed (the catalogue's System section), <code>git config --global core.pager delta</code> makes diffs coloured and clearer.</li></ul>
+<p class="see">See also <a href="#c-ssh-keygen"><code>ssh-keygen</code></a>, <a href="#c-ssh"><code>ssh</code></a>, <a href="#c-make"><code>make</code></a>, <a href="#c-copal-code"><code>copal-code</code></a>, <a href="#c-copal-build"><code>copal-build</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-make" data-s="make gnu make utility to maintain groups of programs development make">
-<h3><a class="self" href="#c-make"><code>make</code></a> <span class="purpose">GNU Make utility to maintain groups of programs</span></h3>
+<article class="cmd" id="c-make" data-s="make rebuild what is out of date, by the rules in a makefile. development make">
+<h3><a class="self" href="#c-make"><code>make</code></a> <span class="purpose">Rebuild what is out of date, by the rules in a Makefile.</span></h3>
 <p class="facts">Development · <b>make</b> 4.4.1 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/make.html">man make(1)</a> · <a href="https://www.gnu.org/software/make">home</a></p>
+<p class="why"><b>On Copal:</b> The build tool behind Neovim's F5 (:make) and stage 7's sample project in ~/dev/hello, and the front door of most checkouts -- Copal's own repository included (make lint, make commands).</p>
 <pre class="syn">make [OPTION]... [TARGET]...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run in a directory with a <code>Makefile</code>: <a href="#c-make"><code>make</code></a> builds its first target, <code>make NAME</code> a named one. It compares file times, so only what changed is rebuilt.</p>
+<h4>Examples</h4><div class="ex"><code>make</code><span>build the default target</span></div><div class="ex"><code>make -j4</code><span>four jobs at once (a Pi 4 has four cores)</span></div><div class="ex"><code>make run</code><span>a named target: build, then run</span></div><div class="ex"><code>make clean</code><span>remove what was built</span></div><div class="ex"><code>make -n</code><span>print the commands, run none</span></div><div class="ex"><code>make -C ~/dev/hello</code><span>run it in another directory</span></div><div class="ex"><code>make CC=clang CFLAGS='-O2 -g'</code><span>override a variable for this run</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-j N</code></dt><dd>run N jobs in parallel</dd><dt><code>-n</code></dt><dd>dry run: show the commands</dd><dt><code>-C DIR</code></dt><dd>change to DIR first</dd><dt><code>-B</code></dt><dd>rebuild everything, dated or not</dd><dt><code>-k</code></dt><dd>keep going after an error</dd><dt><code>-s</code></dt><dd>silent: do not echo the commands</dd><dt><code>VAR=VALUE</code></dt><dd>set a variable, overriding the Makefile's</dd></dl>
+<h4>Notes</h4><ul><li>Recipe lines start with a TAB, not spaces. "missing separator" means an editor put spaces there.</li><li><code>-j</code> with more jobs than RAM can hold: on a 512 MB board, <code>make -j1</code> and zram are safer than a build killed halfway.</li><li>In Neovim, F5 saves and runs <code>:make</code>; the errors land in the quickfix list, and <code>]q</code> and <code>[q</code> walk them.</li></ul>
+<p class="see">See also <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-cmake"><code>cmake</code></a>, <a href="#c-ninja"><code>ninja</code></a>, <a href="#c-nvim"><code>nvim</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ninja" data-s="ninja ninja-compatible build tool written in c development samurai">
-<h3><a class="self" href="#c-ninja"><code>ninja</code></a> <span class="purpose">ninja-compatible build tool written in C</span></h3>
+<article class="cmd" id="c-ninja" data-s="ninja run a build that cmake or meson generated, fast and in parallel. development samurai">
+<h3><a class="self" href="#c-ninja"><code>ninja</code></a> <span class="purpose">Run a build that cmake or meson generated, fast and in parallel.</span></h3>
 <p class="facts">Development · <b>samurai</b> 1.2 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://github.com/michaelforney/samurai">home</a></p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The builder behind cmake -G Ninja and every meson project. On Alpine the command is samurai, a small compatible reimplementation (/usr/bin/samu); what it lacks, few builds use.</p>
+<h4>Use</h4><p>Run it in (or point it at) a build directory that has a <code>build.ninja</code>. You rarely write that file yourself: cmake or meson writes it, and <a href="#c-ninja"><code>ninja</code></a> builds from it, running as many jobs as there are cores.</p>
+<h4>Examples</h4><div class="ex"><code>ninja -C build</code><span>build in ./build</span></div><div class="ex"><code>ninja -C build -j2</code><span>two jobs (a small board's RAM)</span></div><div class="ex"><code>ninja -C build -v</code><span>show every command</span></div><div class="ex"><code>ninja -C build -t clean</code><span>remove what it built</span></div><div class="ex"><code>ninja -C build -t targets</code><span>what can be built</span></div><div class="ex"><code>ninja -C build -t compdb &gt; compile_commands.json</code><span>for clangd</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-C DIR</code></dt><dd>change to DIR first</dd><dt><code>-j N</code></dt><dd>N jobs at once (default: cores + 2)</dd><dt><code>-k N</code></dt><dd>keep going until N failures</dd><dt><code>-n</code></dt><dd>dry run</dd><dt><code>-v</code></dt><dd>print each full command</dd><dt><code>-t TOOL</code></dt><dd>a subtool: clean, targets, commands, compdb, query</dd></dl>
+<h4>Notes</h4><ul><li>It is samurai: <code>-t graph</code> and a few other ninja subtools are not there ("unknown tool"). Builds themselves behave the same.</li><li>The default job count assumes enough memory for each. On a 512 MB Pi, a C++ build at <code>-j3</code> swaps hard; pass <code>-j1</code> or <code>-j2</code>.</li><li>Do not edit <code>build.ninja</code>: the next cmake or meson run rewrites it.</li></ul>
+<p class="see">See also <a href="#c-cmake"><code>cmake</code></a>, <a href="#c-make"><code>make</code></a>, <a href="#c-meson"><code>meson</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-nvim" data-s="nvim edit text development neovim">
-<h3><a class="self" href="#c-nvim"><code>nvim</code></a> <span class="purpose">edit text</span></h3>
+<article class="cmd" id="c-nvim" data-s="nvim neovim: a modal text editor, set up by copal as a small ide. development neovim">
+<h3><a class="self" href="#c-nvim"><code>nvim</code></a> <span class="purpose">Neovim: a modal text editor, set up by Copal as a small IDE.</span></h3>
 <p class="facts">Development · <b>neovim</b> 0.12.2 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/nvim.html">man nvim(1)</a> · <a href="https://neovim.io/">home</a></p>
 <p class="deps">needs lua5.1-lpeg, tree-sitter-c, tree-sitter-lua, tree-sitter-markdown, tree-sitter-vim, tree-sitter-vimdoc, tree-sitter-query, libintl</p>
+<p class="why"><b>On Copal:</b> Stage 7's editor. Copal's configuration gives it building (F5), the error list, a debugger (F4), language servers and LazyVim-shaped keys -- with no plugin manager and nothing to download.</p>
 <pre class="syn">nvim [options] [file ...]
 nvim [options] -
 nvim [options] -t tag
 nvim [options] -q [errorfile]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Open a file, edit in insert mode, move and change text in normal mode. On a Copal machine it also builds and debugs: F5 runs <a href="#c-make"><code>make</code></a>, the errors land in a list, and the language server answers "where is this defined" and "who calls this". Space is the leader key: press it and wait for the menu of what follows.</p>
+<h4>Examples</h4><div class="ex"><code>nvim main.c</code><span>open a file</span></div><div class="ex"><code>nvim +42 main.c</code><span>at line 42</span></div><div class="ex"><code>nvim -d old.c new.c</code><span>side-by-side diff</span></div><div class="ex"><code>copal-guide nvim</code><span>Copal's tutorial, from nothing to useful</span></div><div class="ex"><code>F5          (in nvim) save and build; ]q / [q walk the errors</code></div><div class="ex"><code>gd  gr  K   go to definition / references / documentation</code></div><div class="ex"><code>Space ci    who calls this function</code></div><div class="ex"><code>F9  F4      breakpoint here / start the debugger</code></div><div class="ex"><code>Ctrl-O      back to where you jumped from</code></div><div class="ex"><code>:Lsp        which language servers this machine has</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>+N</code></dt><dd>open at line N</dd><dt><code>-d A B</code></dt><dd>diff mode</dd><dt><code>-R</code></dt><dd>read-only</dd><dt><code>--clean</code></dt><dd>start with no configuration at all (to test a problem)</dd><dt><code>:w</code></dt><dd>:q  :wq     (in nvim) write, quit, both; :q! quits without saving</dd><dt><code>i</code></dt><dd>Esc          (in nvim) into insert mode, back to normal mode</dd><dt><code>u</code></dt><dd>Ctrl-R       (in nvim) undo, redo</dd></dl>
+<h4>Notes</h4><ul><li>The configuration is layered, and one part is yours: <code>~/.config/nvim/local.lua</code> is never written by Copal and runs last. <code>init.vim</code>, <code>theme.lua</code>, <code>keys.lua</code> and <code>lsp.lua</code> are rewritten when stage 7 runs again.</li><li>Language servers need the project's build flags for C and C++: a <code>compile_commands.json</code>, from <code>bear -- make</code> or cmake.</li><li>The colours follow the desktop's theme, even in a running editor.</li><li><code>:Tutor</code> inside nvim is the half-hour lesson in the modal part.</li></ul>
+<p class="see">See also <a href="#c-make"><code>make</code></a>, <a href="#c-gdb"><code>gdb</code></a>, <a href="#c-git"><code>git</code></a>, <a href="#c-tmux"><code>tmux</code></a>, <a href="#c-clang"><code>clang</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-pip" data-s="pip package manager for python packages development py3-pip">
-<h3><a class="self" href="#c-pip"><code>pip</code></a> <span class="purpose">package manager for Python packages</span></h3>
+<article class="cmd" id="c-pip" data-s="pip install python packages from pypi -- inside a virtual environment. development py3-pip">
+<h3><a class="self" href="#c-pip"><code>pip</code></a> <span class="purpose">Install Python packages from PyPI -- inside a virtual environment.</span></h3>
 <p class="facts">Development · <b>py3-pip</b> 26.1.2 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/pip.html">man pip(1)</a> · <a href="https://pip.pypa.io">home</a></p>
 <p class="deps">needs python3</p>
+<p class="why"><b>On Copal:</b> Stage 7 installs it for the packages Alpine does not carry. On Alpine it refuses to touch the system's Python, and that refusal is the most-asked question about it.</p>
 <pre class="syn">pip &lt;command&gt; [options]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Make a virtual environment for the project, enter it, and pip installs there -- not into the system. For a command-line tool you want everywhere, <code>pipx</code> does the same for one program at a time.</p>
+<h4>Examples</h4><div class="ex"><code>apk search -e py3-requests</code><span>first: does apk have it?</span></div><div class="ex"><code>python3 -m venv .venv &amp;&amp; . .venv/bin/activate</code><span>a venv, entered</span></div><div class="ex"><code>pip install requests</code><span>into the venv</span></div><div class="ex"><code>pip install -r requirements.txt</code><span>a project's list</span></div><div class="ex"><code>pip freeze &gt; requirements.txt</code><span>write that list</span></div><div class="ex"><code>pip list --outdated</code><span>what could be upgraded</span></div><div class="ex"><code>doas apk add pipx &amp;&amp; pipx install yt-dlp</code><span>a tool, in its own venv, on PATH</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>install PKG</code></dt><dd>install; -U to upgrade; ==VER for a version</dd><dt><code>install -r FILE</code></dt><dd>install every line of FILE</dd><dt><code>uninstall PKG</code></dt><dd>remove</dd><dt><code>list</code></dt><dd>what is installed; --outdated</dd><dt><code>show PKG</code></dt><dd>version, location, dependencies</dd><dt><code>freeze</code></dt><dd>installed packages as a requirements file</dd></dl>
+<h4>Notes</h4><ul><li>"error: externally-managed-environment" outside a venv is Alpine protecting apk's Python. <code>--break-system-packages</code> overrides it and means what it says: a later <code>apk upgrade</code> can break both.</li><li>A package with C inside may have no musl wheel and compile instead, which needs <code>build-base python3-dev</code> and, on a Pi, patience.</li><li><code>pip install --user</code> is refused too. <code>pipx</code> is the tool for per-user programs; it puts them in <code>~/.local/bin</code>, which Copal puts on PATH.</li></ul>
+<p class="see">See also <a href="#c-python3"><code>python3</code></a>, <a href="#c-apk"><code>apk</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-devtools"><h2>Devtools</h2>
@@ -510,10 +555,11 @@ form, ccache is masquerading as the compiler as described in RUN MODES.</pre>
 <p class="facts">Devtools · command-line tool · <b>cc65</b> 2.19 · stage 12 · The application catalogue · <a href="https://cc65.github.io/">home</a></p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-cmake" data-s="cmake cmake command-line reference devtools cmake">
-<h3><a class="self" href="#c-cmake"><code>cmake</code></a> <span class="purpose">CMake Command-Line Reference</span></h3>
+<article class="cmd" id="c-cmake" data-s="cmake generate a project's build files -- for ninja or make -- from its cmakelists.txt. devtools cmake">
+<h3><a class="self" href="#c-cmake"><code>cmake</code></a> <span class="purpose">Generate a project's build files -- for ninja or make -- from its CMakeLists.txt.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>cmake</b> 4.2.3 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/cmake.html">man cmake(1)</a> · <a href="https://cmake.org/">home</a></p>
 <p class="deps">needs libarchive, libcrypto3, libexpat, rhash-libs, libssl3, libuv, zlib</p>
+<p class="why"><b>On Copal:</b> Stage 7 installs it because a large share of C and C++ projects build only through it; several of the store's source builds do.</p>
 <pre class="syn">Generate a Project Buildsystem
  cmake [&lt;options&gt;] -B &lt;path-to-build&gt; [-S &lt;path-to-source&gt;]
  cmake [&lt;options&gt;] &lt;path-to-source | path-to-existing-build&gt;
@@ -529,7 +575,11 @@ Open a Project
 
 Run a Script
 ...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Two steps, always in a separate build directory: configure (read <code>CMakeLists.txt</code>, find the compiler and libraries, write the build files), then build. Configure once; after that, only the build step.</p>
+<h4>Examples</h4><div class="ex"><code>cmake -B build -G Ninja</code><span>configure into ./build, for ninja</span></div><div class="ex"><code>cmake --build build</code><span>build (runs ninja or make for you)</span></div><div class="ex"><code>cmake --build build -j4</code><span>with four jobs</span></div><div class="ex"><code>cmake -B build -DCMAKE_BUILD_TYPE=Release</code><span>optimised</span></div><div class="ex"><code>cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON</code><span>for clangd in nvim</span></div><div class="ex"><code>doas cmake --install build</code><span>install to /usr/local</span></div><div class="ex"><code>cmake -B build --fresh</code><span>reconfigure from nothing</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-B DIR</code></dt><dd>the build directory (made if missing)</dd><dt><code>-S DIR</code></dt><dd>the source directory (default: here)</dd><dt><code>-G NAME</code></dt><dd>the generator: Ninja, or "Unix Makefiles"</dd><dt><code>-D VAR=VALUE</code></dt><dd>set a cache variable: CMAKE_BUILD_TYPE, CMAKE_INSTALL_PREFIX...</dd><dt><code>--build DIR</code></dt><dd>build a configured tree</dd><dt><code>--install DIR</code></dt><dd>install it</dd><dt><code>--fresh</code></dt><dd>forget the cached configuration</dd><dt><code>-j N</code></dt><dd>with --build: parallel jobs</dd></dl>
+<h4>Notes</h4><ul><li>The cache remembers. A changed compiler or a library installed after the first configure is not noticed until <code>--fresh</code> or <code>rm -rf build</code>.</li><li>"Could NOT find Foo": install the library's <code>-dev</code> package (<code>apk search -e foo-dev</code>), then configure again with <code>--fresh</code>.</li><li><code>CMAKE_BUILD_TYPE</code> is empty by default: no optimisation and no debug information. Say <code>Debug</code> or <code>Release</code>.</li></ul>
+<p class="see">See also <a href="#c-ninja"><code>ninja</code></a>, <a href="#c-make"><code>make</code></a>, <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-clang"><code>clang</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-cppcheck" data-s="cppcheck tool for static c/c++ code analysis devtools cppcheck">
 <h3><a class="self" href="#c-cppcheck"><code>cppcheck</code></a> <span class="purpose">Tool for static C/C++ code analysis</span></h3>
@@ -562,12 +612,17 @@ etags [&lt;options&gt;] [&lt;source_file(s)&gt;]</pre>
 <p class="facts">Devtools · command-line tool · <b>doxygen</b> 1.17.0 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/doxygen.html">man doxygen(1)</a> · <a href="https://www.doxygen.nl/">home</a></p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-gdb" data-s="gdb the gnu debugger devtools gdb">
-<h3><a class="self" href="#c-gdb"><code>gdb</code></a> <span class="purpose">The GNU Debugger</span></h3>
+<article class="cmd" id="c-gdb" data-s="gdb the gnu debugger: stop a program, step through it, look at its state. devtools gdb">
+<h3><a class="self" href="#c-gdb"><code>gdb</code></a> <span class="purpose">The GNU debugger: stop a program, step through it, look at its state.</span></h3>
 <p class="facts">Devtools · terminal program · <b>gdb</b> 16.3 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/gdb.html">man gdb(1)</a> · <a href="https://www.gnu.org/software/gdb/">home</a></p>
 <p class="deps">needs musl-dbg, libdebuginfod, libexpat, gmp, xz-libs, mpfr4, libncursesw, python3</p>
+<p class="why"><b>On Copal:</b> Stage 7 installs it for C, C++, Rust and Go, and Neovim's F4 (Termdebug) is gdb in a split window. When a program crashes, gdb says where and why.</p>
 <pre class="syn">gdb [OPTIONS] [prog|prog procID|prog core]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Start the program under gdb, set a breakpoint, run, and when it stops, look: the call stack, the variables, the next line. Build with <code>-g</code> first, or there is nothing to see but addresses.</p>
+<h4>Examples</h4><div class="ex"><code>gdb ./prog</code><span>load it, then type commands</span></div><div class="ex"><code>gdb --args ./prog -v input.txt</code><span>with its arguments</span></div><div class="ex"><code>gdb -q -ex run -ex bt ./prog</code><span>run, and on a crash show the stack</span></div><div class="ex"><code>gdb --tui ./prog</code><span>source in a pane above the prompt</span></div><div class="ex"><code>doas gdb -p $(pidof prog)</code><span>attach to a running process</span></div><div class="ex"><code>break main</code><span>(inside gdb) stop at a function, or file.c:42</span></div><div class="ex"><code>run</code><span>start it</span></div><div class="ex"><code>next / step</code><span>the next line / into the call</span></div><div class="ex"><code>print x</code><span>a variable's value</span></div><div class="ex"><code>bt</code><span>the call stack</span></div><div class="ex"><code>continue</code><span>run on to the next stop</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--args PROG ARGS</code></dt><dd>pass arguments to the program</dd><dt><code>-p, --pid PID</code></dt><dd>attach to a running process</dd><dt><code>--core FILE</code></dt><dd>examine a core dump</dd><dt><code>--tui</code></dt><dd>the text interface: source, prompt, registers</dd><dt><code>-q</code></dt><dd>no banner</dd><dt><code>-ex CMD</code></dt><dd>run a gdb command at start; repeatable</dd></dl>
+<h4>Notes</h4><ul><li>Attaching to a process needs <a href="#c-doas"><code>doas</code></a>: ptrace is limited to a process's own children here (<code>kernel.yama.ptrace_scope</code> is 1).</li><li>Core dumps are off (<code>ulimit -c</code> is 0). <code>ulimit -c unlimited</code> in the shell first, and a crash leaves <code>core</code> beside the program.</li><li>In Neovim: F9 sets a breakpoint on the current line, F4 opens Termdebug, F8 / F10 / F11 continue, step over, step into.</li><li>For Rust, <code>rust-gdb</code> prints Rust types properly; Go is better served by <a href="#c-dlv"><code>dlv</code></a>.</li></ul>
+<p class="see">See also <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-valgrind"><code>valgrind</code></a>, <a href="#c-nvim"><code>nvim</code></a>, <a href="#c-cgdb"><code>cgdb</code></a>, <a href="#c-lldb"><code>lldb</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-just" data-s="just 🤖 just a command runner - https://github.com/casey/just devtools just">
 <h3><a class="self" href="#c-just"><code>just</code></a> <span class="purpose">🤖 Just a command runner - https://github.com/casey/just</span></h3>
@@ -662,11 +717,16 @@ strace -c [-dfwzZ] [-b execve] [-e expr]... [-I n] [-O overhead] [-p pid]... [
 strace --tips[=format]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-valgrind" data-s="valgrind a suite of tools for debugging and profiling programs devtools valgrind">
-<h3><a class="self" href="#c-valgrind"><code>valgrind</code></a> <span class="purpose">a suite of tools for debugging and profiling programs</span></h3>
+<article class="cmd" id="c-valgrind" data-s="valgrind run a program under a checker that catches memory errors and leaks. devtools valgrind">
+<h3><a class="self" href="#c-valgrind"><code>valgrind</code></a> <span class="purpose">Run a program under a checker that catches memory errors and leaks.</span></h3>
 <p class="facts">Devtools · command-line tool · <b>valgrind</b> 3.25.1 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/valgrind.html">man valgrind(1)</a> · <a href="https://valgrind.org/">home</a></p>
+<p class="why"><b>On Copal:</b> On Alpine it is the memory checker: the compilers' AddressSanitizer runtime is not packaged. Stage 7 installs it where it exists -- everywhere but 32-bit ARMv6 (armhf).</p>
 <pre class="syn">valgrind [valgrind-options] [your-program] [your-program-options]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Put <a href="#c-valgrind"><code>valgrind</code></a> in front of the command. The program runs perhaps twenty times slower, and every invalid read or write, use of freed memory and leak is reported with the line it came from -- if it was built with <code>-g</code>.</p>
+<h4>Examples</h4><div class="ex"><code>valgrind ./prog</code><span>memory errors as they happen</span></div><div class="ex"><code>valgrind --leak-check=full ./prog</code><span>and every leak, with where it was allocated</span></div><div class="ex"><code>valgrind -q --leak-check=full --error-exitcode=1 ./prog</code><span>quiet; fail a test on error</span></div><div class="ex"><code>valgrind --track-origins=yes ./prog</code><span>where an uninitialised value came from</span></div><div class="ex"><code>valgrind --tool=callgrind ./prog</code><span>where the time goes, by function</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--leak-check=full</code></dt><dd>report each leak in detail</dd><dt><code>--show-leak-kinds=all</code></dt><dd>include "still reachable" blocks</dd><dt><code>--track-origins=yes</code></dt><dd>trace uninitialised values to their source (slower)</dd><dt><code>--error-exitcode=N</code></dt><dd>exit N if errors were found</dd><dt><code>--tool=NAME</code></dt><dd>memcheck (default), massif, callgrind, cachegrind, helgrind</dd><dt><code>-q</code></dt><dd>only the errors</dd><dt><code>--log-file=FILE</code></dt><dd>report to FILE instead of the terminal</dd></dl>
+<h4>Notes</h4><ul><li>Read the first error first. Later ones are often its consequences.</li><li>"definitely lost" is a real leak; "still reachable" is memory held at exit, usually harmless.</li><li>Build with <code>-g -O0</code> (or <code>-O1</code>) for readable reports; optimised code reports lines that do not match the source.</li></ul>
+<p class="see">See also <a href="#c-gdb"><code>gdb</code></a>, <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-clang"><code>clang</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-discs"><h2>Discs</h2>
@@ -1225,22 +1285,32 @@ Use “lynx -help” to display a complete list of current options.</pre>
 </article>
 </section>
 <section class="sec" id="s-languages"><h2>Languages</h2>
-<article class="cmd facts-only" id="c-cargo" data-s="cargo the rust package manager languages rustup">
-<h3><a class="self" href="#c-cargo"><code>cargo</code></a> <span class="purpose">The Rust package manager</span></h3>
-<p class="facts">Languages · command-line tool · <b>rustup</b> 1.29.0 · stage 12 · The application catalogue · <a href="man/cargo.html">man cargo(1)</a> · <a href="https://rustup.rs/">home</a></p>
-<p class="deps">needs libcrypto3, libcurl, libssl3, zstd-libs</p>
+<article class="cmd" id="c-cargo" data-s="cargo rust's build tool and package manager: new, build, run, test, install. languages cargo">
+<h3><a class="self" href="#c-cargo"><code>cargo</code></a> <span class="purpose">Rust's build tool and package manager: new, build, run, test, install.</span></h3>
+<p class="facts">Languages · command-line tool · <b>cargo</b> 1.96.1 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/cargo.html">man cargo(1)</a> · <a href="https://doc.rust-lang.org/cargo/">home</a></p>
+<p class="deps">needs rust, libcrypto3, libcurl, scudo-malloc, sqlite-libs, libssh2, libssl3, zlib</p>
+<p class="why"><b>On Copal:</b> Stage 7 installs Rust on every port, the Zero included, and several checkouts in ~/code are Rust: copal-build compiles them with cargo and links what they make into ~/.local/bin.</p>
 <pre class="syn">cargo [options] command [args]
 cargo [options] --version
 cargo [options] --list
 cargo [options] --help
 cargo [options] --explain code</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Every Rust project is a directory with a <code>Cargo.toml</code>. <code>cargo run</code> builds and runs it; <code>cargo build --release</code> makes the fast version in <code>target/release</code>. Dependencies named in <code>Cargo.toml</code> are fetched from crates.io and built with it.</p>
+<h4>Examples</h4><div class="ex"><code>cargo new hello &amp;&amp; cd hello</code><span>a new project, with git</span></div><div class="ex"><code>cargo run</code><span>build (debug) and run</span></div><div class="ex"><code>cargo build --release</code><span>optimised, into target/release/</span></div><div class="ex"><code>cargo check</code><span>type-check only: much faster than a build</span></div><div class="ex"><code>cargo test</code><span>run the tests</span></div><div class="ex"><code>cargo clippy</code><span>lints: common mistakes, better idioms</span></div><div class="ex"><code>cargo fmt</code><span>format the code</span></div><div class="ex"><code>cargo install ripgrep</code><span>build a tool into ~/.cargo/bin (on PATH)</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>new NAME</code></dt><dd>a new project (--lib for a library)</dd><dt><code>build / run</code></dt><dd>compile / compile and run; --release for optimised</dd><dt><code>check</code></dt><dd>check without producing a binary</dd><dt><code>test</code></dt><dd>build and run the tests</dd><dt><code>clippy / fmt</code></dt><dd>lint / format</dd><dt><code>add CRATE</code></dt><dd>add a dependency to Cargo.toml</dd><dt><code>install CRATE</code></dt><dd>build and install a program</dd><dt><code>-j N</code></dt><dd>parallel jobs</dd><dt><code>--offline</code></dt><dd>use only what is already downloaded</dd></dl>
+<h4>Notes</h4><ul><li>This is Alpine's Rust, a release or two behind. A crate that says "requires rustc 1.NN or newer" wants rustup -- and once rustup is in, <code>~/.cargo/bin</code> comes first on PATH and its cargo replaces this one. <code>which cargo</code> says which you are running.</li><li>rustc is an LLVM compiler and hungry: a release build with dependencies can want more than 512 MB. On a Zero it works because of zram, slowly; <code>-j1</code> keeps it from running out.</li><li><code>cargo build</code> without <code>--release</code> makes a debug build that can run ten times slower. Measure the release one.</li></ul>
+<p class="see">See also <a href="#c-gdb"><code>gdb</code></a>, <a href="#c-git"><code>git</code></a>, <a href="#c-make"><code>make</code></a>, <a href="#c-copal-build"><code>copal-build</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-clang" data-s="clang alpine clang 22.1.3-r2 languages clang22">
-<h3><a class="self" href="#c-clang"><code>clang</code></a> <span class="purpose">Alpine Clang 22.1.3-r2</span></h3>
+<article class="cmd" id="c-clang" data-s="clang the llvm c and c++ compiler: gcc's rival, with clearer errors. languages clang22">
+<h3><a class="self" href="#c-clang"><code>clang</code></a> <span class="purpose">The LLVM C and C++ compiler: gcc's rival, with clearer errors.</span></h3>
 <p class="facts">Languages · command-line tool · <b>clang22</b> 22.1.3 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/clang.html">man clang(1)</a> · <a href="https://llvm.org/">home</a></p>
 <p class="deps">needs clang22-headers, clang22-libs, fortify-headers, libgcc-static, libstdc++-dev, llvm22-linker-tools, musl-dev, llvm22-libs</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Stage 7's second compiler, and it brings clangd -- the language server that gives Neovim go-to-definition, references and the call hierarchy in C and C++.</p>
+<h4>Use</h4><p>Compile C (<a href="#c-clang"><code>clang</code></a>) or C++ (<code>clang++</code>) with the same flags as gcc. Worth running a program through both: each warns about things the other misses, and clang's messages point at the exact column.</p>
+<h4>Examples</h4><div class="ex"><code>clang -Wall -Wextra -g hello.c -o hello</code><span>compile, like gcc</span></div><div class="ex"><code>clang++ -std=c++20 main.cpp -o main</code><span>C++</span></div><div class="ex"><code>clang -fsyntax-only -Wall file.c</code><span>check, produce nothing</span></div><div class="ex"><code>CC=clang make</code><span>a Makefile's build, with clang</span></div><div class="ex"><code>clang --version</code><span>which LLVM</span></div><div class="ex"><code>clang-format -i file.c</code><span>reformat in place</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-o FILE</code></dt><dd>name the output</dd><dt><code>-g</code></dt><dd>debug information</dd><dt><code>-O2</code></dt><dd>optimise</dd><dt><code>-Wall -Wextra</code></dt><dd>warnings</dd><dt><code>-Weverything</code></dt><dd>every warning clang has (noisy, but thorough)</dd><dt><code>-std=c17</code></dt><dd>the language standard, as gcc</dd><dt><code>-fsyntax-only</code></dt><dd>parse and check, write nothing</dd></dl>
+<h4>Notes</h4><ul><li><a href="#c-clangd"><code>clangd</code></a> needs to know the flags: a <code>compile_commands.json</code> at the project root. <code>bear -- make</code> records one from a Makefile build, and cmake writes one with <code>-DCMAKE_EXPORT_COMPILE_COMMANDS=ON</code>.</li><li>Sanitizers: as with gcc, the ASan and UBSan runtimes are missing; <code>-fsanitize=undefined -fsanitize-trap=undefined</code> needs none, and stops the program at the first undefined behaviour.</li><li>Clang links with the system's gcc toolchain and musl, so its programs and gcc's mix freely.</li></ul>
+<p class="see">See also <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-make"><code>make</code></a>, <a href="#c-cmake"><code>cmake</code></a>, <a href="#c-nvim"><code>nvim</code></a>, <a href="#c-gdb"><code>gdb</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-clangd" data-s="clangd extra tools built using clang's tooling apis languages clang22-extra-tools">
 <h3><a class="self" href="#c-clangd"><code>clangd</code></a> <span class="purpose">Extra tools built using Clang's tooling APIs</span></h3>
@@ -1325,12 +1395,17 @@ Only the most useful options are listed here; see below for the remainder.</pre>
     ghc-9.10.3 [command-line-options-and-input-files]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-go" data-s="go build, test, install go programs languages go">
-<h3><a class="self" href="#c-go"><code>go</code></a> <span class="purpose">build, test, install Go programs</span></h3>
+<article class="cmd" id="c-go" data-s="go the go toolchain: build, run, test and fetch go programs. languages go">
+<h3><a class="self" href="#c-go"><code>go</code></a> <span class="purpose">The Go toolchain: build, run, test and fetch Go programs.</span></h3>
 <p class="facts">Languages · command-line tool · <b>go</b> 1.26.8 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/go.html">man go(1)</a> · <a href="https://go.dev/">home</a></p>
 <p class="deps">needs binutils, gcc, musl-dev</p>
+<p class="why"><b>On Copal:</b> Stage 7 installs Go on every port, with gopls for Neovim. Several of the terminal programs Copal ships are Go, and Go is the easiest way to build one program for every Pi from one machine.</p>
 <pre class="syn">go command [arguments]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>A Go project is a module: a directory with <code>go.mod</code>. <code>go run .</code> builds and runs it, <code>go build</code> leaves a single static binary, and <code>go install</code> builds a program from the internet into <code>~/go/bin</code>.</p>
+<h4>Examples</h4><div class="ex"><code>go mod init example.com/hello</code><span>start a module here</span></div><div class="ex"><code>go run .</code><span>build and run it</span></div><div class="ex"><code>go build -o hello .</code><span>a binary called hello</span></div><div class="ex"><code>go test ./...</code><span>every package's tests</span></div><div class="ex"><code>go install github.com/charmbracelet/glow@latest</code><span>a tool, into ~/go/bin</span></div><div class="ex"><code>GOOS=linux GOARCH=arm GOARM=6 go build -o hello-zero .</code><span>for a Pi Zero</span></div><div class="ex"><code>go env GOPATH</code><span>where downloads and installs go</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>run .</code></dt><dd>build and run the package here</dd><dt><code>build -o FILE</code></dt><dd>compile to FILE</dd><dt><code>test ./...</code></dt><dd>run tests, recursively</dd><dt><code>install PKG@VER</code></dt><dd>build and install a program</dd><dt><code>mod init PATH</code></dt><dd>start a module</dd><dt><code>mod tidy</code></dt><dd>add missing and remove unused dependencies</dd><dt><code>fmt ./...</code></dt><dd>format the code (gofmt)</dd><dt><code>vet ./...</code></dt><dd>report suspicious code</dd><dt><code>env</code></dt><dd>the toolchain's settings; GOOS, GOARCH, GOARM, CGO_ENABLED</dd></dl>
+<h4>Notes</h4><ul><li>Cross-compiling is the trick: set <code>GOOS</code>, <code>GOARCH</code> (arm64, arm, amd64) and for 32-bit ARM <code>GOARM</code> (6 for a Zero, 7 for a Pi 2), and the binary runs there -- as long as <code>CGO_ENABLED=0</code> or no C is involved.</li><li><code>~/go/bin</code> is on PATH on a Copal machine; Alpine alone does not put it there.</li><li>A program that uses C through cgo needs gcc and links against musl; such a binary will not run on a glibc system.</li></ul>
+<p class="see">See also <a href="#c-gdb"><code>gdb</code></a>, <a href="#c-dlv"><code>dlv</code></a>, <a href="#c-git"><code>git</code></a>, <a href="#c-cargo"><code>cargo</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-guile" data-s="guile the gnu project extension language languages guile">
 <h3><a class="self" href="#c-guile"><code>guile</code></a> <span class="purpose">The GNU Project Extension Language</span></h3>
@@ -1420,10 +1495,10 @@ command] [-i[extension]] [-r library] [-x[directory]] [--{enable|disable}-FEATUR
 [--dump=target] [--verbose] [--crash-report=template] [--] [program_file] [argument ...]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-rust-analyzer" data-s="rust-analyzer rust toolchain installer languages rustup">
-<h3><a class="self" href="#c-rust-analyzer"><code>rust-analyzer</code></a> <span class="purpose">Rust toolchain installer</span></h3>
-<p class="facts">Languages · command-line tool · <b>rustup</b> 1.29.0 · stage 12 · The application catalogue · <a href="https://rustup.rs/">home</a></p>
-<p class="deps">needs libcrypto3, libcurl, libssl3, zstd-libs</p>
+<article class="cmd facts-only" id="c-rust-analyzer" data-s="rust-analyzer rust compiler front-end for ides languages rust-analyzer">
+<h3><a class="self" href="#c-rust-analyzer"><code>rust-analyzer</code></a> <span class="purpose">Rust compiler front-end for IDEs</span></h3>
+<p class="facts">Languages · command-line tool · <b>rust-analyzer</b> 2026.06.08 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://github.com/rust-lang/rust-analyzer">home</a></p>
+<p class="deps">needs rust-src, mimalloc2</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
 <article class="cmd facts-only" id="c-sbcl" data-s="sbcl sbcl -- steel bank common lisp languages sbcl">
@@ -1564,12 +1639,17 @@ weechat [-v|--version]</pre>
 </article>
 </section>
 <section class="sec" id="s-network"><h2>Network</h2>
-<article class="cmd facts-only" id="c-bluetoothctl" data-s="bluetoothctl bluetooth control command line tool network bluez">
-<h3><a class="self" href="#c-bluetoothctl"><code>bluetoothctl</code></a> <span class="purpose">Bluetooth Control Command Line Tool</span></h3>
+<article class="cmd" id="c-bluetoothctl" data-s="bluetoothctl pair, trust and connect bluetooth devices, from a prompt or one command at a time. network bluez">
+<h3><a class="self" href="#c-bluetoothctl"><code>bluetoothctl</code></a> <span class="purpose">Pair, trust and connect Bluetooth devices, from a prompt or one command at a time.</span></h3>
 <p class="facts">Network · <b>bluez</b> 5.86 · stage 10 · Wireless, audio, capture and disks · <a href="man/bluetoothctl.html">man bluetoothctl(1)</a> · <a href="https://www.bluez.org/">home</a></p>
 <p class="deps">needs dbus, dbus-libs, glib, json-c, readline, eudev-libs</p>
+<p class="why"><b>On Copal:</b> Stage 10 installs BlueZ and starts its service where there is a controller. Keyboards, mice, controllers and headphones all pair here; there is no graphical pairing tool on Copal.</p>
 <pre class="syn">bluetoothctl [-a capability] [-e] [-m] [-t seconds] [-v] [-h]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run it for an interactive prompt: power on, scan, pair, trust, connect. Pair once and trust once; after that the device reconnects by itself.</p>
+<h4>Examples</h4><div class="ex"><code>bluetoothctl</code><span>the prompt; then:</span></div><div class="ex"><code>power on</code><span>  the controller on</span></div><div class="ex"><code>agent on</code><span>  answer pairing requests...</span></div><div class="ex"><code>default-agent</code><span>  ...from this prompt</span></div><div class="ex"><code>scan on</code><span>  wait for the device's address</span></div><div class="ex"><code>pair AA:BB:CC:DD:EE:FF</code><span>  pair (accept the PIN if asked)</span></div><div class="ex"><code>trust AA:BB:CC:DD:EE:FF</code><span>  let it reconnect by itself</span></div><div class="ex"><code>connect AA:BB:CC:DD:EE:FF</code><span>  connect now</span></div><div class="ex"><code>bluetoothctl devices</code><span>one command, no prompt: known devices</span></div><div class="ex"><code>bluetoothctl --timeout 10 scan on</code><span>scan for ten seconds, then stop</span></div><div class="ex"><code>bluetoothctl remove AA:BB:CC:DD:EE:FF</code><span>forget a device</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>power on|off</code></dt><dd>the controller</dd><dt><code>scan on|off</code></dt><dd>look for devices</dd><dt><code>pair / trust / connect ADDR</code></dt><dd>the three steps</dd><dt><code>disconnect ADDR</code></dt><dd>drop the connection</dd><dt><code>remove ADDR</code></dt><dd>forget it altogether</dd><dt><code>devices</code></dt><dd>the known devices</dd><dt><code>info ADDR</code></dt><dd>one device's state: paired, trusted, connected</dd><dt><code>--timeout SECS</code></dt><dd>stop a non-interactive command after SECS</dd></dl>
+<h4>Notes</h4><ul><li>"No default controller available": no Bluetooth hardware, or the service is not running -- <code>rc-service bluetooth status</code>. The first Pi Zero and most VMs have none.</li><li>Headphones pair and connect, but PipeWire plays to them only with its Bluetooth module: <code>doas apk add pipewire-spa-bluez</code>, then log out and in. Copal does not install it yet.</li><li>A device that pairs but will not connect again after a reboot was not trusted. <code>trust ADDR</code>.</li></ul>
+<p class="see">See also <a href="#c-wpctl"><code>wpctl</code></a>, <a href="#c-rc-service"><code>rc-service</code></a></p>
 </article>
 <article class="cmd" id="c-curl" data-s="curl fetch or send one url -- http, https, ftp and more -- from the command line. network curl">
 <h3><a class="self" href="#c-curl"><code>curl</code></a> <span class="purpose">Fetch or send one URL -- HTTP, HTTPS, FTP and more -- from the command line.</span></h3>
@@ -1910,17 +1990,22 @@ xmaxima [options]</pre>
 <p class="deps">needs ghostscript, perl, texmf-dist, texmf-dist-latex, libx11, cairo, gmp, icu-libs</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-python3" data-s="python3 an interpreted, interactive, object-oriented programming language science python3">
-<h3><a class="self" href="#c-python3"><code>python3</code></a> <span class="purpose">an interpreted, interactive, object-oriented programming language</span></h3>
+<article class="cmd" id="c-python3" data-s="python3 the python interpreter: scripts, a calculator, and a large standard library. science python3">
+<h3><a class="self" href="#c-python3"><code>python3</code></a> <span class="purpose">The Python interpreter: scripts, a calculator, and a large standard library.</span></h3>
 <p class="facts">Science · command-line tool · <b>python3</b> 3.14.7 · stage 4 · X.Org, i3, a terminal and a browser · <a href="man/python3.html">man python3(1)</a> · <a href="https://www.python.org/">home</a></p>
 <p class="deps">needs libssl3, libexpat, libbz2, libcrypto3, libffi, gdbm, xz-libs, mpdecimal</p>
+<p class="why"><b>On Copal:</b> Several of Copal's own tools are Python, and so is a good share of what people run on a Pi. Stage 4 installs it; the catalogue's Science section adds the numerical packages.</p>
 <pre class="syn">python [ -B ] [ -b ] [ -d ] [ -E ] [ -h ] [ -i ] [ -I ]
        [ -m module-name ] [ -q ] [ -R ] [ -O ] [ -OO ] [ -P ] [ -s ] [ -S ] [ -u ]
        [ -v ] [ -V ] [ -W argument ] [ -x ] [ -X option ] [ -?  ]
        [ --check-hash-based-pycs default | always | never ]
        [ --help ] [ --help-env ] [ --help-xoptions ] [ --help-all ]
        [ -c command | script | - ] [ arguments ]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run a script, or start the interactive prompt and type. Third-party packages come from apk first (<code>py3-NAME</code>), and from pip inside a virtual environment when apk has not got them.</p>
+<h4>Examples</h4><div class="ex"><code>python3</code><span>the interactive prompt; Ctrl-D leaves</span></div><div class="ex"><code>python3 script.py</code><span>run a script</span></div><div class="ex"><code>python3 -c 'print(2**64)'</code><span>one line</span></div><div class="ex"><code>python3 -m http.server 8000</code><span>serve this directory on port 8000</span></div><div class="ex"><code>python3 -m venv .venv</code><span>a private environment for a project...</span></div><div class="ex"><code>. .venv/bin/activate</code><span>...enter it (deactivate to leave)</span></div><div class="ex"><code>python3 -m json.tool data.json</code><span>pretty-print JSON</span></div><div class="ex"><code>python3 -m pdb script.py</code><span>step through it in the debugger</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-c CMD</code></dt><dd>run CMD</dd><dt><code>-m MODULE</code></dt><dd>run a module as a script: venv, http.server, pdb, json.tool, pip</dd><dt><code>-i</code></dt><dd>stay at the prompt after the script ends</dd><dt><code>-u</code></dt><dd>unbuffered output (for logs and pipes)</dd><dt><code>-V</code></dt><dd>the version</dd></dl>
+<h4>Notes</h4><ul><li><code>pip install</code> outside a virtual environment says "externally-managed-environment". That is deliberate: the system's Python belongs to apk. <code>apk add py3-NAME</code> if it exists, or a venv.</li><li>Packages with C parts often have no ready wheel for musl and build from source: <code>apk add build-base python3-dev</code> first.</li><li>Python 2 is gone: <code>python</code> is Python 3 too, but scripts written for Copal say <a href="#c-python3"><code>python3</code></a>, which works on every system that has it.</li></ul>
+<p class="see">See also <a href="#c-pip"><code>pip</code></a>, <a href="#c-gdb"><code>gdb</code></a>, <a href="#c-nvim"><code>nvim</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-R" data-s="r a language for data analysis and graphics science r">
 <h3><a class="self" href="#c-R"><code>R</code></a> <span class="purpose">a language for data analysis and graphics</span></h3>
