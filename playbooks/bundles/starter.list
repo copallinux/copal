@@ -1,0 +1,6 @@
+# The starter set: what stage 18 installs on every level with a desktop.
+# One program id per line, as 'copal-store list' shows it.
+openshot-qt
+fastfetch
+btop
+keepassxc

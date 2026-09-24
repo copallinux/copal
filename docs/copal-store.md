@@ -434,12 +434,14 @@ the end, into `/boot/copal.log` with the rest of the transcript. Tried with
 `apk` and `id` stood in by logging shims: one add, per-program runtime
 records, one delete.
 
-**Adding a recipe.** Write the four functions beside the others in
-`tools/copal-store` and add the name to `RECIPES`. Add one table row whose
-`install` field is `NAME@source`. Then run `tools/copal-store-bench.sh NAME`
-on the bench and launch the program with `copal-app-probe.sh`. If it opens,
-run `make sync-store`, which also runs lint. A row goes into the table only
-after its recipe has built and run.
+**Adding a program.** Every program is a playbook,
+`playbooks/<shelf>/<project>.sh` (the format is in `docs/playbooks-plan.md`
+and `tools/copal-playbooks.py`). One from apk is a header and nothing else.
+One built from source has `build:` and `runs:` in its header and a
+`NAME_install` in its body, with `NAME_pre` and `NAME_post` where it needs
+them. Then `make sync-playbooks` (it runs lint), build it on the bench with
+`tools/copal-store-bench.sh NAME`, and launch it with `copal-app-probe.sh`. A
+program goes into a bundle only after its playbook has built and run.
 
 ## IX. Open items
 

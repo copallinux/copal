@@ -88,7 +88,7 @@ model_of = $(patsubst pizero%,zero%,$(1))
 .PHONY: alldebug build-all-debug imagedebug freshdebug purge \
 	help menu flow targets boards configure require-tools vm graphical check \
         fresh auto image refresh utm utm-x86 layout layout-auto answers answers-show lint space clean distclean \
-        all cache build-all release capture video screens verify gallery chain walkthrough release-cast logs utm-export utm-grow install \
+        all cache build-all release capture video screens verify gallery chain walkthrough release-cast logs utm-export utm-grow sync-playbooks install \
         redeploy redeploy-check answers-node fleet-console fleet-web
 
 help:
@@ -851,6 +851,11 @@ sync-agent:
 	@$(MAKE) --no-print-directory lint
 
 ## sync-store: copy tools/copal-store into stage 18's heredoc in copal-prep.sh.
+## sync-playbooks: playbooks/ into tools/copal-store, then on into copal-prep.sh.
+sync-playbooks:
+	@python3 tools/copal-playbooks.py sync
+	@$(MAKE) --no-print-directory sync-store
+
 sync-store:
 	@python3 -c 'import sys;\
 	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
@@ -1038,6 +1043,7 @@ lint: | $(BUILDDIR)
 	    || { printf '\033[31merror:\033[0m copal-fleet-agent in $(PREP) has drifted -- run: make sync-agent\n'; \
 	         diff -u tools/copal-fleet-agent $(BUILDDIR)/.agent.lint.py | head -20; exit 1; }
 	@rm -f $(BUILDDIR)/.nkeys.lint.py $(BUILDDIR)/.nats.lint.py $(BUILDDIR)/.agent.lint.py
+	@python3 tools/copal-playbooks.py check
 	@sed -n "/^    cat > \/usr\/local\/bin\/copal-store <<'COPALSTORE'$$/,/^COPALSTORE$$/p" $(PREP) \
 	    | sed '1d;$$d' > $(BUILDDIR)/.store.lint.sh
 	@test -s $(BUILDDIR)/.store.lint.sh \

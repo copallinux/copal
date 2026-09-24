@@ -34,6 +34,7 @@ export COPAL_STORE_STATE="$B/state"
 export COPAL_STORE_CACHE="$B/cache"
 export COPAL_STORE_WORK="$B/work"
 export COPAL_STORE_LOGDIR="$B/logs"
+export COPAL_EVENTS="$B/events"
 export COPAL_STORE_NODEPS=1
 # A failed build's tree is kept here to look inside; on a machine it is
 # removed, and the summary and the compressed log are the record.

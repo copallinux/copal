@@ -11,6 +11,9 @@
 #   copal-store install ID...      install (root: doas is asked for)
 #   copal-store remove ID...       and take it away again
 #   copal-store recipes            the programs built from GitHub source here
+#   copal-store playbook ID        one program in full: about, source, needs, steps, status, last build
+#   copal-store bundle [NAME]      the bundles, or the program ids in one (starter, full-monty)
+#   copal-store events [N]         the last N progress events (JSON, one per line)
 #   copal-store summary            what each build did: result, size, sources, absences
 #   copal-store log ID             one build's full log
 #   copal-store section NAME       the window for one section
@@ -61,6 +64,9 @@ STATE="${COPAL_STORE_STATE:-/var/lib/copal/store}"
 CACHE="${COPAL_STORE_CACHE:-/var/cache/copal-store}"
 WORK="${COPAL_STORE_WORK:-/usr/local/src/copal-store}"
 LOGDIR="${COPAL_STORE_LOGDIR:-/var/log/copal-store}"
+# The event stream (docs/playbooks-plan.md, II): one JSON object per line for
+# every run, program and step, which the progress views read and never write.
+EVENTS="${COPAL_EVENTS:-/var/log/copal/events}"
 CATFILE="${COPAL_CATFILE:-/usr/local/share/copal/catalogue}"
 APKDB="${COPAL_APKDB:-/lib/apk/db/installed}"
 
@@ -71,122 +77,124 @@ warn() { printf '    warning: %s\n' "$*" >&2; }
 die()  { printf 'copal-store: %s\n' "$*" >&2; exit 1; }
 
 # ------------------------------------------------------------------ table ---
+# >>> playbooks: table -- generated from playbooks/ by 'make sync-playbooks'; edit those, not this
 store_table() {
     cat <<'STORETABLE'
-Appearance|Caskaydia Cove NF (Cascadia Code, Nerd cut)|font-cascadia-code-nerd|-|-|*|Microsoft's coding font with the Nerd Font icons added: the glyphs prompt themes and status bars draw with.|https://github.com/ryanoasis/nerd-fonts
-Appearance|Color Emoji font (Noto)|font-noto-emoji|-|-|*|Colour emoji for every program, so a chat message or a web page shows faces instead of empty boxes.|https://github.com/googlefonts/noto-emoji
+Appearance|Caskaydia Cove NF (Cascadia Code, Nerd cut)|font-cascadia-code-nerd|-|-|*|Microsoft's coding font, Cascadia Code, with the Nerd Font icons added. It has the glyphs that prompt themes and status bars draw with.|https://github.com/ryanoasis/nerd-fonts
+Appearance|Color Emoji font (Noto)|font-noto-emoji|-|-|*|Google's colour emoji font, for every program on the machine. Chat messages and web pages show faces instead of empty boxes.|https://github.com/googlefonts/noto-emoji
 Appearance|Oh My Posh (prompt themes)|ohmyposh@source|oh-my-posh|h|*|Over a hundred ready-made prompt themes for bash, zsh and fish, showing git state, battery, time and more. Themes are in /usr/local/share/oh-my-posh/themes; pair it with Caskaydia Cove NF.|https://github.com/JanDeDobbeleer/oh-my-posh
 Appearance|Starship (shell prompt)|starship|starship|h|*|A fast prompt for any shell showing the git branch, the language version and how long the last command took. The maintained successor to Powerline-Shell.|https://github.com/starship/starship
-Creative|darktable (raw photo developer)|darktable@source|darktable|x|64|A darkroom for camera raw files: exposure, colour, lens correction and masks, applied without touching the original, and a lighttable to sort and rate a shoot.|https://github.com/darktable-org/darktable
-Creative|Kolourpaint (simple paint)|kolourpaint|kolourpaint|x|!v6|KDE's paint program in the spirit of MS Paint: draw, crop, resize and save, with nothing to learn first.|https://invent.kde.org/graphics/kolourpaint
+Audio|Ardour (recording studio)|ardour@source|ardour9|x|64|A full digital audio workstation: record many tracks at once, edit and mix them with plugins and automation, and master the result. MIDI and virtual instruments too.|https://ardour.org
+Browsers|Browsh (the web in a terminal)|browsh@source|browsh|t|!v6|A modern web browser inside a terminal, or over SSH. A headless Firefox renders each page and Browsh draws it in text and colour blocks, video included.|https://github.com/browsh-org/browsh
+Browsers|Epiphany (GNOME Web)|epiphany|epiphany|x|*|GNOME's web browser, clean and built on WebKit. It can turn any site into an app window of its own.|https://gitlab.gnome.org/GNOME/epiphany
+Browsers|Firefox (rapid release)|firefox|firefox|x|!v6|Mozilla's current Firefox, updated every four weeks. The catalogue carries Firefox ESR, the slower-moving branch.|https://github.com/mozilla-firefox/firefox
+Browsers|LibreWolf (private Firefox)|librewolf|librewolf|x|!v6,!x32|Firefox with the telemetry removed and uBlock Origin built in. It is private by default, with no settings to hunt for.|https://codeberg.org/librewolf
+Chat|Caprine (Facebook Messenger)|caprine@testing|caprine|x|64|An unofficial desktop app for Facebook Messenger. It has a dark mode and none of the Facebook feed around it.|https://github.com/sindresorhus/caprine
+Chat|Signal|signal-desktop@testing|signal-desktop|x|64|End-to-end encrypted messages and calls. Link it to the Signal app on your phone.|https://github.com/signalapp/Signal-Desktop
+Chat|Telegram|telegram-desktop|Telegram|x|*|The official Telegram desktop client. Chats, channels and file transfers of any size, in step with your phone.|https://github.com/telegramdesktop/tdesktop
+Creative|darktable (raw photo developer)|darktable@source|darktable|x|64|A darkroom for camera raw files: exposure, colour, lens correction and masks, applied without touching the original. Its lighttable sorts, rates and tags a whole shoot.|https://github.com/darktable-org/darktable
+Creative|Kolourpaint (simple paint)|kolourpaint|kolourpaint|x|!v6|KDE's paint program, in the spirit of MS Paint. Draw, crop, resize and save, with nothing to learn first.|https://invent.kde.org/graphics/kolourpaint
 Creative|Pencil2D (hand-drawn animation)|pencil2d@source|pencil2d|x|64|Traditional frame-by-frame animation with onion skins, in bitmap or vector layers, with sound, exported to video or GIF. Simple enough to start in five minutes.|https://github.com/pencil2d/pencil
-Creative|Pixelorama (pixel art)|pixelorama@source|pixelorama|x|!v6|Draws pixel art and animates sprites: layers, onion skinning, tile mode and palettes, exporting to PNG, GIF and sprite sheets.|https://github.com/Orama-Interactive/Pixelorama
-Creative|Shotwell (photo library)|shotwell|shotwell|x|*|Imports photos from a camera or a folder, sorts them by date and event, and does quick fixes: crop, straighten, red-eye.|https://gitlab.gnome.org/GNOME/shotwell
-Files|Czkawka (find duplicates)|czkawka-gui czkawka|czkawka_gui|x|*|Finds duplicate files, empty folders, big files, similar images and videos, and broken files, then deletes or moves the ones you tick. czkawka_cli does the same from a terminal.|https://github.com/qarmin/czkawka
-Files|fdupes (find duplicates)|fdupes|fdupes|h|*|Finds duplicate files by size, then checksum, then byte by byte: fdupes -r ~/Pictures lists them, and -d asks which copy of each to keep.|https://github.com/adrianlopezroche/fdupes
-Files|jdupes (faster fdupes)|jdupes@testing|jdupes|h|*|A faster fork of fdupes with the same options, which can also replace duplicates with hard links, reclaiming the space without deleting a name.|https://codeberg.org/jbruchon/jdupes
-Files|rdfind (duplicates across folders)|rdfind|rdfind|h|*|Finds duplicates across several folders, ranks which copy is the original, and reports the rest or replaces them with links: rdfind -makehardlinks true ~/a ~/b.|https://github.com/pauldreik/rdfind
-Games|AstroMenace (3D space shooter)|astromenace@source|astromenace|x|64|A hardcore 3D shoot-'em-up: fifteen levels of enemies and bosses, with the money you collect spent on weapons and armour between them.|https://github.com/viewizard/astromenace
-Engineering|LibreCAD (2D CAD)|librecad@source|librecad|x|64|Precise 2D drawings -- floor plans, parts, schematics -- in layers and blocks, read and written as DXF and read from DWG.|https://github.com/LibreCAD/LibreCAD
+Creative|Pixelorama (pixel art)|pixelorama@source|pixelorama|x|!v6|A pixel-art editor and sprite animator. Layers, onion skins, tile mode and palettes, exporting to PNG, GIF and sprite sheets.|https://github.com/Orama-Interactive/Pixelorama
+Creative|Shotwell (photo library)|shotwell|shotwell|x|*|A photo library that imports from a camera or a folder and sorts by date and event. Quick fixes are built in: crop, straighten, red-eye.|https://gitlab.gnome.org/GNOME/shotwell
+Crypto|Feather Wallet (Monero)|feather-wallet@testing|feather|x|*|A small, fast Monero wallet. It connects to a remote node, so there is no blockchain to download.|https://github.com/feather-wallet/feather
+Crypto|Monero GUI|monero-gui@testing|monero-wallet-gui|x|!v6|The Monero project's own wallet. It can run a full node on this machine, trusting nobody else's.|https://github.com/monero-project/monero-gui
+Crypto|XMRig|xmrig|xmrig|h|*|A CPU miner for RandomX coins such as Monero. It runs from a terminal and reports its hash rate as it goes.|https://github.com/xmrig/xmrig
+Discs|K3b (CD/DVD/Blu-ray burner)|k3b|k3b|x|!v6|KDE's disc burner for CDs, DVDs and Blu-ray. Data discs, audio CDs from music files, disc copies and ISO images, verified after writing.|https://invent.kde.org/multimedia/k3b
+Documents|FocusWriter (distraction-free writing)|focuswriter@source|focuswriter|x|*|A full-screen writing window with nothing in it but the text: themes, daily goals, timers and alarms, typewriter sounds, and a spell checker. Opens and saves plain text, RTF, ODT and DOCX.|https://github.com/gottcode/focuswriter
+Emulation|QEMU (PC emulator)|qemu-system-x86_64 qemu-ui-gtk|qemu-system-x86_64|h|64|Emulates a whole x86_64 PC in a window. Boot another operating system from an ISO without leaving this one.|https://gitlab.com/qemu-project/qemu
+Emulation|Waydroid (Android)|waydroid|waydroid|h|!v6|Runs a full Android system in a container. Its apps open as ordinary windows on this desktop.|https://github.com/waydroid/waydroid
+Engineering|LibreCAD (2D CAD)|librecad@source|librecad|x|64|Precise 2D drawing: floor plans, parts and schematics, in layers and blocks. It reads and writes DXF, and reads DWG.|https://github.com/LibreCAD/LibreCAD
 Engineering|OpenSCAD (programmer's 3D CAD)|openscad|openscad|x|!v6,!v7,!a64|Solid 3D models written as code -- cubes, cylinders, unions and differences -- for 3D printing. Alpine builds it for x86 only.|https://github.com/openscad/openscad
+Files|Czkawka (find duplicates)|czkawka-gui czkawka|czkawka_gui|x|*|Finds duplicate files, empty folders, big files, similar images and videos, and broken files, then deletes or moves the ones you tick. czkawka_cli does the same from a terminal.|https://github.com/qarmin/czkawka
+Files|fdupes (find duplicates)|fdupes|fdupes|h|*|Finds duplicate files by size, then checksum, then byte by byte. fdupes -r ~/Pictures lists them, and -d asks which copy to keep.|https://github.com/adrianlopezroche/fdupes
+Files|jdupes (faster fdupes)|jdupes@testing|jdupes|h|*|A faster fork of fdupes, with the same options. It can replace duplicates with hard links, reclaiming space without deleting a name.|https://codeberg.org/jbruchon/jdupes
+Files|rdfind (duplicates across folders)|rdfind|rdfind|h|*|Finds duplicates across several folders and ranks which copy is the original. It reports the rest, or replaces them with links.|https://github.com/pauldreik/rdfind
 Games|Amiberry (Amiga emulator)|amiberry@source|amiberry|x|64|An Amiga 500 to 4000 emulator tuned for ARM boards, with WHDLoad for games from hard-disk images. Needs Kickstart ROMs for most software; AROS boots without them.|https://github.com/BlitterStudio/amiberry
+Games|Armagetron Advanced (light cycles)|armagetronad@testing|armagetronad|x|*|Tron's light cycles in 3D: steer at right angles, leave a wall behind you, and make the others crash into it. Against the computer or online.|https://gitlab.com/armagetronad/armagetronad
+Games|AstroMenace (3D space shooter)|astromenace@source|astromenace|x|64|A hardcore 3D shoot-'em-up: fifteen levels of enemies and bosses. The money you collect buys weapons and armour between levels.|https://github.com/viewizard/astromenace
+Games|C-Dogs SDL (run-and-gun)|cdogs-sdl@testing|cdogs-sdl|x|*|An overhead run-and-gun for up to four players on one screen. Campaigns, deathmatch and a level editor, in the style of the 1990s DOS original.|https://github.com/cxong/cdogs-sdl
 Games|Celeste Classic (PICO-8 platformer)|ccleste@source|ccleste|x|64|The original Celeste, a precise little platformer from a 2015 game jam, in a C port. Arrow keys, Z to jump, X to dash.|https://github.com/lemon32767/ccleste
-Games|Pac-Man (SDL clone)|pacman@source|pacman-game|x|64|A faithful Pac-Man for the desktop: eat the dots, dodge the four ghosts. Arrow keys.|https://github.com/ebuc99/pacman
-Games|OpenTyrian (Tyrian 2000)|opentyrian@source|opentyrian|x|64|The 1995 vertical shooter Tyrian, freeware since 2004, on its open-source engine: a story campaign, an arcade mode, and ship upgrades bought between levels. Arrow keys to fly, Space to fire.|https://github.com/opentyrian/opentyrian
-Games|DevilutionX (Diablo)|devilutionx@source|devilutionx|x|64|Diablo, the 1996 dungeon crawler, on its reconstructed engine: widescreen, controller support and quality-of-life fixes. Plays the free shareware episode as installed; copy DIABDAT.MPQ from the CD or GOG into ~/.local/share/diasurgical/devilution for the whole game.|https://github.com/diasurgical/devilutionX
-Games|Endless Sky (space trading)|endlesssky@source|endless-sky|x|64|Start with a small ship and a little money in a galaxy of trade routes, pirates and alien empires: haul cargo, take jobs, fight, and follow the main story when you are ready. In the spirit of Escape Velocity.|https://github.com/endless-sky/endless-sky
-Games|Naev (space sandbox)|naev@source|naev|x|64|A 2D space trading and combat game with a large written story: fly, trade, take missions and join factions across hundreds of systems. Inspired by Escape Velocity.|https://github.com/naev/naev
-Games|Taisei (bullet hell)|taisei@source|taisei|x|64|A Touhou Project fan game: a vertical shoot-'em-up of dense, patterned bullet storms, six stages with a story, and practice modes. Arrow keys, Z to shoot, X for a bomb, Shift to focus.|https://github.com/taisei-project/taisei
-Games|DDNet (DDraceNetwork)|ddnet@source|DDNet|x|64|Cooperative Teeworlds: a team of tiny gunners hooks, jumps and freezes its way through thousands of puzzle maps together, online or on a LAN.|https://github.com/ddnet/ddnet
+Games|Crispy Doom (with Freedoom)|crispy-doom@testing freedoom|crispy-doom|x|*|Chocolate Doom's faithfulness at twice the resolution, with widescreen and the limits lifted. Plays Freedoom out of the box, or your own DOOM.WAD.|https://github.com/fabiangreffrath/crispy-doom
+Games|DDNet (DDraceNetwork)|ddnet@source|DDNet|x|64|Cooperative Teeworlds: a team of tiny gunners hooks and jumps through puzzle maps together. Thousands of maps, online or on a LAN.|https://github.com/ddnet/ddnet
 Games|Descent 1 (shareware, DXX-Rebirth)|dxx@source|d1x-rebirth|x|64|The 1995 shooter flown in six degrees of freedom through mines taken over by robots. The shareware episode; copy the full game's files into ~/.d1x-rebirth to play the rest.|https://github.com/dxx-rebirth/dxx-rebirth
 Games|Descent 2 (demo, DXX-Rebirth)|dxx@source|d2x-rebirth|x|64|Descent's sequel: more robots, a guide-bot, afterburners. The demo levels; the full game's files go in ~/.d2x-rebirth. Installed together with Descent 1.|https://github.com/dxx-rebirth/dxx-rebirth
+Games|DevilutionX (Diablo)|devilutionx@source|devilutionx|x|64|Diablo, the 1996 dungeon crawler, on its reconstructed engine: widescreen, controller support and quality-of-life fixes. Plays the free shareware episode as installed; copy DIABDAT.MPQ from the CD or GOG into ~/.local/share/diasurgical/devilution for the whole game.|https://github.com/diasurgical/devilutionX
+Games|Dolphin (GameCube and Wii emulator)|dolphin-emu|dolphin-emu|x|64|Plays GameCube and Wii games from your own disc images, often at a higher resolution than the console managed. Needs a fast GPU; a Pi 5 runs the lighter games.|https://github.com/dolphin-emu/dolphin
 Games|Doom 3 (dhewm3 engine)|dhewm3@testing|dhewm3|x|*|The Doom 3 engine, open-sourced by id and kept alive as dhewm3. Bring the game's base/ folder from the demo or a copy you own.|https://github.com/dhewm/dhewm3
-Games|Friday Night Funkin' Rewritten (LOVE)|funkin@source|funkin-rewritten|x|*|The rhythm game where you win a girlfriend's approval by out-singing her father, arrow keys to the beat, rebuilt on the LOVE engine.|https://github.com/HTV04/funkin-rewritten
+Games|Endless Sky (space trading)|endlesssky@source|endless-sky|x|64|Start with a small ship and a little money in a galaxy of trade routes, pirates and alien empires: haul cargo, take jobs, fight, and follow the main story when you are ready. In the spirit of Escape Velocity.|https://github.com/endless-sky/endless-sky
+Games|Extreme Tux Racer|extremetuxracer@testing|etr|x|!v6|Tux slides downhill on his belly through snowy courses. Collect herring and race the clock.|https://sourceforge.net/projects/extremetuxracer/
+Games|FCEUX (NES emulator)|fceux@testing|fceux|x|!v6|A Nintendo Entertainment System emulator for ROM files. Save states, rewind, and the debugging tools speedrunners use.|https://github.com/TASEmulators/fceux
+Games|Friday Night Funkin' Rewritten (LOVE)|funkin@source|funkin-rewritten|x|*|The rhythm game where you out-sing your girlfriend's father, arrow keys to the beat. Rebuilt on the LOVE engine.|https://github.com/HTV04/funkin-rewritten
 Games|Godot (game engine)|godot@testing|godot|x|!v6|A complete engine and editor for 2D and 3D games, scripted in GDScript. The engine Pixelorama is written in.|https://github.com/godotengine/godot
 Games|Heroes 2 (fheroes2 engine)|fheroes2@testing|fheroes2|x|*|Heroes of Might and Magic II rebuilt as free software. Plays the free demo or the original game's data.|https://github.com/ihhub/fheroes2
 Games|Marathon (the free trilogy, Aleph One)|alephone@source|marathon|x|64|Bungie's 1990s first-person shooters Marathon, Marathon 2 and Marathon Infinity, released free and played on Aleph One, the engine built from Bungie's source. Three launchers: marathon, marathon2, marathon-infinity.|https://github.com/Aleph-One-Marathon/alephone
-Games|Minecraft Java (Prism Launcher)|prismlauncher|prismlauncher|x|*|Signs in to your Minecraft account and runs Java Edition, with separate instances for each modpack.|https://github.com/PrismLauncher/PrismLauncher
-Games|PyChess|pychess@source|pychess|x|*|Chess against the computer (Stockfish is installed with it), online at FICS and Lichess, with opening books, puzzles and lessons.|https://github.com/pychess/pychess
-Games|PPSSPP (PSP emulator)|ppsspp|PPSSPPQt|x|!v6,!v7|Plays PlayStation Portable games from your own ISO files, upscaled to the screen you have.|https://github.com/hrydgard/ppsspp
-Games|Armagetron Advanced (light cycles)|armagetronad@testing|armagetronad|x|*|Tron's light cycles in 3D: steer at right angles, leave a wall behind you, and make the others crash into it. Against the computer or online.|https://gitlab.com/armagetronad/armagetronad
-Games|C-Dogs SDL (run-and-gun)|cdogs-sdl@testing|cdogs-sdl|x|*|An overhead shooter for up to four players on one screen: campaigns, deathmatch and a level editor, in the style of the 1990s DOS original.|https://github.com/cxong/cdogs-sdl
-Games|Crispy Doom (with Freedoom)|crispy-doom@testing freedoom|crispy-doom|x|*|Chocolate Doom's faithfulness at twice the resolution, with widescreen and the limits lifted. Plays Freedoom out of the box, or your own DOOM.WAD.|https://github.com/fabiangreffrath/crispy-doom
-Games|Dolphin (GameCube and Wii emulator)|dolphin-emu|dolphin-emu|x|64|Plays GameCube and Wii games from your own disc images, often at a higher resolution than the console managed. Needs a fast GPU; a Pi 5 runs the lighter games.|https://github.com/dolphin-emu/dolphin
-Games|Extreme Tux Racer|extremetuxracer@testing|etr|x|!v6|Tux slides downhill on his belly, collecting herring and racing the clock through snowy courses.|https://sourceforge.net/projects/extremetuxracer/
-Games|FCEUX (NES emulator)|fceux@testing|fceux|x|!v6|Plays Nintendo Entertainment System games from ROM files, with save states, rewind and the debugging tools speedrunners use.|https://github.com/TASEmulators/fceux
+Games|Minecraft Java (Prism Launcher)|prismlauncher|prismlauncher|x|*|Runs Minecraft: Java Edition, signed in with your own account. Each modpack gets its own separate instance.|https://github.com/PrismLauncher/PrismLauncher
 Games|Moon Buggy (terminal)|moon-buggy@testing|moon-buggy|t|*|Drive a buggy across the moon in the terminal, jumping the craters as they come. Space jumps.|https://www.seehuhn.de/pages/moon-buggy.html
+Games|Naev (space sandbox)|naev@source|naev|x|64|A 2D space trading and combat game with a large written story: fly, trade, take missions and join factions across hundreds of systems. Inspired by Escape Velocity.|https://github.com/naev/naev
 Games|OpenRCT2 (RollerCoaster Tycoon 2)|openrct2|openrct2|x|*|Builds theme parks and their rollercoasters, rebuilt as free software with bigger parks and online play. Needs the original RollerCoaster Tycoon 2 files (GOG or Steam).|https://github.com/OpenRCT2/OpenRCT2
+Games|OpenTyrian (Tyrian 2000)|opentyrian@source|opentyrian|x|64|The 1995 vertical shooter Tyrian, freeware since 2004, on its open-source engine: a story campaign, an arcade mode, and ship upgrades bought between levels. Arrow keys to fly, Space to fire.|https://github.com/opentyrian/opentyrian
+Games|Pac-Man (SDL clone)|pacman@source|pacman-game|x|64|A faithful Pac-Man for the desktop: eat the dots, dodge the four ghosts. Arrow keys.|https://github.com/ebuc99/pacman
+Games|PPSSPP (PSP emulator)|ppsspp|PPSSPPQt|x|!v6,!v7|A PlayStation Portable emulator. Your own ISO files play upscaled to the screen you have.|https://github.com/hrydgard/ppsspp
+Games|PyChess|pychess@source|pychess|x|*|Chess against the computer, with Stockfish installed alongside. Play online at FICS and Lichess too, with opening books, puzzles and lessons.|https://github.com/pychess/pychess
 Games|Quakespasm (Quake engine)|quakespasm@testing|quakespasm|x|*|The original Quake, played faithfully on a modern engine. Needs Quake's id1/pak0.pak -- the shareware episode's is free; run it as quakespasm -basedir DIR, with the id1 folder in DIR.|https://github.com/sezero/quakespasm
 Games|Sauerbraten (Cube 2 shooter)|sauerbraten@testing|sauerbraten|x|!v6|A fast arena shooter with a map editor built into the game, so maps can be built together while playing. About 1 GB installed.|http://www.sauerbraten.org/
-Games|Sonic Robo Blast 2|srb2@testing|srb2|x|!v6,!v7|A 3D Sonic game made by fans on the Doom Legacy engine: Sonic, Tails, Knuckles and more, and thousands of add-ons.|https://git.do.srb2.org/STJr/SRB2
+Games|Sonic Robo Blast 2|srb2@testing|srb2|x|!v6,!v7|A 3D Sonic game made by fans on the Doom Legacy engine. Play as Sonic, Tails, Knuckles and more, with thousands of add-ons.|https://git.do.srb2.org/STJr/SRB2
 Games|SuperTuxKart|supertuxkart|supertuxkart|x|!v6|Kart racing with Tux and friends: story mode, battle arenas, and online races. About 800 MB installed.|https://github.com/supertuxkart/stk-code
-Games|The Powder Toy (falling sand)|powder-toy@testing|powder|x|*|A physics sandbox of powders, liquids, gases and electronics: pour, burn, freeze and wire them, with air pressure and heat simulated.|https://github.com/The-Powder-Toy/The-Powder-Toy
+Games|Taisei (bullet hell)|taisei@source|taisei|x|64|A Touhou Project fan game: a vertical shoot-'em-up of dense, patterned bullet storms, six stages with a story, and practice modes. Arrow keys, Z to shoot, X for a bomb, Shift to focus.|https://github.com/taisei-project/taisei
+Games|The Powder Toy (falling sand)|powder-toy@testing|powder|x|*|A falling-sand physics sandbox of powders, liquids, gases and electronics. Pour, burn, freeze and wire them, with pressure and heat simulated.|https://github.com/The-Powder-Toy/The-Powder-Toy
 Games|VCMI (Heroes 3 engine)|vcmi@testing|vcmilauncher|x|64|Heroes of Might and Magic III rebuilt as free software, with larger maps and mods. Needs the original game's files; the launcher imports them from the GOG installer.|https://github.com/vcmi/vcmi
 Games|Warzone 2100 (real-time strategy)|warzone2100@testing|warzone2100|x|64|A 3D real-time strategy game after a nuclear war: research 400 technologies and design your own units from them. Campaign, skirmish and online play.|https://github.com/Warzone2100/warzone2100
-Games|X-Moto (motocross physics)|xmoto@testing|xmoto|x|*|A 2D motocross game where the physics is the point: lean, brake and flip the bike to reach every strawberry and the flower.|https://github.com/xmoto/xmoto
+Games|X-Moto (motocross physics)|xmoto@testing|xmoto|x|*|A 2D motocross game where the physics is the point. Lean, brake and flip the bike to reach every strawberry, then the flower.|https://github.com/xmoto/xmoto
 Games|Xonotic (arena shooter)|xonotic-sdl|xonotic-sdl|x|!v6|A fast arena first-person shooter in the Quake tradition, with bots for playing offline. About 1.2 GB installed.|https://gitlab.com/xonotic/xonotic
 Graphics|Skanlite (scanner)|skanlite|skanlite|x|!v6|KDE's scanner program: preview, pick the area, and save the scan as an image. A current stand-in for QuiteInsane, the Qt front end to SANE.|https://invent.kde.org/graphics/skanlite
-Graphics|XSane (scanner, every SANE option)|xsane@testing|xsane|x|*|The classic front end to SANE: every option the scanner has, batch scans, colour correction, and save, copy, fax or email the result.|http://www.xsane.org
-Internet|SpeedTest-CLI|speedtest-cli|speedtest-cli|h|*|Measures the connection's download and upload speed and ping against the nearest speedtest.net server.|https://github.com/sivel/speedtest-cli
-Audio|Ardour (recording studio)|ardour@source|ardour9|x|64|A full digital audio workstation: record many tracks at once, edit and mix them with plugins and automation, and master the result. MIDI and virtual instruments too.|https://ardour.org
-Browsers|Epiphany (GNOME Web)|epiphany|epiphany|x|*|A clean WebKit browser that turns any site into its own app window.|https://gitlab.gnome.org/GNOME/epiphany
-Browsers|Firefox (rapid release)|firefox|firefox|x|!v6|Mozilla's current Firefox, updated every four weeks. The catalogue carries Firefox ESR, the slower-moving branch.|https://github.com/mozilla-firefox/firefox
-Browsers|LibreWolf (private Firefox)|librewolf|librewolf|x|!v6,!x32|Firefox with telemetry removed and uBlock Origin built in, private by default.|https://codeberg.org/librewolf
-Browsers|Browsh (the web in a terminal)|browsh@source|browsh|t|!v6|A modern browser in a terminal or over SSH: a headless Firefox renders the page and Browsh draws it in text and colour blocks, video included.|https://github.com/browsh-org/browsh
-Chat|Caprine (Facebook Messenger)|caprine@testing|caprine|x|64|An unofficial desktop Messenger with a dark mode and no Facebook feed around it.|https://github.com/sindresorhus/caprine
-Chat|Signal|signal-desktop@testing|signal-desktop|x|64|End-to-end encrypted messages and calls. Link it to the Signal app on your phone.|https://github.com/signalapp/Signal-Desktop
-Chat|Telegram|telegram-desktop|Telegram|x|*|The official Telegram client: chats, channels and file transfers of any size.|https://github.com/telegramdesktop/tdesktop
-Transfer|Deluge (BitTorrent)|deluge|deluge|x|*|A BitTorrent client that grows by plug-ins: scheduling, labels, blocklists, a web interface.|https://github.com/deluge-torrent/deluge
-Transfer|HTTrack (website copier)|httrack@testing|httrack|h|*|Downloads a whole website to a folder so it can be browsed offline, links and all.|https://github.com/xroche/httrack
-Transfer|OnionShare (share over Tor)|onionshare@testing|onionshare-cli|h|!v6|Shares files or a small website straight from this machine through Tor, with no server and no account.|https://github.com/onionshare/onionshare
-Transfer|Persepolis (download manager)|persepolis@source|persepolis|x|!v6|A download manager over aria2: many connections per file, queues, schedules, and video pages through yt-dlp.|https://github.com/persepolisdm/persepolis
+Graphics|XSane (scanner, every SANE option)|xsane@testing|xsane|x|*|The classic scanning front end to SANE, with every option the scanner has. Batch scans, colour correction, and save, copy, fax or email.|http://www.xsane.org
+Internet|SpeedTest-CLI|speedtest-cli|speedtest-cli|h|*|Measures the connection's download speed, upload speed and ping. It tests against the nearest speedtest.net server, from a terminal.|https://github.com/sivel/speedtest-cli
+Multimedia|Easy Effects|easyeffects|easyeffects|x|*|An equaliser, compressor and noise remover for all the machine's sound. It works on everything played or recorded, through PipeWire.|https://github.com/wwmm/easyeffects
+Multimedia|FreeTube (private YouTube)|freetube@testing|freetube|x|64|Watches YouTube without an account or tracking. Subscriptions and history are kept on this machine.|https://github.com/FreeTubeApp/FreeTube
+Multimedia|Kdenlive (video editor)|kdenlive|kdenlive|x|!v6|KDE's multi-track video editor, bigger than OpenShot. Proxies, keyframes and colour grading for longer projects.|https://invent.kde.org/multimedia/kdenlive
+Multimedia|Kodi (media centre)|kodi|kodi|x|!v6|A full-screen media centre for films, music, photos and TV. It is made to be driven from the sofa with a remote.|https://github.com/xbmc/xbmc
+Multimedia|OBS Studio|obs-studio|obs|x|!v6|Records the screen and camera, or streams them live. Scenes and sources are mixed as it goes.|https://github.com/obsproject/obs-studio
 Multimedia|OpenShot (video editor)|openshot@source|openshot-qt|x|64|A video editor to cut clips, lay them on tracks, and add titles, transitions and effects, then export for the web. Compiled here from GitHub: libopenshot-audio, libopenshot and openshot-qt.|https://github.com/OpenShot/openshot-qt
-Multimedia|Easy Effects|easyeffects|easyeffects|x|*|An equaliser, compressor and noise remover for everything the machine plays or records (PipeWire).|https://github.com/wwmm/easyeffects
-Multimedia|FreeTube (private YouTube)|freetube@testing|freetube|x|64|Watches YouTube without an account or tracking; subscriptions are kept on this machine.|https://github.com/FreeTubeApp/FreeTube
-Multimedia|Kdenlive (video editor)|kdenlive|kdenlive|x|!v6|KDE's multi-track video editor, bigger than OpenShot: proxies, keyframes and colour grading.|https://invent.kde.org/multimedia/kdenlive
-Multimedia|Kodi (media centre)|kodi|kodi|x|!v6|A full-screen media centre for films, music, photos and TV, made to be driven from the sofa.|https://github.com/xbmc/xbmc
-Multimedia|OBS Studio|obs-studio|obs|x|!v6|Records the screen and camera, or streams them live, mixing scenes and sources as it goes.|https://github.com/obsproject/obs-studio
-Multimedia|Sound Recorder|gnome-sound-recorder|gnome-sound-recorder|x|!v6|One button to record from the microphone, and a list of the recordings made.|https://gitlab.gnome.org/GNOME/gnome-sound-recorder
-Multimedia|YouTube Player (pipe-viewer)|pipe-viewer|pipe-viewer|t|*|Searches and plays YouTube from a terminal, through mpv, with no browser at all.|https://github.com/trizen/pipe-viewer
 Multimedia|SimpleScreenRecorder (X11)|simplescreenrecorder|simplescreenrecorder|x|!v6,!v7,!a64|A screen recorder for the X desktop that is easy to set up and gentle on the CPU. Records X only, not Hyprland.|https://github.com/MaartenBaert/ssr
-Programming|Arduino CLI|arduino-cli@testing|arduino-cli|h|*|Compiles and uploads Arduino sketches and manages boards and libraries, from a terminal.|https://github.com/arduino/arduino-cli
-Programming|GitHub CLI|github-cli|gh|h|*|Pull requests, issues and releases from the command line: gh pr create, gh repo clone.|https://github.com/cli/cli
-Programming|GNOME Builder|gnome-builder|gnome-builder|x|*|An IDE for GNOME, C, Rust, Python and Vala projects, with builds in a click.|https://gitlab.gnome.org/GNOME/gnome-builder
-Programming|Node.js|nodejs npm|node|t|*|The JavaScript runtime outside the browser, with npm to fetch packages.|https://github.com/nodejs/node
-Programming|Thonny (Python IDE)|thonny|thonny|x|*|A Python editor for beginners: step through code and watch the variables change.|https://github.com/thonny/thonny
-System|BleachBit (clean up disk space)|bleachbit@source|bleachbit|x|*|Frees disk space and privacy by deleting caches, logs, thumbnails and browser history, program by program, with a preview first.|https://github.com/bleachbit/bleachbit
-System|btop++|btop|btop|t|*|A resource monitor in the terminal: CPU, memory, disks, network and processes, with graphs.|https://github.com/aristocratos/btop
-System|Fastfetch|fastfetch|fastfetch|h|*|Prints the machine's logo and specs (OS, kernel, CPU, memory, desktop) in the terminal.|https://github.com/fastfetch-cli/fastfetch
+Multimedia|Sound Recorder|gnome-sound-recorder|gnome-sound-recorder|x|!v6|One button to record from the microphone. The recordings are listed below it, ready to play or share.|https://gitlab.gnome.org/GNOME/gnome-sound-recorder
+Multimedia|YouTube Player (pipe-viewer)|pipe-viewer|pipe-viewer|t|*|Searches and plays YouTube from a terminal. Videos play in mpv, with no browser at all.|https://github.com/trizen/pipe-viewer
+Programming|Arduino CLI|arduino-cli@testing|arduino-cli|h|*|Compiles and uploads Arduino sketches from a terminal. It also manages boards and libraries.|https://github.com/arduino/arduino-cli
+Programming|GitHub CLI|github-cli|gh|h|*|GitHub from the command line: pull requests, issues and releases. gh pr create and gh repo clone, without the web page.|https://github.com/cli/cli
+Programming|GNOME Builder|gnome-builder|gnome-builder|x|*|GNOME's IDE, for C, Rust, Python and Vala projects. Builds, runs and debugging are a click away.|https://gitlab.gnome.org/GNOME/gnome-builder
+Programming|Node.js|nodejs npm|node|t|*|The JavaScript runtime outside the browser. npm comes with it to fetch packages.|https://github.com/nodejs/node
+Programming|Thonny (Python IDE)|thonny|thonny|x|*|A Python editor for beginners. Step through code one line at a time and watch the variables change.|https://github.com/thonny/thonny
+System|BleachBit (clean up disk space)|bleachbit@source|bleachbit|x|*|Frees disk space and privacy by deleting caches, logs, thumbnails and browser history. It works program by program, with a preview first.|https://github.com/bleachbit/bleachbit
+System|btop++|btop|btop|t|*|A resource monitor in the terminal: CPU, memory, disks, network and processes. Everything is drawn as live graphs.|https://github.com/aristocratos/btop
+System|Fastfetch|fastfetch|fastfetch|h|*|Prints the machine's logo and its specs in the terminal. OS, kernel, CPU, memory and desktop at a glance.|https://github.com/fastfetch-cli/fastfetch
 System|Neofetch|neofetch@testing|neofetch|h|*|The original system-summary-with-a-logo script. Fastfetch is its faster successor.|https://github.com/dylanaraps/neofetch
-System|Pika Backup|pika-backup@testing|pika-backup|x|*|Backs up your home folder to a USB disk or server with BorgBackup, on a schedule.|https://gitlab.gnome.org/World/pika-backup
-System|Syncthing GTK|syncthing-gtk@testing|syncthing-gtk|x|*|A window and tray icon for Syncthing, which keeps folders the same on several machines with no cloud.|https://github.com/kozec/syncthing-gtk
-System|System Monitoring Center|smc@source|system-monitoring-center|x|*|A task manager in the style of Windows': CPU, memory, disks, network, sensors and processes on tabs with graphs.|https://github.com/hakandundar34coding/system-monitoring-center
-System|Timeshift|timeshift@testing|timeshift-launcher|x|*|Takes snapshots of the system files so a bad update can be rolled back.|https://github.com/linuxmint/timeshift
-Terminals|Microsoft PowerShell|powershell|pwsh|t|!v6,!x32|Microsoft's shell and scripting language, as on Windows, working with objects rather than text.|https://github.com/PowerShell/PowerShell
-Tools|AntiMicroX (gamepad to keys)|antimicrox@testing|antimicrox|x|*|Maps a gamepad's buttons and sticks to keys and the mouse, for games and programs without controller support.|https://github.com/AntiMicroX/antimicrox
-Tools|ckb-next (Corsair keyboards)|ckb-next@testing|ckb-next|x|*|Lighting and macros for Corsair keyboards and mice.|https://github.com/ckb-next/ckb-next
-Tools|FF Multi Converter|ffconverter@source|ffconverter|x|*|Converts audio, video, images and documents between formats in batches, a front end to ffmpeg and ImageMagick.|https://github.com/l-koehler/FF-converter
-Tools|Flameshot (screenshots)|flameshot|flameshot|x|!v6|Takes a screenshot and lets you draw arrows, boxes and blur on it before saving or copying.|https://github.com/flameshot-org/flameshot
-Tools|GNOME Maps|gnome-maps|gnome-maps|x|!v6|OpenStreetMap maps with search and directions.|https://gitlab.gnome.org/GNOME/gnome-maps
-Tools|Organic Maps (offline maps)|organicmaps@testing|OMaps|x|*|Maps downloaded by region for use with no connection: hiking, cycling and car routes.|https://github.com/organicmaps/organicmaps
-Tools|Raspberry Pi Imager|rpi-imager@testing|rpi-imager|x|!v6|Writes an operating system image to an SD card or USB stick, and can download the image first.|https://github.com/raspberrypi/rpi-imager
-Tools|KeePassXC (passwords)|keepassxc|keepassxc|x|*|A password manager kept in one encrypted file that you own, with a browser extension to fill logins.|https://github.com/keepassxreboot/keepassxc
-Tools|Nautilus (GNOME Files)|nautilus|nautilus|x|*|GNOME's file manager.|https://gitlab.gnome.org/GNOME/nautilus
-Tools|Nemo (file manager)|nemo|nemo|x|*|Linux Mint's file manager: two panes, a tree, and everything in right-click menus.|https://github.com/linuxmint/nemo
-Tools|Ollama (local AI models)|ollama|ollama|h|64|Downloads and runs large language models on this machine: ollama run llama3.|https://github.com/ollama/ollama
-Tools|scrcpy (Android screen)|scrcpy|scrcpy|h|*|Shows an Android phone's screen in a window and controls it with the keyboard and mouse, over USB.|https://github.com/Genymobile/scrcpy
-Tools|Screenshot (GNOME)|gnome-screenshot|gnome-screenshot|x|*|Takes a screenshot of the screen, a window or an area, after a delay if you like.|https://gitlab.gnome.org/GNOME/gnome-screenshot
+System|Pika Backup|pika-backup@testing|pika-backup|x|*|Backs up your home folder with BorgBackup, to a USB disk or a server. It runs on a schedule and keeps only what changed.|https://gitlab.gnome.org/World/pika-backup
+System|Syncthing GTK|syncthing-gtk@testing|syncthing-gtk|x|*|A window and tray icon for Syncthing. Syncthing keeps folders the same on several machines, with no cloud in between.|https://github.com/kozec/syncthing-gtk
+System|System Monitoring Center|smc@source|system-monitoring-center|x|*|A task manager in the style of Windows'. CPU, memory, disks, network, sensors and processes on tabs, with graphs.|https://github.com/hakandundar34coding/system-monitoring-center
+System|Timeshift|timeshift@testing|timeshift-launcher|x|*|Takes snapshots of the system files. A bad update can be rolled back to the last good one.|https://github.com/linuxmint/timeshift
+Terminals|Microsoft PowerShell|powershell|pwsh|t|!v6,!x32|Microsoft's shell and scripting language, as on Windows. It passes objects between commands rather than text.|https://github.com/PowerShell/PowerShell
+Tools|AntiMicroX (gamepad to keys)|antimicrox@testing|antimicrox|x|*|Maps a gamepad's buttons and sticks to keys and the mouse. Games and programs without controller support can be played with one.|https://github.com/AntiMicroX/antimicrox
+Tools|ckb-next (Corsair keyboards)|ckb-next@testing|ckb-next|x|*|Lighting and macros for Corsair keyboards and mice. It replaces Corsair's own software, which does not run here.|https://github.com/ckb-next/ckb-next
+Tools|FF Multi Converter|ffconverter@source|ffconverter|x|*|Converts audio, video, images and documents between formats, in batches. It is a front end to ffmpeg and ImageMagick.|https://github.com/l-koehler/FF-converter
+Tools|Flameshot (screenshots)|flameshot|flameshot|x|!v6|Takes a screenshot and lets you mark it up. Draw arrows and boxes or blur a part before saving or copying.|https://github.com/flameshot-org/flameshot
+Tools|GNOME Maps|gnome-maps|gnome-maps|x|!v6|OpenStreetMap maps with search and directions. It finds places by name and routes between them.|https://gitlab.gnome.org/GNOME/gnome-maps
+Tools|KeePassXC (passwords)|keepassxc|keepassxc|x|*|A password manager kept in one encrypted file that you own. Its browser extension fills in logins.|https://github.com/keepassxreboot/keepassxc
+Tools|Nautilus (GNOME Files)|nautilus|nautilus|x|*|GNOME's file manager. Browse, search and preview files, with network shares and removable disks alongside.|https://gitlab.gnome.org/GNOME/nautilus
+Tools|Nemo (file manager)|nemo|nemo|x|*|Linux Mint's file manager. Two panes, a folder tree, and everything in the right-click menus.|https://github.com/linuxmint/nemo
+Tools|Ollama (local AI models)|ollama|ollama|h|64|Downloads and runs large language models on this machine. ollama run llama3 starts a chat with no cloud service involved.|https://github.com/ollama/ollama
+Tools|Organic Maps (offline maps)|organicmaps@testing|OMaps|x|*|Maps downloaded by region, for use with no connection. Hiking, cycling and car routes work offline too.|https://github.com/organicmaps/organicmaps
+Tools|Raspberry Pi Imager|rpi-imager@testing|rpi-imager|x|!v6|Writes an operating system image to an SD card or USB stick. It can download the image for you first.|https://github.com/raspberrypi/rpi-imager
+Tools|scrcpy (Android screen)|scrcpy|scrcpy|h|*|Shows an Android phone's screen in a window, over USB. Control it with this machine's keyboard and mouse.|https://github.com/Genymobile/scrcpy
+Tools|Screenshot (GNOME)|gnome-screenshot|gnome-screenshot|x|*|Takes a screenshot of the screen, a window or an area. A delay can be set to catch a menu open.|https://gitlab.gnome.org/GNOME/gnome-screenshot
+Tools|tldr (tealdeer)|tealdeer@testing|tldr|h|*|Short, example-first help pages for commands. tldr tar shows the five commands you actually wanted.|https://github.com/tealdeer-rs/tealdeer
 Tools|VeraCrypt (encrypted volumes)|veracrypt@source|veracrypt|x|64|Makes an encrypted file or disk that opens as a drive with the right password. The successor to TrueCrypt; mounting asks for your admin password.|https://github.com/veracrypt/VeraCrypt
-Tools|tldr (tealdeer)|tealdeer@testing|tldr|h|*|Short, example-first help pages: tldr tar shows the five commands you actually wanted.|https://github.com/tealdeer-rs/tealdeer
-Crypto|Feather Wallet (Monero)|feather-wallet@testing|feather|x|*|A small, fast Monero wallet.|https://github.com/feather-wallet/feather
-Crypto|Monero GUI|monero-gui@testing|monero-wallet-gui|x|!v6|The Monero project's own wallet, able to run a full node.|https://github.com/monero-project/monero-gui
-Crypto|XMRig|xmrig|xmrig|h|*|A CPU miner for RandomX coins such as Monero.|https://github.com/xmrig/xmrig
-Discs|K3b (CD/DVD/Blu-ray burner)|k3b|k3b|x|!v6|KDE's disc burner: data discs, audio CDs from music files, copies of a disc, and ISO images written to disc, with a verify pass afterwards.|https://invent.kde.org/multimedia/k3b
-Documents|FocusWriter (distraction-free writing)|focuswriter@source|focuswriter|x|*|A full-screen writing window with nothing in it but the text: themes, daily goals, timers and alarms, typewriter sounds, and a spell checker. Opens and saves plain text, RTF, ODT and DOCX.|https://github.com/gottcode/focuswriter
-Emulation|QEMU (PC emulator)|qemu-system-x86_64 qemu-ui-gtk|qemu-system-x86_64|h|64|Emulates a whole x86_64 PC in a window, to boot another operating system from an ISO.|https://gitlab.com/qemu-project/qemu
-Emulation|Waydroid (Android)|waydroid|waydroid|h|!v6|Runs a full Android system in a container, its apps as windows on this desktop.|https://github.com/waydroid/waydroid
+Transfer|Deluge (BitTorrent)|deluge|deluge|x|*|A BitTorrent client that grows with plug-ins. Scheduling, labels, blocklists and a web interface are all to hand.|https://github.com/deluge-torrent/deluge
+Transfer|HTTrack (website copier)|httrack@testing|httrack|h|*|Downloads a whole website into a folder. It can then be browsed offline, links and all.|https://github.com/xroche/httrack
+Transfer|OnionShare (share over Tor)|onionshare@testing|onionshare-cli|h|!v6|Shares files or a small website straight from this machine through Tor. No server and no account are needed.|https://github.com/onionshare/onionshare
+Transfer|Persepolis (download manager)|persepolis@source|persepolis|x|!v6|A download manager built on aria2, using many connections per file. Queues, schedules, and video pages through yt-dlp.|https://github.com/persepolisdm/persepolis
 STORETABLE
 }
+# <<< playbooks: table
 
 # The architecture, in the catalogue's gate vocabulary.
 store_arch() {
@@ -335,13 +343,19 @@ apk_install() {  # <names...>
 
 # ------------------------------------------------------------ recipes: kit ---
 #
-# A recipe is four functions named after it:
+# A recipe is a playbook that builds from source (playbooks/, and
+# docs/playbooks-plan.md). Its header gives the lists, made into functions here:
 #
-#   NAME_bdeps   apk packages needed only to build   (removed afterwards)
-#   NAME_rdeps   apk packages needed to run          (kept, under a virtual
-#                                                     package, until 'remove')
-#   NAME_build   download, patch, compile, and install into $DEST$PREFIX
-#   NAME_seed    optional: first-run settings for each home, never overwriting
+#   NAME_bdeps   'build:' -- apk packages needed only to build (removed afterwards)
+#   NAME_rdeps   'runs:'  -- apk packages needed to run (kept, under a virtual
+#                            package, until 'remove')
+#
+# and its body the steps, each optional but install:
+#
+#   NAME_pre     prerequisites and preconfiguration, as root, before the build
+#   NAME_install download, patch, compile, and install into $DEST$PREFIX
+#   NAME_post    postconfiguration: first-run settings for each home, never
+#                overwriting, and anything else the program needs to be whole
 #
 # The build runs in $W, a fresh directory, and installs into the staging tree
 # $DEST. Only when it has all succeeded is the staging tree copied onto the
@@ -468,6 +482,619 @@ apply_patch() {  # <dir> <patch function>
 
 # ------------------------------------------------------------ recipes ---
 #
+# The recipes live in playbooks/<shelf>/<project>.sh, one file per project,
+# and are copied in here by 'make sync-playbooks' (tools/copal-playbooks.py),
+# with NAME_bdeps, NAME_rdeps, NAME_needs and NAME_source made from each
+# playbook's header. docs/playbooks-plan.md is the format.
+# >>> playbooks: recipes -- generated from playbooks/ by 'make sync-playbooks'; edit those, not this
+
+# ---- playbooks/Games/alephone.sh
+# Marathon: Bungie's trilogy, released free, on Aleph One, the engine built
+# from Bungie's own source. The release tarball has its configure script
+# already generated; the three games' data come from the same GitHub release
+# (about 90 MB between them) and each gets its own launcher.
+ALEPHONE_VER=20250829
+# libvpx, libyuv, libebml and libmatroska: film export (recording a game
+# or a replay to video) and video playback; miniupnpc: hosting a network
+# game through a home router. All five were absent from the first build.
+# Film export blits with glBlitFramebufferEXT, a name Alpine's libGL
+# (glvnd) does not export; the core glBlitFramebuffer it does export has
+# the same signature, so the one is defined as the other.
+alephone_install() {
+    _t=$(gh_asset Aleph-One-Marathon/alephone "release-$ALEPHONE_VER" "AlephOne-$ALEPHONE_VER.tar.bz2" \
+         e7c447034aa35dd85ca6836dd8367034c4f4512aa0d14e9781d7033946098806) || return 1
+    mkdir -p "$W/src" && tar -xjf "$_t" -C "$W/src"
+    _s=$(printf '%s\n' "$W"/src/*)
+    (cd "$_s" && ./configure --prefix="$PREFIX" CXXFLAGS="-g -O2 -DglBlitFramebufferEXT=glBlitFramebuffer" \
+        && nice -n 10 make -j "$JOBS" && make DESTDIR="$DEST" install)
+    _data="$PREFIX/share/alephone"
+    mkdir -p "$DEST$_data"
+    for _g in "Marathon:644fa202a8df19fd5c36b8c4bc3777c33afd291e2874669defc1819d8e132620:marathon:Marathon" \
+              "Marathon2:cac0ce7bd37b91f5da15ad63be1b6131e1f75496906e8fd6af20f0bb1ab86cf9:marathon2:Marathon 2" \
+              "MarathonInfinity:8b6ba6b2ca9714a2235b3063281f176ccd27a2e23b96c014f5c700d9a222a018:marathon-infinity:Marathon Infinity"; do
+        _z=${_g%%:*}; _x=${_g#*:}; _sum=${_x%%:*}; _x=${_x#*:}; _cmd=${_x%%:*}; _dir=${_x#*:}
+        _f=$(gh_asset Aleph-One-Marathon/alephone "release-$ALEPHONE_VER" "$_z-$ALEPHONE_VER-Data.zip" "$_sum")
+        unzip -q "$_f" -d "$DEST$_data"
+        launcher "$_cmd" <<EOF
+exec "$PREFIX/bin/alephone" "$_data/$_dir" "\$@"
+EOF
+        desktop_entry "$_cmd" "$_dir" "$_cmd" alephone "Game;ActionGame;" "Bungie's $_dir, on the Aleph One engine"
+    done
+}
+alephone_bdeps() { echo "build-base boost-dev asio-dev sdl2-dev sdl2_ttf-dev sdl2_image-dev openal-soft-dev libsndfile-dev glu-dev mesa-dev zlib-dev libpng-dev curl-dev zziplib-dev libvorbis-dev libvpx-dev libyuv-dev libebml-dev libmatroska-dev miniupnpc-dev"; }
+alephone_rdeps() { echo ""; }
+alephone_needs() { echo ""; }
+alephone_source() { echo "github Aleph-One-Marathon/alephone"; }
+
+# ---- playbooks/Games/amiberry.sh
+# Amiberry: an Amiga emulator tuned for ARM, on SDL3. Alpine has every library
+# it asks for, two of them in edge/testing, so none of its FetchContent
+# fallbacks (which would clone at build time) is used. It needs Kickstart ROMs
+# to run most software; its built-in AROS ROM boots without them.
+AMIBERRY_VER=8.3.0
+amiberry_install() {
+    _s=$(gh_source BlitterStudio/amiberry "v$AMIBERRY_VER" \
+         881628c2465fe28063b8444350e78167e7a9ed047def66b9ef3cfdabd4bdc1d6) || return 1
+    # musl declares aarch64's mcontext_t.regs as unsigned long, glibc as
+    # unsigned long long: both 64 bits there, so the cast is exact.
+    sed -i 's|unsigned long long\* regs = context->regs;|unsigned long long* regs = reinterpret_cast<unsigned long long*>(context->regs);  // copal: musl|' \
+        "$_s/src/osdep/sigsegv_handler.cpp"
+    # musl's C++ NULL is nullptr, which no static_cast turns into an address;
+    # glibc's is an integer. The intent is zero.
+    sed -i 's|static_cast<uaecptr>(NULL)|static_cast<uaecptr>(0)|g' "$_s/src/custom.cpp"
+    # Native file dialogs: nativefiledialog-extended is a git submodule, which
+    # GitHub's archive leaves as an empty directory, so the build turned them
+    # off. Release 1.4.0 fills it -- the first with the Wayland window API
+    # (NFD_SetWaylandDisplay) Amiberry calls; 1.2.1, which Naev pins, lacks
+    # it. Amiberry builds it for xdg-desktop-portal, which needs only D-Bus.
+    _n=$(gh_source btzy/nativefiledialog-extended v1.4.0 \
+         38116050495cd7de77a91d6d8d59c1aa0a0848c56daa60029bd5b59f3c897229) || return 1
+    rmdir "$_s/external/nativefiledialog-extended" && cp -r "$_n" "$_s/external/nativefiledialog-extended"
+    # ...which has a submodule of its own, the Wayland protocol files, left
+    # empty the same way. Alpine's wayland-protocols is that repository.
+    _wp=$(pkg-config --variable=pkgdatadir wayland-protocols)
+    rm -rf "$_s/external/nativefiledialog-extended/3ps/wayland-protocols"
+    ln -s "$_wp" "$_s/external/nativefiledialog-extended/3ps/wayland-protocols"
+    cmake_stage "$_s" -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DUSE_DBUS=OFF -DUSE_GPIOD=OFF
+}
+amiberry_bdeps() { echo "build-base cmake samurai pkgconf sdl3-dev sdl3_image-dev@testing flac-dev mpg123-dev libpng-dev zlib-dev curl-dev nlohmann-json libpcap-dev zstd-dev libmpeg2-dev portmidi-dev enet-dev libserialport-dev@testing mesa-dev dbus-dev wayland-dev wayland-protocols"; }
+amiberry_rdeps() { echo "sdl3 sdl3_image@testing flac-libs mpg123-libs libpng libcurl libpcap zstd-libs libmpeg2 portmidi enet libserialport@testing"; }
+amiberry_needs() { echo ""; }
+amiberry_source() { echo "github BlitterStudio/amiberry"; }
+
+# ---- playbooks/Audio/ardour.sh
+# Ardour: the digital audio workstation, built with waf. Its GitHub archives
+# hold only a README: the build takes its version from 'git describe' or from
+# libs/ardour/revision.cc, which only ardour.org's own source tarball has --
+# so that tarball is the source here, pinned by SHA-256 like the rest.
+#
+# Backends: ALSA, PulseAudio (which PipeWire answers) and the dummy one. JACK
+# is left out, so installing Ardour does not bring a JACK server with it;
+# PipeWire's JACK layer is there for anyone who wants it. No phone-home
+# check for updates, and no LRDF (LADSPA metadata nobody ships any more).
+# Ardour is written against the glibmm-2.4 API series, which Alpine packages
+# as glibmm2.66, cairomm1.14 and pangomm2.46; glibmm-dev is the newer 2.68.
+#
+# Its bundled GTK 2 (libs/tk/ytk and ydk) ships a fixed config.h that
+# declares HAVE_GNU_FTW, glibc's nftw() extension -- FTW_ACTIONRETVAL and
+# the FTW_STOP / FTW_SKIP_SUBTREE / FTW_CONTINUE returns, which musl does not
+# have. With the two lines gone GTK takes its own portable path, a plain
+# nftw walk, which is what it does on every non-glibc system.
+ARDOUR_VER=9.8.0
+ardour_install() {
+    _t=$(url_asset "https://community.ardour.org/src/Ardour-$ARDOUR_VER.tar.bz2" \
+         1f1a0ae658fb3b10e3fa6f9cab952ab6500955594c3773c5e9421f5e42b23d59) || return 1
+    tar -xjf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
+    _s="$W/Ardour-$ARDOUR_VER"
+    sed -i '/#define HAVE_GNU_FTW 1/d' "$_s/libs/tk/ytk/config.h" "$_s/libs/tk/ydk/config.h"
+    _a=""; [ "$(uname -m)" = aarch64 ] && _a="--arm64"
+    (cd "$_s" && LINKFLAGS="-Wl,-z,stack-size=8388608" python3 ./waf configure --prefix="$PREFIX" \
+            --optimize --with-backends=alsa,pulseaudio,dummy --no-phone-home --no-lrdf \
+            --freedesktop $_a \
+        && nice -n 10 python3 ./waf build -j "$JOBS" \
+        && python3 ./waf install --destdir="$DEST") || return 1
+}
+ardour_bdeps() { echo "build-base python3 pkgconf gettext-dev itstool boost-dev glibmm2.66-dev libsndfile-dev libsamplerate-dev liblo-dev taglib-dev vamp-sdk-dev rubberband-dev aubio-dev lv2-dev lilv-dev serd-dev sord-dev sratom-dev suil-dev fftw-dev libarchive-dev curl-dev libusb-dev cairomm1.14-dev pangomm2.46-dev pango-dev alsa-lib-dev pulseaudio-dev libxml2-dev libwebsockets-dev readline-dev libxrandr-dev libxinerama-dev"; }
+ardour_rdeps() { echo ""; }
+ardour_needs() { echo ""; }
+ardour_source() { echo "url community.ardour.org"; }
+
+# ---- playbooks/Games/astromenace.sh
+# AstroMenace: a 3D shoot-'em-up, CMake over SDL2, OpenAL and ALUT. The build
+# packs the raw game data into gamedata.vfs by running the binary it just
+# made (--pack), and the game looks for that file in DATADIR.
+ASTROMENACE_VER=1.4.3
+astromenace_install() {
+    _s=$(gh_source viewizard/astromenace "v$ASTROMENACE_VER" \
+         c16b56bfa91f0b1ac1520d09ead2a1fbb536cbd3d4f3a792a222d44bc708eab1) || return 1
+    _d="$PREFIX/lib/copal-store/astromenace"
+    cmake -S "$_s" -B "$W/build" -G Ninja -Wno-dev -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX="$_d" -DDATADIR="$_d" -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    nice -n 10 ninja -C "$W/build" -j "$JOBS"
+    mkdir -p "$DEST$_d" "$DEST$PREFIX/share/icons/hicolor/128x128/apps"
+    cp "$W/build/astromenace" "$W/build/gamedata.vfs" "$DEST$_d/"
+    cp "$_s/share/astromenace_128.png" "$DEST$PREFIX/share/icons/hicolor/128x128/apps/astromenace.png"
+    launcher astromenace <<EOF
+exec "$_d/astromenace" "\$@"
+EOF
+    desktop_entry astromenace AstroMenace astromenace astromenace "Game;ActionGame;" \
+        "3D space shoot-'em-up"
+}
+astromenace_bdeps() { echo "build-base cmake samurai sdl2-dev openal-soft-dev freealut-dev@testing libogg-dev libvorbis-dev freetype-dev fontconfig-dev mesa-dev"; }
+astromenace_rdeps() { echo "sdl2 openal-soft-libs freealut@testing libvorbis freetype fontconfig"; }
+astromenace_needs() { echo ""; }
+astromenace_source() { echo "github viewizard/astromenace"; }
+
+# ---- playbooks/System/bleachbit.sh
+# BleachBit's own Makefile installs it, prefix and DESTDIR both honoured.
+BLEACHBIT_VER=6.0.4
+bleachbit_install() {
+    _s=$(gh_source bleachbit/bleachbit "v$BLEACHBIT_VER" \
+         5af7cec3ed77b38e2e9ef91201e69d75100664116669b04a053dfd788d996f12) || return 1
+    make -C "$_s" install prefix="$PREFIX" DESTDIR="$DEST"
+    # po/Makefile writes the translations to /usr/share/locale whatever the
+    # prefix; they belong beside everything else.
+    mkdir -p "$DEST$PREFIX/share"
+    mv "$DEST/usr/share/locale" "$DEST$PREFIX/share/locale"
+    rmdir -p "$DEST/usr/share" 2>/dev/null || true
+    # The script looks for its package only in /usr/share; it is kept
+    # beside the rest and started with the prefix on the path.
+    mkdir -p "$DEST$PREFIX/lib/copal-store/bleachbit"
+    mv "$DEST$PREFIX/bin/bleachbit" "$DEST$PREFIX/lib/copal-store/bleachbit/bleachbit"
+    launcher bleachbit <<EOF
+export PYTHONPATH="$PREFIX/share\${PYTHONPATH:+:\$PYTHONPATH}"
+exec python3 "$PREFIX/lib/copal-store/bleachbit/bleachbit" "\$@"
+EOF
+}
+# The first start writes its settings file and reports a write error while
+# doing it (seen on the bench, with a fresh home); a settings file already
+# there, marked as past the first start, and the window opens clean.
+bleachbit_post() {
+    seed_homes .config/bleachbit/bleachbit.ini <<'EOF'
+[bleachbit]
+first_start = False
+EOF
+}
+bleachbit_bdeps() { echo "make"; }
+bleachbit_rdeps() { echo "python3 py3-gobject3 gtk+3.0"; }
+bleachbit_needs() { echo ""; }
+bleachbit_source() { echo "github bleachbit/bleachbit"; }
+
+# ---- playbooks/Browsers/browsh.sh
+# Browsh: the web in a terminal, rendered by a real Firefox running headless
+# and drawn as text and half-block colour. The Go program embeds its Firefox
+# extension (go:embed browsh.xpi); the release publishes that extension and,
+# since 1.8.3, no Linux binary -- so the extension is fetched from the same
+# release and built in. It drives whichever Firefox is here; Copal's is ESR.
+BROWSH_VER=1.8.3
+browsh_install() {
+    _s=$(gh_source browsh-org/browsh "v$BROWSH_VER" \
+         88462530dbfac4e17c8f8ba560802d21042d90236043e11461a1cfbf458380ca) || return 1
+    _x=$(gh_asset browsh-org/browsh "v$BROWSH_VER" "browsh-$BROWSH_VER.xpi" \
+         c0b72d7c61c30a0cb79cc1bf9dcf3cdaa3631ce029f1578e65c116243ed04e16) || return 1
+    cp "$_x" "$_s/interfacer/src/browsh/browsh.xpi"
+    mkdir -p "$DEST$PREFIX/lib/copal-store/browsh"
+    (cd "$_s/interfacer" && GOPATH="$W/go" GOCACHE="$W/gocache" GOFLAGS=-modcacherw CGO_ENABLED=0 \
+        go build -trimpath -ldflags "-s -w" -o "$DEST$PREFIX/lib/copal-store/browsh/browsh" ./cmd/browsh)
+    launcher browsh <<EOF
+_ff=\$(command -v firefox || command -v firefox-esr)
+exec "$PREFIX/lib/copal-store/browsh/browsh" --firefox.path "\$_ff" "\$@"
+EOF
+}
+browsh_bdeps() { echo "go"; }
+browsh_rdeps() { echo "firefox-esr"; }
+browsh_needs() { echo ""; }
+browsh_source() { echo "github browsh-org/browsh"; }
+
+# ---- playbooks/Games/ccleste.sh
+# Celeste Classic, the PICO-8 original of Celeste, in lemon32767's C port:
+# the cart's logic transcribed to C over SDL2, its graphics and sounds in
+# data/. It reads data/ from the working directory and writes its input
+# settings there too, so the launcher runs it from the install directory
+# and moves the settings file into the home directory.
+CCLESTE_VER=1.4.0
+ccleste_install() {
+    _s=$(gh_source lemon32767/ccleste "v$CCLESTE_VER" \
+         32dfd797f3c863201e0c19aa97974c56a8ed589a34c0522503f25f6e1399edd6) || return 1
+    make -C "$_s" -j "$JOBS"
+    _d="$DEST$PREFIX/lib/copal-store/ccleste"
+    mkdir -p "$_d" "$DEST$PREFIX/share/icons/hicolor/128x128/apps"
+    cp "$_s/ccleste" "$_d/" && cp -r "$_s/data" "$_s/gamecontrollerdb.txt" "$_d/"
+    cp "$_s/icon.png" "$DEST$PREFIX/share/icons/hicolor/128x128/apps/ccleste.png"
+    launcher ccleste <<EOF
+mkdir -p "\$HOME/.local/share/ccleste"
+export CCLESTE_INPUT_CFG_PATH="\$HOME/.local/share/ccleste/input-cfg.txt"
+cd "$PREFIX/lib/copal-store/ccleste" && exec ./ccleste "\$@"
+EOF
+    desktop_entry ccleste "Celeste Classic" ccleste ccleste "Game;ActionGame;" \
+        "The PICO-8 original of Celeste"
+}
+ccleste_bdeps() { echo "build-base sdl2-dev sdl2_mixer-dev"; }
+ccleste_rdeps() { echo "sdl2 sdl2_mixer"; }
+ccleste_needs() { echo ""; }
+ccleste_source() { echo "github lemon32767/ccleste"; }
+
+# ---- playbooks/Creative/darktable.sh
+# darktable: a raw photo developer, CMake over GTK 3. Compiled here rather
+# than taken from Alpine (5.4.1) at the owner's wish, and newer for it. The
+# release archive carries its submodules -- rawspeed, LibRaw, libxcf,
+# whereami -- which GitHub's tag archive does not; every other library is
+# Alpine's, Lua 5.4 included (its in-tree Lua stays off).
+#
+# Everything useful is on: OpenMP, Lua 5.4 with the bundled lua-scripts and
+# script manager, the map view, printing, tethering (gphoto2), MIDI
+# controllers (PortMidi), GraphicsMagick import, and the JPEG XL, HEIF, AVIF, WebP, OpenEXR and JPEG
+# 2000 formats. Exiv2 is Alpine's, built with ISOBMFF, so Canon CR3 metadata
+# reads. exiftool comes along for the Lua scripts that call it, and
+# iso-codes names the interface languages in preferences (its pkg-config
+# file is in -dev). Lensfun's lens database arrives with the library.
+#
+# Left out: OpenCL (no GPU compute on a Pi or under UTM, and its build-time
+# test compiles need clang), G'MIC (Alpine has it only in edge/testing, and
+# a stable-branch program linked to an edge library breaks when edge moves
+# on; it adds only the LUT 3D module's compressed .gmz packs -- .cube and
+# PNG LUTs work without it), colord (a system daemon with polkit, only for
+# reading the monitor profile automatically -- an ICC file can be chosen in
+# preferences instead), KWallet (no KDE desktop), and the tests.
+#
+# rawspeed learns the CPU's page size by compiling a probe that tests
+# _POSIX_C_SOURCE, which glibc defines by default and musl does not, so on
+# Alpine the probe is an #error and configuring stops. The size is given
+# instead, from getconf -- this machine's, since a Pi 5 kernel may use 16 KB
+# pages -- and rawspeed then skips its probe. Its L1d cache-line probe fails
+# the same way (it asks sysconf for a name only glibc has), so the line size
+# is read from sysfs, or is rawspeed's own fallback of 64 where the kernel
+# does not say, as under UTM. Every 64-bit core a Pi has uses 64.
+DARKTABLE_VER=5.6.1
+darktable_install() {
+    _t=$(gh_asset darktable-org/darktable "release-$DARKTABLE_VER" "darktable-$DARKTABLE_VER.tar.xz" \
+         e8b84ac98b0b689a244e4036c4b56394c1d58ce2d9abc05e0a060ef9f756dc36) || return 1
+    tar -xJf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
+    _cl=$(cat /sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size 2>/dev/null) || _cl=""
+    cmake_stage "$W/darktable-$DARKTABLE_VER" -DBUILD_TESTING=OFF -DUSE_OPENCL=OFF \
+        -DTESTBUILD_OPENCL_PROGRAMS=OFF -DUSE_COLORD=OFF -DUSE_KWALLET=OFF -DUSE_GMIC=OFF \
+        -DUSE_XMLLINT=OFF -DBUILD_CMSTEST=OFF -DRAWSPEED_PAGESIZE="$(getconf PAGESIZE)" \
+        -DRAWSPEED_CACHELINESIZE="${_cl:-64}" || return 1
+}
+# darktable opens a "Welcome to darktable!" dialog over its first window, once
+# per home. A darktablerc holding only that flag spares it; darktable fills in
+# every other setting from its defaults on the first run.
+darktable_post() {
+    printf 'ui/show_welcome_screen=FALSE\n' | seed_homes .config/darktable/darktablerc
+}
+darktable_bdeps() { echo "build-base cmake samurai pkgconf gettext-dev intltool libxslt perl gtk+3.0-dev glib-dev libxml2-dev potrace-dev libgphoto2-dev imath-dev openexr-dev libjxl-dev libwebp-dev libavif-dev libheif-dev lensfun-dev sqlite-dev curl-dev libarchive-dev exiv2-dev portmidi-dev openjpeg-dev libsecret-dev graphicsmagick-dev icu-dev lua5.4-dev pugixml-dev osm-gps-map-dev cups-dev json-glib-dev lcms2-dev libjpeg-turbo-dev tiff-dev librsvg-dev libpng-dev zlib-dev sdl2-dev iso-codes-dev"; }
+darktable_rdeps() { echo "iso-codes exiftool"; }
+darktable_needs() { echo ""; }
+darktable_source() { echo "github darktable-org/darktable"; }
+
+# ---- playbooks/Games/ddnet.sh
+# DDNet: DDraceNetwork, the cooperative Teeworlds that outlived Teeworlds.
+# CMake over C++ with one Rust library inside, which cargo builds -- its
+# crates come from crates.io at build time, into a CARGO_HOME inside the
+# build directory that goes when the build does. The video recorder (FFmpeg)
+# and the self-updater are left out: the store is the updater.
+DDNET_VER=20.0
+ddnet_install() {
+    _s=$(gh_source ddnet/ddnet "$DDNET_VER" \
+         c4f6cca7b04e9d370fc2f187b873347b546d6e0c749c01fa7e5cd7d278c88851) || return 1
+    # DATA_DIR is DDNet's own compile-time hook for where its data is; without
+    # it the game looks in /usr/local/share and a few fixed places, and any
+    # other prefix starts with no data at all (seen on the bench: exit 139).
+    # The escaped quotes survive the sh -c that ninja runs each command in.
+    CARGO_HOME="$W/cargo" CXXFLAGS="${CXXFLAGS:-} -DDATA_DIR=\\\"$PREFIX/share/ddnet/data\\\"" \
+        cmake_stage "$_s" -DVIDEORECORDER=OFF -DAUTOUPDATE=OFF \
+        -DINFORM_UPDATE=OFF -DPREFER_BUNDLED_LIBS=OFF -DTOOLS=OFF -DUPNP=OFF
+}
+ddnet_bdeps() { echo "build-base cmake samurai python3 rust cargo sdl2-dev sqlite-dev curl-dev freetype-dev libogg-dev opus-dev opusfile-dev libpng-dev wavpack-dev glslang glslang-dev vulkan-headers vulkan-loader-dev openssl-dev zlib-dev"; }
+ddnet_rdeps() { echo ""; }
+ddnet_needs() { echo ""; }
+ddnet_source() { echo "github ddnet/ddnet"; }
+
+# ---- playbooks/Games/devilutionx.sh
+# DevilutionX: Diablo (1996), its engine reconstructed from the original and
+# carried on as free software. Built from the release's fully-vendored source
+# -- the libraries it fetches at build time are already in its dist/, so the
+# build reaches nothing but this tarball. Alpine supplies SDL2, SDL2_image,
+# zlib, bzip2, libpng and libsodium, each named ON below: a source
+# distribution defaults every library to its dist/ copy, and dist/'s SDL2
+# 2.30 no longer compiles against Alpine's PipeWire headers. SDL_audiolib
+# (not packaged) and fmt (it wants its own major version) come from dist/.
+#
+# THE GAME'S DATA. The engine is free; Diablo is not. What is free is the
+# 1997 shareware episode, spawn.mpq, which DevilutionX's own assets
+# repository hosts on GitHub, so it plays the first two dungeon levels out
+# of the box. A copied DIABDAT.MPQ (the CD or GOG) in
+# ~/.local/share/diasurgical/devilution/ is found first and plays the whole
+# game. The launcher puts the store's share/ at the head of XDG_DATA_DIRS,
+# which is where the engine looks beyond the home directory, so spawn.mpq is
+# found under any prefix.
+#
+# Left out: ZeroTier online play (a large vendored build; TCP multiplayer
+# over a LAN stays), Discord presence, the tests, and the Hellfire menu entry,
+# which needs Hellfire's own files.
+DEVILUTIONX_VER=1.5.5
+# sdl2-compat-static: SDL2's CMake package (sdl2-compat's, in 3.24)
+# imports SDL2::SDL2main from libSDL2main.a, which only the -static
+# subpackage ships, and find_package fails outright without it.
+devilutionx_install() {
+    _t=$(gh_asset diasurgical/devilutionX "$DEVILUTIONX_VER" devilutionx-src-fully-vendored.tar.xz \
+         f42379cdf098a351a2020d9e6de1840c76e09113c792f73c6df34dec26818b04) || return 1
+    _m=$(gh_asset diasurgical/devilutionx-assets v2 spawn.mpq \
+         64427cd7c1ba904eaa2e0031c16a6b136d0ecef9abc888c5ff8344b459356e38) || return 1
+    tar -xJf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
+    _s="$W/devilutionx-src-full-$DEVILUTIONX_VER"
+    cmake_stage "$_s" -DBUILD_TESTING=OFF -DDISABLE_ZERO_TIER=ON -DDISCORD_INTEGRATION=OFF \
+        -DDEVILUTIONX_SYSTEM_LIBFMT=OFF -DDEVILUTIONX_SYSTEM_SDL_AUDIOLIB=OFF \
+        -DDEVILUTIONX_SYSTEM_SDL2=ON -DDEVILUTIONX_SYSTEM_SDL_IMAGE=ON -DDEVILUTIONX_SYSTEM_ZLIB=ON \
+        -DDEVILUTIONX_SYSTEM_BZIP2=ON -DDEVILUTIONX_SYSTEM_LIBPNG=ON -DDEVILUTIONX_SYSTEM_LIBSODIUM=ON \
+        -DDISABLE_LTO=ON || return 1
+    _d="$DEST$PREFIX/share/diasurgical/devilutionx"
+    mkdir -p "$_d" && cp "$_m" "$_d/spawn.mpq"
+    rm -f "$DEST$PREFIX/share/applications/devilutionx-hellfire.desktop" \
+          "$DEST$PREFIX/share/icons/hicolor/512x512/apps/devilutionx-hellfire.png"
+    mv "$DEST$PREFIX/bin/devilutionx" "$DEST$PREFIX/share/diasurgical/devilutionx/devilutionx.bin"
+    launcher devilutionx <<EOF
+export XDG_DATA_DIRS="$PREFIX/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+exec "$PREFIX/share/diasurgical/devilutionx/devilutionx.bin" "\$@"
+EOF
+}
+devilutionx_bdeps() { echo "build-base cmake samurai pkgconf sdl2-dev sdl2-compat-static sdl2_image-dev zlib-dev bzip2-dev libpng-dev libsodium-dev gettext-dev"; }
+devilutionx_rdeps() { echo "sdl2 sdl2_image libsodium libbz2 zlib libpng"; }
+devilutionx_needs() { echo ""; }
+devilutionx_source() { echo "github diasurgical/devilutionX"; }
+
+# ---- playbooks/Games/dxx.sh
+# Descent 1 and 2, on DXX-Rebirth, which builds both engines from one tree.
+# Its last tag is 2018 and the work has gone on since, so this pins a commit.
+# The data are the shareware Descent and the Descent 2 demo, both freely
+# distributable, as dxx-rebirth.com served them until 2022 -- that site now
+# holds only its final release, so the copies come from the Wayback Machine,
+# the same place Pi-Apps takes them from, pinned here by checksum. The full
+# games' data dropped into ~/.d1x-rebirth or ~/.d2x-rebirth play instead.
+DXX_COMMIT=e0165250820d0e11f4cb29890eb68017ea4bbb64
+DXX_DATA=https://web.archive.org/web/20221208193117if_/https://www.dxx-rebirth.com/download/dxx/content
+dxx_install() {
+    _s=$(gh_source dxx-rebirth/dxx-rebirth "$DXX_COMMIT" \
+         4e43938f718548dadbded1c0ea3687ef0ba3cef65bf894becb93c04bdd53edcb) || return 1
+    # builddir stays the default, inside the tree: scons's default target is
+    # '.', and a build directory elsewhere is outside it and never built.
+    (cd "$_s" && nice -n 10 scons -j "$JOBS" sdl2=1 opengl=1 d1x=1 d2x=1)
+    _d="$PREFIX/lib/copal-store/dxx-rebirth"
+    mkdir -p "$DEST$_d/d1" "$DEST$_d/d2"
+    cp "$(find "$_s/build" -type f -name d1x-rebirth | head -n1)" \
+       "$(find "$_s/build" -type f -name d2x-rebirth | head -n1)" "$DEST$_d/"
+    for _z in "descent-pc-shareware.zip:744b7f29043e977e7702173b150db7a6a3c253cacc9f608a0b3709acb46b51f1:d1" \
+              "descent2-pc-demo.zip:b842cf983d0f393cede5cb6703186ec6eedac9bc5732dc577966f6f3122b9130:d2"; do
+        _n=${_z%%:*}; _x=${_z#*:}; _sum=${_x%%:*}; _to=${_x#*:}
+        _f="$CACHE/dxx-$_n"
+        [ -s "$_f" ] || curl -fL --retry 3 -o "$_f" "$DXX_DATA/$_n"
+        verify_sum "$_f" "$_sum"
+        unzip -q -o "$_f" -d "$DEST$_d/$_to"
+    done
+    for _g in "d1x-rebirth:d1:Descent (shareware)" "d2x-rebirth:d2:Descent 2 (demo)"; do
+        _b=${_g%%:*}; _x=${_g#*:}; _h=${_x%%:*}; _name=${_x#*:}
+        launcher "$_b" <<EOF
+exec "$_d/$_b" -hogdir "$_d/$_h" "\$@"
+EOF
+        desktop_entry "$_b" "$_name" "$_b" applications-games "Game;ActionGame;" "Six-degrees-of-freedom shooter in the mines"
+    done
+}
+dxx_bdeps() { echo "build-base scons pkgconf sdl2-dev sdl2_mixer-dev sdl2_image-dev physfs-dev libpng-dev glu-dev mesa-dev"; }
+dxx_rdeps() { echo ""; }
+dxx_needs() { echo ""; }
+dxx_source() { echo "github dxx-rebirth/dxx-rebirth"; }
+
+# ---- playbooks/Games/endlesssky.sh
+# Endless Sky: the 2D space trading game, CMake. Stage 12 has built it since
+# before the store (build_endless_sky); this is the pinned, removable way. Its
+# CMakeLists turns on link-time optimisation for Release, and GCC's LTO
+# cannot inline the fortified vsnprintf on Alpine, so that line is patched
+# off, as stage 12 does. SDL2 is found by its CMake package, which is
+# sdl2-compat's and needs sdl2-compat-static (see DevilutionX). The binary
+# installs to $PREFIX/games, which is not on Alpine's PATH; a launcher in bin
+# runs it there. The game looks for its data only under /usr/local and /usr,
+# so the launcher names it: under any other prefix it would stop at once,
+# "Unable to find the resource directories!".
+# Alpine's FLAC CMake package names /usr/bin/flac, the command-line program,
+# and CMake stops when that file is absent -- which it is unless flac itself
+# is installed. With the package skipped, the CMakeLists takes its own
+# fallback, pkg-config's flac++, and needs nothing more.
+ENDLESSSKY_VER=0.11.2
+endlesssky_install() {
+    _s=$(gh_source endless-sky/endless-sky "v$ENDLESSSKY_VER" \
+         066b4c171fa7756b4c538a81e9926d4d7686cdbbe44fb5ab2c83e137a7493278) || return 1
+    sed -i 's/^set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)/set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE FALSE)/' \
+        "$_s/CMakeLists.txt"
+    cmake_stage "$_s" -DES_USE_VCPKG=OFF -DBUILD_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_FLAC=ON || return 1
+    launcher endless-sky <<EOF
+exec "$PREFIX/games/endless-sky" --resources "$PREFIX/share/games/endless-sky" "\$@"
+EOF
+}
+endlesssky_bdeps() { echo "build-base cmake samurai pkgconf sdl2-dev sdl2-compat-static libpng-dev libjpeg-turbo-dev libavif-dev glew-dev openal-soft-dev flac-dev zlib-dev minizip-dev util-linux-dev mesa-dev"; }
+endlesssky_rdeps() { echo ""; }
+endlesssky_needs() { echo ""; }
+endlesssky_source() { echo "github endless-sky/endless-sky"; }
+
+# ---- playbooks/Tools/ffconverter.sh
+# FF Multi Converter: a PyQt5 front end to ffmpeg, ImageMagick, unoconv and
+# pandoc, whichever are present. pip installs it from the source tree into a
+# private target directory -- --no-deps, so pip fetches nothing.
+FFCONVERTER_VER=2.4.6
+ffconverter_install() {
+    _s=$(gh_source l-koehler/FF-converter "v$FFCONVERTER_VER" \
+         41c8b93151464ef12aa35ec5f77fed52c2998ed05f0cd564aab6ca344ea73388) || return 1
+    _t="$PREFIX/lib/copal-store/ffconverter"
+    # It looks for presets.xml under /usr/local/share and /usr/share; the
+    # prefix it was installed to goes first.
+    sed -i "s|presets_lookup_dirs = \\[|presets_lookup_dirs = [\"$PREFIX/share/\", |" "$_s/ffconverter/config.py"
+    pip3 install --no-deps --no-build-isolation --no-compile --break-system-packages \
+         --target "$DEST$_t" "$_s"
+    rm -rf "$DEST$_t/bin" "$DEST$_t/share"
+    mkdir -p "$DEST$PREFIX/share/ffconverter" "$DEST$PREFIX/share/icons/hicolor/128x128/apps"
+    cp "$_s/share/presets.xml" "$DEST$PREFIX/share/ffconverter/"
+    cp "$_s/share/ffconverter.png" "$DEST$PREFIX/share/icons/hicolor/128x128/apps/"
+    launcher ffconverter <<EOF
+export PYTHONPATH="$_t\${PYTHONPATH:+:\$PYTHONPATH}"
+exec python3 -c 'import sys; from ffconverter.ffconverter import main; sys.exit(main())' "\$@"
+EOF
+    desktop_entry ffconverter "FF Multi Converter" ffconverter ffconverter "Utility;AudioVideo;" \
+        "Convert audio, video, image and document files"
+}
+ffconverter_bdeps() { echo "py3-pip py3-setuptools py3-wheel"; }
+ffconverter_rdeps() { echo "python3 py3-qt5 ffmpeg imagemagick"; }
+ffconverter_needs() { echo ""; }
+ffconverter_source() { echo "github l-koehler/FF-converter"; }
+
+# ---- playbooks/Documents/focuswriter.sh
+# FocusWriter: a full-screen writing program, CMake over Qt 6 and Hunspell.
+# Nothing to repair; Alpine has every library, KDSingleApplication included.
+FOCUSWRITER_VER=1.9.1
+focuswriter_install() {
+    _s=$(gh_source gottcode/focuswriter "v$FOCUSWRITER_VER" \
+         ca83cade13158111e19eeba86d0a043bb45be4f32bd82f43da2bb910c0edd32d) || return 1
+    cmake_stage "$_s" || return 1
+}
+focuswriter_bdeps() { echo "build-base cmake samurai pkgconf qt6-qtbase-dev qt6-qttools-dev qt6-qtmultimedia-dev hunspell-dev kdsingleapplication-dev zlib-dev"; }
+focuswriter_rdeps() { echo "hunspell-en"; }
+focuswriter_needs() { echo ""; }
+focuswriter_source() { echo "github gottcode/focuswriter"; }
+
+# ---- playbooks/Games/funkin.sh
+# Friday Night Funkin' Rewritten, a LOVE game: its source tree, zipped, is the
+# game file LOVE runs. The release's images are already in the tree.
+FUNKIN_VER=1.1.0-beta.2-1
+funkin_install() {
+    _s=$(gh_source HTV04/funkin-rewritten "v$FUNKIN_VER" \
+         5563f4096234f3b2b108bbfcf69f5fdc4fa5b77b4dbc680eb86a6876d837d8fa) || return 1
+    _d="$PREFIX/lib/copal-store/funkin"
+    mkdir -p "$DEST$_d" "$DEST$PREFIX/share/icons/hicolor/256x256/apps"
+    (cd "$_s/src/love" && zip -q -r -9 "$DEST$_d/funkin-rewritten.love" .)
+    cp "$_s/src/love/icons/default.png" "$DEST$PREFIX/share/icons/hicolor/256x256/apps/funkin-rewritten.png"
+    launcher funkin-rewritten <<EOF
+exec love "$_d/funkin-rewritten.love" "\$@"
+EOF
+    desktop_entry funkin-rewritten "Friday Night Funkin' Rewritten" funkin-rewritten funkin-rewritten \
+        "Game;MusicGame;" "Rhythm battles, arrow keys to the beat"
+}
+funkin_bdeps() { echo "zip"; }
+funkin_rdeps() { echo "love"; }
+funkin_needs() { echo ""; }
+funkin_source() { echo "github HTV04/funkin-rewritten"; }
+
+# ---- playbooks/Engineering/librecad.sh
+# LibreCAD: 2D CAD, CMake over Qt 5, with muParser in its own tree. Its crash
+# handler includes glibc's <execinfo.h>; the patch gives musl empty stubs.
+LIBRECAD_VER=2.2.1.5
+librecad_install() {
+    _s=$(gh_source LibreCAD/LibreCAD "v$LIBRECAD_VER" \
+         703f6e6701b7ee47769b6def271fa025ef32e31ee193e2ba69a2c47fff8da459) || return 1
+    apply_patch "$_s" patch_librecad_musl
+    cmake_stage "$_s"
+}
+# Its first start asks for a unit and a language before drawing anything.
+# Millimetres, and the language the desktop is in.
+librecad_post() {
+    seed_homes .config/LibreCAD/LibreCAD.conf <<'EOF'
+[Startup]
+FirstLoad=0
+
+[Defaults]
+Unit=Millimeter
+EOF
+}
+
+patch_librecad_musl() {
+    cat <<'PATCH'
+--- a/librecad/src/lib/debug/lc_crashhandler.cpp
++++ b/librecad/src/lib/debug/lc_crashhandler.cpp
+@@ -49,7 +49,13 @@
+ #  include <sys/stat.h>
+ #else
+ #  include <csignal>
+-#  include <execinfo.h>
++#  if __has_include(<execinfo.h>)
++#    include <execinfo.h>
++#  else
++     // copal: musl has no execinfo.h; the crash log goes without a stack trace.
++     static inline int backtrace(void**, int) { return 0; }
++     static inline void backtrace_symbols_fd(void* const*, int, int) {}
++#  endif
+ #  include <fcntl.h>
+ #  include <sys/types.h>
+ #  include <unistd.h>
+PATCH
+}
+librecad_bdeps() { echo "build-base cmake samurai qt5-qtbase-dev qt5-qtsvg-dev qt5-qttools-dev boost-dev freetype-dev"; }
+librecad_rdeps() { echo "qt5-qtsvg"; }
+librecad_needs() { echo ""; }
+librecad_source() { echo "github LibreCAD/LibreCAD"; }
+
+# ---- playbooks/Games/naev.sh
+# Naev: 2D space trading and combat with a long written story, meson. The
+# release's source archive carries the game's data (most of its 444 MB).
+# Every library comes from Alpine -- LuaJIT, SuiteSparse, GLPK and OpenBLAS
+# for its fleet physics and economy among them -- except the file dialog,
+# nativefiledialog-extended, which Alpine does not package and meson would
+# fetch from its wrap while configuring. Instead both of that wrap's files
+# come from wrapdb's own GitHub release through gh_asset, pinned by the
+# hashes Naev's .wrap names, and are put in subprojects/packagecache, where
+# meson finds them with downloads switched off. Its portal backend is used
+# (D-Bus to xdg-desktop-portal) rather than GTK 3, which it would otherwise
+# pull in whole for one dialog. Naev finds SuiteSparse's libraries but not its
+# headers, which Alpine keeps in their own directory; pkg-config knows which.
+# Linked for glibc-sized thread stacks, as cmake_stage does: Naev loads its
+# textures on worker threads, and under Mesa's software renderer the first
+# upload JIT-compiles a shader there, which overflowed musl's 128 KB.
+NAEV_VER=0.12.6
+NAEV_NFDE_WRAP=nativefiledialog-extended_1.2.1-1
+naev_install() {
+    _t=$(gh_asset naev/naev "v$NAEV_VER" "naev-$NAEV_VER-source.tar.xz" \
+         e81c0e25630146f3a709a540679a75c0af4983f858184130ebac5c6ba7d4592a) || return 1
+    _n=$(gh_asset mesonbuild/wrapdb "$NAEV_NFDE_WRAP" nativefiledialog-extended-1.2.1.tar.gz \
+         443697a857c4efacbe08cdaf5182724fa9d9b9a79b8feff2a1601bde1df46b07) || return 1
+    _p=$(gh_asset mesonbuild/wrapdb "$NAEV_NFDE_WRAP" "${NAEV_NFDE_WRAP}_patch.zip" \
+         044a2e881d874d55a892b61cf553aa7678d1c0f06cfaeb39a1b43f34ca976b09) || return 1
+    tar -xJf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
+    _s="$W/naev-$NAEV_VER"
+    mkdir -p "$_s/subprojects/packagecache"
+    cp "$_n" "$_s/subprojects/packagecache/nativefiledialog-extended-1.2.1.tar.gz"
+    cp "$_p" "$_s/subprojects/packagecache/${NAEV_NFDE_WRAP}_patch.zip"
+    LDFLAGS="${LDFLAGS:-} -Wl,-z,stack-size=8388608" \
+    meson setup "$W/build" "$_s" --prefix="$PREFIX" --buildtype=release --wrap-mode=nodownload \
+        -Dc_args="$(pkg-config --cflags-only-I CHOLMOD)" -Dluajit=enabled -Ddocs_c=disabled -Ddocs_lua=disabled \
+        -Dnativefiledialog-extended:xdg-desktop-portal=enabled
+    meson compile -C "$W/build" -j "$JOBS"
+    DESTDIR="$DEST" meson install -C "$W/build"
+}
+naev_bdeps() { echo "build-base meson samurai pkgconf sdl2-dev sdl2_image-dev enet-dev pcre2-dev libunibreak-dev cmark-dev yaml-dev libxml2-dev physfs-dev freetype-dev libpng-dev libwebp-dev luajit-dev glpk-dev suitesparse-dev openblas-dev openal-soft-dev libvorbis-dev libogg-dev gettext-dev dbus-dev py3-yaml"; }
+naev_rdeps() { echo ""; }
+naev_needs() { echo ""; }
+naev_source() { echo "github naev/naev"; }
+
+# ---- playbooks/Appearance/ohmyposh.sh
+# Oh My Posh: prompt themes for any shell, Go. Held at 30.9.0, the last
+# release whose go.mod accepts Alpine 3.24's Go 1.26; 31.0 wants 1.27, and
+# the alternative -- GOTOOLCHAIN fetching a newer Go -- downloads a compiler
+# from outside GitHub and outside apk. The modules come from the Go
+# proxy at build time into a cache inside the build directory, which goes
+# when the build does. The themes are installed beside it:
+#   eval "$(oh-my-posh init bash --config /usr/local/share/oh-my-posh/themes/jandedobbeleer.omp.json)"
+OHMYPOSH_VER=30.9.0
+ohmyposh_install() {
+    _s=$(gh_source JanDeDobbeleer/oh-my-posh "v$OHMYPOSH_VER" \
+         1f883716db56729bc2c97703673758892917502a81e844e2f6305067ebf968ce) || return 1
+    mkdir -p "$DEST$PREFIX/bin" "$DEST$PREFIX/share/oh-my-posh"
+    (cd "$_s/src" && GOPATH="$W/go" GOCACHE="$W/gocache" GOFLAGS=-modcacherw CGO_ENABLED=0 \
+        go build -trimpath -o "$DEST$PREFIX/bin/oh-my-posh" \
+        -ldflags "-s -w -X github.com/jandedobbeleer/oh-my-posh/src/build.Version=$OHMYPOSH_VER")
+    cp -r "$_s/themes" "$DEST$PREFIX/share/oh-my-posh/"
+}
+ohmyposh_bdeps() { echo "go"; }
+ohmyposh_rdeps() { echo ""; }
+ohmyposh_needs() { echo ""; }
+ohmyposh_source() { echo "github JanDeDobbeleer/oh-my-posh"; }
+
+# ---- playbooks/Multimedia/openshot.sh
 # OpenShot, from its three repositories at matching releases. Verified on the
 # aarch64 bench, 23 Sep 2026 -- openshot-qt opened its main window.
 #
@@ -489,15 +1116,7 @@ apply_patch() {  # <dir> <patch function>
 # its timeline is a plain widget now.
 OPENSHOT_VER=1.0.0
 OPENSHOT_QT_VER=4.0.0
-openshot_bdeps() {
-    echo build-base cmake samurai swig python3-dev qt6-qtbase-dev qt6-qtsvg-dev \
-         ffmpeg-dev zeromq-dev cppzmq jsoncpp-dev alsa-lib-dev babl-dev
-}
-openshot_rdeps() {
-    echo py3-qt6 py3-pyzmq py3-requests py3-defusedxml qt6-qtsvg ffmpeg-libavcodec \
-         ffmpeg-libavformat ffmpeg-libswscale ffmpeg-libswresample jsoncpp libzmq
-}
-openshot_build() {
+openshot_install() {
     _pyd="$PREFIX/lib/copal-store/openshot/python"
     _a=$(gh_source OpenShot/libopenshot-audio "v$OPENSHOT_VER" \
          80dc23fff901064194fcc7732d41cc953df6b7ed2742376fcf28df23b5a10a29) || return 1
@@ -531,839 +1150,12 @@ EOF
 # The welcome tutorial and the "send anonymous metrics?" question, both on
 # every first start. The settings file is merged key by key over OpenShot's
 # defaults, so two keys are a whole settings file.
-openshot_seed() {
+openshot_post() {
     seed_homes .openshot_qt/openshot.settings <<'EOF'
 [
  {"setting": "send_metrics", "value": false},
  {"setting": "tutorial_enabled", "value": false}
 ]
-EOF
-}
-
-
-# darktable: a raw photo developer, CMake over GTK 3. Compiled here rather
-# than taken from Alpine (5.4.1) at the owner's wish, and newer for it. The
-# release archive carries its submodules -- rawspeed, LibRaw, libxcf,
-# whereami -- which GitHub's tag archive does not; every other library is
-# Alpine's, Lua 5.4 included (its in-tree Lua stays off).
-#
-# Everything useful is on: OpenMP, Lua 5.4 with the bundled lua-scripts and
-# script manager, the map view, printing, tethering (gphoto2), MIDI
-# controllers (PortMidi), GraphicsMagick import, and the JPEG XL, HEIF, AVIF, WebP, OpenEXR and JPEG
-# 2000 formats. Exiv2 is Alpine's, built with ISOBMFF, so Canon CR3 metadata
-# reads. exiftool comes along for the Lua scripts that call it, and
-# iso-codes names the interface languages in preferences (its pkg-config
-# file is in -dev). Lensfun's lens database arrives with the library.
-#
-# Left out: OpenCL (no GPU compute on a Pi or under UTM, and its build-time
-# test compiles need clang), G'MIC (Alpine has it only in edge/testing, and
-# a stable-branch program linked to an edge library breaks when edge moves
-# on; it adds only the LUT 3D module's compressed .gmz packs -- .cube and
-# PNG LUTs work without it), colord (a system daemon with polkit, only for
-# reading the monitor profile automatically -- an ICC file can be chosen in
-# preferences instead), KWallet (no KDE desktop), and the tests.
-#
-# rawspeed learns the CPU's page size by compiling a probe that tests
-# _POSIX_C_SOURCE, which glibc defines by default and musl does not, so on
-# Alpine the probe is an #error and configuring stops. The size is given
-# instead, from getconf -- this machine's, since a Pi 5 kernel may use 16 KB
-# pages -- and rawspeed then skips its probe. Its L1d cache-line probe fails
-# the same way (it asks sysconf for a name only glibc has), so the line size
-# is read from sysfs, or is rawspeed's own fallback of 64 where the kernel
-# does not say, as under UTM. Every 64-bit core a Pi has uses 64.
-DARKTABLE_VER=5.6.1
-darktable_bdeps() {
-    echo build-base cmake samurai pkgconf gettext-dev intltool libxslt perl gtk+3.0-dev glib-dev \
-         libxml2-dev potrace-dev libgphoto2-dev imath-dev openexr-dev libjxl-dev libwebp-dev \
-         libavif-dev libheif-dev lensfun-dev sqlite-dev curl-dev libarchive-dev exiv2-dev \
-         portmidi-dev openjpeg-dev libsecret-dev graphicsmagick-dev icu-dev lua5.4-dev pugixml-dev \
-         osm-gps-map-dev cups-dev json-glib-dev lcms2-dev libjpeg-turbo-dev tiff-dev librsvg-dev \
-         libpng-dev zlib-dev sdl2-dev iso-codes-dev
-}
-darktable_rdeps() { echo iso-codes exiftool; }
-darktable_build() {
-    _t=$(gh_asset darktable-org/darktable "release-$DARKTABLE_VER" "darktable-$DARKTABLE_VER.tar.xz" \
-         e8b84ac98b0b689a244e4036c4b56394c1d58ce2d9abc05e0a060ef9f756dc36) || return 1
-    tar -xJf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
-    _cl=$(cat /sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size 2>/dev/null) || _cl=""
-    cmake_stage "$W/darktable-$DARKTABLE_VER" -DBUILD_TESTING=OFF -DUSE_OPENCL=OFF \
-        -DTESTBUILD_OPENCL_PROGRAMS=OFF -DUSE_COLORD=OFF -DUSE_KWALLET=OFF -DUSE_GMIC=OFF \
-        -DUSE_XMLLINT=OFF -DBUILD_CMSTEST=OFF -DRAWSPEED_PAGESIZE="$(getconf PAGESIZE)" \
-        -DRAWSPEED_CACHELINESIZE="${_cl:-64}" || return 1
-}
-# darktable opens a "Welcome to darktable!" dialog over its first window, once
-# per home. A darktablerc holding only that flag spares it; darktable fills in
-# every other setting from its defaults on the first run.
-darktable_seed() {
-    printf 'ui/show_welcome_screen=FALSE\n' | seed_homes .config/darktable/darktablerc
-}
-
-# FocusWriter: a full-screen writing program, CMake over Qt 6 and Hunspell.
-# Nothing to repair; Alpine has every library, KDSingleApplication included.
-FOCUSWRITER_VER=1.9.1
-focuswriter_bdeps() {
-    echo build-base cmake samurai pkgconf qt6-qtbase-dev qt6-qttools-dev qt6-qtmultimedia-dev \
-         hunspell-dev kdsingleapplication-dev zlib-dev
-}
-focuswriter_rdeps() { echo hunspell-en; }
-focuswriter_build() {
-    _s=$(gh_source gottcode/focuswriter "v$FOCUSWRITER_VER" \
-         ca83cade13158111e19eeba86d0a043bb45be4f32bd82f43da2bb910c0edd32d) || return 1
-    cmake_stage "$_s" || return 1
-}
-
-# Pencil2D: frame-by-frame 2D animation, qmake over Qt 6. Its movie export
-# runs ffmpeg by name, so ffmpeg is a runtime dependency no ELF header shows.
-PENCIL2D_VER=0.7.2
-pencil2d_bdeps() { echo build-base qt6-qtbase-dev qt6-qtsvg-dev qt6-qtmultimedia-dev qt6-qttools-dev; }
-pencil2d_rdeps() { echo ffmpeg; }
-pencil2d_build() {
-    _s=$(gh_source pencil2d/pencil "v$PENCIL2D_VER" \
-         22af8bf304cd18ae5d7a84e66d80ea2a21a53963476ffabb60d1d5f37f091a0c) || return 1
-    mkdir -p "$W/build"
-    (cd "$W/build" && qmake6 "$_s/pencil2d.pro" PREFIX="$PREFIX" CONFIG+=release CONFIG+=NO_TESTS \
-         QMAKE_LFLAGS+="-Wl,-z,stack-size=8388608" \
-       && nice -n 10 make -j "$JOBS" && make INSTALL_ROOT="$DEST" install) || return 1
-}
-
-
-
-# Ardour: the digital audio workstation, built with waf. Its GitHub archives
-# hold only a README: the build takes its version from 'git describe' or from
-# libs/ardour/revision.cc, which only ardour.org's own source tarball has --
-# so that tarball is the source here, pinned by SHA-256 like the rest.
-#
-# Backends: ALSA, PulseAudio (which PipeWire answers) and the dummy one. JACK
-# is left out, so installing Ardour does not bring a JACK server with it;
-# PipeWire's JACK layer is there for anyone who wants it. No phone-home
-# check for updates, and no LRDF (LADSPA metadata nobody ships any more).
-# Ardour is written against the glibmm-2.4 API series, which Alpine packages
-# as glibmm2.66, cairomm1.14 and pangomm2.46; glibmm-dev is the newer 2.68.
-#
-# Its bundled GTK 2 (libs/tk/ytk and ydk) ships a fixed config.h that
-# declares HAVE_GNU_FTW, glibc's nftw() extension -- FTW_ACTIONRETVAL and
-# the FTW_STOP / FTW_SKIP_SUBTREE / FTW_CONTINUE returns, which musl does not
-# have. With the two lines gone GTK takes its own portable path, a plain
-# nftw walk, which is what it does on every non-glibc system.
-ARDOUR_VER=9.8.0
-ardour_bdeps() {
-    echo build-base python3 pkgconf gettext-dev itstool boost-dev glibmm2.66-dev libsndfile-dev libsamplerate-dev \
-         liblo-dev taglib-dev vamp-sdk-dev rubberband-dev aubio-dev lv2-dev lilv-dev serd-dev sord-dev \
-         sratom-dev suil-dev fftw-dev libarchive-dev curl-dev libusb-dev cairomm1.14-dev pangomm2.46-dev \
-         pango-dev alsa-lib-dev pulseaudio-dev libxml2-dev libwebsockets-dev readline-dev \
-         libxrandr-dev libxinerama-dev
-}
-ardour_rdeps() { echo; }
-ardour_build() {
-    _t=$(url_asset "https://community.ardour.org/src/Ardour-$ARDOUR_VER.tar.bz2" \
-         1f1a0ae658fb3b10e3fa6f9cab952ab6500955594c3773c5e9421f5e42b23d59) || return 1
-    tar -xjf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
-    _s="$W/Ardour-$ARDOUR_VER"
-    sed -i '/#define HAVE_GNU_FTW 1/d' "$_s/libs/tk/ytk/config.h" "$_s/libs/tk/ydk/config.h"
-    _a=""; [ "$(uname -m)" = aarch64 ] && _a="--arm64"
-    (cd "$_s" && LINKFLAGS="-Wl,-z,stack-size=8388608" python3 ./waf configure --prefix="$PREFIX" \
-            --optimize --with-backends=alsa,pulseaudio,dummy --no-phone-home --no-lrdf \
-            --freedesktop $_a \
-        && nice -n 10 python3 ./waf build -j "$JOBS" \
-        && python3 ./waf install --destdir="$DEST") || return 1
-}
-
-# Celeste Classic, the PICO-8 original of Celeste, in lemon32767's C port:
-# the cart's logic transcribed to C over SDL2, its graphics and sounds in
-# data/. It reads data/ from the working directory and writes its input
-# settings there too, so the launcher runs it from the install directory
-# and moves the settings file into the home directory.
-CCLESTE_VER=1.4.0
-ccleste_bdeps() { echo build-base sdl2-dev sdl2_mixer-dev; }
-ccleste_rdeps() { echo sdl2 sdl2_mixer; }
-ccleste_build() {
-    _s=$(gh_source lemon32767/ccleste "v$CCLESTE_VER" \
-         32dfd797f3c863201e0c19aa97974c56a8ed589a34c0522503f25f6e1399edd6) || return 1
-    make -C "$_s" -j "$JOBS"
-    _d="$DEST$PREFIX/lib/copal-store/ccleste"
-    mkdir -p "$_d" "$DEST$PREFIX/share/icons/hicolor/128x128/apps"
-    cp "$_s/ccleste" "$_d/" && cp -r "$_s/data" "$_s/gamecontrollerdb.txt" "$_d/"
-    cp "$_s/icon.png" "$DEST$PREFIX/share/icons/hicolor/128x128/apps/ccleste.png"
-    launcher ccleste <<EOF
-mkdir -p "\$HOME/.local/share/ccleste"
-export CCLESTE_INPUT_CFG_PATH="\$HOME/.local/share/ccleste/input-cfg.txt"
-cd "$PREFIX/lib/copal-store/ccleste" && exec ./ccleste "\$@"
-EOF
-    desktop_entry ccleste "Celeste Classic" ccleste ccleste "Game;ActionGame;" \
-        "The PICO-8 original of Celeste"
-}
-
-# Pac-Man, ebuc99's SDL2 clone, autotools with the configure script shipped.
-# Installed as pacman-game: /usr/local/bin/pacman would shadow Arch's package
-# manager, which Alpine also packages as 'pacman'.
-PACMAN_VER=0.9
-pacman_bdeps() { echo build-base sdl2-dev sdl2_image-dev sdl2_ttf-dev sdl2_mixer-dev; }
-pacman_rdeps() { echo sdl2 sdl2_image sdl2_ttf sdl2_mixer; }
-pacman_build() {
-    _s=$(gh_source ebuc99/pacman "v$PACMAN_VER" \
-         e0a8fd6d9919b16a539e06c7d3c12bc1bfd41f867366bf8dad72b49f37f8422b) || return 1
-    # The data directory is written into platform.cpp as /usr/local/share,
-    # beside the PACKAGE_DATA_DIR that Makefile.am already passes in.
-    sed -i 's|"/usr/local/share/pacman/"|PACKAGE_DATA_DIR "/"|' "$_s/src/platform.cpp"
-    (cd "$_s" && ./configure --prefix="$PREFIX" && make -j "$JOBS" && make DESTDIR="$DEST" install)
-    mv "$DEST$PREFIX/bin/pacman" "$DEST$PREFIX/bin/pacman-game"
-}
-
-# OpenTyrian: the 1995 shooter Tyrian 2000's engine, ported to C over SDL2.
-# The engine is compiled from the tagged source; the game's data -- freeware
-# since 2004 -- comes from the same release's Linux archive, which is the only
-# copy on GitHub (the README's other link is camanis.net). Only its data/
-# directory is used, and it is the same for every architecture, so the arm64
-# archive is fetched on all of them.
-OPENTYRIAN_VER=v2.1.20260913
-opentyrian_bdeps() { echo build-base pkgconf sdl2-dev sdl2_net-dev; }
-opentyrian_rdeps() { echo sdl2 sdl2_net; }
-opentyrian_build() {
-    _s=$(gh_source opentyrian/opentyrian "$OPENTYRIAN_VER" \
-         dbcd96383d4fa571137242c36bd7eca054cf5a08a9bf2eec15ef230d6e60680d) || return 1
-    _a=$(gh_asset opentyrian/opentyrian "$OPENTYRIAN_VER" "opentyrian-$OPENTYRIAN_VER-linux-arm64.tar.gz" \
-         8608e68622edcabd30eb62fcbdfd8106982c13e29fb775ccccf56956dccd90fb) || return 1
-    # VCS_IDREV: the tarball is not a git checkout, so the version is given.
-    make -C "$_s" -j "$JOBS" prefix="$PREFIX" VCS_IDREV="echo $OPENTYRIAN_VER" \
-        && make -C "$_s" prefix="$PREFIX" VCS_IDREV="echo $OPENTYRIAN_VER" DESTDIR="$DEST" install \
-        || return 1
-    _g="$DEST$PREFIX/share/games/tyrian"
-    mkdir -p "$_g"
-    tar -xzf "$_a" -C "$W" opentyrian/data && cp "$W"/opentyrian/data/* "$_g/"
-}
-
-# DevilutionX: Diablo (1996), its engine reconstructed from the original and
-# carried on as free software. Built from the release's fully-vendored source
-# -- the libraries it fetches at build time are already in its dist/, so the
-# build reaches nothing but this tarball. Alpine supplies SDL2, SDL2_image,
-# zlib, bzip2, libpng and libsodium, each named ON below: a source
-# distribution defaults every library to its dist/ copy, and dist/'s SDL2
-# 2.30 no longer compiles against Alpine's PipeWire headers. SDL_audiolib
-# (not packaged) and fmt (it wants its own major version) come from dist/.
-#
-# THE GAME'S DATA. The engine is free; Diablo is not. What is free is the
-# 1997 shareware episode, spawn.mpq, which DevilutionX's own assets
-# repository hosts on GitHub, so it plays the first two dungeon levels out
-# of the box. A copied DIABDAT.MPQ (the CD or GOG) in
-# ~/.local/share/diasurgical/devilution/ is found first and plays the whole
-# game. The launcher puts the store's share/ at the head of XDG_DATA_DIRS,
-# which is where the engine looks beyond the home directory, so spawn.mpq is
-# found under any prefix.
-#
-# Left out: ZeroTier online play (a large vendored build; TCP multiplayer
-# over a LAN stays), Discord presence, the tests, and the Hellfire menu entry,
-# which needs Hellfire's own files.
-DEVILUTIONX_VER=1.5.5
-devilutionx_bdeps() {
-    # sdl2-compat-static: SDL2's CMake package (sdl2-compat's, in 3.24)
-    # imports SDL2::SDL2main from libSDL2main.a, which only the -static
-    # subpackage ships, and find_package fails outright without it.
-    echo build-base cmake samurai pkgconf sdl2-dev sdl2-compat-static sdl2_image-dev zlib-dev \
-         bzip2-dev libpng-dev libsodium-dev gettext-dev
-}
-devilutionx_rdeps() { echo sdl2 sdl2_image libsodium libbz2 zlib libpng; }
-devilutionx_build() {
-    _t=$(gh_asset diasurgical/devilutionX "$DEVILUTIONX_VER" devilutionx-src-fully-vendored.tar.xz \
-         f42379cdf098a351a2020d9e6de1840c76e09113c792f73c6df34dec26818b04) || return 1
-    _m=$(gh_asset diasurgical/devilutionx-assets v2 spawn.mpq \
-         64427cd7c1ba904eaa2e0031c16a6b136d0ecef9abc888c5ff8344b459356e38) || return 1
-    tar -xJf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
-    _s="$W/devilutionx-src-full-$DEVILUTIONX_VER"
-    cmake_stage "$_s" -DBUILD_TESTING=OFF -DDISABLE_ZERO_TIER=ON -DDISCORD_INTEGRATION=OFF \
-        -DDEVILUTIONX_SYSTEM_LIBFMT=OFF -DDEVILUTIONX_SYSTEM_SDL_AUDIOLIB=OFF \
-        -DDEVILUTIONX_SYSTEM_SDL2=ON -DDEVILUTIONX_SYSTEM_SDL_IMAGE=ON -DDEVILUTIONX_SYSTEM_ZLIB=ON \
-        -DDEVILUTIONX_SYSTEM_BZIP2=ON -DDEVILUTIONX_SYSTEM_LIBPNG=ON -DDEVILUTIONX_SYSTEM_LIBSODIUM=ON \
-        -DDISABLE_LTO=ON || return 1
-    _d="$DEST$PREFIX/share/diasurgical/devilutionx"
-    mkdir -p "$_d" && cp "$_m" "$_d/spawn.mpq"
-    rm -f "$DEST$PREFIX/share/applications/devilutionx-hellfire.desktop" \
-          "$DEST$PREFIX/share/icons/hicolor/512x512/apps/devilutionx-hellfire.png"
-    mv "$DEST$PREFIX/bin/devilutionx" "$DEST$PREFIX/share/diasurgical/devilutionx/devilutionx.bin"
-    launcher devilutionx <<EOF
-export XDG_DATA_DIRS="$PREFIX/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
-exec "$PREFIX/share/diasurgical/devilutionx/devilutionx.bin" "\$@"
-EOF
-}
-
-
-# Endless Sky: the 2D space trading game, CMake. Stage 12 has built it since
-# before the store (build_endless_sky); this is the pinned, removable way. Its
-# CMakeLists turns on link-time optimisation for Release, and GCC's LTO
-# cannot inline the fortified vsnprintf on Alpine, so that line is patched
-# off, as stage 12 does. SDL2 is found by its CMake package, which is
-# sdl2-compat's and needs sdl2-compat-static (see DevilutionX). The binary
-# installs to $PREFIX/games, which is not on Alpine's PATH; a launcher in bin
-# runs it there. The game looks for its data only under /usr/local and /usr,
-# so the launcher names it: under any other prefix it would stop at once,
-# "Unable to find the resource directories!".
-# Alpine's FLAC CMake package names /usr/bin/flac, the command-line program,
-# and CMake stops when that file is absent -- which it is unless flac itself
-# is installed. With the package skipped, the CMakeLists takes its own
-# fallback, pkg-config's flac++, and needs nothing more.
-ENDLESSSKY_VER=0.11.2
-endlesssky_bdeps() {
-    echo build-base cmake samurai pkgconf sdl2-dev sdl2-compat-static libpng-dev libjpeg-turbo-dev \
-         libavif-dev glew-dev openal-soft-dev flac-dev zlib-dev minizip-dev util-linux-dev mesa-dev
-}
-endlesssky_rdeps() { echo; }
-endlesssky_build() {
-    _s=$(gh_source endless-sky/endless-sky "v$ENDLESSSKY_VER" \
-         066b4c171fa7756b4c538a81e9926d4d7686cdbbe44fb5ab2c83e137a7493278) || return 1
-    sed -i 's/^set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)/set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE FALSE)/' \
-        "$_s/CMakeLists.txt"
-    cmake_stage "$_s" -DES_USE_VCPKG=OFF -DBUILD_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_FLAC=ON || return 1
-    launcher endless-sky <<EOF
-exec "$PREFIX/games/endless-sky" --resources "$PREFIX/share/games/endless-sky" "\$@"
-EOF
-}
-
-# Naev: 2D space trading and combat with a long written story, meson. The
-# release's source archive carries the game's data (most of its 444 MB).
-# Every library comes from Alpine -- LuaJIT, SuiteSparse, GLPK and OpenBLAS
-# for its fleet physics and economy among them -- except the file dialog,
-# nativefiledialog-extended, which Alpine does not package and meson would
-# fetch from its wrap while configuring. Instead both of that wrap's files
-# come from wrapdb's own GitHub release through gh_asset, pinned by the
-# hashes Naev's .wrap names, and are put in subprojects/packagecache, where
-# meson finds them with downloads switched off. Its portal backend is used
-# (D-Bus to xdg-desktop-portal) rather than GTK 3, which it would otherwise
-# pull in whole for one dialog. Naev finds SuiteSparse's libraries but not its
-# headers, which Alpine keeps in their own directory; pkg-config knows which.
-# Linked for glibc-sized thread stacks, as cmake_stage does: Naev loads its
-# textures on worker threads, and under Mesa's software renderer the first
-# upload JIT-compiles a shader there, which overflowed musl's 128 KB.
-NAEV_VER=0.12.6
-NFDE_WRAP=nativefiledialog-extended_1.2.1-1
-naev_bdeps() {
-    echo build-base meson samurai pkgconf sdl2-dev sdl2_image-dev enet-dev pcre2-dev libunibreak-dev \
-         cmark-dev yaml-dev libxml2-dev physfs-dev freetype-dev libpng-dev libwebp-dev luajit-dev \
-         glpk-dev suitesparse-dev openblas-dev openal-soft-dev libvorbis-dev libogg-dev gettext-dev \
-         dbus-dev py3-yaml
-}
-naev_rdeps() { echo; }
-naev_build() {
-    _t=$(gh_asset naev/naev "v$NAEV_VER" "naev-$NAEV_VER-source.tar.xz" \
-         e81c0e25630146f3a709a540679a75c0af4983f858184130ebac5c6ba7d4592a) || return 1
-    _n=$(gh_asset mesonbuild/wrapdb "$NFDE_WRAP" nativefiledialog-extended-1.2.1.tar.gz \
-         443697a857c4efacbe08cdaf5182724fa9d9b9a79b8feff2a1601bde1df46b07) || return 1
-    _p=$(gh_asset mesonbuild/wrapdb "$NFDE_WRAP" "${NFDE_WRAP}_patch.zip" \
-         044a2e881d874d55a892b61cf553aa7678d1c0f06cfaeb39a1b43f34ca976b09) || return 1
-    tar -xJf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
-    _s="$W/naev-$NAEV_VER"
-    mkdir -p "$_s/subprojects/packagecache"
-    cp "$_n" "$_s/subprojects/packagecache/nativefiledialog-extended-1.2.1.tar.gz"
-    cp "$_p" "$_s/subprojects/packagecache/${NFDE_WRAP}_patch.zip"
-    LDFLAGS="${LDFLAGS:-} -Wl,-z,stack-size=8388608" \
-    meson setup "$W/build" "$_s" --prefix="$PREFIX" --buildtype=release --wrap-mode=nodownload \
-        -Dc_args="$(pkg-config --cflags-only-I CHOLMOD)" -Dluajit=enabled -Ddocs_c=disabled -Ddocs_lua=disabled \
-        -Dnativefiledialog-extended:xdg-desktop-portal=enabled
-    meson compile -C "$W/build" -j "$JOBS"
-    DESTDIR="$DEST" meson install -C "$W/build"
-}
-
-# Taisei: a Touhou fan game, a bullet-hell shooter in C over SDL3, meson. The
-# release archive is the one to build from: it carries the submodules that
-# GitHub's tag archive leaves out. Its fallbacks are .wrap files that meson
-# would download, so downloads are off and every library is Alpine's. Only
-# the OpenGL 3.3 renderer is built: the SDL_GPU and GLES ones need shaders
-# cross-compiled by glslang and SPIRV-Cross at build time, and GL 3.3 is what
-# the Pi's V3D and the VM's virgl both offer. The allocator is musl's own;
-# mimalloc would be a subproject. The game's assets are installed as files,
-# not packed into zips: the packer compresses with Python's zstd module,
-# which Alpine's Python 3.14 is built without. Its threads get glibc-sized
-# stacks, as Naev's do (see there).
-TAISEI_VER=1.4.6
-taisei_bdeps() {
-    echo build-base meson samurai pkgconf sdl3-dev freetype-dev libwebp-dev zlib-dev zstd-dev \
-         cglm-dev libunibreak-dev opusfile-dev libpng-dev openssl-dev
-}
-taisei_rdeps() { echo; }
-taisei_build() {
-    _t=$(gh_asset taisei-project/taisei "v$TAISEI_VER" "taisei-$TAISEI_VER.tar.xz" \
-         18d03c67dcc8c7faff22e8defdafc3a734b46c591618d1a678e6e914846889d9) || return 1
-    tar -xJf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
-    _s="$W/taisei-$TAISEI_VER"
-    LDFLAGS="${LDFLAGS:-} -Wl,-z,stack-size=8388608" \
-    meson setup "$W/build" "$_s" --prefix="$PREFIX" --buildtype=release --wrap-mode=nodownload \
-        -Dallocator=libc -Dpackage_data=disabled -Dr_default=gl33 -Dr_gles30=disabled -Dr_sdlgpu=disabled \
-        -Dshader_transpiler=disabled -Ddocs=disabled -Dtests=disabled -Dgamemode=disabled
-    meson compile -C "$W/build" -j "$JOBS"
-    DESTDIR="$DEST" meson install -C "$W/build"
-}
-
-
-# AstroMenace: a 3D shoot-'em-up, CMake over SDL2, OpenAL and ALUT. The build
-# packs the raw game data into gamedata.vfs by running the binary it just
-# made (--pack), and the game looks for that file in DATADIR.
-ASTROMENACE_VER=1.4.3
-astromenace_bdeps() {
-    echo build-base cmake samurai sdl2-dev openal-soft-dev freealut-dev@testing \
-         libogg-dev libvorbis-dev freetype-dev fontconfig-dev mesa-dev
-}
-astromenace_rdeps() { echo sdl2 openal-soft-libs freealut@testing libvorbis freetype fontconfig; }
-astromenace_build() {
-    _s=$(gh_source viewizard/astromenace "v$ASTROMENACE_VER" \
-         c16b56bfa91f0b1ac1520d09ead2a1fbb536cbd3d4f3a792a222d44bc708eab1) || return 1
-    _d="$PREFIX/lib/copal-store/astromenace"
-    cmake -S "$_s" -B "$W/build" -G Ninja -Wno-dev -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX="$_d" -DDATADIR="$_d" -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-    nice -n 10 ninja -C "$W/build" -j "$JOBS"
-    mkdir -p "$DEST$_d" "$DEST$PREFIX/share/icons/hicolor/128x128/apps"
-    cp "$W/build/astromenace" "$W/build/gamedata.vfs" "$DEST$_d/"
-    cp "$_s/share/astromenace_128.png" "$DEST$PREFIX/share/icons/hicolor/128x128/apps/astromenace.png"
-    launcher astromenace <<EOF
-exec "$_d/astromenace" "\$@"
-EOF
-    desktop_entry astromenace AstroMenace astromenace astromenace "Game;ActionGame;" \
-        "3D space shoot-'em-up"
-}
-
-# Amiberry: an Amiga emulator tuned for ARM, on SDL3. Alpine has every library
-# it asks for, two of them in edge/testing, so none of its FetchContent
-# fallbacks (which would clone at build time) is used. It needs Kickstart ROMs
-# to run most software; its built-in AROS ROM boots without them.
-AMIBERRY_VER=8.3.0
-amiberry_bdeps() {
-    echo build-base cmake samurai pkgconf sdl3-dev sdl3_image-dev@testing flac-dev mpg123-dev \
-         libpng-dev zlib-dev curl-dev nlohmann-json libpcap-dev zstd-dev libmpeg2-dev \
-         portmidi-dev enet-dev libserialport-dev@testing mesa-dev dbus-dev wayland-dev wayland-protocols
-}
-amiberry_rdeps() {
-    echo sdl3 sdl3_image@testing flac-libs mpg123-libs libpng libcurl libpcap zstd-libs \
-         libmpeg2 portmidi enet libserialport@testing
-}
-amiberry_build() {
-    _s=$(gh_source BlitterStudio/amiberry "v$AMIBERRY_VER" \
-         881628c2465fe28063b8444350e78167e7a9ed047def66b9ef3cfdabd4bdc1d6) || return 1
-    # musl declares aarch64's mcontext_t.regs as unsigned long, glibc as
-    # unsigned long long: both 64 bits there, so the cast is exact.
-    sed -i 's|unsigned long long\* regs = context->regs;|unsigned long long* regs = reinterpret_cast<unsigned long long*>(context->regs);  // copal: musl|' \
-        "$_s/src/osdep/sigsegv_handler.cpp"
-    # musl's C++ NULL is nullptr, which no static_cast turns into an address;
-    # glibc's is an integer. The intent is zero.
-    sed -i 's|static_cast<uaecptr>(NULL)|static_cast<uaecptr>(0)|g' "$_s/src/custom.cpp"
-    # Native file dialogs: nativefiledialog-extended is a git submodule, which
-    # GitHub's archive leaves as an empty directory, so the build turned them
-    # off. Release 1.4.0 fills it -- the first with the Wayland window API
-    # (NFD_SetWaylandDisplay) Amiberry calls; 1.2.1, which Naev pins, lacks
-    # it. Amiberry builds it for xdg-desktop-portal, which needs only D-Bus.
-    _n=$(gh_source btzy/nativefiledialog-extended v1.4.0 \
-         38116050495cd7de77a91d6d8d59c1aa0a0848c56daa60029bd5b59f3c897229) || return 1
-    rmdir "$_s/external/nativefiledialog-extended" && cp -r "$_n" "$_s/external/nativefiledialog-extended"
-    # ...which has a submodule of its own, the Wayland protocol files, left
-    # empty the same way. Alpine's wayland-protocols is that repository.
-    _wp=$(pkg-config --variable=pkgdatadir wayland-protocols)
-    rm -rf "$_s/external/nativefiledialog-extended/3ps/wayland-protocols"
-    ln -s "$_wp" "$_s/external/nativefiledialog-extended/3ps/wayland-protocols"
-    cmake_stage "$_s" -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DUSE_DBUS=OFF -DUSE_GPIOD=OFF
-}
-
-
-# Marathon: Bungie's trilogy, released free, on Aleph One, the engine built
-# from Bungie's own source. The release tarball has its configure script
-# already generated; the three games' data come from the same GitHub release
-# (about 90 MB between them) and each gets its own launcher.
-ALEPHONE_VER=20250829
-alephone_bdeps() {
-    # libvpx, libyuv, libebml and libmatroska: film export (recording a game
-    # or a replay to video) and video playback; miniupnpc: hosting a network
-    # game through a home router. All five were absent from the first build.
-    # Film export blits with glBlitFramebufferEXT, a name Alpine's libGL
-    # (glvnd) does not export; the core glBlitFramebuffer it does export has
-    # the same signature, so the one is defined as the other.
-    echo build-base boost-dev asio-dev sdl2-dev sdl2_ttf-dev sdl2_image-dev openal-soft-dev \
-         libsndfile-dev glu-dev mesa-dev zlib-dev libpng-dev curl-dev zziplib-dev libvorbis-dev \
-         libvpx-dev libyuv-dev libebml-dev libmatroska-dev miniupnpc-dev
-}
-alephone_rdeps() { echo; }
-alephone_build() {
-    _t=$(gh_asset Aleph-One-Marathon/alephone "release-$ALEPHONE_VER" "AlephOne-$ALEPHONE_VER.tar.bz2" \
-         e7c447034aa35dd85ca6836dd8367034c4f4512aa0d14e9781d7033946098806) || return 1
-    mkdir -p "$W/src" && tar -xjf "$_t" -C "$W/src"
-    _s=$(printf '%s\n' "$W"/src/*)
-    (cd "$_s" && ./configure --prefix="$PREFIX" CXXFLAGS="-g -O2 -DglBlitFramebufferEXT=glBlitFramebuffer" \
-        && nice -n 10 make -j "$JOBS" && make DESTDIR="$DEST" install)
-    _data="$PREFIX/share/alephone"
-    mkdir -p "$DEST$_data"
-    for _g in "Marathon:644fa202a8df19fd5c36b8c4bc3777c33afd291e2874669defc1819d8e132620:marathon:Marathon" \
-              "Marathon2:cac0ce7bd37b91f5da15ad63be1b6131e1f75496906e8fd6af20f0bb1ab86cf9:marathon2:Marathon 2" \
-              "MarathonInfinity:8b6ba6b2ca9714a2235b3063281f176ccd27a2e23b96c014f5c700d9a222a018:marathon-infinity:Marathon Infinity"; do
-        _z=${_g%%:*}; _x=${_g#*:}; _sum=${_x%%:*}; _x=${_x#*:}; _cmd=${_x%%:*}; _dir=${_x#*:}
-        _f=$(gh_asset Aleph-One-Marathon/alephone "release-$ALEPHONE_VER" "$_z-$ALEPHONE_VER-Data.zip" "$_sum")
-        unzip -q "$_f" -d "$DEST$_data"
-        launcher "$_cmd" <<EOF
-exec "$PREFIX/bin/alephone" "$_data/$_dir" "\$@"
-EOF
-        desktop_entry "$_cmd" "$_dir" "$_cmd" alephone "Game;ActionGame;" "Bungie's $_dir, on the Aleph One engine"
-    done
-}
-
-
-# Descent 1 and 2, on DXX-Rebirth, which builds both engines from one tree.
-# Its last tag is 2018 and the work has gone on since, so this pins a commit.
-# The data are the shareware Descent and the Descent 2 demo, both freely
-# distributable, as dxx-rebirth.com served them until 2022 -- that site now
-# holds only its final release, so the copies come from the Wayback Machine,
-# the same place Pi-Apps takes them from, pinned here by checksum. The full
-# games' data dropped into ~/.d1x-rebirth or ~/.d2x-rebirth play instead.
-DXX_COMMIT=e0165250820d0e11f4cb29890eb68017ea4bbb64
-DXX_DATA=https://web.archive.org/web/20221208193117if_/https://www.dxx-rebirth.com/download/dxx/content
-dxx_bdeps() {
-    echo build-base scons pkgconf sdl2-dev sdl2_mixer-dev sdl2_image-dev physfs-dev libpng-dev glu-dev mesa-dev
-}
-dxx_rdeps() { echo; }
-dxx_build() {
-    _s=$(gh_source dxx-rebirth/dxx-rebirth "$DXX_COMMIT" \
-         4e43938f718548dadbded1c0ea3687ef0ba3cef65bf894becb93c04bdd53edcb) || return 1
-    # builddir stays the default, inside the tree: scons's default target is
-    # '.', and a build directory elsewhere is outside it and never built.
-    (cd "$_s" && nice -n 10 scons -j "$JOBS" sdl2=1 opengl=1 d1x=1 d2x=1)
-    _d="$PREFIX/lib/copal-store/dxx-rebirth"
-    mkdir -p "$DEST$_d/d1" "$DEST$_d/d2"
-    cp "$(find "$_s/build" -type f -name d1x-rebirth | head -n1)" \
-       "$(find "$_s/build" -type f -name d2x-rebirth | head -n1)" "$DEST$_d/"
-    for _z in "descent-pc-shareware.zip:744b7f29043e977e7702173b150db7a6a3c253cacc9f608a0b3709acb46b51f1:d1" \
-              "descent2-pc-demo.zip:b842cf983d0f393cede5cb6703186ec6eedac9bc5732dc577966f6f3122b9130:d2"; do
-        _n=${_z%%:*}; _x=${_z#*:}; _sum=${_x%%:*}; _to=${_x#*:}
-        _f="$CACHE/dxx-$_n"
-        [ -s "$_f" ] || curl -fL --retry 3 -o "$_f" "$DXX_DATA/$_n"
-        verify_sum "$_f" "$_sum"
-        unzip -q -o "$_f" -d "$DEST$_d/$_to"
-    done
-    for _g in "d1x-rebirth:d1:Descent (shareware)" "d2x-rebirth:d2:Descent 2 (demo)"; do
-        _b=${_g%%:*}; _x=${_g#*:}; _h=${_x%%:*}; _name=${_x#*:}
-        launcher "$_b" <<EOF
-exec "$_d/$_b" -hogdir "$_d/$_h" "\$@"
-EOF
-        desktop_entry "$_b" "$_name" "$_b" applications-games "Game;ActionGame;" "Six-degrees-of-freedom shooter in the mines"
-    done
-}
-
-
-# THE PYTHON PROGRAMS keep their modules in a directory of their own,
-# $PREFIX/lib/copal-store/NAME, and their launcher puts it on PYTHONPATH.
-# Not site-packages: Alpine's Python does not read /usr/local's, and a path
-# with python3.14 in it breaks the day Alpine moves to 3.15. Every library
-# they import comes from Alpine's py3-* packages -- nothing from PyPI.
-
-# PyChess runs from its source tree, the way its README runs it.
-PYCHESS_VER=1.2.0
-pychess_bdeps() { echo; }
-pychess_rdeps() {
-    echo python3 py3-gobject3 py3-cairo py3-psutil py3-pexpect py3-sqlalchemy py3-websockets \
-         gtk+3.0 gtksourceview4 gstreamer gst-plugins-base gst-plugins-good librsvg stockfish@testing
-}
-pychess_build() {
-    _s=$(gh_source pychess/pychess "$PYCHESS_VER" \
-         da989acb45ebe77fa013ab68a5e6d4202c8d831af68e3533c8b96a9b5e387548) || return 1
-    _d="$PREFIX/lib/copal-store/pychess"
-    mkdir -p "$DEST$_d" "$DEST$PREFIX/share/icons/hicolor/scalable/apps"
-    # The whole tree: it opens ARTISTS, AUTHORS and the rest by path at start.
-    cp -r "$_s/." "$DEST$_d/"
-    rm -rf "$DEST$_d/testing" "$DEST$_d/debian" "$DEST$_d/macos" "$DEST$_d/devsvg"
-    cp "$_s/pychess.svg" "$DEST$PREFIX/share/icons/hicolor/scalable/apps/"
-    launcher pychess <<EOF
-exec python3 "$_d/pychess" "\$@"
-EOF
-    desktop_entry pychess PyChess pychess pychess "Game;BoardGame;" "Play chess against the computer or online"
-}
-# Two dialogs on the first start, both spared: the tip of the day, and one
-# asking leave to download scoutfish and chess_db -- prebuilt glibc programs,
-# which would not run here if they were fetched.
-pychess_seed() {
-    seed_homes .config/pychess/config <<'EOF'
-[General]
-show_tip_at_startup = False
-download_scoutfish = False
-download_chess_db = False
-dont_show_externals_at_startup = True
-EOF
-}
-
-# BleachBit's own Makefile installs it, prefix and DESTDIR both honoured.
-BLEACHBIT_VER=6.0.4
-bleachbit_bdeps() { echo make; }
-bleachbit_rdeps() { echo python3 py3-gobject3 gtk+3.0; }
-bleachbit_build() {
-    _s=$(gh_source bleachbit/bleachbit "v$BLEACHBIT_VER" \
-         5af7cec3ed77b38e2e9ef91201e69d75100664116669b04a053dfd788d996f12) || return 1
-    make -C "$_s" install prefix="$PREFIX" DESTDIR="$DEST"
-    # po/Makefile writes the translations to /usr/share/locale whatever the
-    # prefix; they belong beside everything else.
-    mkdir -p "$DEST$PREFIX/share"
-    mv "$DEST/usr/share/locale" "$DEST$PREFIX/share/locale"
-    rmdir -p "$DEST/usr/share" 2>/dev/null || true
-    # The script looks for its package only in /usr/share; it is kept
-    # beside the rest and started with the prefix on the path.
-    mkdir -p "$DEST$PREFIX/lib/copal-store/bleachbit"
-    mv "$DEST$PREFIX/bin/bleachbit" "$DEST$PREFIX/lib/copal-store/bleachbit/bleachbit"
-    launcher bleachbit <<EOF
-export PYTHONPATH="$PREFIX/share\${PYTHONPATH:+:\$PYTHONPATH}"
-exec python3 "$PREFIX/lib/copal-store/bleachbit/bleachbit" "\$@"
-EOF
-}
-# The first start writes its settings file and reports a write error while
-# doing it (seen on the bench, with a fresh home); a settings file already
-# there, marked as past the first start, and the window opens clean.
-bleachbit_seed() {
-    seed_homes .config/bleachbit/bleachbit.ini <<'EOF'
-[bleachbit]
-first_start = False
-EOF
-}
-
-# Persepolis: meson, with its Python package steered into a private directory
-# by meson's own python.purelibdir option. It drives aria2 for the transfers
-# and yt-dlp for video pages.
-PERSEPOLIS_VER=5.2.0
-persepolis_bdeps() { echo meson samurai; }
-persepolis_rdeps() {
-    echo python3 py3-pyside6 py3-psutil py3-requests py3-setproctitle aria2 yt-dlp ffmpeg libnotify
-}
-persepolis_build() {
-    _s=$(gh_source persepolisdm/persepolis "$PERSEPOLIS_VER" \
-         8d002e369955fd77e5353714185ce3edb98463b7117a26583b72f4db4e51b2c8) || return 1
-    _py="lib/copal-store/persepolis/python"
-    # Its install script checks for the dependencies by importing them, and
-    # fails the install when one is missing -- which on a staging build is
-    # the wrong moment to ask. apk has already been told what to install.
-    sed -i "/add_install_script('check_dependencies.py')/d" "$_s/meson.build"
-    meson setup "$W/build" "$_s" --prefix="$PREFIX" -Dpython.purelibdir="$_py" -Dpython.platlibdir="$_py"
-    meson compile -C "$W/build"
-    DESTDIR="$DEST" meson install -C "$W/build"
-    mv "$DEST$PREFIX/bin/persepolis" "$DEST$PREFIX/lib/copal-store/persepolis/persepolis"
-    launcher persepolis <<EOF
-export PYTHONPATH="$PREFIX/$_py\${PYTHONPATH:+:\$PYTHONPATH}"
-exec python3 "$PREFIX/lib/copal-store/persepolis/persepolis" "\$@"
-EOF
-}
-
-# FF Multi Converter: a PyQt5 front end to ffmpeg, ImageMagick, unoconv and
-# pandoc, whichever are present. pip installs it from the source tree into a
-# private target directory -- --no-deps, so pip fetches nothing.
-FFCONVERTER_VER=2.4.6
-ffconverter_bdeps() { echo py3-pip py3-setuptools py3-wheel; }
-ffconverter_rdeps() { echo python3 py3-qt5 ffmpeg imagemagick; }
-ffconverter_build() {
-    _s=$(gh_source l-koehler/FF-converter "v$FFCONVERTER_VER" \
-         41c8b93151464ef12aa35ec5f77fed52c2998ed05f0cd564aab6ca344ea73388) || return 1
-    _t="$PREFIX/lib/copal-store/ffconverter"
-    # It looks for presets.xml under /usr/local/share and /usr/share; the
-    # prefix it was installed to goes first.
-    sed -i "s|presets_lookup_dirs = \\[|presets_lookup_dirs = [\"$PREFIX/share/\", |" "$_s/ffconverter/config.py"
-    pip3 install --no-deps --no-build-isolation --no-compile --break-system-packages \
-         --target "$DEST$_t" "$_s"
-    rm -rf "$DEST$_t/bin" "$DEST$_t/share"
-    mkdir -p "$DEST$PREFIX/share/ffconverter" "$DEST$PREFIX/share/icons/hicolor/128x128/apps"
-    cp "$_s/share/presets.xml" "$DEST$PREFIX/share/ffconverter/"
-    cp "$_s/share/ffconverter.png" "$DEST$PREFIX/share/icons/hicolor/128x128/apps/"
-    launcher ffconverter <<EOF
-export PYTHONPATH="$_t\${PYTHONPATH:+:\$PYTHONPATH}"
-exec python3 -c 'import sys; from ffconverter.ffconverter import main; sys.exit(main())' "\$@"
-EOF
-    desktop_entry ffconverter "FF Multi Converter" ffconverter ffconverter "Utility;AudioVideo;" \
-        "Convert audio, video, image and document files"
-}
-
-# System Monitoring Center: GTK4 and libadwaita, meson. It keeps its modules
-# in share/, not in a Python library directory, so needs no launcher.
-SMC_VER=3.4.1
-smc_bdeps() { echo meson samurai gettext; }
-smc_rdeps() { echo python3 python3-tkinter py3-gobject3 py3-cairo gtk4.0 libadwaita dmidecode util-linux-misc; }
-smc_build() {
-    _s=$(gh_source hakandundar34coding/system-monitoring-center "v$SMC_VER" \
-         abe601aaa8f6a3beea2874292931d8b0bf43ecb17a75f605feb8b4b08b4708e5) || return 1
-    # Its modules go to share/system-monitoring-center, and the script meson
-    # writes puts that directory on sys.path itself.
-    meson setup "$W/build" "$_s" --prefix="$PREFIX"
-    meson compile -C "$W/build"
-    DESTDIR="$DEST" meson install -C "$W/build"
-}
-
-# Friday Night Funkin' Rewritten, a LOVE game: its source tree, zipped, is the
-# game file LOVE runs. The release's images are already in the tree.
-FUNKIN_VER=1.1.0-beta.2-1
-funkin_bdeps() { echo zip; }
-funkin_rdeps() { echo love; }
-funkin_build() {
-    _s=$(gh_source HTV04/funkin-rewritten "v$FUNKIN_VER" \
-         5563f4096234f3b2b108bbfcf69f5fdc4fa5b77b4dbc680eb86a6876d837d8fa) || return 1
-    _d="$PREFIX/lib/copal-store/funkin"
-    mkdir -p "$DEST$_d" "$DEST$PREFIX/share/icons/hicolor/256x256/apps"
-    (cd "$_s/src/love" && zip -q -r -9 "$DEST$_d/funkin-rewritten.love" .)
-    cp "$_s/src/love/icons/default.png" "$DEST$PREFIX/share/icons/hicolor/256x256/apps/funkin-rewritten.png"
-    launcher funkin-rewritten <<EOF
-exec love "$_d/funkin-rewritten.love" "\$@"
-EOF
-    desktop_entry funkin-rewritten "Friday Night Funkin' Rewritten" funkin-rewritten funkin-rewritten \
-        "Game;MusicGame;" "Rhythm battles, arrow keys to the beat"
-}
-
-
-# LibreCAD: 2D CAD, CMake over Qt 5, with muParser in its own tree. Its crash
-# handler includes glibc's <execinfo.h>; the patch gives musl empty stubs.
-LIBRECAD_VER=2.2.1.5
-librecad_bdeps() {
-    echo build-base cmake samurai qt5-qtbase-dev qt5-qtsvg-dev qt5-qttools-dev boost-dev freetype-dev
-}
-librecad_rdeps() { echo qt5-qtsvg; }
-librecad_build() {
-    _s=$(gh_source LibreCAD/LibreCAD "v$LIBRECAD_VER" \
-         703f6e6701b7ee47769b6def271fa025ef32e31ee193e2ba69a2c47fff8da459) || return 1
-    apply_patch "$_s" patch_librecad_musl
-    cmake_stage "$_s"
-}
-# Its first start asks for a unit and a language before drawing anything.
-# Millimetres, and the language the desktop is in.
-librecad_seed() {
-    seed_homes .config/LibreCAD/LibreCAD.conf <<'EOF'
-[Startup]
-FirstLoad=0
-
-[Defaults]
-Unit=Millimeter
-EOF
-}
-
-# VeraCrypt: encrypted volumes and whole-disk encryption, TrueCrypt's heir.
-# Its own Makefile, wxWidgets for the window, FUSE 3 to present a mounted
-# volume. Its Linux 'install' stages into /usr, so the three files that
-# matter are placed here instead. Mounting needs root, which it asks for
-# through sudo -- on a Copal machine, doas-sudo-shim answers.
-VERACRYPT_VER=1.26.29
-veracrypt_bdeps() {
-    echo build-base pkgconf wxwidgets-dev fuse3-dev pcsc-lite-dev
-}
-veracrypt_rdeps() { echo fuse3 doas-sudo-shim; }
-veracrypt_build() {
-    _s=$(gh_source veracrypt/VeraCrypt "VeraCrypt_$VERACRYPT_VER" \
-         5141f046e90c8d7660d1eef7d492c4a0ee15283500f092ebb2b72d5260779229) || return 1
-    # The Makefile derives SOURCE_DATE_EPOCH from git, or else from the
-    # release date in Common/Tcdefs.h with an awk that busybox's awk cannot
-    # run; given explicitly, that date is 8 June 2026.
-    nice -n 10 make -C "$_s/src" -j "$JOBS" WITHFUSE3=1 SOURCE_DATE_EPOCH=1780876800
-    mkdir -p "$DEST$PREFIX/bin" "$DEST$PREFIX/share/applications" "$DEST$PREFIX/share/pixmaps"
-    cp "$_s/src/Main/veracrypt" "$DEST$PREFIX/bin/"
-    cp "$_s/src/Setup/Linux/veracrypt.desktop" "$DEST$PREFIX/share/applications/"
-    cp "$_s/src/Resources/Icons/VeraCrypt-256x256.xpm" "$DEST$PREFIX/share/pixmaps/veracrypt.xpm"
-}
-
-# Oh My Posh: prompt themes for any shell, Go. Held at 30.9.0, the last
-# release whose go.mod accepts Alpine 3.24's Go 1.26; 31.0 wants 1.27, and
-# the alternative -- GOTOOLCHAIN fetching a newer Go -- downloads a compiler
-# from outside GitHub and outside apk. The modules come from the Go
-# proxy at build time into a cache inside the build directory, which goes
-# when the build does. The themes are installed beside it:
-#   eval "$(oh-my-posh init bash --config /usr/local/share/oh-my-posh/themes/jandedobbeleer.omp.json)"
-OHMYPOSH_VER=30.9.0
-ohmyposh_bdeps() { echo go; }
-ohmyposh_rdeps() { echo; }
-ohmyposh_build() {
-    _s=$(gh_source JanDeDobbeleer/oh-my-posh "v$OHMYPOSH_VER" \
-         1f883716db56729bc2c97703673758892917502a81e844e2f6305067ebf968ce) || return 1
-    mkdir -p "$DEST$PREFIX/bin" "$DEST$PREFIX/share/oh-my-posh"
-    (cd "$_s/src" && GOPATH="$W/go" GOCACHE="$W/gocache" GOFLAGS=-modcacherw CGO_ENABLED=0 \
-        go build -trimpath -o "$DEST$PREFIX/bin/oh-my-posh" \
-        -ldflags "-s -w -X github.com/jandedobbeleer/oh-my-posh/src/build.Version=$OHMYPOSH_VER")
-    cp -r "$_s/themes" "$DEST$PREFIX/share/oh-my-posh/"
-}
-
-patch_librecad_musl() {
-    cat <<'PATCH'
---- a/librecad/src/lib/debug/lc_crashhandler.cpp
-+++ b/librecad/src/lib/debug/lc_crashhandler.cpp
-@@ -49,7 +49,13 @@
- #  include <sys/stat.h>
- #else
- #  include <csignal>
--#  include <execinfo.h>
-+#  if __has_include(<execinfo.h>)
-+#    include <execinfo.h>
-+#  else
-+     // copal: musl has no execinfo.h; the crash log goes without a stack trace.
-+     static inline int backtrace(void**, int) { return 0; }
-+     static inline void backtrace_symbols_fd(void* const*, int, int) {}
-+#  endif
- #  include <fcntl.h>
- #  include <sys/types.h>
- #  include <unistd.h>
-PATCH
-}
-
-
-# DDNet: DDraceNetwork, the cooperative Teeworlds that outlived Teeworlds.
-# CMake over C++ with one Rust library inside, which cargo builds -- its
-# crates come from crates.io at build time, into a CARGO_HOME inside the
-# build directory that goes when the build does. The video recorder (FFmpeg)
-# and the self-updater are left out: the store is the updater.
-DDNET_VER=20.0
-ddnet_bdeps() {
-    echo build-base cmake samurai python3 rust cargo sdl2-dev sqlite-dev curl-dev freetype-dev \
-         libogg-dev opus-dev opusfile-dev libpng-dev wavpack-dev glslang glslang-dev \
-         vulkan-headers vulkan-loader-dev openssl-dev zlib-dev
-}
-ddnet_rdeps() { echo; }
-ddnet_build() {
-    _s=$(gh_source ddnet/ddnet "$DDNET_VER" \
-         c4f6cca7b04e9d370fc2f187b873347b546d6e0c749c01fa7e5cd7d278c88851) || return 1
-    # DATA_DIR is DDNet's own compile-time hook for where its data is; without
-    # it the game looks in /usr/local/share and a few fixed places, and any
-    # other prefix starts with no data at all (seen on the bench: exit 139).
-    # The escaped quotes survive the sh -c that ninja runs each command in.
-    CARGO_HOME="$W/cargo" CXXFLAGS="${CXXFLAGS:-} -DDATA_DIR=\\\"$PREFIX/share/ddnet/data\\\"" \
-        cmake_stage "$_s" -DVIDEORECORDER=OFF -DAUTOUPDATE=OFF \
-        -DINFORM_UPDATE=OFF -DPREFER_BUNDLED_LIBS=OFF -DTOOLS=OFF -DUPNP=OFF
-}
-
-
-# Pixelorama: a pixel-art editor written in Godot, run as a Godot project by
-# Alpine's Godot. Held at 1.2, the last release made for Godot 4.6, which is
-# what edge/testing carries; 1.2.1 on want 4.7. A Godot project imports its
-# assets into a cache inside itself on first run, and /usr/local is not
-# writable by the person running it, so the import is done here, at build
-# time, and the project is installed already imported.
-PIXELORAMA_VER=1.2
-pixelorama_bdeps() { echo; }
-pixelorama_rdeps() { echo godot@testing; }
-pixelorama_build() {
-    _s=$(gh_source Orama-Interactive/Pixelorama "v$PIXELORAMA_VER" \
-         45accd447b0561003bf484725326df48223bdab9e695a1a510f9ac5ff82afd06) || return 1
-    HOME="$W/home" XDG_DATA_HOME="$W/home/data" XDG_CONFIG_HOME="$W/home/config" \
-        godot --headless --path "$_s" --import
-    [ -d "$_s/.godot/imported" ] || { echo "the Godot import made no cache"; return 1; }
-    _d="$PREFIX/lib/copal-store/pixelorama"
-    mkdir -p "$DEST$_d" "$DEST$PREFIX/share/icons/hicolor/256x256/apps"
-    cp -r "$_s/." "$DEST$_d/"
-    rm -rf "$DEST$_d/.github" "$DEST$_d/Misc"
-    cp "$_s/assets/graphics/icons/icon.png" "$DEST$PREFIX/share/icons/hicolor/256x256/apps/pixelorama.png"
-    launcher pixelorama <<EOF
-exec godot --path "$_d" "\$@"
-EOF
-    desktop_entry pixelorama Pixelorama pixelorama pixelorama "Graphics;2DGraphics;RasterGraphics;" \
-        "Draw pixel art and animate sprites"
-}
-
-
-# Browsh: the web in a terminal, rendered by a real Firefox running headless
-# and drawn as text and half-block colour. The Go program embeds its Firefox
-# extension (go:embed browsh.xpi); the release publishes that extension and,
-# since 1.8.3, no Linux binary -- so the extension is fetched from the same
-# release and built in. It drives whichever Firefox is here; Copal's is ESR.
-BROWSH_VER=1.8.3
-browsh_bdeps() { echo go; }
-browsh_rdeps() { echo firefox-esr; }
-browsh_build() {
-    _s=$(gh_source browsh-org/browsh "v$BROWSH_VER" \
-         88462530dbfac4e17c8f8ba560802d21042d90236043e11461a1cfbf458380ca) || return 1
-    _x=$(gh_asset browsh-org/browsh "v$BROWSH_VER" "browsh-$BROWSH_VER.xpi" \
-         c0b72d7c61c30a0cb79cc1bf9dcf3cdaa3631ce029f1578e65c116243ed04e16) || return 1
-    cp "$_x" "$_s/interfacer/src/browsh/browsh.xpi"
-    mkdir -p "$DEST$PREFIX/lib/copal-store/browsh"
-    (cd "$_s/interfacer" && GOPATH="$W/go" GOCACHE="$W/gocache" GOFLAGS=-modcacherw CGO_ENABLED=0 \
-        go build -trimpath -ldflags "-s -w" -o "$DEST$PREFIX/lib/copal-store/browsh/browsh" ./cmd/browsh)
-    launcher browsh <<EOF
-_ff=\$(command -v firefox || command -v firefox-esr)
-exec "$PREFIX/lib/copal-store/browsh/browsh" --firefox.path "\$_ff" "\$@"
 EOF
 }
 
@@ -1460,9 +1252,256 @@ patch_libopenshot_musl() {
  void EffectBase::BlendWithMask(std::shared_ptr<QImage> original_image, std::shared_ptr<QImage> effected_image,
 PATCH
 }
+openshot_bdeps() { echo "build-base cmake samurai swig python3-dev qt6-qtbase-dev qt6-qtsvg-dev ffmpeg-dev zeromq-dev cppzmq jsoncpp-dev alsa-lib-dev babl-dev"; }
+openshot_rdeps() { echo "py3-qt6 py3-pyzmq py3-requests py3-defusedxml qt6-qtsvg ffmpeg-libavcodec ffmpeg-libavformat ffmpeg-libswscale ffmpeg-libswresample jsoncpp libzmq"; }
+openshot_needs() { echo ""; }
+openshot_source() { echo "github OpenShot/libopenshot-audio"; }
+
+# ---- playbooks/Games/opentyrian.sh
+# OpenTyrian: the 1995 shooter Tyrian 2000's engine, ported to C over SDL2.
+# The engine is compiled from the tagged source; the game's data -- freeware
+# since 2004 -- comes from the same release's Linux archive, which is the only
+# copy on GitHub (the README's other link is camanis.net). Only its data/
+# directory is used, and it is the same for every architecture, so the arm64
+# archive is fetched on all of them.
+OPENTYRIAN_VER=v2.1.20260913
+opentyrian_install() {
+    _s=$(gh_source opentyrian/opentyrian "$OPENTYRIAN_VER" \
+         dbcd96383d4fa571137242c36bd7eca054cf5a08a9bf2eec15ef230d6e60680d) || return 1
+    _a=$(gh_asset opentyrian/opentyrian "$OPENTYRIAN_VER" "opentyrian-$OPENTYRIAN_VER-linux-arm64.tar.gz" \
+         8608e68622edcabd30eb62fcbdfd8106982c13e29fb775ccccf56956dccd90fb) || return 1
+    # VCS_IDREV: the tarball is not a git checkout, so the version is given.
+    make -C "$_s" -j "$JOBS" prefix="$PREFIX" VCS_IDREV="echo $OPENTYRIAN_VER" \
+        && make -C "$_s" prefix="$PREFIX" VCS_IDREV="echo $OPENTYRIAN_VER" DESTDIR="$DEST" install \
+        || return 1
+    _g="$DEST$PREFIX/share/games/tyrian"
+    mkdir -p "$_g"
+    tar -xzf "$_a" -C "$W" opentyrian/data && cp "$W"/opentyrian/data/* "$_g/"
+}
+opentyrian_bdeps() { echo "build-base pkgconf sdl2-dev sdl2_net-dev"; }
+opentyrian_rdeps() { echo "sdl2 sdl2_net"; }
+opentyrian_needs() { echo ""; }
+opentyrian_source() { echo "github opentyrian/opentyrian"; }
+
+# ---- playbooks/Games/pacman.sh
+# Pac-Man, ebuc99's SDL2 clone, autotools with the configure script shipped.
+# Installed as pacman-game: /usr/local/bin/pacman would shadow Arch's package
+# manager, which Alpine also packages as 'pacman'.
+PACMAN_VER=0.9
+pacman_install() {
+    _s=$(gh_source ebuc99/pacman "v$PACMAN_VER" \
+         e0a8fd6d9919b16a539e06c7d3c12bc1bfd41f867366bf8dad72b49f37f8422b) || return 1
+    # The data directory is written into platform.cpp as /usr/local/share,
+    # beside the PACKAGE_DATA_DIR that Makefile.am already passes in.
+    sed -i 's|"/usr/local/share/pacman/"|PACKAGE_DATA_DIR "/"|' "$_s/src/platform.cpp"
+    (cd "$_s" && ./configure --prefix="$PREFIX" && make -j "$JOBS" && make DESTDIR="$DEST" install)
+    mv "$DEST$PREFIX/bin/pacman" "$DEST$PREFIX/bin/pacman-game"
+}
+pacman_bdeps() { echo "build-base sdl2-dev sdl2_image-dev sdl2_ttf-dev sdl2_mixer-dev"; }
+pacman_rdeps() { echo "sdl2 sdl2_image sdl2_ttf sdl2_mixer"; }
+pacman_needs() { echo ""; }
+pacman_source() { echo "github ebuc99/pacman"; }
+
+# ---- playbooks/Creative/pencil2d.sh
+# Pencil2D: frame-by-frame 2D animation, qmake over Qt 6. Its movie export
+# runs ffmpeg by name, so ffmpeg is a runtime dependency no ELF header shows.
+PENCIL2D_VER=0.7.2
+pencil2d_install() {
+    _s=$(gh_source pencil2d/pencil "v$PENCIL2D_VER" \
+         22af8bf304cd18ae5d7a84e66d80ea2a21a53963476ffabb60d1d5f37f091a0c) || return 1
+    mkdir -p "$W/build"
+    (cd "$W/build" && qmake6 "$_s/pencil2d.pro" PREFIX="$PREFIX" CONFIG+=release CONFIG+=NO_TESTS \
+         QMAKE_LFLAGS+="-Wl,-z,stack-size=8388608" \
+       && nice -n 10 make -j "$JOBS" && make INSTALL_ROOT="$DEST" install) || return 1
+}
+pencil2d_bdeps() { echo "build-base qt6-qtbase-dev qt6-qtsvg-dev qt6-qtmultimedia-dev qt6-qttools-dev"; }
+pencil2d_rdeps() { echo "ffmpeg"; }
+pencil2d_needs() { echo ""; }
+pencil2d_source() { echo "github pencil2d/pencil"; }
+
+# ---- playbooks/Transfer/persepolis.sh
+# Persepolis: meson, with its Python package steered into a private directory
+# by meson's own python.purelibdir option. It drives aria2 for the transfers
+# and yt-dlp for video pages.
+PERSEPOLIS_VER=5.2.0
+persepolis_install() {
+    _s=$(gh_source persepolisdm/persepolis "$PERSEPOLIS_VER" \
+         8d002e369955fd77e5353714185ce3edb98463b7117a26583b72f4db4e51b2c8) || return 1
+    _py="lib/copal-store/persepolis/python"
+    # Its install script checks for the dependencies by importing them, and
+    # fails the install when one is missing -- which on a staging build is
+    # the wrong moment to ask. apk has already been told what to install.
+    sed -i "/add_install_script('check_dependencies.py')/d" "$_s/meson.build"
+    meson setup "$W/build" "$_s" --prefix="$PREFIX" -Dpython.purelibdir="$_py" -Dpython.platlibdir="$_py"
+    meson compile -C "$W/build"
+    DESTDIR="$DEST" meson install -C "$W/build"
+    mv "$DEST$PREFIX/bin/persepolis" "$DEST$PREFIX/lib/copal-store/persepolis/persepolis"
+    launcher persepolis <<EOF
+export PYTHONPATH="$PREFIX/$_py\${PYTHONPATH:+:\$PYTHONPATH}"
+exec python3 "$PREFIX/lib/copal-store/persepolis/persepolis" "\$@"
+EOF
+}
+persepolis_bdeps() { echo "meson samurai"; }
+persepolis_rdeps() { echo "python3 py3-pyside6 py3-psutil py3-requests py3-setproctitle aria2 yt-dlp ffmpeg libnotify"; }
+persepolis_needs() { echo ""; }
+persepolis_source() { echo "github persepolisdm/persepolis"; }
+
+# ---- playbooks/Creative/pixelorama.sh
+# Pixelorama: a pixel-art editor written in Godot, run as a Godot project by
+# Alpine's Godot. Held at 1.2, the last release made for Godot 4.6, which is
+# what edge/testing carries; 1.2.1 on want 4.7. A Godot project imports its
+# assets into a cache inside itself on first run, and /usr/local is not
+# writable by the person running it, so the import is done here, at build
+# time, and the project is installed already imported.
+PIXELORAMA_VER=1.2
+pixelorama_install() {
+    _s=$(gh_source Orama-Interactive/Pixelorama "v$PIXELORAMA_VER" \
+         45accd447b0561003bf484725326df48223bdab9e695a1a510f9ac5ff82afd06) || return 1
+    HOME="$W/home" XDG_DATA_HOME="$W/home/data" XDG_CONFIG_HOME="$W/home/config" \
+        godot --headless --path "$_s" --import
+    [ -d "$_s/.godot/imported" ] || { echo "the Godot import made no cache"; return 1; }
+    _d="$PREFIX/lib/copal-store/pixelorama"
+    mkdir -p "$DEST$_d" "$DEST$PREFIX/share/icons/hicolor/256x256/apps"
+    cp -r "$_s/." "$DEST$_d/"
+    rm -rf "$DEST$_d/.github" "$DEST$_d/Misc"
+    cp "$_s/assets/graphics/icons/icon.png" "$DEST$PREFIX/share/icons/hicolor/256x256/apps/pixelorama.png"
+    launcher pixelorama <<EOF
+exec godot --path "$_d" "\$@"
+EOF
+    desktop_entry pixelorama Pixelorama pixelorama pixelorama "Graphics;2DGraphics;RasterGraphics;" \
+        "Draw pixel art and animate sprites"
+}
+pixelorama_bdeps() { echo ""; }
+pixelorama_rdeps() { echo "godot@testing"; }
+pixelorama_needs() { echo ""; }
+pixelorama_source() { echo "github Orama-Interactive/Pixelorama"; }
+
+# ---- playbooks/Games/pychess.sh
+# THE PYTHON PROGRAMS keep their modules in a directory of their own,
+# $PREFIX/lib/copal-store/NAME, and their launcher puts it on PYTHONPATH.
+# Not site-packages: Alpine's Python does not read /usr/local's, and a path
+# with python3.14 in it breaks the day Alpine moves to 3.15. Every library
+# they import comes from Alpine's py3-* packages -- nothing from PyPI.
+
+# PyChess runs from its source tree, the way its README runs it.
+PYCHESS_VER=1.2.0
+pychess_install() {
+    _s=$(gh_source pychess/pychess "$PYCHESS_VER" \
+         da989acb45ebe77fa013ab68a5e6d4202c8d831af68e3533c8b96a9b5e387548) || return 1
+    _d="$PREFIX/lib/copal-store/pychess"
+    mkdir -p "$DEST$_d" "$DEST$PREFIX/share/icons/hicolor/scalable/apps"
+    # The whole tree: it opens ARTISTS, AUTHORS and the rest by path at start.
+    cp -r "$_s/." "$DEST$_d/"
+    rm -rf "$DEST$_d/testing" "$DEST$_d/debian" "$DEST$_d/macos" "$DEST$_d/devsvg"
+    cp "$_s/pychess.svg" "$DEST$PREFIX/share/icons/hicolor/scalable/apps/"
+    launcher pychess <<EOF
+exec python3 "$_d/pychess" "\$@"
+EOF
+    desktop_entry pychess PyChess pychess pychess "Game;BoardGame;" "Play chess against the computer or online"
+}
+# Two dialogs on the first start, both spared: the tip of the day, and one
+# asking leave to download scoutfish and chess_db -- prebuilt glibc programs,
+# which would not run here if they were fetched.
+pychess_post() {
+    seed_homes .config/pychess/config <<'EOF'
+[General]
+show_tip_at_startup = False
+download_scoutfish = False
+download_chess_db = False
+dont_show_externals_at_startup = True
+EOF
+}
+pychess_bdeps() { echo ""; }
+pychess_rdeps() { echo "python3 py3-gobject3 py3-cairo py3-psutil py3-pexpect py3-sqlalchemy py3-websockets gtk+3.0 gtksourceview4 gstreamer gst-plugins-base gst-plugins-good librsvg stockfish@testing"; }
+pychess_needs() { echo ""; }
+pychess_source() { echo "github pychess/pychess"; }
+
+# ---- playbooks/System/smc.sh
+# System Monitoring Center: GTK4 and libadwaita, meson. It keeps its modules
+# in share/, not in a Python library directory, so needs no launcher.
+SMC_VER=3.4.1
+smc_install() {
+    _s=$(gh_source hakandundar34coding/system-monitoring-center "v$SMC_VER" \
+         abe601aaa8f6a3beea2874292931d8b0bf43ecb17a75f605feb8b4b08b4708e5) || return 1
+    # Its modules go to share/system-monitoring-center, and the script meson
+    # writes puts that directory on sys.path itself.
+    meson setup "$W/build" "$_s" --prefix="$PREFIX"
+    meson compile -C "$W/build"
+    DESTDIR="$DEST" meson install -C "$W/build"
+}
+smc_bdeps() { echo "meson samurai gettext"; }
+smc_rdeps() { echo "python3 python3-tkinter py3-gobject3 py3-cairo gtk4.0 libadwaita dmidecode util-linux-misc"; }
+smc_needs() { echo ""; }
+smc_source() { echo "github hakandundar34coding/system-monitoring-center"; }
+
+# ---- playbooks/Games/taisei.sh
+# Taisei: a Touhou fan game, a bullet-hell shooter in C over SDL3, meson. The
+# release archive is the one to build from: it carries the submodules that
+# GitHub's tag archive leaves out. Its fallbacks are .wrap files that meson
+# would download, so downloads are off and every library is Alpine's. Only
+# the OpenGL 3.3 renderer is built: the SDL_GPU and GLES ones need shaders
+# cross-compiled by glslang and SPIRV-Cross at build time, and GL 3.3 is what
+# the Pi's V3D and the VM's virgl both offer. The allocator is musl's own;
+# mimalloc would be a subproject. The game's assets are installed as files,
+# not packed into zips: the packer compresses with Python's zstd module,
+# which Alpine's Python 3.14 is built without. Its threads get glibc-sized
+# stacks, as Naev's do (see there).
+TAISEI_VER=1.4.6
+taisei_install() {
+    _t=$(gh_asset taisei-project/taisei "v$TAISEI_VER" "taisei-$TAISEI_VER.tar.xz" \
+         18d03c67dcc8c7faff22e8defdafc3a734b46c591618d1a678e6e914846889d9) || return 1
+    tar -xJf "$_t" -C "$W" || { warn "$_t did not unpack"; return 1; }
+    _s="$W/taisei-$TAISEI_VER"
+    LDFLAGS="${LDFLAGS:-} -Wl,-z,stack-size=8388608" \
+    meson setup "$W/build" "$_s" --prefix="$PREFIX" --buildtype=release --wrap-mode=nodownload \
+        -Dallocator=libc -Dpackage_data=disabled -Dr_default=gl33 -Dr_gles30=disabled -Dr_sdlgpu=disabled \
+        -Dshader_transpiler=disabled -Ddocs=disabled -Dtests=disabled -Dgamemode=disabled
+    meson compile -C "$W/build" -j "$JOBS"
+    DESTDIR="$DEST" meson install -C "$W/build"
+}
+taisei_bdeps() { echo "build-base meson samurai pkgconf sdl3-dev freetype-dev libwebp-dev zlib-dev zstd-dev cglm-dev libunibreak-dev opusfile-dev libpng-dev openssl-dev"; }
+taisei_rdeps() { echo ""; }
+taisei_needs() { echo ""; }
+taisei_source() { echo "github taisei-project/taisei"; }
+
+# ---- playbooks/Tools/veracrypt.sh
+# VeraCrypt: encrypted volumes and whole-disk encryption, TrueCrypt's heir.
+# Its own Makefile, wxWidgets for the window, FUSE 3 to present a mounted
+# volume. Its Linux 'install' stages into /usr, so the three files that
+# matter are placed here instead. Mounting needs root, which it asks for
+# through sudo -- on a Copal machine, doas-sudo-shim answers.
+VERACRYPT_VER=1.26.29
+veracrypt_install() {
+    _s=$(gh_source veracrypt/VeraCrypt "VeraCrypt_$VERACRYPT_VER" \
+         5141f046e90c8d7660d1eef7d492c4a0ee15283500f092ebb2b72d5260779229) || return 1
+    # The Makefile derives SOURCE_DATE_EPOCH from git, or else from the
+    # release date in Common/Tcdefs.h with an awk that busybox's awk cannot
+    # run; given explicitly, that date is 8 June 2026.
+    nice -n 10 make -C "$_s/src" -j "$JOBS" WITHFUSE3=1 SOURCE_DATE_EPOCH=1780876800
+    mkdir -p "$DEST$PREFIX/bin" "$DEST$PREFIX/share/applications" "$DEST$PREFIX/share/pixmaps"
+    cp "$_s/src/Main/veracrypt" "$DEST$PREFIX/bin/"
+    cp "$_s/src/Setup/Linux/veracrypt.desktop" "$DEST$PREFIX/share/applications/"
+    cp "$_s/src/Resources/Icons/VeraCrypt-256x256.xpm" "$DEST$PREFIX/share/pixmaps/veracrypt.xpm"
+}
+veracrypt_bdeps() { echo "build-base pkgconf wxwidgets-dev fuse3-dev pcsc-lite-dev"; }
+veracrypt_rdeps() { echo "fuse3 doas-sudo-shim"; }
+veracrypt_needs() { echo ""; }
+veracrypt_source() { echo "github veracrypt/VeraCrypt"; }
+
+RECIPES="alephone amiberry ardour astromenace bleachbit browsh ccleste darktable ddnet devilutionx dxx endlesssky ffconverter focuswriter funkin librecad naev ohmyposh openshot opentyrian pacman pencil2d persepolis pixelorama pychess smc taisei veracrypt"
+
+# The bundles: named lists of program ids (playbooks/bundles/NAME.list).
+store_bundle() {
+    case "$1" in
+        full-monty) echo "taisei naev endless-sky darktable focuswriter pencil2d ardour9 k3b czkawka_gui fdupes jdupes rdfind xsane skanlite" ;;
+        starter) echo "openshot-qt fastfetch btop keepassxc" ;;
+        *) return 1 ;;
+    esac
+}
+store_bundles() { echo "full-monty starter"; }
+# <<< playbooks: recipes
 
 # ------------------------------------------------------------ recipe driver ---
-RECIPES="openshot darktable focuswriter pencil2d ardour ccleste pacman opentyrian devilutionx endlesssky naev taisei astromenace amiberry alephone dxx pychess bleachbit persepolis ffconverter smc funkin librecad veracrypt ohmyposh ddnet pixelorama browsh"
 
 is_recipe() { case " $RECIPES " in *" $1 "*) return 0 ;; esac; return 1; }
 
@@ -1489,6 +1528,7 @@ build_recipe() {  # <recipe>
         [ -z "$_m" ] || note "not installed (expected to be provided some other way): $_m"
     else
         say "Build and run dependencies"
+        store_event "$_r" deps start
         case " $_b $_rt " in *@testing*) enable_testing_tag ;; esac
         # Runtime dependencies under a virtual package named for the recipe,
         # so 'remove' can hand them back to apk to drop if nothing else wants
@@ -1500,6 +1540,13 @@ build_recipe() {  # <recipe>
         # already in place under .copal-store-build-batch.
         [ -z "$_b" ] || [ "${COPAL_STORE_BATCH:-0}" = 1 ] \
             || apk add -t ".copal-store-build-$_r" $_b || { warn "could not install what $_r needs to build"; return 1; }
+        store_event "$_r" deps ok
+    fi
+
+    if type "${_r}_pre" >/dev/null 2>&1; then
+        store_event "$_r" pre start
+        "${_r}_pre" || { warn "$_r: its preconfiguration failed"; store_event "$_r" pre failed; return 1; }
+        store_event "$_r" pre ok
     fi
 
     # TMPDIR inside the work tree: a compiler's temporary files, an LTO link's
@@ -1507,6 +1554,7 @@ build_recipe() {  # <recipe>
     # the tree.
     rm -rf "$W"; mkdir -p "$DEST" "$W/tmp"
     _t0=$(date +%s)
+    store_event "$_r" install start "\"log\":\"$_log\""
     say "Compiling -- 'tail -f $_log' in another terminal to watch"
     # IN A NEW SHELL, not a subshell. A recipe relies on set -e to stop at
     # the first failed step, and a shell ignores set -e in everything to the
@@ -1521,6 +1569,7 @@ build_recipe() {  # <recipe>
         warn "$_r did not build. The last lines of $_log:"
         tail -n 20 "$_log" | sed 's/^/      /' >&2
         store_summary "$_r" failed "$(( $(date +%s) - _t0 ))"
+        store_event "$_r" install failed "\"secs\":$(( $(date +%s) - _t0 ))"
         # The tree goes, the record stays: the summary has the failure and
         # the compressed log has the whole of it. Keep it to look inside.
         if [ "${COPAL_STORE_KEEP_WORK:-0}" = 1 ]; then
@@ -1534,6 +1583,7 @@ build_recipe() {  # <recipe>
     fi
     _secs=$(( $(date +%s) - _t0 ))
     note "built in $_secs s"
+    store_event "$_r" install ok "\"secs\":$_secs"
 
     # WHAT IT LINKS AGAINST, asked of the binaries rather than written down.
     # Every NEEDED library of every ELF file staged, less the ones the recipe
@@ -1592,12 +1642,65 @@ build_recipe() {  # <recipe>
     cp "$_new" "$_old"
     (cd "$DEST" && find . -mindepth 1 -type d | sed 's|^\.||' | sort -r) > "$STATE/$_r.dirs"
 
-    if type "${_r}_seed" >/dev/null 2>&1; then "${_r}_seed"; fi
+    if type "${_r}_post" >/dev/null 2>&1; then
+        store_event "$_r" post start
+        if "${_r}_post"; then store_event "$_r" post ok; else store_event "$_r" post failed; fi
+    fi
     have update-desktop-database && update-desktop-database -q "$PREFIX/share/applications" 2>/dev/null
     store_summary "$_r" ok "$_secs"
     rm -rf "$W"
     drop_build_deps "$_r"
     note "installed: $(wc -l < "$_old") files under $PREFIX -- 'copal-store summary' for the record"
+}
+
+# ONE PROGRAM, IN FULL: what Copal Apps shows beside the list -- what it is,
+# where it comes from, what it needs, the steps its playbook takes, whether
+# it is installed, and what its last build recorded.
+playbook_show() {  # <id>
+    _row=$(row_for "$1"); [ -n "$_row" ] || die "nothing called '$1'"
+    IFS='|' read -r _id _sec _label _inst _bin _mode _desc _home _orig <<EOF
+$_row
+EOF
+    if [ "$_bin" != "-" ] && have "$_bin"; then _st=installed
+    elif [ "$_bin" = "-" ] && apk info -e "${_inst%%@*}" >/dev/null 2>&1; then _st=installed
+    else _st=available; fi
+    printf '%s  [%s]\n' "$_label" "$_st"
+    printf '  %-10s %s\n' id "$_id" shelf "$_sec"
+    [ -z "$_desc" ] || printf '  %-10s %s\n' about "$_desc"
+    [ -z "$_home" ] || printf '  %-10s %s\n' home "$_home"
+    _steps=""
+    for _p in $_inst; do
+        case "$_p" in
+            *@source)
+                _r=${_p%@source}
+                printf '  %-10s %s\n' playbook "$_r" source "$("${_r}_source")"
+                printf '  %-10s %s\n' build "$("${_r}_bdeps")" runs "$("${_r}_rdeps")"
+                [ -z "$("${_r}_needs")" ] || printf '  %-10s %s\n' needs "$("${_r}_needs")"
+                _steps="deps"
+                for _f in pre install post; do type "${_r}_$_f" >/dev/null 2>&1 && _steps="$_steps, $_f"; done
+                ;;
+            *@flathub) _steps="${_steps:+$_steps, }flatpak install ${_p%@flathub}" ;;
+            *)  _steps="${_steps:+$_steps, }apk add $_p" ;;
+        esac
+    done
+    printf '  %-10s %s\n' steps "$_steps" origin "$_orig"
+    for _p in $_inst; do
+        case "$_p" in *@source) ;; *) continue ;; esac
+        _last=$(awk -v r="${_p%@source}" '$1 == "==" { on = ($2 == r) } on' "$LOGDIR/summary.txt" 2>/dev/null \
+                | awk '/^== /{b=""} {b = b $0 "\n"} END {printf "%s", b}')
+        [ -z "$_last" ] || { printf '  last build\n'; printf '%s' "$_last" | sed 's/^/    /'; }
+    done
+}
+
+# ONE EVENT: <playbook or id> <step> <state> [extra JSON members]. Steps are
+# run, program, deps, pre, install, post; states start, ok, failed. Never
+# fatal: a progress view that cannot be written to is not a failed install.
+store_event() {
+    mkdir -p "${EVENTS%/*}" 2>/dev/null
+    # "program" is the id being installed -- a playbook with several
+    # programs, or one named apart from its command, is still one thread.
+    printf '{"t":%s,"playbook":"%s","program":"%s","step":"%s","state":"%s"%s}\n' \
+        "$(date +%s)" "$1" "${COPAL_PROGRAM:-$1}" "$2" "$3" "${4:+,$4}" >> "$EVENTS" 2>/dev/null || true
 }
 
 # THE INSTALL SUMMARY. One entry per build in $LOGDIR/summary.txt: the
@@ -1676,10 +1779,15 @@ install_ids() {
             warn "the combined set did not install -- each program installs its own instead"
         fi
     fi
+    _of=$#; _n=0
+    store_event run run start "\"of\":$_of,\"ids\":\"$*\""
     for _id in "$@"; do
+        _n=$((_n + 1))
         _row=$(row_for "$_id"); [ -n "$_row" ] || { warn "nothing called '$_id'"; _rc=1; continue; }
         _inst=$(printf '%s' "$_row" | cut -d'|' -f4)
         _label=$(printf '%s' "$_row" | cut -d'|' -f3)
+        _prc=$_rc; _rc=0; COPAL_PROGRAM=$_id
+        store_event "$_id" program start "\"n\":$_n,\"of\":$_of,\"label\":\"$(printf '%s' "$_label" | tr -d '"')\""
         say "Installing $_label"
         _apks=""; _flat=""
         for _p in $_inst; do
@@ -1694,7 +1802,12 @@ install_ids() {
         # Flathub rows belong to the catalogue, and copal-install knows them.
         # shellcheck disable=SC2086
         [ -z "$_flat" ] || { have copal-install && copal-install $_flat; } || _rc=1
+        if [ "$_rc" = 0 ]; then store_event "$_id" program ok "\"n\":$_n,\"of\":$_of"
+        else store_event "$_id" program failed "\"n\":$_n,\"of\":$_of"; fi
+        [ "$_prc" = 0 ] || _rc=$_prc
     done
+    COPAL_PROGRAM=""
+    store_event run run "$([ "$_rc" = 0 ] && echo ok || echo failed)" "\"of\":$_of"
     if [ "$_batch" = 1 ]; then
         unset COPAL_STORE_BATCH
         [ "${COPAL_STORE_KEEP_BUILD_DEPS:-0}" = 1 ] || apk del -q .copal-store-build-batch >/dev/null 2>&1 || true
@@ -1884,7 +1997,7 @@ self_test() {
     _r_ok=1
     for _r in $_used; do
         is_recipe "$_r" || { echo "  row asks for recipe '$_r', which is not in RECIPES"; _r_ok=0; continue; }
-        for _f in bdeps rdeps build; do
+        for _f in bdeps rdeps install; do
             type "${_r}_$_f" >/dev/null 2>&1 || { echo "  recipe $_r has no ${_r}_$_f"; _r_ok=0; }
         done
     done
@@ -1912,6 +2025,9 @@ case "${1:-}" in
     sections) sections | awk -F'|' '{ printf "%-13s %3d programs, %d installed\n", $1, $2, $3 }' ;;
     info)     [ $# -ge 2 ] || die "info needs an id"; info_id "$2" ;;
     install)  shift; [ $# -gt 0 ] || die "install what?"; need_root install "$@"; install_ids "$@" ;;
+    playbook) [ $# -ge 2 ] || die "playbook of what?"; playbook_show "$2" ;;
+    events)   tail -n "${2:-20}" "$EVENTS" 2>/dev/null || note "no events yet ($EVENTS)" ;;
+    bundle)   [ $# -ge 2 ] || { store_bundles; exit 0; }; store_bundle "$2" || die "no bundle called '$2' -- one of: $(store_bundles)" ;;
     summary)  if [ -s "$LOGDIR/summary.txt" ]; then cat "$LOGDIR/summary.txt"; else note "no builds recorded yet"; fi ;;
     log)      [ -n "${2:-}" ] || die "log of what?"
               if [ -f "$LOGDIR/$2.log.gz" ]; then zcat "$LOGDIR/$2.log.gz"
@@ -1920,7 +2036,7 @@ case "${1:-}" in
     remove)   shift; [ $# -gt 0 ] || die "remove what?"; need_root remove "$@"; remove_ids "$@" ;;
     recipes)  for _r in $RECIPES; do printf '%s\n' "$_r"; done ;;
     self-test) self_test ;;
-    __build)  set -e; cd "$W"; "${2}_build" ;;   # build_recipe's worker, in its own shell
+    __build)  set -e; cd "$W"; "${2}_install" ;;   # build_recipe's worker, in its own shell
     deps)     [ $# -ge 2 ] && is_recipe "$2" || die "deps needs a recipe"
               printf 'build: %s\nrun: %s\n' "$("$2_bdeps")" "$("$2_rdeps")" ;;
     tui)      tui ;;
