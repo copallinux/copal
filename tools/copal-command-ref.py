@@ -867,6 +867,12 @@ def help_text(path):
     t = run([path, "--help"], **kw)
     if "--help-extra" in t:
         t += run([path, "--help-extra"], **kw)
+    # GHC lists its flags only under --show-options, and says so in --help.
+    if "--show-options" in t:
+        t += run([path, "--show-options"], **kw)
+    # Nim keeps most of its options for --fullhelp.
+    if "--fullhelp" in t:
+        t += run([path, "--fullhelp"], **kw)
     return ANSI.sub("", t)
 
 

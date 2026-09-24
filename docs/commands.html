@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 290 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 155 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 179 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.</p>
 </header>
 <div class="finder">
@@ -1634,69 +1634,110 @@ cargo [options] --explain code</pre>
 <h4>Notes</h4><ul><li><a href="#c-clangd"><code>clangd</code></a> needs to know the flags: a <code>compile_commands.json</code> at the project root. <code>bear -- make</code> records one from a Makefile build, and cmake writes one with <code>-DCMAKE_EXPORT_COMPILE_COMMANDS=ON</code>.</li><li>Sanitizers: as with gcc, the ASan and UBSan runtimes are missing; <code>-fsanitize=undefined -fsanitize-trap=undefined</code> needs none, and stops the program at the first undefined behaviour.</li><li>Clang links with the system's gcc toolchain and musl, so its programs and gcc's mix freely.</li></ul>
 <p class="see">See also <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-make"><code>make</code></a>, <a href="#c-cmake"><code>cmake</code></a>, <a href="#c-nvim"><code>nvim</code></a>, <a href="#c-gdb"><code>gdb</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-clangd" data-s="clangd extra tools built using clang's tooling apis languages clang22-extra-tools">
-<h3><a class="self" href="#c-clangd"><code>clangd</code></a> <span class="purpose">Extra tools built using Clang's tooling APIs</span></h3>
+<article class="cmd" id="c-clangd" data-s="clangd the c and c++ language server: completion, go-to-definition, errors as you type. languages clang22-extra-tools">
+<h3><a class="self" href="#c-clangd"><code>clangd</code></a> <span class="purpose">The C and C++ language server: completion, go-to-definition, errors as you type.</span></h3>
 <p class="facts">Languages · command-line tool · <b>clang22-extra-tools</b> 22.1.3 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://llvm.org/">home</a></p>
 <p class="deps">needs clang22, llvm22-libs, clang22-libs</p>
+<p class="why"><b>On Copal:</b> Stage 7 installs it with clang-format (clang22-extra-tools), and Neovim, Helix and Geany talk to it: it is what makes gd, gr and K work in C and C++.</p>
 <pre class="syn">USAGE: clangd [options]
 OPTIONS:</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>You rarely run it yourself: the editor starts it. What it needs from you is the project's build flags, in a <code>compile_commands.json</code> at the root of the project; without one it guesses, and gets includes wrong.</p>
+<h4>Examples</h4><div class="ex"><code>bear -- make</code><span>record compile_commands.json from a make build</span></div><div class="ex"><code>cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON</code><span>or have cmake write it</span></div><div class="ex"><code>ln -s build/compile_commands.json .</code><span>where clangd looks for it</span></div><div class="ex"><code>clangd --check=src/main.c</code><span>try it on one file, from the shell</span></div><div class="ex"><code>clang-format -i src/*.c</code><span>its companion: reformat in place</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--check=FILE</code></dt><dd>parse FILE and report what clangd sees</dd><dt><code>--compile-commands-dir=DIR</code></dt><dd>where compile_commands.json is</dd><dt><code>--background-index</code></dt><dd>index the whole project in the background</dd><dt><code>--log=verbose</code></dt><dd>more detail in the editor's log</dd></dl>
+<h4>Notes</h4><ul><li>A <code>.clangd</code> file in the project sets flags without a build system: <code>CompileFlags: { Add: [-std=c17, -Iinclude] }</code>.</li><li>In Neovim, <code>:Lsp</code> says whether it is running for the current file.</li></ul>
+<p class="see">See also <a href="#c-clang"><code>clang</code></a>, <a href="#c-nvim"><code>nvim</code></a>, <a href="#c-hx"><code>hx</code></a>, <a href="#c-bear"><code>bear</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-composer" data-s="composer dependency manager for php languages composer">
-<h3><a class="self" href="#c-composer"><code>composer</code></a> <span class="purpose">Dependency manager for PHP</span></h3>
+<article class="cmd" id="c-composer" data-s="composer php's dependency manager: fetch the libraries a project needs, and autoload them. languages composer">
+<h3><a class="self" href="#c-composer"><code>composer</code></a> <span class="purpose">PHP's dependency manager: fetch the libraries a project needs, and autoload them.</span></h3>
 <p class="facts">Languages · command-line tool · <b>composer</b> 2.10.2 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://getcomposer.org/">home</a></p>
 <p class="deps">needs php85, php85-phar, php85-curl, php85-iconv, php85-mbstring, php85-openssl, php85-zip, p7zip</p>
+<p class="why"><b>On Copal:</b> Part of the catalogue's PHP 8.3 row, with Xdebug: for writing PHP programs and trying frameworks on the Pi. The row installs PHP for development, not as a public server.</p>
 <pre class="syn">Usage:
   list [options] [--] [&lt;namespace&gt;]
 Arguments:</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>In a project, <code>composer require</code> adds a library and installs it into <code>vendor/</code>; <code>composer install</code> installs exactly what <code>composer.lock</code> records. Your code includes <code>vendor/autoload.php</code> once.</p>
+<h4>Examples</h4><div class="ex"><code>composer init</code><span>a composer.json for this folder</span></div><div class="ex"><code>composer require monolog/monolog</code><span>add a library</span></div><div class="ex"><code>composer install</code><span>install what composer.lock says</span></div><div class="ex"><code>composer update</code><span>move to newer allowed versions</span></div><div class="ex"><code>composer create-project laravel/laravel app</code><span>a new project from a package</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>init</code></dt><dd>create composer.json</dd><dt><code>require PKG</code></dt><dd>add and install a package</dd><dt><code>install</code></dt><dd>install from composer.lock</dd><dt><code>update</code></dt><dd>update within composer.json's limits</dd><dt><code>dump-autoload</code></dt><dd>regenerate the autoloader</dd><dt><code>create-project P</code></dt><dd>start a project from package P</dd></dl>
+<h4>Notes</h4><ul><li>Commit <code>composer.lock</code>: it is what makes <code>install</code> give everyone the same versions.</li><li>PHP modules a library needs (<code>php83-mbstring</code>, <code>php83-pdo</code>...) are apk packages; <code>composer check-platform-reqs</code> names the missing ones.</li></ul>
+<p class="see">See also <code>php83</code></p>
 </article>
-<article class="cmd facts-only" id="c-crystal" data-s="crystal compiler for the crystal language languages crystal">
-<h3><a class="self" href="#c-crystal"><code>crystal</code></a> <span class="purpose">compiler for the Crystal language</span></h3>
+<article class="cmd" id="c-crystal" data-s="crystal crystal: ruby-like syntax, static types inferred, compiled to fast native code. languages crystal">
+<h3><a class="self" href="#c-crystal"><code>crystal</code></a> <span class="purpose">Crystal: Ruby-like syntax, static types inferred, compiled to fast native code.</span></h3>
 <p class="facts">Languages · command-line tool · <b>crystal</b> 1.20.3 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/crystal.html">man crystal(1)</a> · <a href="https://crystal-lang.org/">home</a></p>
 <p class="deps">needs gc-dev, gcc, gmp-dev, libatomic_ops, musl-dev, pcre2-dev, llvm22-libs, libffi</p>
+<p class="why"><b>On Copal:</b> The catalogue's Crystal, on the 64-bit boards: for people who like writing Ruby and want a compiled, typed program at the end.</p>
 <pre class="syn">crystal command [switches] programfile — [arguments]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>crystal run</code> compiles and runs a file; <code>crystal build --release</code> makes an optimised program. <code>crystal init app NAME</code> starts a project with its <code>shard.yml</code>.</p>
+<h4>Examples</h4><div class="ex"><code>crystal run hello.cr</code><span>compile and run</span></div><div class="ex"><code>crystal hello.cr</code><span>the same: run is the default</span></div><div class="ex"><code>crystal build --release hello.cr</code><span>an optimised program, ./hello</span></div><div class="ex"><code>crystal eval 'puts 6 * 7'</code><span>one line</span></div><div class="ex"><code>crystal init app myapp</code><span>a new project</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>run FILE</code></dt><dd>build and run (the default)</dd><dt><code>build FILE</code></dt><dd>build an executable; --release to optimise</dd><dt><code>eval CODE</code></dt><dd>evaluate CODE</dd><dt><code>init app NAME</code></dt><dd>start a project</dd><dt><code>spec</code></dt><dd>run the tests in spec/</dd></dl>
+<h4>Notes</h4><ul><li>shards, its dependency manager, is not installed here.</li><li>A release build of anything sizeable is slow and memory-hungry on a Pi; develop without <code>--release</code>, release at the end.</li><li>64-bit only: its catalogue row is gated to aarch64 and x86_64.</li></ul>
+<p class="see">See also <a href="#c-ruby"><code>ruby</code></a>, <a href="#c-nim"><code>nim</code></a>, <a href="#c-go"><code>go</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-csi" data-s="csi the chicken scheme interpreter languages chicken">
-<h3><a class="self" href="#c-csi"><code>csi</code></a> <span class="purpose">The CHICKEN Scheme interpreter</span></h3>
+<article class="cmd" id="c-csi" data-s="csi chicken scheme's interpreter -- and csc, which compiles scheme to c and to programs. languages chicken">
+<h3><a class="self" href="#c-csi"><code>csi</code></a> <span class="purpose">CHICKEN Scheme's interpreter -- and csc, which compiles Scheme to C and to programs.</span></h3>
 <p class="facts">Languages · terminal program · <b>chicken</b> 5.4.0 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/csi.html">man csi(1)</a> · <a href="https://call-cc.org/">home</a></p>
 <p class="deps">needs gcc, libc-dev, chicken-dev, chicken-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's compiling Scheme: try code in csi, then turn it into a small native program with csc, through C.</p>
 <pre class="syn">csi [OPTION ...] [FILENAME ...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><a href="#c-csi"><code>csi</code></a> is the interactive interpreter and runs scripts; <code>csc</code> compiles a file to an executable. Libraries ("eggs") install with chicken-install.</p>
+<h4>Examples</h4><div class="ex"><code>csi</code><span>the REPL; ,q to leave</span></div><div class="ex"><code>csi -s script.scm</code><span>run a file as a script</span></div><div class="ex"><code>csi -e '(print (* 6 7))'</code><span>one expression</span></div><div class="ex"><code>csc hello.scm</code><span>compile to ./hello</span></div><div class="ex"><code>chicken-install -s srfi-1</code><span>an egg, system-wide (as root)</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-s FILE</code></dt><dd>run FILE as a script, then exit</dd><dt><code>-e EXPR</code></dt><dd>evaluate EXPR and exit</dd><dt><code>-q</code></dt><dd>no banner</dd><dt><code>-n</code></dt><dd>do not load ~/.csirc</dd></dl>
+<h4>Notes</h4><ul><li>The command names are CHICKEN's own: <a href="#c-csi"><code>csi</code></a> interprets, <code>csc</code> compiles; there is no <code>chicken</code> command to run.</li><li><code>csc</code> needs a C compiler; stage 7's gcc is it.</li></ul>
+<p class="see">See also <a href="#c-guile"><code>guile</code></a>, <a href="#c-racket"><code>racket</code></a>, <a href="#c-gcc"><code>gcc</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-dlv" data-s="dlv debugger for the go programming language languages delve">
-<h3><a class="self" href="#c-dlv"><code>dlv</code></a> <span class="purpose">Debugger for the Go programming language</span></h3>
+<article class="cmd" id="c-dlv" data-s="dlv delve: the debugger for go -- breakpoints, stepping, goroutines. languages delve">
+<h3><a class="self" href="#c-dlv"><code>dlv</code></a> <span class="purpose">Delve: the debugger for Go -- breakpoints, stepping, goroutines.</span></h3>
 <p class="facts">Languages · command-line tool · <b>delve</b> 1.26.2 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://github.com/go-delve/delve">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's Go debugger. gdb can step through Go but does not understand goroutines, interfaces or Go's types; Delve does.</p>
 <pre class="syn">Usage:
   dlv [command]
 Available Commands:</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>dlv debug</code> builds the package in the current folder with debugging on and stops before <code>main</code>. Set breakpoints, continue, and look around at the <code>(dlv)</code> prompt.</p>
+<h4>Examples</h4><div class="ex"><code>dlv debug</code><span>build and debug the package here</span></div><div class="ex"><code>dlv debug -- -v input.txt</code><span>with arguments for the program</span></div><div class="ex"><code>dlv test</code><span>debug the package's tests</span></div><div class="ex"><code>dlv exec ./server</code><span>a binary built already</span></div><div class="ex"><code>doas dlv attach $(pidof server)</code><span>a running process</span></div><div class="ex"><code>break main.main     (at the prompt) a breakpoint; b file.go:42 for a line</code></div><div class="ex"><code>continue            run to it (c)</code></div><div class="ex"><code>next / step         over / into</code></div><div class="ex"><code>print x             a value (p)</code></div><div class="ex"><code>goroutines          every goroutine;  exit  leave</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>debug [PKG]</code></dt><dd>build and debug</dd><dt><code>test [PKG]</code></dt><dd>debug the tests</dd><dt><code>exec BINARY</code></dt><dd>debug a built binary</dd><dt><code>attach PID</code></dt><dd>attach to a running process</dd><dt><code>core BIN CORE</code></dt><dd>examine a core dump</dd></dl>
+<h4>Notes</h4><ul><li>64-bit only: its catalogue row is gated to aarch64 and x86_64.</li><li>Build with optimisations off to follow the source line by line: <code>dlv debug</code> does this for you; for <code>exec</code>, build with <code>go build -gcflags=all="-N -l"</code>.</li></ul>
+<p class="see">See also <a href="#c-go"><code>go</code></a>, <a href="#c-gdb"><code>gdb</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-dotnet" data-s="dotnet a generic driver for the .net core command line interface languages dotnet-host">
-<h3><a class="self" href="#c-dotnet"><code>dotnet</code></a> <span class="purpose">A generic driver for the .NET Core Command Line Interface</span></h3>
+<article class="cmd" id="c-dotnet" data-s="dotnet the .net 9 sdk: create, build and run c#, f# and vb programs. languages dotnet-host">
+<h3><a class="self" href="#c-dotnet"><code>dotnet</code></a> <span class="purpose">The .NET 9 SDK: create, build and run C#, F# and VB programs.</span></h3>
 <p class="facts">Languages · command-line tool · <b>dotnet-host</b> 10.0.12 · stage 12 · The application catalogue · <a href="https://dotnet.microsoft.com">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's .NET, wherever Microsoft builds it -- not on ARMv6 or 32-bit x86. C# console programs and web services run on a Pi.</p>
 <pre class="syn">Usage: dotnet [runtime-options] [path-to-application] [arguments]
 Execute a .NET application.</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>dotnet new</code> makes a project from a template, <code>dotnet run</code> builds and runs it, <code>dotnet publish</code> makes a folder to copy to another machine.</p>
+<h4>Examples</h4><div class="ex"><code>dotnet new console -o hello &amp;&amp; cd hello</code><span>a new C# console program</span></div><div class="ex"><code>dotnet run</code><span>build and run it</span></div><div class="ex"><code>dotnet add package Newtonsoft.Json</code><span>a NuGet package</span></div><div class="ex"><code>dotnet publish -c Release -o out</code><span>a release build into out/</span></div><div class="ex"><code>dotnet new list</code><span>the templates there are</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>new TEMPLATE</code></dt><dd>create a project (console, classlib, web, ...)</dd><dt><code>run</code></dt><dd>build and run the project here</dd><dt><code>build</code></dt><dd>build it</dd><dt><code>add package P</code></dt><dd>add a NuGet package</dd><dt><code>publish</code></dt><dd>produce a deployable folder</dd><dt><code>test</code></dt><dd>run its tests</dd></dl>
+<h4>Notes</h4><ul><li>It sends usage statistics to Microsoft unless <code>DOTNET_CLI_TELEMETRY_OPTOUT=1</code> is set; put the export in <code>~/.profile.local</code> to keep it.</li><li>The first <code>dotnet new</code> or <code>run</code> is slow while it sets up; later ones are quicker.</li></ul>
+<p class="see">See also <a href="#c-pwsh"><code>pwsh</code></a>, <a href="#c-java"><code>java</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-elixir" data-s="elixir the elixir script runner languages elixir">
-<h3><a class="self" href="#c-elixir"><code>elixir</code></a> <span class="purpose">The Elixir script runner</span></h3>
+<article class="cmd" id="c-elixir" data-s="elixir elixir: a friendly functional language on the erlang vm, built for concurrency. languages elixir">
+<h3><a class="self" href="#c-elixir"><code>elixir</code></a> <span class="purpose">Elixir: a friendly functional language on the Erlang VM, built for concurrency.</span></h3>
 <p class="facts">Languages · terminal program · <b>elixir</b> 1.19.6 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/elixir.html">man elixir(1)</a> · <a href="https://elixir-lang.org/">home</a></p>
 <p class="deps">needs erlang, erlang-dev</p>
+<p class="why"><b>On Copal:</b> The catalogue's Elixir, with iex for trying things and mix for projects: millions of lightweight processes, on a Pi.</p>
 <pre class="syn">elixir [OPTIONS] file ...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>iex</code> is the interactive shell. <a href="#c-elixir"><code>elixir</code></a> runs a script (<code>.exs</code>). <code>mix</code> creates, builds, tests and runs projects.</p>
+<h4>Examples</h4><div class="ex"><code>iex</code><span>the interactive shell; Ctrl-C twice to leave</span></div><div class="ex"><code>elixir script.exs</code><span>run a script</span></div><div class="ex"><code>elixir -e 'IO.puts 6 * 7'</code><span>one expression</span></div><div class="ex"><code>mix new hello &amp;&amp; cd hello</code><span>a new project</span></div><div class="ex"><code>mix test</code><span>its tests;  mix run to run it</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-e CODE</code></dt><dd>evaluate CODE</dd><dt><code>-r FILE</code></dt><dd>require FILE first</dd><dt><code>--no-halt</code></dt><dd>keep the VM running after the script</dd><dt><code>-v, --version</code></dt><dd>the Elixir and Erlang versions</dd></dl>
+<h4>Notes</h4><ul><li><code>mix deps.get</code> fetches dependencies from hex.pm; the first time it asks to install Hex itself -- answer yes.</li><li>It is Erlang underneath: <code>erl</code> is also here, and Erlang libraries work from Elixir.</li></ul>
+<p class="see">See also <a href="#c-ruby"><code>ruby</code></a>, <code>erlang</code></p>
 </article>
-<article class="cmd facts-only" id="c-fpc" data-s="fpc free pascal compiler (fpc) binary languages fpc">
-<h3><a class="self" href="#c-fpc"><code>fpc</code></a> <span class="purpose">Free Pascal Compiler (FPC) binary</span></h3>
+<article class="cmd" id="c-fpc" data-s="fpc free pascal: a compiler for pascal and object pascal, turbo pascal and delphi dialects included. languages fpc">
+<h3><a class="self" href="#c-fpc"><code>fpc</code></a> <span class="purpose">Free Pascal: a compiler for Pascal and Object Pascal, Turbo Pascal and Delphi dialects included.</span></h3>
 <p class="facts">Languages · command-line tool · <b>fpc</b> 3.2.2 · stage 12 · The application catalogue · <a href="man/fpc.html">man fpc(1)</a> · <a href="http://freepascal.org">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's Pascal: old Turbo Pascal programs and new Object Pascal ones compile here, quickly, into small native programs.</p>
 <pre class="syn">fpc [options] [sourcefile]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Give it a <code>.pas</code> file; it writes a program named after it. A mode switch chooses the dialect when compiling older code.</p>
+<h4>Examples</h4><div class="ex"><code>fpc hello.pas</code><span>compile; run with ./hello</span></div><div class="ex"><code>fpc -O2 prog.pas</code><span>optimised</span></div><div class="ex"><code>fpc -Mtp old.pas</code><span>in Turbo Pascal mode</span></div><div class="ex"><code>fpc -Mdelphi unit.pas</code><span>in Delphi mode</span></div><div class="ex"><code>fpc -g prog.pas</code><span>with debug information</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-o&lt;NAME&gt;</code></dt><dd>the output name (no space: -ohello)</dd><dt><code>-O1 / -O2</code></dt><dd>optimisation levels</dd><dt><code>-g</code></dt><dd>debug information</dd><dt><code>-M&lt;MODE&gt;</code></dt><dd>dialect: fpc, objfpc, tp, delphi</dd><dt><code>-Fu&lt;DIR&gt;</code></dt><dd>where to find units</dd><dt><code>-h</code></dt><dd>every option</dd></dl>
+<h4>Notes</h4><ul><li>Options take their value with no space: <code>-ohello</code>, <code>-Fu./units</code>.</li><li>It comes from Alpine's testing repository (<code>fpc@testing</code>).</li></ul>
+<p class="see">See also <a href="#c-gcc"><code>gcc</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-gfortran" data-s="gfortran gnu fortran compiler languages gfortran">
-<h3><a class="self" href="#c-gfortran"><code>gfortran</code></a> <span class="purpose">GNU Fortran compiler</span></h3>
+<article class="cmd" id="c-gfortran" data-s="gfortran the gnu fortran compiler: fortran 77 through fortran 2018. languages gfortran">
+<h3><a class="self" href="#c-gfortran"><code>gfortran</code></a> <span class="purpose">The GNU Fortran compiler: FORTRAN 77 through Fortran 2018.</span></h3>
 <p class="facts">Languages · command-line tool · <b>gfortran</b> 15.2.0 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/gfortran.html">man gfortran(1)</a> · <a href="https://gcc.gnu.org">home</a></p>
 <p class="deps">needs gcc, libgfortran, gmp, isl25, mpc1, mpfr4, zlib</p>
+<p class="why"><b>On Copal:</b> Stage 7's Fortran, for numerical code old and new -- and the compiler R and SciPy-style builds need for their Fortran parts.</p>
 <pre class="syn">gfortran [-c|-S|-E]
          [-g] [-pg] [-Olevel]
          [-Wwarn...] [-pedantic]
@@ -1707,15 +1748,24 @@ Execute a .NET application.</pre>
          [-o outfile] infile...
 
 Only the most useful options are listed here; see below for the remainder.</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Compile <code>.f90</code> (free form) or <code>.f</code> (fixed form, FORTRAN 77) files as gcc compiles C. The standard is chosen with <code>-std</code>.</p>
+<h4>Examples</h4><div class="ex"><code>gfortran -Wall -g hello.f90 -o hello</code><span>compile, warnings on</span></div><div class="ex"><code>gfortran -O2 -std=f2018 model.f90 -o model</code><span>optimised, Fortran 2018</span></div><div class="ex"><code>gfortran -std=legacy old.f -o old</code><span>a FORTRAN 77 program</span></div><div class="ex"><code>gfortran -c util.f90 &amp;&amp; gfortran main.f90 util.o -o prog</code><span>modules, then link</span></div><div class="ex"><code>gfortran -fcheck=all -g prog.f90</code><span>run-time bounds checking</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-o FILE</code></dt><dd>the output</dd><dt><code>-g</code></dt><dd>debug information</dd><dt><code>-Wall</code></dt><dd>warnings</dd><dt><code>-std=STD</code></dt><dd>legacy, f95, f2003, f2008, f2018</dd><dt><code>-fcheck=all</code></dt><dd>check array bounds and more at run time</dd><dt><code>-ffree-form / -ffixed-form</code></dt><dd>override what the extension says</dd></dl>
+<h4>Notes</h4><ul><li>A module's <code>.mod</code> file is written where it is compiled: compile the modules before the programs that <code>use</code> them.</li><li>Optimisation levels (<code>-O2</code>, <code>-O3</code>) are gcc's, shared by every language it compiles: <code>man gcc</code> documents them.</li><li><code>-fcheck=all</code> finds the out-of-bounds errors that are silent otherwise; keep it for debugging, it slows the program.</li></ul>
+<p class="see">See also <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-gdb"><code>gdb</code></a>, <a href="#c-make"><code>make</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ghc" data-s="ghc the glasgow haskell compiler languages ghc">
-<h3><a class="self" href="#c-ghc"><code>ghc</code></a> <span class="purpose">The Glasgow Haskell Compiler</span></h3>
+<article class="cmd" id="c-ghc" data-s="ghc the glasgow haskell compiler, with ghci for trying things and cabal for projects. languages ghc">
+<h3><a class="self" href="#c-ghc"><code>ghc</code></a> <span class="purpose">The Glasgow Haskell Compiler, with ghci for trying things and cabal for projects.</span></h3>
 <p class="facts">Languages · command-line tool · <b>ghc</b> 9.10.3 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://haskell.org/ghc">home</a></p>
 <p class="deps">needs gmp-dev, libffi-dev, perl, gcc, llvm15, clang16, libffi, gmp</p>
+<p class="why"><b>On Copal:</b> The catalogue's Haskell, on the 64-bit Pis and PCs. GHC is not built for 32-bit ARM at all -- it bootstraps from an earlier GHC -- so on a Zero the nearest in spirit is OCaml.</p>
 <pre class="syn">Usage:
     ghc-9.10.3 [command-line-options-and-input-files]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>ghci</code> is the interactive prompt, where most learning happens. <a href="#c-ghc"><code>ghc</code></a> compiles a file to a program. <code>cabal</code> makes, builds and runs projects with their dependencies.</p>
+<h4>Examples</h4><div class="ex"><code>ghci</code><span>the prompt: :t for a type, :q to leave</span></div><div class="ex"><code>runghc Main.hs</code><span>run a file without compiling it</span></div><div class="ex"><code>ghc -O2 Main.hs -o main</code><span>compile a program</span></div><div class="ex"><code>cabal init</code><span>start a project here</span></div><div class="ex"><code>cabal update &amp;&amp; cabal run</code><span>fetch the package list, build and run</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-o FILE</code></dt><dd>the output</dd><dt><code>-O</code></dt><dd>optimise (-O2 for more)</dd><dt><code>-Wall</code></dt><dd>warnings</dd><dt><code>--make</code></dt><dd>build a program and its modules (the default)</dd><dt><code>-i DIR</code></dt><dd>search DIR for modules</dd></dl>
+<h4>Notes</h4><ul><li><code>cabal update</code> is needed once before any package can be installed.</li><li>A first <code>cabal build</code> of a project with dependencies compiles them all: on a Pi, that is a long wait and a lot of memory -- zram helps.</li></ul>
+<p class="see">See also <a href="#c-hlint"><code>hlint</code></a>, <a href="#c-ocaml"><code>ocaml</code></a></p>
 </article>
 <article class="cmd" id="c-go" data-s="go the go toolchain: build, run, test and fetch go programs. languages go">
 <h3><a class="self" href="#c-go"><code>go</code></a> <span class="purpose">The Go toolchain: build, run, test and fetch Go programs.</span></h3>
@@ -1729,56 +1779,87 @@ Only the most useful options are listed here; see below for the remainder.</pre>
 <h4>Notes</h4><ul><li>Cross-compiling is the trick: set <code>GOOS</code>, <code>GOARCH</code> (arm64, arm, amd64) and for 32-bit ARM <code>GOARM</code> (6 for a Zero, 7 for a Pi 2), and the binary runs there -- as long as <code>CGO_ENABLED=0</code> or no C is involved.</li><li><code>~/go/bin</code> is on PATH on a Copal machine; Alpine alone does not put it there.</li><li>A program that uses C through cgo needs gcc and links against musl; such a binary will not run on a glibc system.</li></ul>
 <p class="see">See also <a href="#c-gdb"><code>gdb</code></a>, <a href="#c-dlv"><code>dlv</code></a>, <a href="#c-git"><code>git</code></a>, <a href="#c-cargo"><code>cargo</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-guile" data-s="guile the gnu project extension language languages guile">
-<h3><a class="self" href="#c-guile"><code>guile</code></a> <span class="purpose">The GNU Project Extension Language</span></h3>
+<article class="cmd" id="c-guile" data-s="guile gnu guile: a scheme for scripting, extending programs, and learning lisp. languages guile">
+<h3><a class="self" href="#c-guile"><code>guile</code></a> <span class="purpose">GNU Guile: a Scheme for scripting, extending programs, and learning Lisp.</span></h3>
 <p class="facts">Languages · terminal program · <b>guile</b> 3.0.9 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/guile.html">man guile(1)</a> · <a href="https://www.gnu.org/software/guile/">home</a></p>
 <p class="deps">needs guile-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's Scheme from the GNU project -- the extension language of GNU programs, and a good first Lisp with a helpful REPL.</p>
 <pre class="syn">guile [-L DIRECTORY] [-l FILE] [-e FUNCTION] [\] [-c EXPR] [-s SCRIPT] [--] [SCRIPT
 [ARGs for SCRIPT]]
 
 Only the most useful options are listed here; see below for the remainder.</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Start the REPL and type expressions, or run a file of Scheme. Commands to the REPL itself start with a comma.</p>
+<h4>Examples</h4><div class="ex"><code>guile</code><span>the REPL; ,q to leave</span></div><div class="ex"><code>guile script.scm</code><span>run a file</span></div><div class="ex"><code>guile -c '(display (* 6 7)) (newline)'</code><span>one expression</span></div><div class="ex"><code>guile -L . -l lib.scm</code><span>load a file, with this folder on the path</span></div><div class="ex"><code>(define (square x) (* x x))  (at the REPL) define</code></div><div class="ex"><code>(map square '(1 2 3))        =&gt; (1 4 9)</code></div><div class="ex"><code>,help                        the REPL's own commands</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-c EXPR</code></dt><dd>evaluate EXPR and exit</dd><dt><code>-l FILE</code></dt><dd>load FILE</dd><dt><code>-L DIR</code></dt><dd>add DIR to the module search path</dd><dt><code>-s FILE</code></dt><dd>run FILE as a script</dd><dt><code>--no-auto-compile</code></dt><dd>do not cache compiled files</dd></dl>
+<h4>Notes</h4><ul><li>The first run of a file compiles it and caches the result under <code>~/.cache/guile</code>; later runs start faster.</li><li><code>guile-readline</code> gives the REPL history and line editing: <code>(use-modules (ice-9 readline)) (activate-readline)</code> in <code>~/.guile</code>.</li></ul>
+<p class="see">See also <a href="#c-csi"><code>csi</code></a>, <a href="#c-racket"><code>racket</code></a>, <a href="#c-sbcl"><code>sbcl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-hlint" data-s="hlint linter for haskell source code languages hlint">
-<h3><a class="self" href="#c-hlint"><code>hlint</code></a> <span class="purpose">Linter for Haskell source code</span></h3>
+<article class="cmd" id="c-hlint" data-s="hlint suggest better haskell: simpler expressions, library functions you missed. languages hlint">
+<h3><a class="self" href="#c-hlint"><code>hlint</code></a> <span class="purpose">Suggest better Haskell: simpler expressions, library functions you missed.</span></h3>
 <p class="facts">Languages · command-line tool · <b>hlint</b> 3.10 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://github.com/ndmitchell/hlint">home</a></p>
 <p class="deps">needs libffi, gmp</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's Haskell linter, the usual companion to GHC: it teaches idiomatic Haskell as it points things out.</p>
+<h4>Use</h4><p>Run it on a file or a folder; it prints each suggestion with the code as it is and as it could be.</p>
+<h4>Examples</h4><div class="ex"><code>hlint Main.hs</code><span>suggestions for one file</span></div><div class="ex"><code>hlint src/</code><span>a whole folder</span></div><div class="ex"><code>hlint --report src/</code><span>an HTML report, report.html</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--report</code></dt><dd>write an HTML report</dd><dt><code>--hint=FILE</code></dt><dd>use hints from FILE</dd><dt><code>-j</code></dt><dd>use several cores</dd></dl>
+<h4>Notes</h4><ul><li>A suggestion can be switched off for a project in <code>.hlint.yaml</code>: <code>- ignore: {name: "Use camelCase"}</code>.</li><li>64-bit only, like GHC.</li></ul>
+<p class="see">See also <a href="#c-ghc"><code>ghc</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-java" data-s="java oracle openjdk 21 (jre headless) languages openjdk21-jre-headless">
-<h3><a class="self" href="#c-java"><code>java</code></a> <span class="purpose">Oracle OpenJDK 21 (JRE headless)</span></h3>
+<article class="cmd" id="c-java" data-s="java openjdk 21: run java programs, and with javac and jshell, write them. languages openjdk21-jre-headless">
+<h3><a class="self" href="#c-java"><code>java</code></a> <span class="purpose">OpenJDK 21: run Java programs, and with javac and jshell, write them.</span></h3>
 <p class="facts">Languages · command-line tool · <b>openjdk21-jre-headless</b> 21.0.12_p8 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://github.com/openjdk/jdk21u">home</a></p>
 <p class="deps">needs java-common, java-cacerts, zlib</p>
+<p class="why"><b>On Copal:</b> The catalogue's Java, on the 64-bit boards: for the programs that ship as a .jar, and for learning or writing Java itself.</p>
 <pre class="syn">Usage: java [options] &lt;mainclass&gt; [args...]
            (to execute a class)
    or  java [options] -jar &lt;jarfile&gt; [args...]
            (to execute a jar file)</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>java File.java</code> compiles and runs a single-file program at once. <code>javac</code> compiles, <code>java -jar</code> runs a packaged program, and <code>jshell</code> is an interactive prompt.</p>
+<h4>Examples</h4><div class="ex"><code>java Hello.java</code><span>compile and run one file</span></div><div class="ex"><code>javac Hello.java &amp;&amp; java Hello</code><span>compile, then run the class</span></div><div class="ex"><code>java -jar program.jar</code><span>a packaged program</span></div><div class="ex"><code>jshell</code><span>try Java a line at a time; /exit leaves</span></div><div class="ex"><code>java -Xmx256m -jar program.jar</code><span>cap its memory on a small board</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-jar FILE</code></dt><dd>run a packaged program</dd><dt><code>-cp PATH</code></dt><dd>where to find classes and jars</dd><dt><code>-Xmx SIZE</code></dt><dd>the most heap it may use: -Xmx256m</dd><dt><code>-version</code></dt><dd>the version (to stderr)</dd></dl>
+<h4>Notes</h4><ul><li>On a Pi with little memory, <code>-Xmx</code> keeps a program from taking all of it; Java's default is a quarter of RAM.</li><li>64-bit only: its catalogue row is gated to aarch64 and x86_64.</li></ul>
+<p class="see">See also <a href="#c-plantuml"><code>plantuml</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-lua5.4" data-s="lua5.4 lua interpreter languages lua5.4">
-<h3><a class="self" href="#c-lua5.4"><code>lua5.4</code></a> <span class="purpose">Lua interpreter</span></h3>
+<article class="cmd" id="c-lua5.4" data-s="lua5.4 the lua 5.4 interpreter -- with luajit beside it for speed. languages lua5.4">
+<h3><a class="self" href="#c-lua5.4"><code>lua5.4</code></a> <span class="purpose">The Lua 5.4 interpreter -- with LuaJIT beside it for speed.</span></h3>
 <p class="facts">Languages · terminal program · <b>lua5.4</b> 5.4.8 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/lua5.4.html">man lua5.4(1)</a> · <a href="https://www.lua.org/">home</a></p>
 <p class="deps">needs lua5.4-libs, readline</p>
+<p class="why"><b>On Copal:</b> The catalogue's Lua: the small language Neovim, many games and configuration files are scripted in. The command carries its version; <code>luajit</code> is the fast 5.1-compatible one.</p>
 <pre class="syn">lua [ options ] [ script [ args ] ]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run a script, or start the prompt and type. <code>-e</code> runs a line.</p>
+<h4>Examples</h4><div class="ex"><code>lua5.4</code><span>the prompt; Ctrl-D leaves</span></div><div class="ex"><code>lua5.4 script.lua</code><span>run a script</span></div><div class="ex"><code>lua5.4 -e 'print(2^10)'</code><span>one line</span></div><div class="ex"><code>luajit script.lua</code><span>the same script, often much faster</span></div><div class="ex"><code>lua5.4 -i config.lua</code><span>run it, then stay at the prompt</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-e CODE</code></dt><dd>run CODE</dd><dt><code>-i</code></dt><dd>stay interactive after running a script</dd><dt><code>-l NAME</code></dt><dd>require library NAME first</dd><dt><code>-v</code></dt><dd>the version</dd></dl>
+<h4>Notes</h4><ul><li>Plain <code>lua</code> may be another version: on a machine where something pulled in Lua 5.1, <code>lua</code> is 5.1. Say <a href="#c-lua5.4"><code>lua5.4</code></a> to be sure; <code>lua -v</code> tells.</li><li>LuaJIT implements Lua 5.1, not 5.4: integer division <code>//</code> and some newer features are missing there.</li><li>Libraries come from Alpine as <code>lua5.4-*</code> packages.</li></ul>
+<p class="see">See also <a href="#c-nvim"><code>nvim</code></a>, <a href="#c-lua-language-server"><code>lua-language-server</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-nim" data-s="nim a systems and applications programming language languages nim">
-<h3><a class="self" href="#c-nim"><code>nim</code></a> <span class="purpose">A systems and applications programming language</span></h3>
+<article class="cmd" id="c-nim" data-s="nim nim: a compiled language that reads like python and runs like c. languages nim">
+<h3><a class="self" href="#c-nim"><code>nim</code></a> <span class="purpose">Nim: a compiled language that reads like Python and runs like C.</span></h3>
 <p class="facts">Languages · command-line tool · <b>nim</b> 2.2.0 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://nim-lang.org/">home</a></p>
 <p class="deps">needs libucontext-dev</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's Nim: small, fast programs from code as terse as a script, on every port the Pi runs.</p>
+<h4>Use</h4><p><code>nim c</code> compiles a file through C; <code>-r</code> runs the result. <code>-d:release</code> turns on the optimisations for the version you keep.</p>
+<h4>Examples</h4><div class="ex"><code>nim c -r hello.nim</code><span>compile and run</span></div><div class="ex"><code>nim c -d:release -o:hello hello.nim</code><span>an optimised program called hello</span></div><div class="ex"><code>nim r hello.nim</code><span>compile and run, no binary kept</span></div><div class="ex"><code>nim check hello.nim</code><span>check it without building</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>c / compile</code></dt><dd>compile to C, then to a program</dd><dt><code>r</code></dt><dd>compile and run, leaving no binary behind</dd><dt><code>-r, --run</code></dt><dd>run after compiling</dd><dt><code>-d:release</code></dt><dd>optimised build</dd><dt><code>-o:FILE</code></dt><dd>the output name</dd><dt><code>check</code></dt><dd>check the file for errors only</dd></dl>
+<h4>Notes</h4><ul><li>nimble, Nim's package manager, is not installed here; a few libraries come from Alpine as <code>nim-*</code> packages.</li><li>The build cache is <code>~/.cache/nim</code>; delete it if builds behave oddly.</li></ul>
+<p class="see">See also <a href="#c-python3"><code>python3</code></a>, <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-crystal"><code>crystal</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ocaml" data-s="ocaml the ocaml interactive toplevel languages ocaml">
-<h3><a class="self" href="#c-ocaml"><code>ocaml</code></a> <span class="purpose">The OCaml interactive toplevel</span></h3>
+<article class="cmd" id="c-ocaml" data-s="ocaml ocaml: a strict functional language with ml's type inference, and a fast native compiler. languages ocaml">
+<h3><a class="self" href="#c-ocaml"><code>ocaml</code></a> <span class="purpose">OCaml: a strict functional language with ML's type inference, and a fast native compiler.</span></h3>
 <p class="facts">Languages · terminal program · <b>ocaml</b> 4.14.4 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/ocaml.html">man ocaml(1)</a> · <a href="https://ocaml.org/">home</a></p>
 <p class="deps">needs ocaml-runtime, gcc</p>
+<p class="why"><b>On Copal:</b> The catalogue's ML on every port, the Zero included: where GHC is not built, OCaml gives the same type system, pattern matching and inference, with a native compiler small enough for the board.</p>
 <pre class="syn">ocaml [ options ] [ object-files ] [ script-file ]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><a href="#c-ocaml"><code>ocaml</code></a> is the interactive toplevel: type an expression, end it with <code>;;</code>. <code>ocamlopt</code> compiles to a native program, <code>ocamlc</code> to bytecode.</p>
+<h4>Examples</h4><div class="ex"><code>ocaml</code><span>the toplevel; #quit;; to leave</span></div><div class="ex"><code>ocaml script.ml</code><span>run a file</span></div><div class="ex"><code>ocamlopt -o hello hello.ml</code><span>a native executable</span></div><div class="ex"><code>ocamlc -o hello.byte hello.ml</code><span>bytecode, runs anywhere OCaml does</span></div><div class="ex"><code>let square x = x * x;;       (at the toplevel) define</code></div><div class="ex"><code>List.map square [1; 2; 3];;  use: - : int list = [1; 4; 9]</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>FILE</code></dt><dd>run it</dd><dt><code>-I DIR</code></dt><dd>search DIR for compiled modules</dd><dt><code>-init FILE</code></dt><dd>load FILE at start instead of ~/.ocamlinit</dd></dl>
+<h4>Notes</h4><ul><li>This is OCaml 4.14. opam and dune are not installed; libraries come from Alpine as <code>ocaml-*</code> packages (<code>apk search ocaml-</code>).</li><li>Every toplevel input ends with <code>;;</code>, or nothing happens.</li></ul>
+<p class="see">See also <a href="#c-ghc"><code>ghc</code></a>, <a href="#c-racket"><code>racket</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-perl" data-s="perl the perl 5 language interpreter languages perl">
-<h3><a class="self" href="#c-perl"><code>perl</code></a> <span class="purpose">The Perl 5 language interpreter</span></h3>
+<article class="cmd" id="c-perl" data-s="perl perl: text processing, one-liners, and a great deal of unix glue. languages perl">
+<h3><a class="self" href="#c-perl"><code>perl</code></a> <span class="purpose">Perl: text processing, one-liners, and a great deal of Unix glue.</span></h3>
 <p class="facts">Languages · command-line tool · <b>perl</b> 5.42.2 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/perl.html">man perl(1)</a> · <a href="https://www.perl.org/">home</a></p>
 <p class="deps">needs libbz2, zlib</p>
+<p class="why"><b>On Copal:</b> On every Copal machine: much of the system's own tooling is Perl, and its one-liners edit files and reports faster than anything.</p>
 <pre class="syn">perl [ -sTtuUWX ]
         [ -hv ] [ -V[:configvar] ]
         [ -cw ] [ -d[t][:debugger] ] [ -D[number/list] ]
@@ -1791,58 +1872,97 @@ Only the most useful options are listed here; see below for the remainder.</pre>
         [ [-e|-E] 'command' ] [ -- ] [ programfile ] [ argument ]...
 
 For more information on these options, you can run "perldoc perlrun".</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run a script, or a one-liner with <code>-e</code>. With <code>-n</code> or <code>-p</code> it loops over every input line; with <code>-i</code> it edits files in place.</p>
+<h4>Examples</h4><div class="ex"><code>perl -e 'print 2**40, "\n"'</code><span>one line</span></div><div class="ex"><code>perl -ne 'print if /error/i' log.txt</code><span>grep, case-insensitive</span></div><div class="ex"><code>perl -pi -e 's/colour/color/g' *.md</code><span>edit files in place</span></div><div class="ex"><code>perl -pi.bak -e 's/foo/bar/' conf</code><span>the same, keeping conf.bak</span></div><div class="ex"><code>perldoc -f sprintf</code><span>the manual for one function</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-e CODE</code></dt><dd>run CODE</dd><dt><code>-n / -p</code></dt><dd>loop over input lines (-p also prints each)</dd><dt><code>-i[EXT]</code></dt><dd>edit in place, keeping a backup with EXT</dd><dt><code>-l</code></dt><dd>chomp input lines and add newlines to print</dd><dt><code>-w</code></dt><dd>warnings</dd><dt><code>-M MODULE</code></dt><dd>use MODULE first</dd></dl>
+<h4>Notes</h4><ul><li>Libraries come from Alpine as <code>perl-*</code> packages: <code>apk search perl-json</code>. cpan is not installed.</li><li><code>-i</code> without an extension edits with no backup; give one while learning.</li></ul>
+<p class="see">See also <code>awk</code>, <code>sed</code>, <a href="#c-python3"><code>python3</code></a>, <a href="#c-ruby"><code>ruby</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-racket" data-s="racket core racket implementation languages racket">
-<h3><a class="self" href="#c-racket"><code>racket</code></a> <span class="purpose">core Racket implementation</span></h3>
+<article class="cmd" id="c-racket" data-s="racket racket: a scheme descendant built for making languages -- and for teaching. languages racket">
+<h3><a class="self" href="#c-racket"><code>racket</code></a> <span class="purpose">Racket: a Scheme descendant built for making languages -- and for teaching.</span></h3>
 <p class="facts">Languages · terminal program · <b>racket</b> 9.2 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/racket.html">man racket(1)</a> · <a href="https://racket-lang.org/">home</a></p>
 <p class="deps">needs ca-certificates, libcrypto3, libssl3, lz4-libs, libncursesw, zlib</p>
+<p class="why"><b>On Copal:</b> The catalogue's Racket, with raco for packages and builds. How to Design Programs is taught in it, and its #lang line makes a file any of many languages.</p>
 <pre class="syn">racket [ option ...  ] [ argument ...  ]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run a <code>.rkt</code> file, or start the REPL. The first line of a file, <code>#lang racket</code>, says which language it is written in.</p>
+<h4>Examples</h4><div class="ex"><code>racket</code><span>the REPL; ,exit to leave</span></div><div class="ex"><code>racket hello.rkt</code><span>run a file</span></div><div class="ex"><code>racket -e '(displayln (* 6 7))'</code><span>one expression</span></div><div class="ex"><code>raco make hello.rkt</code><span>compile it ahead of time</span></div><div class="ex"><code>raco pkg install gregor</code><span>a package</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-e EXPR</code></dt><dd>evaluate EXPR</dd><dt><code>-i</code></dt><dd>the REPL, after the other options</dd><dt><code>-l LIB</code></dt><dd>require LIB first</dd><dt><code>-t FILE</code></dt><dd>require FILE (runs it)</dd></dl>
+<h4>Notes</h4><ul><li>DrRacket, the teaching IDE, is a separate window program; this is the command line.</li><li>Packages install per user under <code>~/.local/share/racket</code>.</li></ul>
+<p class="see">See also <a href="#c-guile"><code>guile</code></a>, <a href="#c-csi"><code>csi</code></a>, <a href="#c-sbcl"><code>sbcl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-retro" data-s="retro clean, elegant, and pragmatic dialect of forth languages retroforth">
-<h3><a class="self" href="#c-retro"><code>retro</code></a> <span class="purpose">clean, elegant, and pragmatic dialect of Forth</span></h3>
+<article class="cmd" id="c-retro" data-s="retro retroforth: a small, modern language in the forth family. languages retroforth">
+<h3><a class="self" href="#c-retro"><code>retro</code></a> <span class="purpose">RetroForth: a small, modern language in the Forth family.</span></h3>
 <p class="facts">Languages · terminal program · <b>retroforth</b> 2025.08 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/retro.html">man retro(1)</a> · <a href="https://retroforth.org">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's Forth. Alpine packages no gforth on any architecture; RetroForth is packaged everywhere and actively kept. It is not ANS Forth: the words differ.</p>
 <pre class="syn">retro [-h] [-i] [-v] [-t filename] [-f filename] [-p filename] [-u filename] [-r filename]
       [filename script-args]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Type at the prompt, or run a file. Values go on a stack; words take them off and put results back. A prefix says what a token is: <code>#</code> a number, <code>'</code> a string, <code>:</code> a new definition.</p>
+<h4>Examples</h4><div class="ex"><code>retro</code><span>the interactive prompt</span></div><div class="ex"><code>retro program.retro</code><span>run a file</span></div><div class="ex"><code>echo "#2 #3 + n:put" | retro</code><span>prints 5</span></div><div class="ex"><code></code><span>2 #3 + n:put                (at the prompt) add, print the number</span></div><div class="ex"><code>'hello s:put                 print a string</code></div><div class="ex"><code>:square dup * ;              define a word</code></div><div class="ex"><code></code><span>7 square n:put              use it: 49</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-i</code></dt><dd>interactive mode</dd><dt><code>-f FILE</code></dt><dd>run the code blocks in FILE</dd><dt><code>-h</code></dt><dd>the usage</dd></dl>
+<h4>Notes</h4><ul><li>Code in a <code>.retro</code> file runs only inside fenced blocks (~~~ lines): the rest is prose, literate-programming style.</li><li><code>copal-guide languages</code> says more about why it is Retro, not gforth.</li></ul>
+<p class="see">See also <a href="#c-guile"><code>guile</code></a>, <a href="#c-lua5.4"><code>lua5.4</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ruby" data-s="ruby interpreted object-oriented scripting language languages ruby">
-<h3><a class="self" href="#c-ruby"><code>ruby</code></a> <span class="purpose">Interpreted object-oriented scripting language</span></h3>
+<article class="cmd" id="c-ruby" data-s="ruby the ruby language: scripts, one-liners, and gems. languages ruby">
+<h3><a class="self" href="#c-ruby"><code>ruby</code></a> <span class="purpose">The Ruby language: scripts, one-liners, and gems.</span></h3>
 <p class="facts">Languages · terminal program · <b>ruby</b> 3.4.9 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/ruby.html">man ruby(1)</a> · <a href="https://www.ruby-lang.org/">home</a></p>
 <p class="deps">needs ca-certificates, gmp, ruby-libs, libucontext, zlib</p>
+<p class="why"><b>On Copal:</b> The catalogue's Ruby, with irb for trying things and gem for libraries -- for scripting, and for the tools written in it.</p>
 <pre class="syn">ruby [--copyright] [--version] [-SUacdlnpswvy] [-0[octal]] [-C directory] [-E
 external[:internal]] [-F[pattern]] [-I directory] [-K[c]] [-T[level]] [-W[level]] [-e
 command] [-i[extension]] [-r library] [-x[directory]] [--{enable|disable}-FEATURE]
 [--dump=target] [--verbose] [--crash-report=template] [--] [program_file] [argument ...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run a script, or <code>irb</code> to type Ruby interactively. <code>-e</code> runs one line; with <code>-n</code> or <code>-p</code> it runs over every line of input, like awk.</p>
+<h4>Examples</h4><div class="ex"><code>irb</code><span>interactive Ruby; exit to leave</span></div><div class="ex"><code>ruby script.rb</code><span>run a script</span></div><div class="ex"><code>ruby -e 'puts 2**100'</code><span>one line</span></div><div class="ex"><code>ruby -ne 'puts $_ if /error/' log.txt</code><span>grep, in Ruby</span></div><div class="ex"><code>gem install --user-install rake</code><span>a gem, in your home</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-e CODE</code></dt><dd>run CODE</dd><dt><code>-n / -p</code></dt><dd>loop over input lines (-p also prints them)</dd><dt><code>-i[EXT]</code></dt><dd>edit files in place (with -p)</dd><dt><code>-I DIR</code></dt><dd>add DIR to the load path</dd><dt><code>-w</code></dt><dd>warnings</dd></dl>
+<h4>Notes</h4><ul><li><code>gem install</code> without <code>--user-install</code> wants to write system directories: use <code>--user-install</code>, or an <code>apk add ruby-NAME</code> package.</li><li>User gems' commands land in <code>~/.local/share/gem/ruby/*/bin</code>, which is not on PATH until you add it.</li></ul>
+<p class="see">See also <a href="#c-python3"><code>python3</code></a>, <a href="#c-perl"><code>perl</code></a>, <a href="#c-crystal"><code>crystal</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-rust-analyzer" data-s="rust-analyzer rust compiler front-end for ides languages rust-analyzer">
-<h3><a class="self" href="#c-rust-analyzer"><code>rust-analyzer</code></a> <span class="purpose">Rust compiler front-end for IDEs</span></h3>
+<article class="cmd" id="c-rust-analyzer" data-s="rust-analyzer the rust language server: completion, types on hover, go-to-definition, inline errors. languages rust-analyzer">
+<h3><a class="self" href="#c-rust-analyzer"><code>rust-analyzer</code></a> <span class="purpose">The Rust language server: completion, types on hover, go-to-definition, inline errors.</span></h3>
 <p class="facts">Languages · command-line tool · <b>rust-analyzer</b> 2026.06.08 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://github.com/rust-lang/rust-analyzer">home</a></p>
 <p class="deps">needs rust-src, mimalloc2</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> Stage 7 installs it with Rust, and Neovim and Helix start it for .rs files. It is what makes a Rust project navigable in the editor.</p>
+<h4>Use</h4><p>The editor runs it; there is nothing to start by hand. Open a file inside a Cargo project and it indexes the project, then answers the editor.</p>
+<h4>Examples</h4><div class="ex"><code>rust-analyzer --version</code><span>which version is installed</span></div><div class="ex"><code>rust-analyzer diagnostics .</code><span>the project's errors, from the shell</span></div><div class="ex"><code>which rust-analyzer</code><span>which one the editor will find</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>diagnostics DIR</code></dt><dd>print the diagnostics for the project in DIR</dd><dt><code>--version</code></dt><dd>the version</dd></dl>
+<h4>Notes</h4><ul><li>It needs the standard library's source: <code>rust-src</code>, which the Rust row installs.</li><li>With rustup installed, <code>~/.cargo/bin</code> comes first on PATH and its <a href="#c-rust-analyzer"><code>rust-analyzer</code></a> is a proxy that says "unavailable for the active toolchain" until <code>rustup component add rust-analyzer</code>.</li><li>The first index of a large project takes a while and a lot of memory on a small Pi.</li></ul>
+<p class="see">See also <a href="#c-cargo"><code>cargo</code></a>, <a href="#c-nvim"><code>nvim</code></a>, <a href="#c-hx"><code>hx</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-sbcl" data-s="sbcl sbcl -- steel bank common lisp languages sbcl">
-<h3><a class="self" href="#c-sbcl"><code>sbcl</code></a> <span class="purpose">SBCL -- Steel Bank Common Lisp</span></h3>
+<article class="cmd" id="c-sbcl" data-s="sbcl steel bank common lisp: a fast, native common lisp compiler with an interactive repl. languages sbcl">
+<h3><a class="self" href="#c-sbcl"><code>sbcl</code></a> <span class="purpose">Steel Bank Common Lisp: a fast, native Common Lisp compiler with an interactive REPL.</span></h3>
 <p class="facts">Languages · terminal program · <b>sbcl</b> 2.6.5 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/sbcl.html">man sbcl(1)</a> · <a href="https://www.sbcl.org/">home</a></p>
 <p class="deps">needs zstd-libs</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's Common Lisp: it compiles every expression to native code as you type it, so the REPL is as fast as a built program.</p>
+<h4>Use</h4><p>Start the REPL and type forms, or run a file with <code>--script</code>. Emacs and Neovim plugins can talk to it for a full Lisp environment.</p>
+<h4>Examples</h4><div class="ex"><code>sbcl</code><span>the REPL; (quit) to leave</span></div><div class="ex"><code>sbcl --script hello.lisp</code><span>run a file and exit</span></div><div class="ex"><code>sbcl --eval '(print (expt 2 100))' --quit</code><span>one expression</span></div><div class="ex"><code>sbcl --load project.lisp</code><span>load a file, then the REPL</span></div><div class="ex"><code>(defun square (x) (* x x))   (at the REPL) define</code></div><div class="ex"><code>(square 12)                  =&gt; 144</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>--script FILE</code></dt><dd>run FILE non-interactively, then exit</dd><dt><code>--load FILE</code></dt><dd>load FILE, then continue</dd><dt><code>--eval FORM</code></dt><dd>evaluate FORM</dd><dt><code>--quit</code></dt><dd>exit after the --load and --eval options</dd><dt><code>--noinform</code></dt><dd>no banner</dd></dl>
+<h4>Notes</h4><ul><li>An error drops into the debugger, with numbered restarts: type the number of <code>ABORT</code> (usually 0) to get back to the prompt.</li><li>Libraries come through Quicklisp, which is installed by loading its <code>quicklisp.lisp</code> from quicklisp.org once.</li></ul>
+<p class="see">See also <a href="#c-guile"><code>guile</code></a>, <a href="#c-racket"><code>racket</code></a>, <a href="#c-csi"><code>csi</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-tcc" data-s="tcc tiny c compiler languages tcc">
-<h3><a class="self" href="#c-tcc"><code>tcc</code></a> <span class="purpose">Tiny C Compiler</span></h3>
+<article class="cmd" id="c-tcc" data-s="tcc the tiny c compiler: compiles c almost instantly, and can run a c file as a script. languages tcc">
+<h3><a class="self" href="#c-tcc"><code>tcc</code></a> <span class="purpose">The Tiny C Compiler: compiles C almost instantly, and can run a C file as a script.</span></h3>
 <p class="facts">Languages · command-line tool · <b>tcc</b> 0.9.27_git20250619 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/tcc.html">man tcc(1)</a> · <a href="https://repo.or.cz/w/tinycc.git">home</a></p>
 <p class="deps">needs tcc-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's fastest C compiler: for trying an idea, or running C like a script, on a board where gcc takes its time.</p>
 <pre class="syn">usage: tcc [options] [infile1 infile2...] [-run infile args...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Compile as with gcc, or <code>tcc -run file.c</code> to compile and run in one go, in memory. It optimises little: for speed of compiling, not of the program.</p>
+<h4>Examples</h4><div class="ex"><code>tcc -run hello.c</code><span>compile and run, no file left behind</span></div><div class="ex"><code>tcc -run prog.c arg1 arg2</code><span>with arguments for the program</span></div><div class="ex"><code>tcc -o hello hello.c</code><span>an executable</span></div><div class="ex"><code>echo 'int main(){return 42;}' | tcc -run -</code><span>from stdin</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-run</code></dt><dd>compile and run at once</dd><dt><code>-o FILE</code></dt><dd>the output</dd><dt><code>-c</code></dt><dd>compile to an object file</dd><dt><code>-g</code></dt><dd>debug information</dd><dt><code>-Wall</code></dt><dd>warnings</dd><dt><code>-I DIR</code></dt><dd>a header directory;  -L DIR -lNAME  libraries</dd></dl>
+<h4>Notes</h4><ul><li>A file starting <code>#!/usr/bin/tcc -run</code> can be made executable and run directly, like a shell script.</li><li>It supports C99 and most of C11; code leaning on GCC extensions may not compile.</li></ul>
+<p class="see">See also <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-clang"><code>clang</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-zig" data-s="zig general-purpose programming language designed for robustness, optimality, and maintainability languages zig">
-<h3><a class="self" href="#c-zig"><code>zig</code></a> <span class="purpose">General-purpose programming language designed for robustness, optimality, and maintainability</span></h3>
+<article class="cmd" id="c-zig" data-s="zig the zig language and toolchain -- and a c compiler that cross-compiles anywhere. languages zig">
+<h3><a class="self" href="#c-zig"><code>zig</code></a> <span class="purpose">The Zig language and toolchain -- and a C compiler that cross-compiles anywhere.</span></h3>
 <p class="facts">Languages · command-line tool · <b>zig</b> 0.16.0 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="https://ziglang.org/">home</a></p>
 <p class="deps">needs llvm21-libs, clang21-libs, lld21-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's Zig, on the 64-bit boards. Beside the language, <code>zig cc</code> compiles C for any target from this machine, a Zero or a Mac included.</p>
 <pre class="syn">Usage: zig [command] [options]
 Commands:</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>zig run</code> compiles and runs a file; <code>zig build-exe</code> makes a program; <code>zig init</code> starts a project that <code>zig build</code> builds.</p>
+<h4>Examples</h4><div class="ex"><code>zig run hello.zig</code><span>compile and run</span></div><div class="ex"><code>zig build-exe hello.zig -O ReleaseSmall</code><span>a small, optimised program</span></div><div class="ex"><code>zig init &amp;&amp; zig build run</code><span>a new project, built and run</span></div><div class="ex"><code>zig test sum.zig</code><span>run a file's tests</span></div><div class="ex"><code>zig cc -o hello hello.c -target arm-linux-musleabihf</code><span>C, for a 32-bit Pi</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>run FILE</code></dt><dd>compile and run</dd><dt><code>build-exe FILE</code></dt><dd>make an executable</dd><dt><code>init</code></dt><dd>start a project here</dd><dt><code>build</code></dt><dd>build the project (build.zig)</dd><dt><code>test FILE</code></dt><dd>run the tests</dd><dt><code>fmt FILE</code></dt><dd>reformat the source</dd><dt><code>cc</code></dt><dd>act as a C compiler (with -target for another machine)</dd></dl>
+<h4>Notes</h4><ul><li>The language is not at 1.0: code written for another Zig version may need changes. <code>zig version</code> says which this is.</li><li>64-bit only: its catalogue row is gated to aarch64 and x86_64.</li></ul>
+<p class="see">See also <a href="#c-gcc"><code>gcc</code></a>, <a href="#c-clang"><code>clang</code></a>, <a href="#c-go"><code>go</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-learn"><h2>Learn</h2>

@@ -421,6 +421,21 @@ Each ends with a review of what it produced before the next begins.
 - **Beside it**: Copal Apps' optionals table and the build summary's
   "with" line (b507fda).
 
+### Phase 4, batch 10: Languages (24 Sep 2026)
+
+- **24 entries**: `clangd`, `gfortran`, `tcc`, `rust-analyzer`, `dlv`,
+  `ghc`, `hlint`, `retro`, `ocaml`, `zig`, `fpc`, `lua5.4`, `guile`, `csi`,
+  `sbcl`, `racket`, `nim`, `elixir`, `ruby`, `perl`, `crystal`, `java`,
+  `dotnet`, `composer`.
+- **Found on the way**: plain `lua` is Lua 5.1 when something pulls it in;
+  a rustup in `~/.cargo/bin` hides Alpine's rust-analyzer behind a proxy
+  that needs `rustup component add`; opam, dune, nimble, shards, bundler
+  and cpan are not installed, so libraries come from apk; 64-bit gates
+  (dlv, ghc, hlint, zig, crystal, java) are stated where they apply.
+- **check** follows `--show-options` (GHC) and `--fullhelp` (Nim) when
+  `--help` points to them. Options a front end leaves to gcc's manual
+  (gfortran's `-O` levels) go in a note, not the options list.
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.
