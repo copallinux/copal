@@ -38,7 +38,7 @@ Decided on 23 Sep 2026:
 
 | Field | Layer | Source |
 |---|---|---|
-| command, label, section, mode (t/h/x) | generated | catalogue row, store table, `cat > /usr/local/bin/NAME` markers, `docs/commands/core.list` |
+| command, label, section, mode (t/h/x) | generated | catalogue row, store table, `cat > /usr/local/bin/NAME` markers, `man_core_commands` in `copal-prep.sh` |
 | origin and the stage that installs it | generated | which of those it came from; the stage playbook containing the install |
 | package, version, description, webpage | generated | `apk info -W`, `-d`, `-w` on a Copal machine |
 | dependency chain | generated | `apk info -R`, `so:` names resolved to packages, one level; the catalogue row's other packages |
@@ -186,9 +186,7 @@ placeholder it reads now.
 
 Each ends with a review of what it produced before the next begins.
 
-1. **`man` on Copal**, option (b). Stage 1 installs `mandoc`,
-   `mandoc-apropos` and `man-pages`; `makewhatis` after installs. Check on
-   the bench: `man rsync`, `apropos copy`.
+1. **`man` on Copal**, option (b). *Built 23 Sep 2026*, below.
 2. **The collector.** Inventory from the four sources, facts from apk, NAME
    and SYNOPSIS from mandoc, `docs/man/*.html`. Check: 292 commands, each
    with a package and a version or a reason it has none (`copal-*`: "copal,
@@ -203,6 +201,28 @@ Each ends with a review of what it produced before the next begins.
 5. **Joined up.** The menus read the index; the handbook's *Commands on the
    Pi* and the README link to the guide; `make lint` runs check; the site's
    Software page links it.
+
+### Phase 1, as built
+
+- **`install_manuals`** in `copal-prep.sh`: `mandoc`, `mandoc-apropos` and
+  `man-pages`, then the `-doc` of every package that owns a guide command
+  on the machine -- `man_core_commands` (the core list, the one source the
+  collector will also read) and the catalogue's `t` and `h` rows -- less
+  those already installed, those the index lacks, and any over
+  `MAN_DOC_CAP_KB` (32 MiB), each named in the log. A -doc only edge/testing
+  carries is asked for as `NAME@testing` (from `apk policy`): the first real
+  run on the bench failed whole because eight untagged testing names were
+  in one transaction. Then `makewhatis`.
+  Three batched apk queries: 6.6 s on the bench.
+- **Called from six stages**: 2 (after the apk cache is on p2, before its
+  `lbu commit`, so every level has `man`), 7, 10, 12, 14 and 17, each
+  after it installs commands. Not stage 1: the root is still in RAM there
+  and a package would not outlive it.
+- **The store**: `copal-store install` of an apk row whose mode is `t` or
+  `h` adds that package's `-doc` the same way (`man_pages_for`).
+- **Measured on the bench** (dry run, the full monty): `mandoc`,
+  `mandoc-apropos`, `man-pages`, and 152 doc packages, 146 MiB; `ghc-doc`
+  (753 MiB) skipped by the cap. Option (a) would have been 2.0 GiB.
 
 ## VII. Risks
 

@@ -373,6 +373,39 @@ apk_install() {  # <names...>
     apk add "$@"
 }
 
+# A terminal program's man page comes with it: its package's -doc, when the
+# index has one, is not installed yet, and is under the installer's cap
+# (MAN_DOC_CAP_KB in copal-prep.sh, where install_manuals says why). Quiet,
+# and never a reason to fail the install.
+man_pages_for() {  # <apk names...>
+    _md=$(for _p in "$@"; do echo "${_p%@*}-doc"; done)
+    _mh=$(apk info -e $_md 2>/dev/null)
+    _md=$(printf '%s\n' $_md | grep -vxF "$(printf '%s\n' $_mh)" || true)
+    [ -n "$_md" ] || return 0
+    _md=$(apk search -e $_md 2>/dev/null | sed 's/-[^-]*-r[0-9]*$//' | sort -u)
+    [ -n "$_md" ] || return 0
+    _mbig=$(apk info -s $_md 2>/dev/null | awk '
+        / installed size:$/ { n = $1; sub(/-[^-]*-r[0-9]*$/, "", n); next }
+        n != "" && NF == 2 {
+            k = $1; u = $2
+            if (u == "MiB") k *= 1024; else if (u == "GiB") k *= 1048576; else if (u == "B") k /= 1024
+            if (k > 32768) print n
+            n = "" }')
+    _md=$(printf '%s\n' $_md | grep -vxF "$(printf '%s\n' $_mbig)" || true)
+    [ -n "$_md" ] || return 0
+    # A -doc that only edge/testing has is masked unless it is asked for by
+    # its tagged name: one untagged name among many fails the whole apk
+    # transaction (seen on the bench: sigrok-cli-doc, xmp-doc and six more
+    # took the other 144 down with them -- install_manuals in copal-prep.sh). apk policy says, per package,
+    # whether any repository without a tag carries it.
+    _md=$(apk policy $_md 2>/dev/null | awk '
+        / policy:$/ { if (n != "") print n (u ? "" : "@testing"); n = $1; u = 0; next }
+        /^    / && $1 !~ /^@/ { u = 1 }
+        END { if (n != "") print n (u ? "" : "@testing") }')
+    apk add -q $_md >/dev/null 2>&1 && note "man page: $(echo $_md)"
+    have makewhatis && makewhatis 2>/dev/null || true
+}
+
 # ------------------------------------------------------------ recipes: kit ---
 #
 # A recipe is a playbook that builds from source (playbooks/, and
@@ -2472,6 +2505,8 @@ install_ids() {
             if apk_install $_apks; then
                 # A catalogue program is finished by its playbook's post.
                 case "$(printf '%s' "$_row" | cut -d'|' -f9)" in catalogue) catalogue_post "$_id" || _rc=1 ;; esac
+                # A terminal program, its manual.
+                case "$(printf '%s' "$_row" | cut -d'|' -f6)" in t|h) man_pages_for $_apks ;; esac
             else _rc=1; fi
         fi
         # Flathub rows belong to the catalogue, and copal-install knows them.

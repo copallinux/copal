@@ -3673,6 +3673,79 @@ try_add() {
 # hand, which is the one case nobody was watching a log for.
 add_optional() { try_add "$@" || true; }
 
+# ---------------------------------------------------------------------------
+# THE MANUAL. Alpine installs no 'man' at all: the command is mandoc's, the
+# pages are each package's '-doc' subpackage, and neither is pulled in by
+# anything. So a Copal machine used to answer 'man rsync' with "command not
+# found" -- on a system whose whole shelf of terminal programs is only as
+# good as the one line the menu shows for each.
+#
+# THE COMMANDS THE TERMINAL GUIDE COVERS get their pages, and nothing else.
+# Alpine's 'docs' meta package would add every installed package's -doc
+# from then on: measured on a full monty, 812 packages and 2.0 GiB, most of
+# it HTML API manuals (ghc-doc alone is 753 MiB). The guide's commands are
+# the core list below plus the catalogue's terminal rows; their -doc
+# packages are about 170 MiB on the full monty, and a -doc over
+# MAN_DOC_CAP_KB is skipped by name in the log rather than installed
+# silently -- today that is ghc-doc, whose one man page comes inside
+# 753 MiB of HTML.
+#
+# Idempotent and cheap to repeat (three batched apk queries): called at the
+# end of each stage that installs commands the guide covers, so a page
+# arrives with its program. docs/terminal-guide-plan.md has the reasoning.
+MAN_DOC_CAP_KB=32768
+man_core_commands() {
+    echo "apk doas rc-service rc-update rc-status openrc lbu setup-alpine busybox mkinitfs
+          sfdisk resize2fs zramctl flatpak git gcc clang make cmake ninja gdb valgrind nvim
+          tmux ssh ssh-keygen rsync curl cargo go python3 pip hyprctl wpctl pactl
+          bluetoothctl iwctl nmcli dmesg logread lsblk ip"
+}
+install_manuals() {
+    say "The manual: man, apropos, and the pages for this machine's commands"
+    add_optional mandoc mandoc-apropos man-pages
+    # The guide's commands that are on this machine, as paths: a builtin or
+    # an alias answers command -v without a slash and has no package.
+    _mp=$(for _c in $(man_core_commands) \
+                    $(catalogue | awk -F'|' '$5 == "t" || $5 == "h" { print $4 }'); do
+              command -v "$_c" 2>/dev/null
+          done | grep '^/' | sort -u)
+    [ -n "$_mp" ] || { note "no documented commands on this machine yet"; return 0; }
+    # Their packages, then the -doc of each that the index has and this
+    # machine lacks.
+    _mk=$(apk info -W $_mp 2>/dev/null \
+          | sed -n 's/.* is owned by \(.*\)-[^-]*-r[0-9]*$/\1-doc/p' | sort -u)
+    _mh=$(apk info -e $_mk 2>/dev/null)
+    _mk=$(printf '%s\n' $_mk | grep -vxF "$(printf '%s\n' $_mh)" || true)
+    [ -n "$_mk" ] || { note "every documented command has its page"; makewhatis 2>/dev/null || true; return 0; }
+    _mk=$(apk search -e $_mk 2>/dev/null | sed 's/-[^-]*-r[0-9]*$//' | sort -u)
+    # The size cap, from the index: 'NAME-VER installed size:' then 'N UNIT'.
+    _mbig=$(apk info -s $_mk 2>/dev/null | awk -v cap="$MAN_DOC_CAP_KB" '
+        / installed size:$/ { n = $1; sub(/-[^-]*-r[0-9]*$/, "", n); next }
+        n != "" && NF == 2 {
+            k = $1; u = $2
+            if (u == "MiB") k *= 1024; else if (u == "GiB") k *= 1048576; else if (u == "B") k /= 1024
+            if (k > cap) print n
+            n = "" }')
+    for _b in $_mbig; do
+        note "skipped $_b -- over the $((MAN_DOC_CAP_KB / 1024)) MiB cap; its man page goes with it"
+    done
+    _mk=$(printf '%s\n' $_mk | grep -vxF "$(printf '%s\n' $_mbig)" || true)
+    [ -n "$_mk" ] || { makewhatis 2>/dev/null || true; return 0; }
+    # A -doc that only edge/testing has is masked unless it is asked for by
+    # its tagged name: one untagged name among many fails the whole apk
+    # transaction (seen on the bench: sigrok-cli-doc, xmp-doc and six more
+    # took the other 144 down with them). apk policy says, per package,
+    # whether any repository without a tag carries it.
+    _mk=$(apk policy $_mk 2>/dev/null | awk '
+        / policy:$/ { if (n != "") print n (u ? "" : "@testing"); n = $1; u = 0; next }
+        /^    / && $1 !~ /^@/ { u = 1 }
+        END { if (n != "") print n (u ? "" : "@testing") }')
+    add_optional $_mk
+    # apropos and whatis read mandoc's database, which nothing else writes.
+    makewhatis 2>/dev/null || true
+    note "man NAME, and apropos WORD to find one"
+}
+
 # THE OTHER PACKAGE SOURCE, and the one marker that says so.
 #
 # A catalogue row may write its package as 'app.id@flathub' instead of an apk
@@ -20461,6 +20534,10 @@ MSG
     setup-apkcache "$P2MNT/cache"
     note "cache -> $(readlink /etc/apk/cache)"
 
+    # The manual, now that a package downloaded here is kept on p2 and comes
+    # back at every boot -- and before the commit, so 'world' remembers it.
+    install_manuals
+
     say "Teaching lbu to recreate the mount point"
     # The root filesystem is a tmpfs rebuilt from the apkovl on every boot, so
     # the empty directory $P2MNT has to be inside the apkovl or `mount -a` at
@@ -26284,6 +26361,7 @@ MAKEFILE
     rm -f /tmp/main.c.$$ /tmp/Makefile.$$
 
     dev_code_checkouts
+    install_manuals
 
     say "Stage 7 complete."
     cat <<MSG
@@ -26950,6 +27028,7 @@ MOUNTDSK
     note "mountdsk -u          unmount it again"
 
     radbeeper_pre
+    install_manuals
 
     say "Stage 10 complete."
     note "Getting files in and out of a Mini vMac disk: ~/minivmac/shared.sh"
@@ -27510,6 +27589,8 @@ MSG
         note "Skipped. 'doas copal-fonts install coding' when you want them."
     fi
 
+    install_manuals
+
     say "Done"
     note "Open the menu (Super+z) -- everything installed now appears in it,"
     note "and what you skipped is under Install."
@@ -27675,6 +27756,8 @@ MSG
              workshop_iio; workshop_maths; workshop_music; workshop_piano; workshop_windows ;;
         *)   note "Nothing installed."; return 0 ;;
     esac
+
+    install_manuals
 
     say "Stage 14 complete."
     commit_reminder
@@ -29467,6 +29550,7 @@ CURSORENV
     If the screen stays black: 'dmesg | grep -i drm' first -- a compositor
     with no DRM device is the usual cause in a VM without a virtio GPU.
 MSG
+    install_manuals
     commit_reminder
 }
 
@@ -29854,6 +29938,39 @@ apk_install() {  # <names...>
     case " $* " in *@testing*) enable_testing_tag ;; esac
     # shellcheck disable=SC2068
     apk add "$@"
+}
+
+# A terminal program's man page comes with it: its package's -doc, when the
+# index has one, is not installed yet, and is under the installer's cap
+# (MAN_DOC_CAP_KB in copal-prep.sh, where install_manuals says why). Quiet,
+# and never a reason to fail the install.
+man_pages_for() {  # <apk names...>
+    _md=$(for _p in "$@"; do echo "${_p%@*}-doc"; done)
+    _mh=$(apk info -e $_md 2>/dev/null)
+    _md=$(printf '%s\n' $_md | grep -vxF "$(printf '%s\n' $_mh)" || true)
+    [ -n "$_md" ] || return 0
+    _md=$(apk search -e $_md 2>/dev/null | sed 's/-[^-]*-r[0-9]*$//' | sort -u)
+    [ -n "$_md" ] || return 0
+    _mbig=$(apk info -s $_md 2>/dev/null | awk '
+        / installed size:$/ { n = $1; sub(/-[^-]*-r[0-9]*$/, "", n); next }
+        n != "" && NF == 2 {
+            k = $1; u = $2
+            if (u == "MiB") k *= 1024; else if (u == "GiB") k *= 1048576; else if (u == "B") k /= 1024
+            if (k > 32768) print n
+            n = "" }')
+    _md=$(printf '%s\n' $_md | grep -vxF "$(printf '%s\n' $_mbig)" || true)
+    [ -n "$_md" ] || return 0
+    # A -doc that only edge/testing has is masked unless it is asked for by
+    # its tagged name: one untagged name among many fails the whole apk
+    # transaction (seen on the bench: sigrok-cli-doc, xmp-doc and six more
+    # took the other 144 down with them -- install_manuals in copal-prep.sh). apk policy says, per package,
+    # whether any repository without a tag carries it.
+    _md=$(apk policy $_md 2>/dev/null | awk '
+        / policy:$/ { if (n != "") print n (u ? "" : "@testing"); n = $1; u = 0; next }
+        /^    / && $1 !~ /^@/ { u = 1 }
+        END { if (n != "") print n (u ? "" : "@testing") }')
+    apk add -q $_md >/dev/null 2>&1 && note "man page: $(echo $_md)"
+    have makewhatis && makewhatis 2>/dev/null || true
 }
 
 # ------------------------------------------------------------ recipes: kit ---
@@ -31955,6 +32072,8 @@ install_ids() {
             if apk_install $_apks; then
                 # A catalogue program is finished by its playbook's post.
                 case "$(printf '%s' "$_row" | cut -d'|' -f9)" in catalogue) catalogue_post "$_id" || _rc=1 ;; esac
+                # A terminal program, its manual.
+                case "$(printf '%s' "$_row" | cut -d'|' -f6)" in t|h) man_pages_for $_apks ;; esac
             else _rc=1; fi
         fi
         # Flathub rows belong to the catalogue, and copal-install knows them.

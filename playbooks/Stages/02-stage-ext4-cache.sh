@@ -58,6 +58,10 @@ MSG
     setup-apkcache "$P2MNT/cache"
     note "cache -> $(readlink /etc/apk/cache)"
 
+    # The manual, now that a package downloaded here is kept on p2 and comes
+    # back at every boot -- and before the commit, so 'world' remembers it.
+    install_manuals
+
     say "Teaching lbu to recreate the mount point"
     # The root filesystem is a tmpfs rebuilt from the apkovl on every boot, so
     # the empty directory $P2MNT has to be inside the apkovl or `mount -a` at

@@ -1668,5 +1668,6 @@ CURSORENV
     If the screen stays black: 'dmesg | grep -i drm' first -- a compositor
     with no DRM device is the usual cause in a VM without a virtio GPU.
 MSG
+    install_manuals
     commit_reminder
 }

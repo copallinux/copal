@@ -249,6 +249,8 @@ MSG
         note "Skipped. 'doas copal-fonts install coding' when you want them."
     fi
 
+    install_manuals
+
     say "Done"
     note "Open the menu (Super+z) -- everything installed now appears in it,"
     note "and what you skipped is under Install."

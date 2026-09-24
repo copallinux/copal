@@ -52,6 +52,8 @@ MSG
         *)   note "Nothing installed."; return 0 ;;
     esac
 
+    install_manuals
+
     say "Stage 14 complete."
     commit_reminder
 }

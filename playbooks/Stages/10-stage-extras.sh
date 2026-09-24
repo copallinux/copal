@@ -244,6 +244,7 @@ MOUNTDSK
     note "mountdsk -u          unmount it again"
 
     radbeeper_pre
+    install_manuals
 
     say "Stage 10 complete."
     note "Getting files in and out of a Mini vMac disk: ~/minivmac/shared.sh"

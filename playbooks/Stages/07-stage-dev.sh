@@ -352,6 +352,7 @@ MAKEFILE
     rm -f /tmp/main.c.$$ /tmp/Makefile.$$
 
     dev_code_checkouts
+    install_manuals
 
     say "Stage 7 complete."
     cat <<MSG
