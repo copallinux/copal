@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 290 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 74 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 94 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.</p>
 </header>
 <div class="finder">
@@ -262,19 +262,29 @@
 </article>
 </section>
 <section class="sec" id="s-audio"><h2>Audio</h2>
-<article class="cmd facts-only" id="c-fluidsynth" data-s="fluidsynth a soundfont synthesizer audio fluidsynth">
-<h3><a class="self" href="#c-fluidsynth"><code>fluidsynth</code></a> <span class="purpose">a SoundFont synthesizer</span></h3>
+<article class="cmd" id="c-fluidsynth" data-s="fluidsynth a software synthesiser: play midi files, or midi keyboards, through a soundfont. audio fluidsynth">
+<h3><a class="self" href="#c-fluidsynth"><code>fluidsynth</code></a> <span class="purpose">A software synthesiser: play MIDI files, or MIDI keyboards, through a SoundFont.</span></h3>
 <p class="facts">Audio · command-line tool · <b>fluidsynth</b> 2.5.4 · stage 12 · The application catalogue · <a href="man/fluidsynth.html">man fluidsynth(1)</a> · <a href="https://www.fluidsynth.org/">home</a></p>
 <p class="deps">needs fluidsynth-libs, glib, pipewire-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's MIDI synthesiser, installed with a General MIDI SoundFont (TimGM6mb) so a .mid file makes sound straight away, and a USB keyboard becomes an instrument.</p>
 <pre class="syn">fluidsynth [options] [ SoundFonts ] [ midifiles ]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Give it a SoundFont -- the instrument samples -- and MIDI files to play, or leave it running for a keyboard or a sequencer to play through. It starts an interactive prompt unless told not to.</p>
+<h4>Examples</h4><div class="ex"><code>fluidsynth -i -a alsa /usr/share/soundfonts/default.sf2 song.mid</code><span>play a file</span></div><div class="ex"><code>fluidsynth -F song.wav /usr/share/soundfonts/default.sf2 song.mid</code><span>render to WAV</span></div><div class="ex"><code>fluidsynth -a alsa /usr/share/soundfonts/default.sf2</code><span>a synth for a keyboard</span></div><div class="ex"><code>aconnect -l</code><span>MIDI ports; connect keyboard to synth with aconnect A B</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-a DRIVER</code></dt><dd>the audio driver: alsa or pulseaudio (both reach PipeWire)</dd><dt><code>-i, --no-shell</code></dt><dd>no prompt: play and exit</dd><dt><code>-F FILE</code></dt><dd>render to FILE instead of playing</dd><dt><code>-g GAIN</code></dt><dd>the volume, 0 to 10 (default 0.2)</dd><dt><code>-r RATE</code></dt><dd>the sample rate</dd><dt><code>-q, --quiet</code></dt><dd>no banner -n, --no-midi-in no MIDI input</dd></dl>
+<h4>Notes</h4><ul><li>Without <code>-i</code> it waits at its own <code>&gt;</code> prompt after the file ends; <code>quit</code> leaves.</li><li>The default gain is quiet on purpose; <code>-g 1</code> for a louder start.</li><li>A pages-long run of "ALSA lib ... Unknown PCM" at start is ALSA probing devices that do not exist; it is noise, not failure.</li><li>Better SoundFonts are a download away: any <code>.sf2</code> file works the same.</li></ul>
+<p class="see">See also <a href="#c-openmpt123"><code>openmpt123</code></a>, <a href="#c-xmp"><code>xmp</code></a>, <a href="#c-alsamixer"><code>alsamixer</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-openmpt123" data-s="openmpt123 command line module music player based on libopenmpt audio openmpt123">
-<h3><a class="self" href="#c-openmpt123"><code>openmpt123</code></a> <span class="purpose">command line module music player based on libopenmpt</span></h3>
+<article class="cmd" id="c-openmpt123" data-s="openmpt123 play tracker music -- mod, xm, s3m, it and dozens more -- in the terminal, accurately. audio openmpt123">
+<h3><a class="self" href="#c-openmpt123"><code>openmpt123</code></a> <span class="purpose">Play tracker music -- MOD, XM, S3M, IT and dozens more -- in the terminal, accurately.</span></h3>
 <p class="facts">Audio · command-line tool · <b>openmpt123</b> 0.8.9 · stage 12 · The application catalogue · <a href="man/openmpt123.html">man openmpt123(1)</a> · <a href="https://lib.openmpt.org/libopenmpt/">home</a></p>
 <p class="deps">needs libflac, libopenmpt, portaudio, libpulse, libsndfile</p>
+<p class="why"><b>On Copal:</b> The catalogue's module player, built on OpenMPT's library: the most faithful playback of the music of the Amiga and PC demoscene.</p>
 <pre class="syn">openmpt123 [options] [--] file1 [file2] ...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Give it module files; it plays them in order and shows the pattern position. It can also render a module to a WAV or FLAC file.</p>
+<h4>Examples</h4><div class="ex"><code>openmpt123 song.xm</code><span>play</span></div><div class="ex"><code>openmpt123 *.mod</code><span>a folder, in order</span></div><div class="ex"><code>openmpt123 --shuffle ~/Music/mods/*</code><span>in any order</span></div><div class="ex"><code>openmpt123 --render song.it</code><span>write song.it.wav, and play nothing</span></div><div class="ex"><code>openmpt123 --info song.s3m</code><span>title, format, length, channels</span></div><div class="ex"><code>Space          (while playing) pause</code></div><div class="ex"><code>h  l           seek 10 s back / forward (j k: 1 s)</code></div><div class="ex"><code>n  m           previous / next file</code></div><div class="ex"><code>3  4           quieter / louder;  q  quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>--render</code></dt><dd>render each file to a WAV beside it</dd><dt><code>--info</code></dt><dd>print the module's details only</dd><dt><code>--shuffle</code></dt><dd>shuffle the files</dd><dt><code>--repeat N</code></dt><dd>repeat each song N times (-1 forever)</dd><dt><code>--gain DB</code></dt><dd>the volume, in dB</dd><dt><code>-q, --quiet</code></dt><dd>no display</dd><dt><code>--driver NAME</code></dt><dd>the audio output</dd><dt><code>--help-keyboard</code></dt><dd>every key it answers while playing</dd></dl>
+<h4>Notes</h4><ul><li>Modules are tiny: a three-minute XM is often under 100 kB. The Mod Archive (modarchive.org) holds over a hundred thousand.</li><li>If there is no sound, <code>--driver help</code> lists the outputs this build has.</li></ul>
+<p class="see">See also <a href="#c-xmp"><code>xmp</code></a>, <a href="#c-fluidsynth"><code>fluidsynth</code></a></p>
 </article>
 <article class="cmd" id="c-pactl" data-s="pactl pulseaudio's control command, answered here by pipewire. audio pulseaudio-utils">
 <h3><a class="self" href="#c-pactl"><code>pactl</code></a> <span class="purpose">PulseAudio's control command, answered here by PipeWire.</span></h3>
@@ -303,10 +313,11 @@ pactl --version</pre>
 <h4>Notes</h4><ul><li>"Could not connect to PipeWire": no PipeWire is running for this user in this session -- typical over SSH or on a console. Run it from the desktop's terminal, or start it with <a href="#c-copal-audio-start"><code>copal-audio-start</code></a>.</li><li>IDs change between sessions. In a script, use <code>@DEFAULT_AUDIO_SINK@</code> and <code>@DEFAULT_AUDIO_SOURCE@</code>, not numbers.</li><li>The RTKit warnings it prints first ("RTKit error ... ServiceUnknown") are harmless: there is no RTKit on Copal, and audio runs without it.</li></ul>
 <p class="see">See also <a href="#c-pactl"><code>pactl</code></a>, <a href="#c-bluetoothctl"><code>bluetoothctl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-xmp" data-s="xmp extended module player audio xmp">
-<h3><a class="self" href="#c-xmp"><code>xmp</code></a> <span class="purpose">Extended Module Player</span></h3>
+<article class="cmd" id="c-xmp" data-s="xmp the extended module player: tracker music in the terminal, with a channel-by-channel view. audio xmp">
+<h3><a class="self" href="#c-xmp"><code>xmp</code></a> <span class="purpose">The Extended Module Player: tracker music in the terminal, with a channel-by-channel view.</span></h3>
 <p class="facts">Audio · command-line tool · <b>xmp</b> 4.2.0 · stage 12 · The application catalogue · <a href="man/xmp.html">man xmp(1)</a> · <a href="https://github.com/libxmp/xmp-cli">home</a></p>
 <p class="deps">needs alsa-lib, libpulse, libxmp</p>
+<p class="why"><b>On Copal:</b> The catalogue's other module player: small, and it can solo and mute channels as it plays -- the way to hear how a tracker song is built.</p>
 <pre class="syn">xmp [-a, --amplify factor] [-A, --amiga] [-b, --bits bits] [-C, --show-comments] [-c,
 --stdout] [-D device-specific parameters] [-d, --driver driver] [-e, --player-mode mode] [-F,
 --nofilter] [-f, --frequency rate] [--fix-sample-loop] [-h, --help] [-I, --instrument-path]
@@ -315,7 +326,11 @@ pactl --version</pre>
 --output-file filename] [-P, --pan num] [-p, --default-pan num] [--probe-only] [-q, --quiet]
 [-R, --random] [-S, --solo channel-list] [-s, --start pos] [-t, --time time] [-u, --unsigned]
 [--vblank] [-V, --version] [-v, --verbose] [-Z, --all-sequences] [-z, --sequence num] modules</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Play module files; the display shows the patterns and channels moving. Number keys mute channels while it plays, so the parts can be heard one at a time.</p>
+<h4>Examples</h4><div class="ex"><code>xmp song.mod</code><span>play</span></div><div class="ex"><code>xmp -l song.xm</code><span>loop it</span></div><div class="ex"><code>xmp -o song.wav song.xm</code><span>render to a WAV instead of playing</span></div><div class="ex"><code>xmp -S 0,1 song.mod</code><span>only channels 0 and 1</span></div><div class="ex"><code>xmp -L</code><span>every format it reads</span></div><div class="ex"><code>1..0           (while playing) mute or unmute channels 1 to 10</code></div><div class="ex"><code>Space          pause;  f / b  next / previous pattern</code></div><div class="ex"><code>q              quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-l, --loop</code></dt><dd>loop the song</dd><dt><code>-o, --output-file F</code></dt><dd>write to F instead of playing</dd><dt><code>-S, --solo LIST</code></dt><dd>play only these channels</dd><dt><code>-a, --amplify N</code></dt><dd>amplification, 0 to 3</dd><dt><code>-d, --driver NAME</code></dt><dd>the output driver</dd><dt><code>-L, --list-formats</code></dt><dd>the formats it reads</dd></dl>
+<h4>Notes</h4><ul><li>It comes from Alpine's testing repository (<code>xmp@testing</code>).</li><li>For the most faithful playback of IT and newer formats, <a href="#c-openmpt123"><code>openmpt123</code></a> is the reference; xmp is lighter and shows more.</li></ul>
+<p class="see">See also <a href="#c-openmpt123"><code>openmpt123</code></a>, <a href="#c-fluidsynth"><code>fluidsynth</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-browsers"><h2>Browsers</h2>
@@ -436,10 +451,11 @@ udiskie-umount [OPTIONS] (-a | PATH...)</pre>
 </article>
 </section>
 <section class="sec" id="s-design"><h2>Design</h2>
-<article class="cmd facts-only" id="c-dot" data-s="dot filter for drawing directed graphs neato - filter for drawing undirected graphs twopi - filter for radial layouts of graphs circo - filter for circular layout of graphs fdp - filter for drawing undirected graphs sfdp - filter for drawing large undirected graphs patchwork - filter for squarified tree maps osage - filter for array-based layouts design graphviz">
-<h3><a class="self" href="#c-dot"><code>dot</code></a> <span class="purpose">filter for drawing directed graphs neato - filter for drawing undirected graphs twopi - filter for radial layouts of graphs circo - filter for circular layout of graphs fdp - filter for drawing undirected graphs sfdp - filter for drawing large undirected graphs patchwork - filter for squarified tree maps osage - filter for array-based layouts</span></h3>
+<article class="cmd" id="c-dot" data-s="dot graphviz: lay out and draw graphs -- boxes and arrows -- from a text description. design graphviz">
+<h3><a class="self" href="#c-dot"><code>dot</code></a> <span class="purpose">Graphviz: lay out and draw graphs -- boxes and arrows -- from a text description.</span></h3>
 <p class="facts">Design · command-line tool · <b>graphviz</b> 12.2.1 · stage 12 · The application catalogue · <a href="man/dot.html">man dot(1)</a> · <a href="https://www.graphviz.org/">home</a></p>
 <p class="deps">needs font-cantarell, libx11, cairo, graphviz-libs, libexpat, libgd, glib, pango</p>
+<p class="why"><b>On Copal:</b> The catalogue's graph drawer, and the layout engine PlantUML and Doxygen call. A dependency tree, a state machine or a network map is a few lines of text.</p>
 <pre class="syn">dot [options] [files]
 neato [options] [files]
 twopi [options] [files]
@@ -448,16 +464,25 @@ fdp [options] [files]
 sfdp [options] [files]
 patchwork [options] [files]
 osage [options] [files]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Describe the graph in the DOT language -- nodes and <code>-&gt;</code> edges -- and <a href="#c-dot"><code>dot</code></a> works out where everything goes and draws it. Other layouts of the same file: <code>neato</code> and <code>fdp</code> (springs), <code>circo</code> (circles), <code>twopi</code> (rings).</p>
+<h4>Examples</h4><div class="ex"><code>echo 'digraph { a -&gt; b; a -&gt; c; b -&gt; d }' | dot -Tsvg &gt; g.svg</code><span>quick</span></div><div class="ex"><code>dot -Tpng deps.dot -o deps.png</code><span>a file, as PNG</span></div><div class="ex"><code>dot -Tpdf deps.dot -o deps.pdf</code><span>as PDF</span></div><div class="ex"><code>neato -Tsvg net.dot -o net.svg</code><span>the spring layout instead</span></div><div class="ex"><code>dot -Tsvg -Grankdir=LR g.dot -o g.svg</code><span>left to right, not top down</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-T FORMAT</code></dt><dd>svg, png, pdf, and others</dd><dt><code>-o FILE</code></dt><dd>the output file (default stdout)</dd><dt><code>-G NAME=VALUE</code></dt><dd>a graph attribute: rankdir=LR, bgcolor=transparent</dd><dt><code>-N NAME=VALUE</code></dt><dd>a default for every node: shape=box</dd><dt><code>-E NAME=VALUE</code></dt><dd>a default for every edge</dd><dt><code>-K LAYOUT</code></dt><dd>the layout engine: dot, neato, fdp, circo, twopi</dd></dl>
+<h4>Notes</h4><ul><li><code>digraph</code> draws arrows (<code>-&gt;</code>), <code>graph</code> plain lines (<code>--</code>); mixing them is a syntax error.</li><li>Large graphs are slow with <a href="#c-dot"><code>dot</code></a>; <code>sfdp</code> handles thousands of nodes.</li></ul>
+<p class="see">See also <a href="#c-plantuml"><code>plantuml</code></a>, <a href="#c-doxygen"><code>doxygen</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-plantuml" data-s="plantuml draw uml diagrams, using a simple and human readable text description design plantuml">
-<h3><a class="self" href="#c-plantuml"><code>plantuml</code></a> <span class="purpose">Draw UML diagrams, using a simple and human readable text description</span></h3>
+<article class="cmd" id="c-plantuml" data-s="plantuml draw uml and other diagrams from plain text: sequence, class, state, activity, gantt. design plantuml">
+<h3><a class="self" href="#c-plantuml"><code>plantuml</code></a> <span class="purpose">Draw UML and other diagrams from plain text: sequence, class, state, activity, Gantt.</span></h3>
 <p class="facts">Design · command-line tool · <b>plantuml</b> 1.2025.10 · stage 12 · The application catalogue · <a href="https://plantuml.com/">home</a></p>
 <p class="deps">needs graphviz, gtk+2.0, java-common, java-jre</p>
+<p class="why"><b>On Copal:</b> The catalogue's diagrams-as-text tool: a diagram kept as a few lines in the repository, diffed and reviewed like code, and drawn when needed.</p>
 <pre class="syn">Usage:
   java -jar plantuml.jar [options] [file|dir]...
   java -jar plantuml.jar [options] --gui</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Write the diagram between <code>@startuml</code> and <code>@enduml</code> in a <code>.puml</code> file, and run plantuml on it: a picture of the same name appears beside it. It is a Java program, so the first run takes a few seconds.</p>
+<h4>Examples</h4><div class="ex"><code>printf '@startuml\nAlice -&gt; Bob: hello\n@enduml\n' &gt; hi.puml</code></div><div class="ex"><code>plantuml hi.puml</code><span>hi.png</span></div><div class="ex"><code>plantuml -tsvg hi.puml</code><span>hi.svg instead</span></div><div class="ex"><code>plantuml --svg --output-dir out docs/</code><span>every diagram in docs/, into out/</span></div><div class="ex"><code>cat hi.puml | plantuml -tsvg -pipe &gt; hi.svg</code><span>stdin to stdout</span></div><div class="ex"><code>plantuml --check-syntax docs/</code><span>check without drawing</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--svg / --png</code></dt><dd>the output format</dd><dt><code>--output-dir DIR</code></dt><dd>where the pictures go</dd><dt><code>-pipe</code></dt><dd>read stdin, write the picture to stdout</dd><dt><code>--check-syntax</code></dt><dd>check the diagrams, draw nothing</dd><dt><code>--gui</code></dt><dd>a window listing the diagrams in a folder</dd></dl>
+<h4>Notes</h4><ul><li><code>-tsvg</code> and <code>-tpng</code>, the older spellings most guides use, still work.</li><li>Class and component diagrams are laid out by Graphviz, which is installed (<a href="#c-dot"><code>dot</code></a>); sequence diagrams need nothing else.</li><li>On a Pi with little memory, Java's start-up is most of the time. Draw a whole folder in one run rather than a file per run.</li></ul>
+<p class="see">See also <a href="#c-dot"><code>dot</code></a>, <a href="#c-nvim"><code>nvim</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-desktop"><h2>Desktop</h2>
@@ -964,56 +989,91 @@ Set up a zram device:
 </article>
 </section>
 <section class="sec" id="s-documents"><h2>Documents</h2>
-<article class="cmd facts-only" id="c-pdftotext" data-s="pdftotext portable document format (pdf) to text converter (version 3.03) documents poppler-utils">
-<h3><a class="self" href="#c-pdftotext"><code>pdftotext</code></a> <span class="purpose">Portable Document Format (PDF) to text converter (version 3.03)</span></h3>
+<article class="cmd" id="c-pdftotext" data-s="pdftotext pull the text out of a pdf -- and, with the other poppler tools, split, join and inspect pdfs. documents poppler-utils">
+<h3><a class="self" href="#c-pdftotext"><code>pdftotext</code></a> <span class="purpose">Pull the text out of a PDF -- and, with the other poppler tools, split, join and inspect PDFs.</span></h3>
 <p class="facts">Documents · command-line tool · <b>poppler-utils</b> 25.12.0 · stage 12 · The application catalogue · <a href="man/pdftotext.html">man pdftotext(1)</a> · <a href="https://poppler.freedesktop.org/">home</a></p>
 <p class="deps">needs cairo, freetype, libintl, lcms2, poppler</p>
+<p class="why"><b>On Copal:</b> The catalogue's PDF toolkit (poppler-utils): search a PDF with grep, read one over SSH, or feed it to a script. Its siblings pdfinfo, pdfunite, pdfseparate and pdftoppm come in the same package.</p>
 <pre class="syn">pdftotext [options] PDF-file [text-file]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>pdftotext FILE.pdf</code> writes <code>FILE.txt</code>; with <code>-</code> as the output it prints to the terminal. <code>-layout</code> keeps columns and tables where they were, instead of reflowing the text.</p>
+<h4>Examples</h4><div class="ex"><code>pdftotext paper.pdf</code><span>paper.txt beside it</span></div><div class="ex"><code>pdftotext -layout invoice.pdf -</code><span>to the terminal, columns kept</span></div><div class="ex"><code>pdftotext -f 3 -l 5 book.pdf part.txt</code><span>pages 3 to 5 only</span></div><div class="ex"><code>pdftotext paper.pdf - | grep -i copal</code><span>search inside a PDF</span></div><div class="ex"><code>pdfinfo paper.pdf</code><span>pages, size, author, producer</span></div><div class="ex"><code>pdfunite a.pdf b.pdf both.pdf</code><span>join</span></div><div class="ex"><code>pdfseparate book.pdf page-%d.pdf</code><span>one file per page</span></div><div class="ex"><code>pdftoppm -png -r 150 paper.pdf page</code><span>pages as PNG pictures</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-layout</code></dt><dd>keep the physical layout: columns, tables</dd><dt><code>-f N</code></dt><dd>-l N     the first and last page</dd><dt><code>-raw</code></dt><dd>the text in the order it is stored</dd><dt><code>-enc UTF-8</code></dt><dd>the output encoding</dd><dt><code>-nopgbrk</code></dt><dd>no form feed between pages</dd><dt><code>-</code></dt><dd>as the output file: stdout</dd></dl>
+<h4>Notes</h4><ul><li>A scanned PDF is pictures of pages and has no text to extract: the output is empty. Run the pages through <a href="#c-tesseract"><code>tesseract</code></a> (from <code>pdftoppm</code>'s images) to get text.</li><li>Multi-column papers come out interleaved without <code>-layout</code>, and hyphenated at line ends either way.</li></ul>
+<p class="see">See also <a href="#c-qpdf"><code>qpdf</code></a>, <a href="#c-tesseract"><code>tesseract</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-qpdf" data-s="qpdf pdf transformation software documents qpdf">
-<h3><a class="self" href="#c-qpdf"><code>qpdf</code></a> <span class="purpose">PDF transformation software</span></h3>
+<article class="cmd" id="c-qpdf" data-s="qpdf rewrite pdfs without changing their content: split, merge, rotate, decrypt, repair. documents qpdf">
+<h3><a class="self" href="#c-qpdf"><code>qpdf</code></a> <span class="purpose">Rewrite PDFs without changing their content: split, merge, rotate, decrypt, repair.</span></h3>
 <p class="facts">Documents · command-line tool · <b>qpdf</b> 12.3.2 · stage 12 · The application catalogue · <a href="man/qpdf.html">man qpdf(1)</a> · <a href="https://github.com/qpdf/qpdf">home</a></p>
 <p class="deps">needs qpdf-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's PDF surgeon. It works on the PDF's structure, not its pictures, so nothing is re-rendered or lost -- and it repairs files other programs refuse to open.</p>
 <pre class="syn">qpdf [ options ] infilename [ outfilename ]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Read one PDF and write another, with pages chosen, rotated or merged on the way. <code>--empty --pages</code> builds a new file from pages of others; <code>--check</code> reports what is wrong with a damaged one.</p>
+<h4>Examples</h4><div class="ex"><code>qpdf --empty --pages a.pdf b.pdf -- both.pdf</code><span>merge</span></div><div class="ex"><code>qpdf in.pdf --pages . 1-3 -- first3.pdf</code><span>the first three pages</span></div><div class="ex"><code>qpdf in.pdf --pages . z-1 -- reversed.pdf</code><span>every page, backwards</span></div><div class="ex"><code>qpdf --split-pages in.pdf out-%d.pdf</code><span>one file per page</span></div><div class="ex"><code>qpdf in.pdf --rotate=+90:2 out.pdf</code><span>rotate page 2</span></div><div class="ex"><code>qpdf --decrypt --password=secret locked.pdf open.pdf</code><span>remove a password you know</span></div><div class="ex"><code>qpdf --check broken.pdf</code><span>what is wrong with it</span></div><div class="ex"><code>qpdf broken.pdf fixed.pdf</code><span>rewriting often repairs it</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--empty</code></dt><dd>start from an empty PDF (with --pages)</dd><dt><code>--pages F R ... --</code></dt><dd>pages R of file F, in order; . is the input file</dd><dt><code>--split-pages</code></dt><dd>write each page (or group) as its own file</dd><dt><code>--rotate=[+-]DEG:R</code></dt><dd>rotate pages R</dd><dt><code>--decrypt</code></dt><dd>remove encryption (with --password)</dd><dt><code>--linearize</code></dt><dd>optimise for fast web viewing</dd><dt><code>--check</code></dt><dd>check the structure and report</dd><dt><code>--show-npages</code></dt><dd>the page count</dd></dl>
+<h4>Notes</h4><ul><li>Page ranges: <code>1-5</code>, <code>3,7,9</code>, <code>z</code> is the last page, <code>r1</code> counts from the end, <code>1-z:odd</code> every odd page.</li><li><code>--decrypt</code> needs the password when there is one to open it; for a file that opens freely but forbids printing, no password is asked.</li><li>It never re-compresses images, so output is the same quality -- and roughly the same size -- as the input.</li></ul>
+<p class="see">See also <a href="#c-pdftotext"><code>pdftotext</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-sc-im" data-s="sc-im a curses based, vim-like spreadsheet calculator documents sc-im">
-<h3><a class="self" href="#c-sc-im"><code>sc-im</code></a> <span class="purpose">A curses based, vim-like spreadsheet calculator</span></h3>
+<article class="cmd" id="c-sc-im" data-s="sc-im a spreadsheet in the terminal, with vim's keys: formulas, csv, and excel import. documents sc-im">
+<h3><a class="self" href="#c-sc-im"><code>sc-im</code></a> <span class="purpose">A spreadsheet in the terminal, with vim's keys: formulas, CSV, and Excel import.</span></h3>
 <p class="facts">Documents · terminal program · <b>sc-im</b> 0.8.5 · stage 12 · The application catalogue · <a href="man/sc-im.html">man sc-im(1)</a> · <a href="https://github.com/andmarti1424/sc-im">home</a></p>
 <p class="deps">needs libncursesw, libxml2, libzip</p>
+<p class="why"><b>On Copal:</b> The catalogue's spreadsheet for a machine with no desktop, or for a quick sum over SSH. It opens CSV and XLSX, and writes both back.</p>
 <pre class="syn">sc-im [OPTION]... [FILE]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Move between cells with vim's keys, type <code>=</code> to enter a number or a formula, <code>&lt;</code> or <code>&gt;</code> for text. <code>:w</code> saves in its own format; CSV and tab-separated files open and export directly.</p>
+<h4>Examples</h4><div class="ex"><code>sc-im</code><span>a new sheet</span></div><div class="ex"><code>sc-im budget.csv</code><span>open a CSV</span></div><div class="ex"><code>sc-im report.xlsx</code><span>import a spreadsheet</span></div><div class="ex"><code>sc-im --nocurses --quit_afterload data.csv</code><span>print it, no screen</span></div><div class="ex"><code>=  @sum(B2:B10)    (in sc-im) a formula in the current cell</code></div><div class="ex"><code>&lt;  &gt;               a text label, left / right aligned</code></div><div class="ex"><code>e  E  x            edit the number / edit the text / clear the cell</code></div><div class="ex"><code>:e csv out.csv     export as CSV</code></div><div class="ex"><code>:w  :q             save / quit;  u  undo</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>--nocurses</code></dt><dd>no screen: print the sheet and read commands from stdin</dd><dt><code>--quit_afterload</code></dt><dd>leave after loading (with --nocurses: a print)</dd><dt><code>--sheet=SHEET</code></dt><dd>which sheet of an XLSX to open</dd><dt><code>--xlsx_readformulas</code></dt><dd>import formulas from XLSX, not only their values</dd><dt><code>--output=FILE</code></dt><dd>where --nocurses writes</dd></dl>
+<h4>Notes</h4><ul><li>Formulas use sc's functions with an <code>@</code>: <code>@sum</code>, <code>@avg</code>, <code>@max</code>, <code>@if</code>. Excel's <code>SUM()</code> spelling is not understood.</li><li>It exports as well as imports: <code>:e xlsx FILE</code> for a spreadsheet program, <code>:e mkd FILE</code> for a Markdown table, <code>:e txt</code> for plain text.</li><li><code>:help</code> is the full manual, inside the program.</li></ul>
+<p class="see">See also <a href="#c-vim"><code>vim</code></a>, <a href="#c-python3"><code>python3</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-editors"><h2>Editors</h2>
-<article class="cmd facts-only" id="c-hx" data-s="hx a post-modern modal text editor editors helix">
-<h3><a class="self" href="#c-hx"><code>hx</code></a> <span class="purpose">A post-modern modal text editor</span></h3>
+<article class="cmd" id="c-hx" data-s="hx helix: a modal editor with selections first, and a language server and syntax trees built in. editors helix">
+<h3><a class="self" href="#c-hx"><code>hx</code></a> <span class="purpose">Helix: a modal editor with selections first, and a language server and syntax trees built in.</span></h3>
 <p class="facts">Editors · terminal program · <b>helix</b> 25.07.1 · stage 12 · The application catalogue · <a href="https://helix-editor.com/">home</a></p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's modern modal editor: what nvim needs a config for, Helix does out of the box -- completion, go-to-definition, and a menu for every key. Its command is hx.</p>
+<h4>Use</h4><p>Modal like vim, but the selection comes first and the action second: <code>w</code> selects a word, then <code>d</code> deletes it. Press Space for a menu of pickers and commands; every menu says what each key does.</p>
+<h4>Examples</h4><div class="ex"><code>hx main.rs</code><span>edit</span></div><div class="ex"><code>hx --tutor</code><span>the tutorial, about half an hour</span></div><div class="ex"><code>hx --health</code><span>which languages have a server and a grammar</span></div><div class="ex"><code>hx --health rust</code><span>one language in detail</span></div><div class="ex"><code>hx --vsplit a.c b.c</code><span>two files side by side</span></div><div class="ex"><code>i  Esc          (in hx) insert / back to normal</code></div><div class="ex"><code>w  x  d         select a word / select the line / delete the selection</code></div><div class="ex"><code>Space f         file picker;  Space /  search the project</code></div><div class="ex"><code>g d  g r        go to definition / references</code></div><div class="ex"><code>:w  :q          write / quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>--tutor</code></dt><dd>the tutorial</dd><dt><code>--health [LANG]</code></dt><dd>check the language servers and grammars</dd><dt><code>-c, --config FILE</code></dt><dd>another config file</dd><dt><code>--vsplit / --hsplit</code></dt><dd>open the files in splits</dd><dt><code>-w, --working-dir D</code></dt><dd>start in directory D</dd><dt><code>+N</code></dt><dd>open the first file at line N</dd></dl>
+<h4>Notes</h4><ul><li>Language servers are programs of their own: <code>hx --health</code> shows which are found. Stage 7's clangd, rust-analyzer, gopls and pylsp are.</li><li>Config is <code>~/.config/helix/config.toml</code>; themes are one line: <code>theme = "onedark"</code>.</li><li>Vim habits misfire: <code>dw</code> is <code>wd</code> here, and there is no <code>:s</code> -- select, then <code>s</code> to select within, then <code>c</code> to change.</li></ul>
+<p class="see">See also <a href="#c-nvim"><code>nvim</code></a>, <a href="#c-vim"><code>vim</code></a>, <a href="#c-micro"><code>micro</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-micro" data-s="micro a modern and intuitive terminal-based text editor editors micro">
-<h3><a class="self" href="#c-micro"><code>micro</code></a> <span class="purpose">A modern and intuitive terminal-based text editor</span></h3>
+<article class="cmd" id="c-micro" data-s="micro a terminal text editor with the keys of a desktop editor: ctrl-s, ctrl-c, ctrl-v, the mouse. editors micro">
+<h3><a class="self" href="#c-micro"><code>micro</code></a> <span class="purpose">A terminal text editor with the keys of a desktop editor: Ctrl-S, Ctrl-C, Ctrl-V, the mouse.</span></h3>
 <p class="facts">Editors · terminal program · <b>micro</b> 2.0.15 · stage 12 · The application catalogue · <a href="man/micro.html">man micro(1)</a> · <a href="https://micro-editor.github.io/">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's editor for anyone who does not want modes. Copy and paste reach the desktop clipboard, and the mouse selects text.</p>
 <pre class="syn">micro [OPTION]... [FILE]... [+LINE[:COL]] [+/REGEX]
 micro [OPTION]... [FILE[:LINE[:COL]]]...  (only if the `parsecursor` option is enabled)</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Open a file and type. Ctrl-S saves, Ctrl-Q quits, Ctrl-Z undoes, and Ctrl-E opens a command prompt for anything else. Syntax colours, multiple cursors and splits come built in.</p>
+<h4>Examples</h4><div class="ex"><code>micro notes.txt</code><span>edit</span></div><div class="ex"><code>micro +42 main.c</code><span>at line 42</span></div><div class="ex"><code>micro -clean</code><span>with default settings, to rule out the config</span></div><div class="ex"><code>micro -plugin install editorconfig</code><span>add a plugin</span></div><div class="ex"><code>Ctrl-S  Ctrl-Q     (in micro) save / quit</code></div><div class="ex"><code>Ctrl-F  Ctrl-N     find / next match</code></div><div class="ex"><code>Ctrl-Z  Ctrl-Y     undo / redo</code></div><div class="ex"><code>Ctrl-E             command prompt: help, set, vsplit, replace...</code></div><div class="ex"><code>Alt-G              show the key bindings at the foot</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>+N</code></dt><dd>open at line N</dd><dt><code>-clean</code></dt><dd>ignore the configuration</dd><dt><code>-config-dir DIR</code></dt><dd>use another configuration directory</dd><dt><code>-plugin install P</code></dt><dd>install a plugin; remove to take it out</dd><dt><code>-options</code></dt><dd>list every setting and its default</dd></dl>
+<h4>Notes</h4><ul><li>Settings are in <code>~/.config/micro/settings.json</code>, keys in <code>bindings.json</code>; <code>Ctrl-E</code> then <code>set tabsize 4</code> changes and saves one.</li><li>Copy and paste reach the desktop's clipboard through <code>wl-copy</code> and <code>wl-paste</code> (its <code>clipboard</code> setting is <code>external</code>).</li><li><code>Ctrl-E help</code> opens the manual inside the editor.</li></ul>
+<p class="see">See also <a href="#c-nano"><code>nano</code></a>, <a href="#c-nvim"><code>nvim</code></a>, <a href="#c-hx"><code>hx</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-nano" data-s="nano nano's another text editor, inspired by pico editors nano">
-<h3><a class="self" href="#c-nano"><code>nano</code></a> <span class="purpose">Nano's ANOther text editor, inspired by Pico</span></h3>
+<article class="cmd" id="c-nano" data-s="nano the simplest terminal editor: type, and the keys are listed at the bottom. editors nano">
+<h3><a class="self" href="#c-nano"><code>nano</code></a> <span class="purpose">The simplest terminal editor: type, and the keys are listed at the bottom.</span></h3>
 <p class="facts">Editors · terminal program · <b>nano</b> 9.2 · stage 12 · The application catalogue · <a href="man/nano.html">man nano(1)</a> · <a href="https://www.nano-editor.org/">home</a></p>
 <p class="deps">needs libncursesw</p>
+<p class="why"><b>On Copal:</b> The catalogue's editor for anyone new to the terminal, and the one to reach for to change a config file quickly -- nothing to learn before the first edit.</p>
 <pre class="syn">nano [options] [[+line[,column]] file]...
 
 nano [options] [[+[crCR]{/|?}string] file]...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Open a file and type. The two lines at the foot list the commands: <code>^</code> means Ctrl, <code>M-</code> means Alt. Ctrl-O saves ("write Out"), Ctrl-X leaves.</p>
+<h4>Examples</h4><div class="ex"><code>nano notes.txt</code><span>edit</span></div><div class="ex"><code>doas nano /etc/hostname</code><span>edit a system file</span></div><div class="ex"><code>nano -l script.sh</code><span>with line numbers</span></div><div class="ex"><code>nano +42 main.c</code><span>at line 42</span></div><div class="ex"><code>nano -/ notes.txt</code><span>modern keys: Ctrl-S save, Ctrl-Q quit, Ctrl-C copy</span></div><div class="ex"><code>Ctrl-O  Ctrl-X     (in nano) save / quit</code></div><div class="ex"><code>Ctrl-W  Ctrl-\     find / find and replace</code></div><div class="ex"><code>Ctrl-K  Ctrl-U     cut the line / paste</code></div><div class="ex"><code>Alt-U              undo;  Ctrl-G  help</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-l, --linenumbers</code></dt><dd>show line numbers</dd><dt><code>-m, --mouse</code></dt><dd>use the mouse</dd><dt><code>-i, --autoindent</code></dt><dd>keep the indentation of the line above</dd><dt><code>-E, --tabstospaces</code></dt><dd>type spaces for Tab</dd><dt><code>-T N, --tabsize=N</code></dt><dd>tab width</dd><dt><code>-B, --backup</code></dt><dd>keep a backup (file~)</dd><dt><code>-v, --view</code></dt><dd>read-only</dd><dt><code>-/, --modernbindings</code></dt><dd>Ctrl-S, Ctrl-Q, Ctrl-C, Ctrl-V as elsewhere</dd></dl>
+<h4>Notes</h4><ul><li>Settings go in <code>~/.config/nano/nanorc</code>, one <code>set</code> per line: <code>set linenumbers</code>, <code>set modernbindings</code>.</li><li><code>doas nano FILE</code> edits as root. Keep root's edits to system files -- your own files edited as root end up owned by root.</li></ul>
+<p class="see">See also <a href="#c-micro"><code>micro</code></a>, <a href="#c-vim"><code>vim</code></a>, <a href="#c-nvim"><code>nvim</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-vis" data-s="vis a highly efficient text editor editors vis">
-<h3><a class="self" href="#c-vis"><code>vis</code></a> <span class="purpose">a highly efficient text editor</span></h3>
+<article class="cmd" id="c-vis" data-s="vis a small vi-like editor with multiple selections and sam's structural regular expressions. editors vis">
+<h3><a class="self" href="#c-vis"><code>vis</code></a> <span class="purpose">A small vi-like editor with multiple selections and sam's structural regular expressions.</span></h3>
 <p class="facts">Editors · terminal program · <b>vis</b> 0.9 · stage 12 · The application catalogue · <a href="man/vis.html">man vis(1)</a> · <a href="https://github.com/martanne/vis">home</a></p>
 <p class="deps">needs !outils-vis, lua5.3-lpeg, acl-libs, lua5.3-libs, libncursesw, libtermkey</p>
+<p class="why"><b>On Copal:</b> The catalogue's lean modal editor: vi's keys in a fraction of vim's size, plus multiple cursors and sam-style editing for changing many places at once.</p>
 <pre class="syn">vis [-v] [+command] [--] [files ...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Edit as in vi. What it adds: several selections at once, all edited together, and <code>:x/pattern/ command</code> to select every match in the selection and act on each.</p>
+<h4>Examples</h4><div class="ex"><code>vis notes.txt</code><span>edit</span></div><div class="ex"><code>i  Esc          (in vis) insert / normal</code></div><div class="ex"><code>Ctrl-N          select the word, then the next match, and the next...</code></div><div class="ex"><code>I  A            insert at the start / end of every selection</code></div><div class="ex"><code>:x/foo/ c/bar/  change every foo in the selection to bar</code></div><div class="ex"><code>:w  :q          write / quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-v</code></dt><dd>the version</dd><dt><code>--</code></dt><dd>everything after is a file name</dd></dl>
+<h4>Notes</h4><ul><li>Configuration is Lua: <code>~/.config/vis/visrc.lua</code>.</li><li>It is vi, not vim: no <code>:s///</code>. <code>:x/old/ c/new/</code> over the selection (<code>:,</code> for the whole file) does the same job.</li></ul>
+<p class="see">See also <a href="#c-vim"><code>vim</code></a>, <a href="#c-nvim"><code>nvim</code></a>, <a href="#c-hx"><code>hx</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-emulation"><h2>Emulation</h2>
@@ -1106,11 +1166,16 @@ nano [options] [[+[crCR]{/|?}string] file]...</pre>
 <p class="deps">needs libncursesw</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-angband" data-s="angband roguelike computer role playing game games angband">
-<h3><a class="self" href="#c-angband"><code>angband</code></a> <span class="purpose">Roguelike computer role playing game</span></h3>
+<article class="cmd" id="c-angband" data-s="angband angband: a hundred-level descent to morgoth, in the lineage of moria. games angband">
+<h3><a class="self" href="#c-angband"><code>angband</code></a> <span class="purpose">Angband: a hundred-level descent to Morgoth, in the lineage of Moria.</span></h3>
 <p class="facts">Games · terminal program · <b>angband</b> 4.2.5 · stage 12 · The application catalogue · <a href="https://rephial.org">home</a></p>
 <p class="deps">needs sdl2, sdl2_image, sdl2_mixer, sdl2_ttf, libncursesw</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's long-form roguelike: a character built over many hours, a town to return to, and the dungeon from Tolkien's Moria onward.</p>
+<h4>Use</h4><p>Create a character, buy supplies in the town, and descend. Levels are made afresh every time you take the stairs, so going back up and down is normal. <code>?</code> is the help, <code>Enter</code> a menu of every command.</p>
+<h4>Examples</h4><div class="ex"><code>angband</code><span>continue, or make a character</span></div><div class="ex"><code>angband -n</code><span>a new character</span></div><div class="ex"><code>angband -l</code><span>the savefiles there are</span></div><div class="ex"><code>angband -uGandalf</code><span>play the savefile named Gandalf</span></div><div class="ex"><code>arrows / hjkl  (in angband) move</code></div><div class="ex"><code>Enter          the menu of every command</code></div><div class="ex"><code>g  i  w        pick up / inventory / wield</code></div><div class="ex"><code>&lt;  &gt;           stairs up / down</code></div><div class="ex"><code>Ctrl-X         save and quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-n</code></dt><dd>a new character (overwrites the default savefile, without -u)</dd><dt><code>-u NAME</code></dt><dd>use the savefile NAME</dd><dt><code>-l</code></dt><dd>list the savefiles</dd><dt><code>-c</code></dt><dd>choose a savefile from a menu</dd><dt><code>-w</code></dt><dd>bring a dead character back (marks the save)</dd></dl>
+<h4>Notes</h4><ul><li>Your saves and settings are in <code>~/.angband</code>, not in <code>/usr/share</code>.</li><li><code>-n</code> without <code>-u</code> replaces the default character. Name a new one: <code>angband -n -uSomeone</code>.</li><li>It comes from Alpine's testing repository (<code>angband@testing</code>).</li></ul>
+<p class="see">See also <a href="#c-zangband"><code>zangband</code></a>, <a href="#c-nethack"><code>nethack</code></a>, <a href="#c-brogue"><code>brogue</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-asciiquarium" data-s="asciiquarium an aquarium/sea animation in ascii art games asciiquarium">
 <h3><a class="self" href="#c-asciiquarium"><code>asciiquarium</code></a> <span class="purpose">An aquarium/sea animation in ASCII art</span></h3>
@@ -1125,11 +1190,16 @@ nano [options] [[+[crCR]{/|?}string] file]...</pre>
 <pre class="syn">atc [-u?lstp] [-gf game name] [-r random seed]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-brogue" data-s="brogue classic roguelike with streamlined game mechanics and tasteful visual design (community edition) games brogue">
-<h3><a class="self" href="#c-brogue"><code>brogue</code></a> <span class="purpose">Classic roguelike with streamlined game mechanics and tasteful visual design (community edition)</span></h3>
+<article class="cmd" id="c-brogue" data-s="brogue brogue: a roguelike made to be learned -- twenty-six levels, no classes, beautiful in a terminal. games brogue">
+<h3><a class="self" href="#c-brogue"><code>brogue</code></a> <span class="purpose">Brogue: a roguelike made to be learned -- twenty-six levels, no classes, beautiful in a terminal.</span></h3>
 <p class="facts">Games · terminal program · <b>brogue</b> 1.15.1 · stage 12 · The application catalogue · <a href="https://sites.google.com/site/broguegame/">home</a></p>
 <p class="deps">needs sdl2, sdl2_image</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's most approachable roguelike: fewer keys than NetHack, a mouse that works, and a dungeon that shows you what it is doing.</p>
+<h4>Use</h4><p>Descend twenty-six levels to the Amulet of Yendor and back out. You build your character from what you find, not from a class. The mouse moves you and describes what you point at; <code>?</code> lists the keys.</p>
+<h4>Examples</h4><div class="ex"><code>brogue</code><span>the menu</span></div><div class="ex"><code>brogue -n</code><span>a new game at once</span></div><div class="ex"><code>brogue -s 12345</code><span>a game from a seed (share it)</span></div><div class="ex"><code>brogue --scores</code><span>the high scores</span></div><div class="ex"><code>brogue -v game.broguerec</code><span>watch a recording</span></div><div class="ex"><code>arrows / hjkl  (in brogue) move;  x  explore automatically</code></div><div class="ex"><code>i  s           inventory / search;  &gt;  descend</code></div><div class="ex"><code>?              every key;  Q  quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-n</code></dt><dd>a new game, skip the menu</dd><dt><code>-s SEED</code></dt><dd>a new game from SEED</dd><dt><code>-o FILE</code></dt><dd>open a saved game</dd><dt><code>-v FILE</code></dt><dd>view a recording</dd><dt><code>--scores</code></dt><dd>print the scores</dd><dt><code>--size N</code></dt><dd>font size, 1 to 20 (in a window build)</dd></dl>
+<h4>Notes</h4><ul><li><code>x</code> explores the level for you until something interesting happens; most of the game is choosing when to stop.</li><li>Every game is recorded; recordings, saves and scores are kept in <code>~/.local/share/brogue</code>.</li></ul>
+<p class="see">See also <a href="#c-nethack"><code>nethack</code></a>, <a href="#c-angband"><code>angband</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-cbonsai" data-s="cbonsai grow bonsai trees in your terminal games cbonsai">
 <h3><a class="self" href="#c-cbonsai"><code>cbonsai</code></a> <span class="purpose">grow bonsai trees in your terminal</span></h3>
@@ -1202,15 +1272,20 @@ command line invocation.
 <pre class="syn">moon-buggy [-hnsV] [--help] [--no-title] [--show-scores] [--version]</pre>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-nethack" data-s="nethack exploring the mazes of menace games nethack">
-<h3><a class="self" href="#c-nethack"><code>nethack</code></a> <span class="purpose">Exploring The Mazes of Menace</span></h3>
+<article class="cmd" id="c-nethack" data-s="nethack nethack: the deepest of the roguelikes -- a dungeon of letters, and everything interacts. games nethack">
+<h3><a class="self" href="#c-nethack"><code>nethack</code></a> <span class="purpose">NetHack: the deepest of the roguelikes -- a dungeon of letters, and everything interacts.</span></h3>
 <p class="facts">Games · terminal program · <b>nethack</b> 3.6.7 · stage 12 · The application catalogue · <a href="man/nethack.html">man nethack(6)</a> · <a href="https://www.nethack.org/">home</a></p>
 <p class="deps">needs libncursesw</p>
+<p class="why"><b>On Copal:</b> The catalogue's first roguelike and its deepest: a game people have played for thirty-five years, in any terminal, over SSH included.</p>
 <pre class="syn">nethack [ -d directory ] [ -n ] [ -p profession ] [ -r race ] [ -[DX] ] [ -u playername ] [
 -dec ] [ -ibm ] [ --showpaths ] [ --version[:paste] ]
 
 nethack [ -d directory ] -s [ -v ] [ -p profession ] [ -r race ] [ playernames ]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Pick a role, a race and a name, and descend to retrieve the Amulet of Yendor. You are the <code>@</code>. Every key is a command; <code>?</code> lists them. Death is permanent, and there is a lot of it.</p>
+<h4>Examples</h4><div class="ex"><code>nethack</code><span>play</span></div><div class="ex"><code>nethack -u Rodney</code><span>play as Rodney (and resume his save)</span></div><div class="ex"><code>nethack -s</code><span>the high scores</span></div><div class="ex"><code>h j k l y u b n   (in nethack) move, including diagonally</code></div><div class="ex"><code>i  ,  d        inventory / pick up / drop</code></div><div class="ex"><code>s</code><span>pray       search / pray (once in a while)</span></div><div class="ex"><code>S              save and quit;  ?  help</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-u NAME</code></dt><dd>the character's name; a saved game of that name resumes</dd><dt><code>-s</code></dt><dd>show the scores</dd><dt><code>-p ROLE</code></dt><dd>choose the role: Valkyrie, Wizard, Samurai...</dd><dt><code>-X</code></dt><dd>explore mode: no death, no score</dd></dl>
+<h4>Notes</h4><ul><li>Options go in <code>~/.nethackrc</code>: <code>OPTIONS=number_pad:1</code> for the numeric keypad, <code>OPTIONS=color</code>, <code>OPTIONS=autopickup,pickup_types:$</code>.</li><li><code>S</code> saves; next time, the same name picks up where you left.</li><li>A Valkyrie is the gentlest start.</li></ul>
+<p class="see">See also <a href="#c-brogue"><code>brogue</code></a>, <a href="#c-angband"><code>angband</code></a>, <a href="#c-zangband"><code>zangband</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-robots" data-s="robots fight off villainous robots games bsd-games">
 <h3><a class="self" href="#c-robots"><code>robots</code></a> <span class="purpose">fight off villainous robots</span></h3>
@@ -1238,23 +1313,33 @@ nethack [ -d directory ] -s [ -v ] [ -p profession ] [ -r race ] [ playernames ]
 <p class="deps">needs libncursesw</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-zangband" data-s="zangband roguelike computer role playing game based on angband games zangband">
-<h3><a class="self" href="#c-zangband"><code>zangband</code></a> <span class="purpose">Roguelike computer role playing game based on Angband</span></h3>
+<article class="cmd" id="c-zangband" data-s="zangband zangband: angband with a wilderness, towns, and zelazny's amber above the dungeon. games zangband">
+<h3><a class="self" href="#c-zangband"><code>zangband</code></a> <span class="purpose">ZAngband: Angband with a wilderness, towns, and Zelazny's Amber above the dungeon.</span></h3>
 <p class="facts">Games · terminal program · <b>zangband</b> 2.7.5.1 · stage 12 · The application catalogue · <a href="https://sourceforge.net/projects/zangband/">home</a></p>
 <p class="deps">needs ncurses, libncursesw</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's sprawling Angband variant: a whole overworld of towns and dungeons rather than one town and one descent.</p>
+<h4>Use</h4><p>Make a character, walk the wilderness between towns, and pick which dungeons to take on. <code>?</code> is the help and <code>=</code> the options, as the title screen says.</p>
+<h4>Examples</h4><div class="ex"><code>zangband</code><span>play</span></div><div class="ex"><code>arrows / hjkl  (in zangband) move</code></div><div class="ex"><code>?  =           help / options</code></div><div class="ex"><code>g  i  w        pick up / inventory / wield</code></div><div class="ex"><code>&lt;  &gt;           stairs up / down</code></div><div class="ex"><code>Ctrl-X         save and quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-n</code></dt><dd>a new character</dd><dt><code>-u&lt;name&gt;</code></dt><dd>play the character NAME: zangband -uRodney</dd></dl>
+<h4>Notes</h4><ul><li>It starts only for a member of the group <code>users</code>, which owns its score and save directories: otherwise "Cannot create the '/usr/lib/zangband/apex/scores.raw' file!" and a fatal error. Copal adds you from 24 Sep 2026; before that, <code>doas adduser $USER users</code>, then log out and in.</li><li>Saves are shared in <code>/usr/lib/zangband/save</code>, by character name.</li></ul>
+<p class="see">See also <a href="#c-angband"><code>angband</code></a>, <a href="#c-nethack"><code>nethack</code></a>, <a href="#c-brogue"><code>brogue</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-graphics"><h2>Graphics</h2>
-<article class="cmd facts-only" id="c-tesseract" data-s="tesseract open source ocr engine graphics tesseract-ocr">
-<h3><a class="self" href="#c-tesseract"><code>tesseract</code></a> <span class="purpose">open source OCR engine</span></h3>
+<article class="cmd" id="c-tesseract" data-s="tesseract ocr: read the text in a picture of a page, and write it as text or a searchable pdf. graphics tesseract-ocr">
+<h3><a class="self" href="#c-tesseract"><code>tesseract</code></a> <span class="purpose">OCR: read the text in a picture of a page, and write it as text or a searchable PDF.</span></h3>
 <p class="facts">Graphics · command-line tool · <b>tesseract-ocr</b> 5.5.2 · stage 12 · The application catalogue · <a href="https://github.com/tesseract-ocr/tesseract/releases">home</a></p>
 <p class="deps">needs cairo, fontconfig, glib, libgomp, harfbuzz, icu-libs, leptonica, pango</p>
+<p class="why"><b>On Copal:</b> The catalogue's optical character recogniser, with English. It turns scans and screenshots into text you can search, copy and edit.</p>
 <pre class="syn">Usage:
   /usr/bin/tesseract --help | --help-extra | --version
   /usr/bin/tesseract --list-langs
   /usr/bin/tesseract imagename outputbase [options...] [configfile...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Give it an image and an output name: it writes NAME.txt. Put <code>-</code> as the name for the terminal, and add <code>pdf</code> at the end for a PDF with the text under the picture. Clean, straight, 300 dpi scans read best.</p>
+<h4>Examples</h4><div class="ex"><code>tesseract scan.png out</code><span>out.txt</span></div><div class="ex"><code>tesseract scan.png - | less</code><span>to the terminal</span></div><div class="ex"><code>tesseract scan.png out pdf</code><span>out.pdf, searchable</span></div><div class="ex"><code>tesseract photo.jpg - --psm 6</code><span>one block of text: signs, labels</span></div><div class="ex"><code>pdftoppm -r 300 -png scan.pdf pg &amp;&amp; for f in pg-*.png; do tesseract $f - ; done &gt; scan.txt</code></div><div class="ex"><code>tesseract --list-langs</code><span>the languages installed</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-l LANG[+LANG]</code></dt><dd>the language(s): eng, or eng+deu</dd><dt><code>--psm N</code></dt><dd>page segmentation: 3 automatic, 6 one block, 7 one line</dd><dt><code>--dpi N</code></dt><dd>the resolution, when the image does not say</dd><dt><code>--list-langs</code></dt><dd>the installed languages pdf / hocr / tsv the output formats, named after the output base</dd></dl>
+<h4>Notes</h4><ul><li>It needs a language's data to do anything: "Failed loading language 'eng'" means <code>tesseract-ocr-data-eng</code> is missing. Copal installs it with the catalogue row from 24 Sep 2026; before that, <code>doas apk add tesseract-ocr-data-eng</code>. Other languages are <code>tesseract-ocr-data-deu</code> and so on.</li><li>A photo at an angle or in low light reads badly: crop, straighten and raise the contrast first.</li><li>Not on the 32-bit Pis (armv6, armhf): the row is gated off there.</li></ul>
+<p class="see">See also <a href="#c-pdftotext"><code>pdftotext</code></a>, <a href="#c-copal-shot"><code>copal-shot</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-instruments"><h2>Instruments</h2>
@@ -1720,26 +1805,41 @@ weechat [-v|--version]</pre>
 </article>
 </section>
 <section class="sec" id="s-media"><h2>Media</h2>
-<article class="cmd facts-only" id="c-alsamixer" data-s="alsamixer soundcard mixer for alsa soundcard driver, with ncurses interface media alsa-utils">
-<h3><a class="self" href="#c-alsamixer"><code>alsamixer</code></a> <span class="purpose">soundcard mixer for ALSA soundcard driver, with ncurses interface</span></h3>
+<article class="cmd" id="c-alsamixer" data-s="alsamixer the sound card's own mixer, in the terminal: every hardware level and switch. media alsa-utils">
+<h3><a class="self" href="#c-alsamixer"><code>alsamixer</code></a> <span class="purpose">The sound card's own mixer, in the terminal: every hardware level and switch.</span></h3>
 <p class="facts">Media · terminal program · <b>alsa-utils</b> 1.2.15.2 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/alsamixer.html">man alsamixer(1)</a> · <a href="https://alsa-project.org/">home</a></p>
 <p class="deps">needs dialog, alsa-ucm-conf, alsa-lib, fftw-single-libs, libformw, libmenuw, libncursesw, libpanelw</p>
+<p class="why"><b>On Copal:</b> Stage 10 installs alsa-utils with it. Most volume is PipeWire's (wpctl), but a card's hardware controls -- a headphone switch, a muted input, HDMI -- are set here.</p>
 <pre class="syn">alsamixer [options]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>It opens on the default device, which on Copal is PipeWire: one volume. F6 chooses the sound card itself, and shows every control the hardware has. Arrows move and change; M mutes.</p>
+<h4>Examples</h4><div class="ex"><code>alsamixer</code><span>the default device (PipeWire)</span></div><div class="ex"><code>alsamixer -c 0</code><span>the first sound card's own controls</span></div><div class="ex"><code>alsamixer -V all</code><span>playback and capture together</span></div><div class="ex"><code>aplay -l</code><span>the cards, and their numbers</span></div><div class="ex"><code>F6             (in alsamixer) choose a card</code></div><div class="ex"><code>Left Right     choose a control;  Up Down  change it</code></div><div class="ex"><code>M              mute / unmute (MM at the foot means muted)</code></div><div class="ex"><code>F4             the capture (recording) controls;  Esc  quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-c N</code></dt><dd>open card N</dd><dt><code>-D DEVICE</code></dt><dd>open a named ALSA device</dd><dt><code>-V VIEW</code></dt><dd>playback, capture or all</dd><dt><code>-g</code></dt><dd>no colours</dd></dl>
+<h4>Notes</h4><ul><li>"MM" under a control is muted, "00" is playing. A muted Master or Headphone control is the usual reason for silence with the volume up.</li><li><code>doas alsactl store</code> keeps hardware levels across reboots; the <code>alsa</code> service restores them at boot.</li></ul>
+<p class="see">See also <a href="#c-wpctl"><code>wpctl</code></a>, <a href="#c-pactl"><code>pactl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-cmus" data-s="cmus c* music player media cmus">
-<h3><a class="self" href="#c-cmus"><code>cmus</code></a> <span class="purpose">C* Music Player</span></h3>
+<article class="cmd" id="c-cmus" data-s="cmus a music player for the terminal: a library, playlists, a queue, and vi-like keys. media cmus">
+<h3><a class="self" href="#c-cmus"><code>cmus</code></a> <span class="purpose">A music player for the terminal: a library, playlists, a queue, and vi-like keys.</span></h3>
 <p class="facts">Media · terminal program · <b>cmus</b> 2.12.0 · stage 12 · The application catalogue · <a href="man/cmus.html">man cmus(1)</a> · <a href="https://cmus.github.io/">home</a></p>
 <p class="deps">needs libflac, alsa-lib, ffmpeg-libavcodec, ffmpeg-libavformat, libelogind, faad2-libs, libmad, libncursesw</p>
+<p class="why"><b>On Copal:</b> The catalogue's terminal music player: a whole collection, sorted and searchable, playing in a tmux pane or over SSH on a Pi wired to speakers.</p>
 <pre class="syn">cmus [options]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Add your music folder once, then browse the library by artist and album and play. The number keys switch views; the command line (<code>:</code>) does the rest. It keeps playing when you switch to another view.</p>
+<h4>Examples</h4><div class="ex"><code>cmus</code><span>start</span></div><div class="ex"><code>:add ~/Music       (in cmus) add a folder to the library</code></div><div class="ex"><code>1  2  3            library / sorted list / playlist views</code></div><div class="ex"><code>5                  the file browser: Enter plays, a adds</code></div><div class="ex"><code>x  c  v            play / pause / stop</code></div><div class="ex"><code>b  z               next / previous track</code></div><div class="ex"><code>+  -               volume;  / search;  q quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>--listen ADDR</code></dt><dd>the address cmus-remote controls it at</dd><dt><code>--plugins</code></dt><dd>list the input and output plugins</dd><dt><code>--show-cursor</code></dt><dd>keep the cursor visible</dd><dt><code>--help</code></dt><dd>the short usage</dd></dl>
+<h4>Notes</h4><ul><li><code>cmus-remote</code> controls a running cmus from another shell or a key binding: <code>cmus-remote -u</code> pauses, <code>-n</code> skips.</li><li>No sound? <code>:set output_plugin=pulse</code> sends it through PipeWire's pulse layer; <code>alsa</code> goes through PipeWire's ALSA plugin. Both reach the same place.</li><li>The library and settings are in <code>~/.config/cmus</code>.</li></ul>
+<p class="see">See also <a href="#c-ncmpcpp"><code>ncmpcpp</code></a>, <a href="#c-alsamixer"><code>alsamixer</code></a>, <a href="#c-wpctl"><code>wpctl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-ncmpcpp" data-s="ncmpcpp an ncurses music player daemon (mpd) client. media ncmpcpp">
-<h3><a class="self" href="#c-ncmpcpp"><code>ncmpcpp</code></a> <span class="purpose">An ncurses Music Player Daemon (MPD) client.</span></h3>
+<article class="cmd" id="c-ncmpcpp" data-s="ncmpcpp a terminal client for mpd, the music player that runs in the background. media ncmpcpp">
+<h3><a class="self" href="#c-ncmpcpp"><code>ncmpcpp</code></a> <span class="purpose">A terminal client for MPD, the music player that runs in the background.</span></h3>
 <p class="facts">Media · terminal program · <b>ncmpcpp</b> 0.10.1 · stage 12 · The application catalogue · <a href="man/ncmpcpp.html">man ncmpcpp(1)</a> · <a href="http://rybczak.net/ncmpcpp">home</a></p>
 <p class="deps">needs boost1.84-filesystem, boost1.84-locale, boost1.84-program_options, boost1.84-thread, libcurl, fftw-double-libs, icu-libs, libmpdclient</p>
+<p class="why"><b>On Copal:</b> The catalogue's player-as-a-service: MPD plays, ncmpcpp (or mpc, or a phone app) is only the remote -- quit it and the music goes on. The row installs mpd, mpc and ncmpcpp together.</p>
 <pre class="syn">ncmpcpp [options]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run MPD as yourself with a small config, tell it where the music is, then use ncmpcpp to browse and queue. MPD must be running first: ncmpcpp connects to it on localhost port 6600.</p>
+<h4>Examples</h4><div class="ex"><code>mkdir -p ~/.config/mpd ~/.local/state/mpd</code></div><div class="ex"><code>printf 'music_directory "~/Music"\ndb_file "~/.local/state/mpd/database"\nstate_file "~/.local/state/mpd/state"\naudio_output {\n  type "pipewire"\n  name "PipeWire"\n}\n' &gt; ~/.config/mpd/mpd.conf</code></div><div class="ex"><code>mpd</code><span>start MPD, as you</span></div><div class="ex"><code>mpc update</code><span>scan ~/Music</span></div><div class="ex"><code>ncmpcpp</code><span>browse and play</span></div><div class="ex"><code>1  2  3        (in ncmpcpp) playlist / file browser / search</code></div><div class="ex"><code>Enter  Space   play / add to the playlist</code></div><div class="ex"><code>p  &gt;  &lt;        pause / next / previous</code></div><div class="ex"><code>q              quit ncmpcpp (MPD keeps playing)</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-h HOST</code></dt><dd>the MPD to connect to (default localhost)</dd><dt><code>-p PORT</code></dt><dd>its port (default 6600)</dd><dt><code>-c FILE</code></dt><dd>another config</dd><dt><code>-s SCREEN</code></dt><dd>start on a screen: playlist, browser, search_engine...</dd></dl>
+<h4>Notes</h4><ul><li>"Connection refused" is MPD not running. The system service (<code>/etc/mpd.conf</code>, user <code>mpd</code>) cannot reach your session's PipeWire; run <code>mpd</code> as yourself, as above, from the session.</li><li>To start it with the desktop, add <code>exec-once = mpd</code> to <code>~/.config/hypr/local.conf</code>.</li><li><code>mpc</code> is the one-line remote for scripts and keys: <code>mpc toggle</code>, <code>mpc next</code>, <code>mpc volume +5</code>.</li></ul>
+<p class="see">See also <a href="#c-cmus"><code>cmus</code></a>, <a href="#c-wpctl"><code>wpctl</code></a>, <code>mpc</code></p>
 </article>
 </section>
 <section class="sec" id="s-multimedia"><h2>Multimedia</h2>

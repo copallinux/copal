@@ -356,6 +356,24 @@ Each ends with a review of what it produced before the next begins.
 - **check** reads `--help` for terminal programs too: with stdin closed
   and a four-second limit, one that opens a screen instead is stopped.
 
+### Phase 4, batch 5: Documents to Graphics, and four roguelikes (24 Sep 2026)
+
+- **20 entries**: `sc-im`, `pdftotext`, `qpdf`; `micro`, `hx`, `vis`,
+  `nano`; `plantuml`, `dot`; `cmus`, `ncmpcpp`, `alsamixer`;
+  `openmpt123`, `xmp`, `fluidsynth`; `tesseract`; `nethack`, `brogue`,
+  `angband`, `zangband`.
+- **Two catalogue fixes**: Tesseract's row installed no language data
+  ("Failed loading language 'eng'"); it now brings
+  `tesseract-ocr-data-eng`. ZAngband starts only for a member of `users`,
+  which owns its score and save directories; stage 12 now adds the
+  account when ZAngband is installed.
+- **Found on the way**: the system MPD cannot reach the session's
+  PipeWire, so ncmpcpp's entry gives a per-user mpd.conf, tested on the
+  bench. nethack is setgid games and fine; Angband and Brogue keep their
+  files per user.
+- **check** reads `--help-extra` when `--help` points to it, falls back to
+  `-h`, and accepts `--[no-]name` and glued `-u<name>` / `-ooutfile`.
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.

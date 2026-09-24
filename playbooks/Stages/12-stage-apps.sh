@@ -219,6 +219,17 @@ MSG
     dev_write_kate_config
     dev_write_emacs_config
     seed_app_configs
+    # ZAngband: Alpine installs /usr/lib/zangband group 'users' and
+    # group-writable, and the game not setgid -- so it starts only for a
+    # member of 'users'. Anyone else gets "Cannot create the
+    # '/usr/lib/zangband/apex/scores.raw' file!" and a fatal error before the
+    # title screen (found on the bench, 24 Sep 2026).
+    if command -v zangband >/dev/null 2>&1 && id "$PI_USER" >/dev/null 2>&1 \
+       && ! id -nG "$PI_USER" | tr ' ' '\n' | grep -qx users; then
+        adduser "$PI_USER" users >/dev/null 2>&1 \
+            && note "$PI_USER added to users, for ZAngband's score files (next login)" \
+            || warn "could not add $PI_USER to users -- ZAngband needs it: adduser $PI_USER users"
+    fi
     offer_source_builds
 
     # ------------------------------------------------------------------

@@ -873,21 +873,34 @@ def check():
         if path:
             # Both streams: ssh, resize2fs and orrery print their usage on stderr.
             text += run([path, "--help"], stdin=subprocess.DEVNULL, timeout=4, stderr=subprocess.STDOUT)
+            # tesseract keeps half its options behind --help-extra.
+            if "--help-extra" in text:
+                text += run([path, "--help-extra"], stdin=subprocess.DEVNULL, timeout=4, stderr=subprocess.STDOUT)
         if not text:
             warns.append("%s: nothing to check its options against here" % where)
             continue
+        tried_h = False
         for l in n["secs"].get("options", []):
             m = re.match(r"^(\S+)", l)
             if not m or not m.group(1).startswith("-"):
                 continue
             for flag in re.findall(r"--?[\w][\w-]*", m.group(1).split("=")[0]):
-                found = lambda f: re.search(r"(^|[\s\[,(|])%s(?![\w-])" % re.escape(f), text)
+                # A one-letter flag may be printed glued to its value: dot's -ooutfile.
+                found = lambda f: re.search(r"(^|[\s\[,(|])%s(?![\w-])" % re.escape(f), text) or \
+                    (len(f) == 2 and re.search(r"(^|[\s\[,(|])%s(<|[a-z]+\b)" % re.escape(f), text))
                 # apk 3 and others: every --X also as --no-X, stated once.
                 if flag.startswith("--no-") and "--no-option" in text and found("--" + flag[5:]):
                     continue
                 # clang: every -Wname, stated once as -W<warning>.
                 if re.match(r"-W[a-z]", flag) and "-W<warning>" in text:
                     continue
+                # --[no-]shuffle is openmpt123's way of stating both.
+                if flag.startswith("--") and "--[no-]" + flag[2:] in text:
+                    continue
+                # Some answer only -h (zangband starts the game on --help).
+                if not found(flag) and path and not tried_h:
+                    tried_h = True
+                    text += run([path, "-h"], stdin=subprocess.DEVNULL, timeout=4, stderr=subprocess.STDOUT)
                 if not found(flag):
                     errs.append("%s: %s is not in %s's man page or --help" % (where, flag, cmd))
     for w in warns:
