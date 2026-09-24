@@ -891,6 +891,17 @@ sync-gui:
 	@printf '  ok      tools/copal-gui -> playbooks/Stages/04-stage-gui.sh -> $(PREP)\n'
 	@$(MAKE) --no-print-directory lint
 
+## commands-facts: the Terminal Guide's generated layer -- every terminal command's
+## package, dependencies and man page (docs/commands/facts.json), and the man pages
+## as site pages (docs/man/). Needs a Copal machine: apk, and the pages
+## install_manuals puts there. docs/terminal-guide-plan.md.
+.PHONY: commands-facts
+commands-facts:
+	@test -f /etc/alpine-release && command -v mandoc >/dev/null \
+	  || { printf '\033[31merror:\033[0m commands-facts reads apk and mandoc: run it on a Copal machine\n'; exit 1; }
+	@python3 tools/copal-command-ref.py collect
+	@python3 tools/copal-command-ref.py man-html
+
 ## sync-nats: copy tools/copal_nats.py into the heredoc in copal-prep.sh.
 sync-nats:
 	@python3 -c 'import sys;\

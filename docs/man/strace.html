@@ -1,0 +1,1628 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>strace(1) · Copal Linux</title>
+<meta name="description" content="strace - trace system calls and signals">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-strace">strace in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">strace 6.19-r1 — man1/strace.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">STRACE(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">STRACE(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">strace - trace system calls and signals</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">strace</code></td>
+    <td>[<span class="Op"><b>-ACdffhikkqqrtttTvVwxxyyYzZ</b>]</span>
+      [<span class="Op"><b>-a</b> <i>column</i>]</span>
+      [<span class="Op"><b>-b</b> <i>execve</i>]</span>
+      [<b>-e</b><i>&#x00A0;expr</i>]... [<span class="Op"><b>-I</b>
+      <i>n</i>]</span> [<span class="Op"><b>-o</b> <i>file</i>]</span>
+      [<span class="Op"><b>-O</b> <i>overhead</i>]</span>
+      [<b>-p</b><i>&#x00A0;pid</i>]... [<b>-P</b><i>&#x00A0;path</i>]...
+      [<span class="Op"><b>-s</b> <i>strsize</i>]</span>
+      [<span class="Op"><b>-S</b> <i>sortby</i>]</span>
+      [<span class="Op"><b>-U</b> <i>columns</i>]</span>
+      [<span class="Op"><b>-X</b> <i>format</i>]</span>
+      [<span class="Op"><b>--seccomp-bpf</b>]</span>
+      [<span class="Op"><b>--stack-trace-frame-limit=<i>limit</i></b>]</span>
+      [<span class="Op"><b>--syscall-limit=<i>limit</i></b>]</span>
+      [<span class="Op"><b>--tips[=<i>format</i>]</b>]</span> <b></b>{
+      <b>-p</b><i>&#x00A0;pid</i> <b></b>| [<span class="Op"><b>-DDD</b>]</span>
+      [<b>-E</b><i>&#x00A0;var[=<i>val</i>]</i>]... [<span class="Op"><b>-u</b>
+      <i>username</i>]</span> <i>command</i> [<i>args</i>] <b></b>}</td>
+  </tr>
+</table>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">strace</code></td>
+    <td><b>-c</b> [<span class="Op"><b>-dfwzZ</b>]</span>
+      [<span class="Op"><b>-b</b> <i>execve</i>]</span>
+      [<b>-e</b><i>&#x00A0;expr</i>]... [<span class="Op"><b>-I</b>
+      <i>n</i>]</span> [<span class="Op"><b>-O</b> <i>overhead</i>]</span>
+      [<b>-p</b><i>&#x00A0;pid</i>]... [<b>-P</b><i>&#x00A0;path</i>]...
+      [<span class="Op"><b>-S</b> <i>sortby</i>]</span>
+      [<span class="Op"><b>-U</b> <i>columns</i>]</span>
+      [<span class="Op"><b>--seccomp-bpf</b>]</span>
+      [<span class="Op"><b>--syscall-limit=<i>limit</i></b>]</span>
+      [<span class="Op"><b>--tips[=<i>format</i>]</b>]</span> <b></b>{
+      <b>-p</b><i>&#x00A0;pid</i> <b></b>| [<span class="Op"><b>-DDD</b>]</span>
+      [<b>-E</b><i>&#x00A0;var[=<i>val</i>]</i>]... [<span class="Op"><b>-u</b>
+      <i>username</i>]</span> <i>command</i> [<i>args</i>] <b></b>}</td>
+  </tr>
+</table>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">strace</code></td>
+    <td><b>--tips[=<i>format</i>]</b></td>
+  </tr>
+</table>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">In its simplest use case, <b>strace</b> runs the specified
+    <i>command</i> until it exits. It intercepts and records the system calls
+    made by a process and the signals a process receives. The name of each
+    system call, its arguments, and its return value are printed to standard
+    error or to the file specified with the <b>-o</b> option.</p>
+<p class="Pp"><b>strace</b> is a useful diagnostic, instructional, and debugging
+    tool. System administrators, diagnosticians, and troubleshooters will find
+    it invaluable for solving problems with programs for which source code is
+    not readily available, as recompilation is not required for tracing.
+    Students, hackers, and the overly-curious will discover that a great deal
+    can be learned about a system and its system calls by tracing even ordinary
+    programs. Programmers will find that since system calls and signals occur at
+    the user/kernel interface, a close examination of this boundary is very
+    useful for bug isolation, sanity checking, and attempting to capture race
+    conditions.</p>
+<p class="Pp">Each line in the trace contains the system call name, followed by
+    its arguments in parentheses and its return value. An example from tracing
+    the command &quot;cat /dev/null&quot; is:</p>
+<p class="Pp">
+  <br/>
+</p>
+<pre>
+<span class="Li">open(&quot;/dev/null&quot;, O_RDONLY) = 3</span>
+</pre>
+<br/>
+<p class="Pp">Errors, typically indicated by a return value of -1, have the
+    <i>errno</i> symbol and error string appended.</p>
+<p class="Pp">
+  <br/>
+</p>
+<pre>
+<span class="Li">open(&quot;/foo/bar&quot;, O_RDONLY) = -1 ENOENT (No such file or directory)</span>
+</pre>
+<br/>
+<p class="Pp">Signals are printed as a signal symbol and a decoded
+    <i>siginfo</i> structure. An excerpt from tracing and interrupting the
+    command &quot;sleep 666&quot; is:</p>
+<p class="Pp">
+  <br/>
+</p>
+<pre>
+<span class="Li">sigsuspend([] &lt;unfinished ...&gt;</span>
+<span class="Li">--- SIGINT {si_signo=SIGINT, si_code=SI_USER, si_pid=...} ---</span>
+<span class="Li">+++ killed by SIGINT +++</span>
+</pre>
+<br/>
+<p class="Pp">If a system call is being executed while another is called from a
+    different thread or process, <b>strace</b> will attempt to preserve the
+    order of these events and mark the ongoing call as <i>unfinished</i>. When
+    the call returns, it will be marked as <i>resumed</i>.</p>
+<p class="Pp">
+  <br/>
+</p>
+<pre>
+<span class="Li">[pid 28772] select(4, [3], NULL, NULL, NULL &lt;unfinished ...&gt;</span>
+<span class="Li">[pid 28779] clock_gettime(CLOCK_REALTIME, {tv_sec=1130322148, tv_nsec=3977000}) = 0</span>
+<span class="Li">[pid 28772] &lt;... select resumed&gt; )      = 1 (in [3])</span>
+</pre>
+<br/>
+<p class="Pp">The interruption of a (restartable) system call by a signal
+    delivery is handled differently, as the kernel terminates the system call
+    and arranges for its immediate re-execution after the signal handler
+    completes.</p>
+<p class="Pp">
+  <br/>
+</p>
+<pre>
+<span class="Li">read(0, 0x7ffff72cf5cf, 1)              = ? ERESTARTSYS (To be restarted)</span>
+<span class="Li">--- SIGALRM {si_signo=SIGALRM, si_code=SI_KERNEL} ---</span>
+<span class="Li">rt_sigreturn({mask=[]})                 = 0</span>
+<span class="Li">read(0, &quot;&quot;, 1)                          = 0</span>
+</pre>
+<br/>
+<p class="Pp">Arguments are printed in symbolic form with passion. This example
+    shows the shell performing &quot;&gt;&gt;xyzzy&quot; output redirection:</p>
+<p class="Pp">
+  <br/>
+</p>
+<pre>
+<span class="Li">open(&quot;xyzzy&quot;, O_WRONLY|O_APPEND|O_CREAT, 0666) = 3</span>
+</pre>
+<br/>
+<p class="Pp">Here, the second and third arguments of <b>open</b>(2) are decoded
+    by breaking down the flag argument into its three bitwise-OR constituents
+    and printing the mode value in octal, following tradition. Where traditional
+    or native usage differs from ANSI or POSIX, the latter forms are preferred.
+    In some cases, <b>strace</b> output has proven to be more readable than the
+    source code itself.</p>
+<p class="Pp">Structure pointers are dereferenced, and their members are
+    displayed as appropriate. In most cases, arguments are formatted in the most
+    C-like fashion possible. For example, the essence of the command &quot;ls -l
+    /dev/null&quot; is captured as:</p>
+<p class="Pp">
+  <br/>
+</p>
+<pre>
+<span class="Li">lstat(&quot;/dev/null&quot;, {st_mode=S_IFCHR|0666, st_rdev=makedev(0x1, 0x3), ...}) = 0</span>
+</pre>
+<br/>
+<p class="Pp">Notice how the <i>struct stat</i> argument is dereferenced and how
+    each member is displayed symbolically. In particular, observe how the
+    <i>st_mode</i> member is carefully decoded into a bitwise-OR of symbolic and
+    numeric values. Also, note that in this example, the first argument to
+    <b>lstat</b>(2) is an input to the system call, and the second argument is
+    an output. Since output arguments are not modified if the system call fails,
+    arguments may not always be dereferenced. For example, retrying the &quot;ls
+    -l&quot; example with a non-existent file produces the following line:</p>
+<p class="Pp">
+  <br/>
+</p>
+<pre>
+<span class="Li">lstat(&quot;/foo/bar&quot;, 0xb004) = -1 ENOENT (No such file or directory)</span>
+</pre>
+<br/>
+<p class="Pp">In this case, the porch light is on but nobody is home. The
+    pointer's value is displayed because the structure it points to was not
+    populated due to the error.</p>
+<p class="Pp">System calls unknown to <b>strace</b> are printed in a raw format,
+    with the hexadecimal system call number prefixed with
+  &quot;syscall_&quot;:</p>
+<p class="Pp">
+  <br/>
+</p>
+<pre>
+<span class="Li">syscall_0xbad(0x1, 0x2, 0x3, 0x4, 0x5, 0x6) = -1 ENOSYS (Function not implemented)</span>
+</pre>
+<br/>
+<p class="Pp"></p>
+<p class="Pp">Character pointers are dereferenced and printed as C strings.
+    Non-printing characters in strings are normally represented by standard C
+    escape codes. Only the first <i>strsize</i> (32 by default) bytes of strings
+    are printed; longer strings have an ellipsis appended following the closing
+    quote. Here is a line from &quot;ls -l&quot; where the <b>getpwuid</b>(3)
+    library routine is reading the password file:</p>
+<p class="Pp">
+  <br/>
+</p>
+<pre>
+<span class="Li">read(3, &quot;root::0:0:System Administrator:/&quot;..., 1024) = 422</span>
+</pre>
+<br/>
+<p class="Pp">While structures are annotated using curly braces, pointers to
+    basic types and arrays are printed using square brackets with commas
+    separating the elements. Here is an example from the command <b>id</b>(1) on
+    a system with supplementary group IDs:</p>
+<p class="Pp">
+  <br/>
+</p>
+<pre>
+<span class="Li">getgroups(32, [100, 0]) = 2</span>
+</pre>
+<br/>
+<p class="Pp">On the other hand, bit-sets are also shown using square brackets,
+    but set elements are separated only by a space. Here is the shell, preparing
+    to execute an external command:</p>
+<p class="Pp">
+  <br/>
+</p>
+<pre>
+<span class="Li">sigprocmask(SIG_BLOCK, [CHLD TTOU], []) = 0</span>
+</pre>
+<br/>
+<p class="Pp">Here, the second argument is a bit-set of two signals,
+    <b>SIGCHLD</b> and <b>SIGTTOU</b>. In some cases, the bit-set is so full
+    that it is more valuable to print the unset elements. In that case, the
+    bit-set is prefixed by a tilde, like this:</p>
+<p class="Pp">
+  <br/>
+</p>
+<pre>
+<span class="Li">sigprocmask(SIG_UNBLOCK, ~[], NULL) = 0</span>
+</pre>
+<br/>
+<p class="Pp">Here, the second argument represents the full set of all
+  signals.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="General"><a class="permalink" href="#General">General</a></h2>
+<dl class="Bl-tag">
+  <dt id="e"><a class="permalink" href="#e"><b>-e </b><i>expr</i></a></dt>
+  <dd>Modifies which events to trace or how to trace them by specifying a
+      qualifying expression. The format of the expression is:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>[<i>qualifier</i><b>=</b>][<b>!</b>]<i>value</i>[<b>,</b><i>value</i>]...</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>where <i>qualifier</i> is one of <b>trace</b> (or <b>t</b>),
+      <b>trace-fds</b> (or <b>trace-fd</b> or <b>fd</b> or <b>fds</b>),
+      <b>abbrev</b> (or <b>a</b>), <b>verbose</b> (or <b>v</b>), <b>raw</b> (or
+      <b>x</b>), <b>signal</b> (or <b>signals</b> or <b>s</b>), <b>read</b> (or
+      <b>reads</b> or <b>r</b>), <b>write</b> (or <b>writes</b> or <b>w</b>),
+      <b>fault</b>, <b>inject</b>, <b>status</b>, <b>quiet</b> (or <b>silent</b>
+      or <b>silence</b> or <b>q</b>), <b>decode-fds</b> (or <b>decode-fd</b>),
+      <b>decode-pids</b> (or <b>decode-pid</b>), or <b>kvm</b>, and <i>value</i>
+      is a qualifier-dependent symbol or number. The default qualifier is
+      <b>trace</b>. Using an exclamation mark negates the set of values. For
+      example, <b>-e</b>&#x00A0;<b>open</b> is equivalent to
+      <b>-e</b>&#x00A0;<b>trace</b>=<b>open</b>, which in turn means trace only
+      the <b>open</b> system call. By contrast,
+      <b>-e</b>&#x00A0;<b>trace</b>=!<b>open</b> means to trace every system
+      call except <b>open</b>. In addition, the special values <b>all</b> and
+      <b>none</b> may be used to trace every event or no events,
+    respectively.</dd>
+  <dt></dt>
+  <dd>Note that some shells use the exclamation mark for history expansion even
+      inside quoted arguments. In that case, the exclamation mark must be
+      escaped with a backslash.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Startup"><a class="permalink" href="#Startup">Startup</a></h2>
+<dl class="Bl-tag">
+  <dt id="E"><a class="permalink" href="#E"><b>-E&#x00A0;</b><i>var</i>=<i>val</i></a></dt>
+  <dd></dd>
+  <dt id="env"><a class="permalink" href="#env"><b>--env</b>=<b><i>var</i></b>=<b><i>val</i></b></a></dt>
+  <dd>Runs the command with the environment variable <i>var</i>=<i>val</i> set
+      for execution.</dd>
+  <dt id="E~2"><a class="permalink" href="#E~2"><b>-E </b><i>var</i></a></dt>
+  <dd></dd>
+  <dt id="env~2"><a class="permalink" href="#env~2"><b>--env</b>=<b><i>var</i></b></a></dt>
+  <dd>Removes <i>var</i> from the inherited environment variables before
+      executing the command.</dd>
+  <dt id="p"><a class="permalink" href="#p"><b>-p </b><i>pid</i></a></dt>
+  <dd></dd>
+  <dt id="attach"><a class="permalink" href="#attach"><b>--attach</b>=<b><i>pid</i></b></a></dt>
+  <dd>Attaches to the process with the process <small>ID</small> <i>pid</i> and
+      begin tracing. The trace may be terminated at any time by a keyboard
+      interrupt signal (<b>CTRL-C</b>). <b>strace</b> will respond by detaching
+      itself from the traced processes, leaving them to continue running.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>Multiple <b>-p</b> options can be used to attach to several processes in
+      addition to the command, which is optional if at least one <b>-p</b>
+      option is given.</dd>
+  <dt></dt>
+  <dd>A single <b>-p</b> option can accept multiple process IDs separated by a
+      comma (&#x201C;,&#x201D;), space (&#x201C; &#x201D;), tab, or newline.
+      Consequently, syntaxes like <b>-p</b> &quot;$(pidof PROG)&quot; and
+      <b>-p</b> &quot;$(pgrep PROG)&quot; are supported.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="u"><a class="permalink" href="#u"><b>-u </b><i>username</i></a></dt>
+  <dd></dd>
+  <dt id="user"><a class="permalink" href="#user"><b>--user</b>=<b><i>username</i></b></a></dt>
+  <dd>Runs command with the user ID, group ID, and supplementary groups of
+      <i>username</i>. This option is only useful when running as root, as it
+      enables the correct execution of setuid and/or setgid binaries. Unless
+      this option is used, setuid and setgid programs are executed without their
+      effective privileges.</dd>
+  <dt id="u~2"><a class="permalink" href="#u~2"><b>-u
+    </b><i>UID:GID</i></a></dt>
+  <dd></dd>
+  <dt id="user~2"><a class="permalink" href="#user~2"><b>--user</b>=<b><i>UID:GID</i></b></a></dt>
+  <dd>Alternative syntax where the program is started with exactly the given
+      user and group IDs, and an empty list of supplementary groups. In this
+      case, user and group name lookups are not performed.</dd>
+  <dt id="argv0"><a class="permalink" href="#argv0"><b>--argv0</b>=<b><i>name</i></b></a></dt>
+  <dd>Sets the executed command's argv[0] to <i>name</i>. This is useful for
+      tracing multi-call executables that interpret argv[0], such as busybox or
+      kmod.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Tracing"><a class="permalink" href="#Tracing">Tracing</a></h2>
+<dl class="Bl-tag">
+  <dt id="b"><a class="permalink" href="#b"><b>-b </b><i>syscall</i></a></dt>
+  <dd></dd>
+  <dt id="detach"><a class="permalink" href="#detach"><b>--detach-on</b>=<b><i>syscall</i></b></a></dt>
+  <dd>Detaches from the traced process if the specified system call is reached.
+      Currently, only <b>execve</b> keyword is supported, which includes
+      <b>execve</b>(2) and <b>execveat</b>(2) system calls. This option is
+      useful for tracing a multi-threaded process with <b>-f</b> without also
+      tracing its (potentially very complex) child processes.</dd>
+  <dt id="D"><a class="permalink" href="#D"><b>-D</b></a></dt>
+  <dd></dd>
+  <dt id="daemonize"><a class="permalink" href="#daemonize"><b>--daemonize</b></a></dt>
+  <dd></dd>
+  <dt id="daemonize~2"><a class="permalink" href="#daemonize~2"><b>--daemonize</b>=<b>grandchild</b></a></dt>
+  <dd>Runs the tracer process as a grandchild of the tracee, not as its parent.
+      This reduces the visible effect of <b>strace</b> by keeping the tracee a
+      direct child of the calling process.</dd>
+  <dt id="DD"><a class="permalink" href="#DD"><b>-DD</b></a></dt>
+  <dd></dd>
+  <dt id="daemonize~3"><a class="permalink" href="#daemonize~3"><b>--daemonize</b>=<b>pgroup</b></a></dt>
+  <dd></dd>
+  <dt id="daemonize~4"><a class="permalink" href="#daemonize~4"><b>--daemonize</b>=<b>pgrp</b></a></dt>
+  <dd>Runs tracer process as tracee's grandchild in a separate process group. In
+      addition to reducing the visible effect of <b>strace</b>, this also
+      prevents <b>strace</b> from being terminated by a <b>kill</b>(2) signal
+      sent to the entire process group.</dd>
+  <dt id="DDD"><a class="permalink" href="#DDD"><b>-DDD</b></a></dt>
+  <dd></dd>
+  <dt id="daemonize~5"><a class="permalink" href="#daemonize~5"><b>--daemonize</b>=<b>session</b></a></dt>
+  <dd>Runs the tracer process as the tracee's grandchild in a separate session
+      (known as &quot;true daemonisation&quot;). In addition to reduction of the
+      visible effect of <b>strace</b>, this also prevents <b>strace</b> from
+      being terminated upon session termination.</dd>
+  <dt id="f"><a class="permalink" href="#f"><b>-f</b></a></dt>
+  <dd></dd>
+  <dt id="follow"><a class="permalink" href="#follow"><b>--follow-forks</b></a></dt>
+  <dd>Traces child processes as they are created by currently traced processes
+      as a result of the <b>fork</b>(2), <b>vfork</b>(2) and <b>clone</b>(2)
+      system calls. Note that if process <i>PID</i> is multi-threaded, using
+      <b>-f</b> <b>-p</b> <i>PID</i> attaches to all of its threads, not just
+      the one with <i>thread_id</i> = <i>PID</i>.</dd>
+  <dt><b>--output-separately</b></dt>
+  <dd>If the <b>--output</b>=<b><i>filename</i></b> option is in effect, the
+      trace for each process is written to a separate <i>filename</i>.<i>pid</i>
+      file, where <i>pid</i> is the process ID.</dd>
+  <dt id="ff"><a class="permalink" href="#ff"><b>-ff</b></a></dt>
+  <dd></dd>
+  <dt id="follow~2"><a class="permalink" href="#follow~2"><b>--follow-forks
+    --output-separately</b></a></dt>
+  <dd>Combines the effects of <b>--follow-forks</b> and
+      <b>--output-separately</b> options. This is incompatible with <b>-c</b>,
+      since no per-process counts are kept.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>Use <b>strace-log-merge</b>(1) to get a combined view of the log
+    files.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="I"><a class="permalink" href="#I"><b>-I
+    </b><i>interruptible</i></a></dt>
+  <dd></dd>
+  <dt id="interruptible"><a class="permalink" href="#interruptible"><b>--interruptible</b>=<b><i>interruptible</i></b></a></dt>
+  <dd>Controls when <b>strace</b> can be interrupted by signals (such as
+      pressing <b>CTRL-C</b>).</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt><b>1</b>, <b>anywhere</b></dt>
+  <dd>no signals are blocked;</dd>
+  <dt><b>2</b>, <b>waiting</b></dt>
+  <dd>fatal signals are blocked while decoding system call (default);</dd>
+  <dt><b>3</b>, <b>never</b></dt>
+  <dd>fatal signals are always blocked (default if <b>-o</b> <b><i>FILE</i></b>
+      <b><i>PROG</i></b>);</dd>
+  <dt><b>4</b>, <b>never_tstp</b></dt>
+  <dd>fatal signals and <b>SIGTSTP</b> (<b>CTRL-Z</b>) are always blocked
+      (useful to make <b>strace -o </b><i>FILE PROG</i> not stop on
+      <b>CTRL-Z</b>, default if <b>-D</b>).</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt><b>--syscall-limit</b>=<b><i>limit</i></b></dt>
+  <dd>Detaches all tracees after <i>limit</i> system calls have been captured.
+      System calls filtered out via <b>--trace</b>, <b>--trace-path</b> or
+      <b>--status</b> options are not considered when keeping track of the
+      number of system calls that are captured.</dd>
+  <dt id="kill"><a class="permalink" href="#kill"><b>--kill-on-exit</b></a></dt>
+  <dd>Applies the <b>PTRACE_O_EXITKILL</b> ptrace option to all tracees, which
+      sends a SIGKILL signal to a tracee if the tracer exits. This prevents
+      tracees from being left running after the tracer exits, as they will not
+      be detached on cleanup. <b>--kill-on-exit</b> is not compatible with
+      <b>-p</b>/<b>--attach</b> options.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Filtering"><a class="permalink" href="#Filtering">Filtering</a></h2>
+<dl class="Bl-tag">
+  <dt id="e~2"><a class="permalink" href="#e~2"><b>-e&#x00A0;trace</b>=<i>syscall_set</i></a></dt>
+  <dd></dd>
+  <dt id="e~3"><a class="permalink" href="#e~3"><b>-e&#x00A0;t</b>=<i>syscall_set</i></a></dt>
+  <dd></dd>
+  <dt id="trace"><a class="permalink" href="#trace"><b>--trace</b>=<i>syscall_set</i></a></dt>
+  <dd>Traces only the specified set of system calls. <i>syscall_set</i> is
+      defined as [<b>!</b>]<i>value</i>[<b>,</b><i>value</i>], and <i>value</i>
+      can be one of the following:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="syscall"><a class="permalink" href="#syscall"><i>syscall</i></a></dt>
+  <dd>Traces specific system call, specified by its name (see <b>syscalls</b>(2)
+      for a reference, but also see <b>NOTES</b>).</dd>
+  <dt><b>?</b><i>value</i></dt>
+  <dd>A question mark preceding the qualification suppresses errors if no
+      matching system calls are found.</dd>
+  <dt id="value"><a class="permalink" href="#value"><i>value</i><b>@64</b></a></dt>
+  <dd>Limits the system call specification described by <i>value</i> to the
+      64-bit personality.</dd>
+  <dt id="value~2"><a class="permalink" href="#value~2"><i>value</i><b>@32</b></a></dt>
+  <dd>Limits the system call specification described by <i>value</i> to the
+      32-bit personality.</dd>
+  <dt id="value~3"><a class="permalink" href="#value~3"><i>value</i><b>@x32</b></a></dt>
+  <dd>Limits the system call specification described by <i>value</i> to the x32
+      personality.</dd>
+  <dt id="all"><a class="permalink" href="#all"><b>all</b></a></dt>
+  <dd>Traces all system calls.</dd>
+  <dt><b>/</b><i>regex</i></dt>
+  <dd>Traces only those system calls that match the <i>regex</i>. You can use
+      <b>POSIX</b> Extended Regular Expression syntax (see
+    <b>regex</b>(7)).</dd>
+  <dt><b>%file</b></dt>
+  <dd></dd>
+  <dt id="file"><a class="permalink" href="#file"><b>file</b></a></dt>
+  <dd>Traces all system calls that take a file name as an argument. You can
+      think of this as an abbreviation for
+      <b>--trace</b>=<b>open</b>,<b>stat</b>,<b>chmod</b>,<b>unlink</b>,...
+      which is useful to seeing what files the process is referencing.
+      Furthermore, using the abbreviation will ensure that you don't
+      accidentally forget to include a call like <b>newfstatat</b>(2) in the
+      list. The syntax without a preceding percent sign
+      (&quot;<b>--trace</b>=<b>file</b>&quot;) is deprecated.</dd>
+  <dt><b>%process</b></dt>
+  <dd></dd>
+  <dt id="process"><a class="permalink" href="#process"><b>process</b></a></dt>
+  <dd>Traces system calls associated with process lifecycle (creation, exec,
+      termination). The syntax without a preceding percent sign
+      (&quot;<b>--trace</b>=<b>process</b>&quot;) is deprecated.</dd>
+  <dt><b>%net</b></dt>
+  <dd></dd>
+  <dt><b>%network</b></dt>
+  <dd></dd>
+  <dt id="network"><a class="permalink" href="#network"><b>network</b></a></dt>
+  <dd>Traces all the network related system calls. The syntax without a
+      preceding percent sign (&quot;<b>--trace</b>=<b>network</b>&quot;) is
+      deprecated.</dd>
+  <dt><b>%signal</b></dt>
+  <dd></dd>
+  <dt id="signal"><a class="permalink" href="#signal"><b>signal</b></a></dt>
+  <dd>Traces all signal related system calls. The syntax without a preceding
+      percent sign (&quot;<b>--trace</b>=<b>signal</b>&quot;) is
+    deprecated.</dd>
+  <dt><b>%ipc</b></dt>
+  <dd></dd>
+  <dt id="ipc"><a class="permalink" href="#ipc"><b>ipc</b></a></dt>
+  <dd>Traces all IPC related system calls. The syntax without a preceding
+      percent sign (&quot;<b>--trace</b>=<b>ipc</b>&quot;) is deprecated.</dd>
+  <dt><b>%desc</b></dt>
+  <dd></dd>
+  <dt id="desc"><a class="permalink" href="#desc"><b>desc</b></a></dt>
+  <dd>Traces all file descriptor related system calls. The syntax without a
+      preceding percent sign (&quot;<b>--trace</b>=<b>desc</b>&quot;) is
+      deprecated.</dd>
+  <dt><b>%memory</b></dt>
+  <dd></dd>
+  <dt id="memory"><a class="permalink" href="#memory"><b>memory</b></a></dt>
+  <dd>Traces all memory mapping related system calls. The syntax without a
+      preceding percent sign (&quot;<b>--trace</b>=<b>memory</b>&quot;) is
+      deprecated.</dd>
+  <dt><b>%creds</b></dt>
+  <dd>Traces system calls that read or modify user and group identifiers or
+      capability sets.</dd>
+  <dt><b>%stat</b></dt>
+  <dd>Traces stat system call variants.</dd>
+  <dt><b>%lstat</b></dt>
+  <dd>Traces lstat system call variants.</dd>
+  <dt><b>%fstat</b></dt>
+  <dd>Traces fstat, fstatat, and statx system call variants.</dd>
+  <dt><b>%%stat</b></dt>
+  <dd>Traces system calls used for requesting file status (stat, lstat, fstat,
+      fstatat, statx, and their variants).</dd>
+  <dt><b>%statfs</b></dt>
+  <dd>Traces statfs, statfs64, statvfs, osf_statfs, and osf_statfs64 system
+      calls. The same effect can be achieved with
+      <b>--trace</b>=<b>/^(.*_)?statv?fs</b> regular expression.</dd>
+  <dt><b>%fstatfs</b></dt>
+  <dd>Traces fstatfs, fstatfs64, fstatvfs, osf_fstatfs, and osf_fstatfs64 system
+      calls. The same effect can be achieved with
+      <b>--trace</b>=<b>/fstatv?fs</b> regular expression.</dd>
+  <dt><b>%%statfs</b></dt>
+  <dd>Traces system calls related to file system statistics (statfs-like,
+      fstatfs-like, and ustat). The same effect can be achieved with
+      <b>--trace</b>=<b>/statv?fs|fsstat|ustat</b> regular expression.</dd>
+  <dt><b>%clock</b></dt>
+  <dd>Traces system calls that read or modify system clocks.</dd>
+  <dt><b>%pure</b></dt>
+  <dd>Traces system calls that always succeed and have no arguments. Currently,
+      this list includes <b>arc_gettls</b>(2), <b>getdtablesize</b>(2),
+      <b>getegid</b>(2), <b>getegid32</b>(2), <b>geteuid</b>(2),
+      <b>geteuid32</b>(2), <b>getgid</b>(2), <b>getgid32</b>(2),
+      <b>getpagesize</b>(2), <b>getpgrp</b>(2), <b>getpid</b>(2),
+      <b>getppid</b>(2), <b>get_thread_area</b>(2) (on architectures other than
+      x86), <b>gettid</b>(2), <b>get_tls</b>(2), <b>getuid</b>(2),
+      <b>getuid32</b>(2), <b>getxgid</b>(2), <b>getxpid</b>(2),
+      <b>getxuid</b>(2), <b>kern_features</b>(2), and <b>metag_get_tls</b>(2)
+      system calls.</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>The <b>-c</b> option is useful for determining which system calls might be
+      useful to trace. For example, <b>--trace</b>=<b>open,close,read,write</b>
+      means to only trace those four system calls. Be careful when making
+      inferences about the user/kernel boundary if only a subset of system calls
+      are being monitored. The default is <b>--trace</b>=<b>all</b>.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="e~4"><a class="permalink" href="#e~4"><b>-e&#x00A0;trace-fd</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="e~5"><a class="permalink" href="#e~5"><b>-e&#x00A0;trace-fds</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="e~6"><a class="permalink" href="#e~6"><b>-e&#x00A0;fd</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="e~7"><a class="permalink" href="#e~7"><b>-e&#x00A0;fds</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="trace~2"><a class="permalink" href="#trace~2"><b>--trace-fds</b>=<i>set</i></a></dt>
+  <dd>Traces only the system calls that operate on the specified subset of
+      (non-negative) file descriptors. Note that usage of this option also
+      filters out all the system calls that do not operate on file descriptors
+      at all.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>This filter is combined with the <b>--trace-path</b> filter; a system call
+      is traced if it matches either of them.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="e~8"><a class="permalink" href="#e~8"><b>-e&#x00A0;signal</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="e~9"><a class="permalink" href="#e~9"><b>-e&#x00A0;signals</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="e~10"><a class="permalink" href="#e~10"><b>-e&#x00A0;s</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt><b>--signal</b>=<i>set</i></dt>
+  <dd>Traces only the specified subset of signals. The default is
+      <b>--signal</b>=<b>all</b>. For example, <b>--signal</b>=!<b>SIGIO</b> (or
+      <b>--signal</b>=!<b>io</b>) causes <b>SIGIO</b> signals not to be
+    traced.</dd>
+  <dt id="e~11"><a class="permalink" href="#e~11"><b>-e&#x00A0;status</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="status"><a class="permalink" href="#status"><b>--status</b>=<i>set</i></a></dt>
+  <dd>Prints only system calls with the specified return status. The default is
+      <b>--status</b>=<b>all</b>. When using the <b>status</b> qualifier, the
+      chronological order of events may not be preserved. This is because
+      <b>strace</b> must wait for a system call to complete before deciding
+      whether to print it. If two system calls are executed by concurrent
+      threads, <b>strace</b> will first print both the entry and exit of the
+      first system call to exit, regardless of their respective entry time. The
+      entry and exit of the second system call to exit will be printed
+      afterwards. Here is an example when <b>select</b>(2) is called, but a
+      different thread calls <b>clock_gettime</b>(2) before <b>select</b>(2)
+      finishes:
+    <p class="Pp">
+      <br/>
+    </p>
+    <pre>
+<span class="Li">[pid 28779] 1130322148.939977 clock_gettime(CLOCK_REALTIME, {1130322148, 939977000}) = 0</span>
+<span class="Li">[pid 28772] 1130322148.438139 select(4, [3], NULL, NULL, NULL) = 1 (in [3])</span>
+    </pre>
+    <br/>
+    <p class="Pp"><i>set</i> can include the following elements:</p>
+  </dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="successful"><a class="permalink" href="#successful"><b>successful</b></a></dt>
+  <dd>Traces system calls that returned without an error code. The <b>-z</b>
+      option has the effect of <b>--status</b>=<b>successful</b>.</dd>
+  <dt id="failed"><a class="permalink" href="#failed"><b>failed</b></a></dt>
+  <dd>Traces system calls that returned with an error code. The <b>-Z</b> option
+      has the effect of <b>--status</b>=<b>failed</b>.</dd>
+  <dt id="unfinished"><a class="permalink" href="#unfinished"><b>unfinished</b></a></dt>
+  <dd>Traces system calls that did not return. This might happen, for example,
+      due to an execve call in a different thread from the same thread
+    group.</dd>
+  <dt id="unavailable"><a class="permalink" href="#unavailable"><b>unavailable</b></a></dt>
+  <dd>Traces system calls that returned but strace failed to fetch the error
+      status.</dd>
+  <dt id="detached"><a class="permalink" href="#detached"><b>detached</b></a></dt>
+  <dd>Traces system calls for which strace detached before the return.</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt id="P"><a class="permalink" href="#P"><b>-P </b><i>path</i></a></dt>
+  <dd></dd>
+  <dt id="trace~3"><a class="permalink" href="#trace~3"><b>--trace-path</b>=<b><i>path</i></b></a></dt>
+  <dd>Traces only system calls accessing <i>path</i>. Multiple <b>-P</b> options
+      can be used to specify several paths. This filter is combined with the
+      <b>--trace-fds</b> filter; a system call is traced if it matches either
+      option.</dd>
+  <dt id="z"><a class="permalink" href="#z"><b>-z</b></a></dt>
+  <dd></dd>
+  <dt><b>--successful-only</b></dt>
+  <dd>Prints only system calls that returned without an error code.</dd>
+  <dt id="Z"><a class="permalink" href="#Z"><b>-Z</b></a></dt>
+  <dd></dd>
+  <dt><b>--failed-only</b></dt>
+  <dd>Prints only system calls that returned with an error code.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Output_format"><a class="permalink" href="#Output_format">Output
+  format</a></h2>
+<dl class="Bl-tag">
+  <dt id="a"><a class="permalink" href="#a"><b>-a </b><i>column</i></a></dt>
+  <dd></dd>
+  <dt id="columns"><a class="permalink" href="#columns"><b>--columns</b>=<b><i>column</i></b></a></dt>
+  <dd>Aligns return values in a specific column (default column 40).</dd>
+  <dt id="e~12"><a class="permalink" href="#e~12"><b>-e&#x00A0;abbrev</b>=<i>syscall_set</i></a></dt>
+  <dd></dd>
+  <dt id="e~13"><a class="permalink" href="#e~13"><b>-e&#x00A0;a</b>=<i>syscall_set</i></a></dt>
+  <dd></dd>
+  <dt><b>--abbrev</b>=<i>syscall_set</i></dt>
+  <dd>Abbreviates the output from printing each member of large structures. The
+      syntax of the <i>syscall_set</i> specification is the same as in the
+      <b>--trace</b> option. The default is <b>--abbrev</b>=<b>all</b>. The
+      <b>-v</b> option has the effect of <b>--abbrev</b>=<b>none</b>.</dd>
+  <dt id="e~14"><a class="permalink" href="#e~14"><b>-e&#x00A0;verbose</b>=<i>syscall_set</i></a></dt>
+  <dd></dd>
+  <dt id="e~15"><a class="permalink" href="#e~15"><b>-e&#x00A0;v</b>=<i>syscall_set</i></a></dt>
+  <dd></dd>
+  <dt><b>--verbose</b>=<i>syscall_set</i></dt>
+  <dd>Dereferences structures for the specified set of system calls. The syntax
+      of the <i>syscall_set</i> specification is the same as in the
+      <b>--trace</b> option. The default is <b>--verbose</b>=<b>all</b>.</dd>
+  <dt id="e~16"><a class="permalink" href="#e~16"><b>-e&#x00A0;raw</b>=<i>syscall_set</i></a></dt>
+  <dd></dd>
+  <dt id="e~17"><a class="permalink" href="#e~17"><b>-e&#x00A0;x</b>=<i>syscall_set</i></a></dt>
+  <dd></dd>
+  <dt><b>--raw</b>=<i>syscall_set</i></dt>
+  <dd>Prints raw, undecoded arguments for the specified set of system calls. The
+      syntax of the <i>syscall_set</i> specification is the same as in the
+      <b>--trace</b> option. This option has the effect of causing all arguments
+      to be printed in hexadecimal. This option is useful if the decoding is not
+      trusted, or if the actual numeric value of an argument is needed. See also
+      <b>-X raw</b> option.</dd>
+  <dt id="e~18"><a class="permalink" href="#e~18"><b>-e&#x00A0;read</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="e~19"><a class="permalink" href="#e~19"><b>-e&#x00A0;reads</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="e~20"><a class="permalink" href="#e~20"><b>-e&#x00A0;r</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="read"><a class="permalink" href="#read"><b>--read</b>=<i>set</i></a></dt>
+  <dd>Performs a full hexadecimal and ASCII dump of all the data read from file
+      descriptors listed in the specified set. For example, to see all input
+      activity on file descriptors <i>3</i> and <i>5</i> use
+      <b>--read</b>=<i>3</i>,<i>5</i>. Note that this is independent from the
+      normal tracing of the <b>read</b>(2) system call that is controlled by the
+      option <b>--trace</b>=<b>read</b>.</dd>
+  <dt id="e~21"><a class="permalink" href="#e~21"><b>-e&#x00A0;write</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="e~22"><a class="permalink" href="#e~22"><b>-e&#x00A0;writes</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="e~23"><a class="permalink" href="#e~23"><b>-e&#x00A0;w</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="write"><a class="permalink" href="#write"><b>--write</b>=<i>set</i></a></dt>
+  <dd>Performs a full hexadecimal and ASCII dump of all the data written to file
+      descriptors listed in the specified set. For example, to see all output
+      activity on file descriptors <i>3</i> and <i>5</i> use
+      <b>--write</b>=<i>3</i>,<i>5</i>. Note that this is independent from the
+      normal tracing of the <b>write</b>(2) system call that is controlled by
+      the option <b>--trace</b>=<b>write</b>.</dd>
+  <dt id="e~24"><a class="permalink" href="#e~24"><b>-e&#x00A0;quiet</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="e~25"><a class="permalink" href="#e~25"><b>-e&#x00A0;silent</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="e~26"><a class="permalink" href="#e~26"><b>-e&#x00A0;silence</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="e~27"><a class="permalink" href="#e~27"><b>-e&#x00A0;q</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt><b>--quiet</b>=<i>set</i></dt>
+  <dd></dd>
+  <dt id="silent"><a class="permalink" href="#silent"><b>--silent</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="silence"><a class="permalink" href="#silence"><b>--silence</b>=<i>set</i></a></dt>
+  <dd>Suppresses various information messages. The default is
+      <b>--quiet</b>=<b>none</b>. <i>set</i> can include the following
+    elements:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="attach~2"><a class="permalink" href="#attach~2"><b>attach</b></a></dt>
+  <dd>Suppresses messages about attaching and detaching (&quot;<b>[ Process NNNN
+      attached ]</b>&quot;, &quot;<b>[ Process NNNN detached ]</b>&quot;).</dd>
+  <dt id="exit"><a class="permalink" href="#exit"><b>exit</b></a></dt>
+  <dd>Suppress messages about process exits (&quot;<b>+++ exited with SSS
+      +++</b>&quot;).</dd>
+  <dt id="path-resolution"><a class="permalink" href="#path-resolution"><b>path-resolution</b></a></dt>
+  <dd>Suppress messages about resolution of paths provided via the <b>-P</b>
+      option (&quot;<b>Requested path &quot;...&quot; resolved into
+      &quot;...&quot;</b>&quot;).</dd>
+  <dt id="personality"><a class="permalink" href="#personality"><b>personality</b></a></dt>
+  <dd>Suppress messages about process personality changes (&quot;<b>[ Process
+      PID=NNNN runs in PPP mode. ]</b>&quot;).</dd>
+  <dt id="thread-execve"><a class="permalink" href="#thread-execve"><b>thread-execve</b></a></dt>
+  <dd></dd>
+  <dt id="superseded"><a class="permalink" href="#superseded"><b>superseded</b></a></dt>
+  <dd>Suppress messages about process being superseded by <b>execve</b>(2) in
+      another thread (&quot;<b>+++ superseded by execve in pid NNNN
+      +++</b>&quot;).</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt id="e~28"><a class="permalink" href="#e~28"><b>-e&#x00A0;decode-fds</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="decode"><a class="permalink" href="#decode"><b>--decode-fds</b>=<i>set</i></a></dt>
+  <dd>Decodes various information associated with file descriptors. The default
+      is <b>--decode-fds</b>=<b>none</b>. <i>set</i> can include the following
+      elements:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="path"><a class="permalink" href="#path"><b>path</b></a></dt>
+  <dd>Prints file paths. Also enables printing of tracee's current working
+      directory when <b>AT_FDCWD</b> constant is used.</dd>
+  <dt id="socket"><a class="permalink" href="#socket"><b>socket</b></a></dt>
+  <dd>Prints socket protocol-specific information.</dd>
+  <dt id="dev"><a class="permalink" href="#dev"><b>dev</b></a></dt>
+  <dd>Prints character/block device numbers.</dd>
+  <dt id="eventfd"><a class="permalink" href="#eventfd"><b>eventfd</b></a></dt>
+  <dd>Prints eventfd object details associated with eventfd file
+    descriptors.</dd>
+  <dt id="pidfd"><a class="permalink" href="#pidfd"><b>pidfd</b></a></dt>
+  <dd>Prints PIDs associated with pidfd file descriptors.</dd>
+  <dt id="signalfd"><a class="permalink" href="#signalfd"><b>signalfd</b></a></dt>
+  <dd>Prints signal masks associated with signalfd file descriptors.</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt id="e~29"><a class="permalink" href="#e~29"><b>-e&#x00A0;decode-pids</b>=<i>set</i></a></dt>
+  <dd></dd>
+  <dt id="decode~2"><a class="permalink" href="#decode~2"><b>--decode-pids</b>=<i>set</i></a></dt>
+  <dd>Decodes various information associated with process IDs (and also thread
+      IDs, process group IDs, and session IDs). The default is
+      <b>--decode-pids</b>=<b>none</b>. <i>set</i> can include the following
+      elements:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="comm"><a class="permalink" href="#comm"><b>comm</b></a></dt>
+  <dd>Prints command names associated with thread or process IDs.</dd>
+  <dt id="pidns"><a class="permalink" href="#pidns"><b>pidns</b></a></dt>
+  <dd>Prints thread, process, process group, and session IDs in strace's PID
+      namespace if the tracee is in a different PID namespace.</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt id="e~30"><a class="permalink" href="#e~30"><b>-e&#x00A0;kvm</b>=<b>vcpu|vcpu+</b></a></dt>
+  <dd></dd>
+  <dt id="kvm"><a class="permalink" href="#kvm"><b>--kvm</b>=<b>vcpu|vcpu+</b></a></dt>
+  <dd>Prints the exit reason of kvm vcpu (=<b>vcpu</b>), or prints the whole
+      kvm_run struct including the reason (=<b>vcpu+</b>). Requires Linux kernel
+      version 4.16.0 or higher.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>The <b>vcpu+</b> output uses prefixes <b>VCPU:</b><i>CPU#</i><b>&lt;</b>
+      and <b>VCPU:</b><i>CPU#</i><b>&gt;</b>. Lines starting with the former
+      indicate the state of the structure before calling KVM_RUN, and those
+      starting with the latter show the state after calling KVM_RUN.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="e~31"><a class="permalink" href="#e~31"><b>-e&#x00A0;namespace</b>=<b>new</b></a></dt>
+  <dd></dd>
+  <dt id="namespace"><a class="permalink" href="#namespace"><b>--namespace</b>=<b>new</b></a></dt>
+  <dd>Prints the new namespaces entered by the tracee. The following system
+      calls are supported: <b>clone</b>(2), <b>clone3</b>(2), <b>setns</b>(2),
+      and <b>unshare</b>(2).</dd>
+  <dt id="i"><a class="permalink" href="#i"><b>-i</b></a></dt>
+  <dd></dd>
+  <dt id="instruction"><a class="permalink" href="#instruction"><b>--instruction-pointer</b></a></dt>
+  <dd>Prints the instruction pointer at the time of the system call.</dd>
+  <dt id="n"><a class="permalink" href="#n"><b>-n</b></a></dt>
+  <dd></dd>
+  <dt><b>--syscall-number</b></dt>
+  <dd>Prints the system call number.</dd>
+  <dt id="N"><a class="permalink" href="#N"><b>-N</b></a></dt>
+  <dd></dd>
+  <dt id="arg"><a class="permalink" href="#arg"><b>--arg-names</b></a></dt>
+  <dd>Prints the system call argument names.</dd>
+  <dt id="k"><a class="permalink" href="#k"><b>-k</b></a></dt>
+  <dd></dd>
+  <dt id="stack"><a class="permalink" href="#stack"><b>--stack-trace</b>[=<b>symbol</b>]</a></dt>
+  <dd>Prints the execution stack trace of the traced processes after each system
+      call.</dd>
+  <dt id="kk"><a class="permalink" href="#kk"><b>-kk</b></a></dt>
+  <dd></dd>
+  <dt id="stack~2"><a class="permalink" href="#stack~2"><b>--stack-trace</b>=<b>source</b></a></dt>
+  <dd>Prints the execution stack trace and source code information of the traced
+      processes after each system call. This option expects the target program
+      is compiled with appropriate debug options: &quot;-g&quot; (gcc), or
+      &quot;-g -gdwarf-aranges&quot; (clang).</dd>
+  <dt id="stack~3"><a class="permalink" href="#stack~3"><b>--stack-trace-frame-limit</b>=<b><i>limit</i></b></a></dt>
+  <dd>Prints no more than this amount of stack trace frames when backtracing a
+      system call (the default is 256). Use this option with the
+      <b>--stack-trace</b> (or <b>-k</b>) option.</dd>
+  <dt id="o"><a class="permalink" href="#o"><b>-o </b><i>filename</i></a></dt>
+  <dd></dd>
+  <dt id="output"><a class="permalink" href="#output"><b>--output</b>=<b><i>filename</i></b></a></dt>
+  <dd>Writes the trace output to the file <i>filename</i> rather than to stderr.
+      <i>filename</i>.<i>pid</i> form is used if <b>-ff</b> option is supplied.
+      If the argument begins with '|' or '!', the rest of the argument is
+      treated as a command and all output is piped to it. This is convenient for
+      piping the debugging output to a program without affecting the
+      redirections of executed programs. Piping output to a command is not
+      currently compatible with the <b>-ff</b> option.</dd>
+  <dt id="A"><a class="permalink" href="#A"><b>-A</b></a></dt>
+  <dd></dd>
+  <dt><b>--output-append-mode</b></dt>
+  <dd>Opens the file provided in the <b>-o</b> option in append mode.</dd>
+  <dt id="q"><a class="permalink" href="#q"><b>-q</b></a></dt>
+  <dd></dd>
+  <dt id="quiet"><a class="permalink" href="#quiet"><b>--quiet</b></a></dt>
+  <dd></dd>
+  <dt id="quiet~2"><a class="permalink" href="#quiet~2"><b>--quiet</b>=<b>attach</b>,<b>personality</b></a></dt>
+  <dd>Suppresses messages about attaching, detaching, and personality changes.
+      This happens automatically when output is redirected to a file and the
+      command is run directly instead of attaching.</dd>
+  <dt id="qq"><a class="permalink" href="#qq"><b>-qq</b></a></dt>
+  <dd></dd>
+  <dt id="quiet~3"><a class="permalink" href="#quiet~3"><b>--quiet</b>=<b>attach</b>,<b>personality</b>,<b>exit</b></a></dt>
+  <dd>Suppresses messages about attaching, detaching, personality changes, and
+      process exit status.</dd>
+  <dt id="qqq"><a class="permalink" href="#qqq"><b>-qqq</b></a></dt>
+  <dd></dd>
+  <dt id="quiet~4"><a class="permalink" href="#quiet~4"><b>--quiet</b>=<b>all</b></a></dt>
+  <dd>Suppresses all suppressible messages (please refer to the <b>--quiet</b>
+      option description for the full list of suppressible messages).</dd>
+  <dt id="r"><a class="permalink" href="#r"><b>-r</b></a></dt>
+  <dd></dd>
+  <dt id="relative"><a class="permalink" href="#relative"><b>--relative-timestamps</b>[=<b><i>precision</i></b>]</a></dt>
+  <dd>Prints a relative timestamp upon entry to each system call. This records
+      the time difference between the beginning of successive system calls.
+      <i>precision</i> can be one of <b>s</b> (for seconds), <b>ms</b>
+      (milliseconds), <b>us</b> (microseconds), or <b>ns</b> (nanoseconds), and
+      allows setting the precision of time value being printed. Default is
+      <b>us</b> (microseconds). Note that because the <b>-r</b> option uses the
+      monotonic clock, its measurements may differ from the time differences
+      reported by the <b>-t</b> option, which uses the wall clock.</dd>
+  <dt id="s"><a class="permalink" href="#s"><b>-s </b><i>strsize</i></a></dt>
+  <dd></dd>
+  <dt id="string"><a class="permalink" href="#string"><b>--string-limit</b>=<b><i>strsize</i></b></a></dt>
+  <dd>Specifies the maximum string size to print (the default is 32). Note that
+      filenames are not considered strings and are always printed in full.</dd>
+  <dt id="absolute"><a class="permalink" href="#absolute"><b>--absolute-timestamps</b>[=[[<b>format:</b>]<b><i>format</i></b>],[[<b>precision:</b>]<b><i>precision</i></b><i>]]</i></a></dt>
+  <dd></dd>
+  <dt id="timestamps"><a class="permalink" href="#timestamps"><b>--timestamps</b>[=[[<b>format:</b>]<b><i>format</i></b>],[[<b>precision:</b>]<b><i>precision</i></b><i>]]</i></a></dt>
+  <dd>Prefixes each line of the trace with the wall clock time in the specified
+      <i>format</i> with the specified <i>precision</i>. <i>format</i> can be
+      one of the following:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="none"><a class="permalink" href="#none"><b>none</b></a></dt>
+  <dd>No time stamp is printed. Can be used to override the previous
+    setting.</dd>
+  <dt id="time"><a class="permalink" href="#time"><b>time</b></a></dt>
+  <dd>Wall clock time (<b>strftime</b>(3) format string is <b>%T</b>).</dd>
+  <dt id="unix"><a class="permalink" href="#unix"><b>unix</b></a></dt>
+  <dd>Number of seconds since the epoch (<b>strftime</b>(3) format string is
+      <b>%s</b>).</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd><i>precision</i> can be one of <b>s</b> (for seconds), <b>ms</b>
+      (milliseconds), <b>us</b> (microseconds), or <b>ns</b> (nanoseconds).
+      Default arguments for the option are
+      <b>format:time</b>,<b>precision:s</b>.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="t"><a class="permalink" href="#t"><b>-t</b></a></dt>
+  <dd></dd>
+  <dt id="absolute~2"><a class="permalink" href="#absolute~2"><b>--absolute-timestamps</b></a></dt>
+  <dd>Prefixes each line of the trace with the wall clock time.</dd>
+  <dt id="tt"><a class="permalink" href="#tt"><b>-tt</b></a></dt>
+  <dd></dd>
+  <dt id="absolute~3"><a class="permalink" href="#absolute~3"><b>--absolute-timestamps</b>=<b>precision:us</b></a></dt>
+  <dd>Prints the wall clock time with microsecond precision.</dd>
+  <dt id="ttt"><a class="permalink" href="#ttt"><b>-ttt</b></a></dt>
+  <dd></dd>
+  <dt id="absolute~4"><a class="permalink" href="#absolute~4"><b>--absolute-timestamps</b>=<b>format:unix</b>,<b>precision:us</b></a></dt>
+  <dd>Prints the wall clock time as seconds since the epoch, with microsecond
+      precision.</dd>
+  <dt id="T"><a class="permalink" href="#T"><b>-T</b></a></dt>
+  <dd></dd>
+  <dt><b>--syscall-times</b>[=<b><i>precision</i></b>]</dt>
+  <dd>Shows the time spent in system calls. This records the time difference
+      between the beginning and the end of each system call. <i>precision</i>
+      can be one of <b>s</b> (for seconds), <b>ms</b> (milliseconds), <b>us</b>
+      (microseconds), or <b>ns</b> (nanoseconds), and allows setting the
+      precision of time value being printed. Default is <b>us</b>
+      (microseconds).</dd>
+  <dt id="v"><a class="permalink" href="#v"><b>-v</b></a></dt>
+  <dd></dd>
+  <dt id="no"><a class="permalink" href="#no"><b>--no-abbrev</b></a></dt>
+  <dd>Prints unabbreviated versions of environment, stat, termios, etc. calls.
+      These structures are very common, so the default behavior is to display a
+      reasonable subset of their members. Use this option to see all members in
+      full detail.</dd>
+  <dt id="strings"><a class="permalink" href="#strings"><b>--strings-in-hex</b>[=<b><i>option</i></b>]</a></dt>
+  <dd>Controls the use of hexadecimal escape sequences when printing strings.
+      This option alters the default escaping behavior.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>Normally (when neither this option nor -x is used), <b>strace</b>
+      introduces escape sequences in two situations: to represent non-printable
+      and non-ASCII characters (i.e., those with character codes less than 32 or
+      greater than 127), or to disambiguate output, for example, by escaping the
+      quotation marks that enclose a string or the angle brackets used in file
+      descriptor paths. When a character must be escaped, <b>strace</b>
+      prioritizes symbolic C-standard sequences if one exists:
+      &#x201C;<b>\t</b>&#x201D; (tab), &#x201C;<b>\n</b>&#x201D; (newline),
+      &#x201C;<b>\v</b>&#x201D; (vertical tab), &#x201C;<b>\f</b>&#x201D; (form
+      feed), and &#x201C;<b>\r</b>&#x201D; (carriage return). For all other
+      characters that require escaping, <b>strace</b> defaults to using an octal
+      representation of the character's byte value. This option allows you to
+      override this default behavior and use hexadecimal escapes instead of
+      octal ones.</dd>
+  <dt></dt>
+  <dd><i>option</i> can be one of the following:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="none~2"><a class="permalink" href="#none~2"><b>none</b></a></dt>
+  <dd>Hexadecimal numbers are not used in the output at all. When there is a
+      need to emit an escape sequence, octal numbers are used.</dd>
+  <dt id="non"><a class="permalink" href="#non"><b>non-ascii-chars</b></a></dt>
+  <dd>Hexadecimal numbers are used instead of octal in the escape
+    sequences.</dd>
+  <dt id="non~2"><a class="permalink" href="#non~2"><b>non-ascii</b></a></dt>
+  <dd>Strings that contain non-ASCII characters are printed using escape
+      sequences with hexadecimal numbers.</dd>
+  <dt id="all~2"><a class="permalink" href="#all~2"><b>all</b></a></dt>
+  <dd>All strings are printed using escape sequences with hexadecimal
+    numbers.</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>When the option is supplied without an argument, <b>all</b> is
+    assumed.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="x"><a class="permalink" href="#x"><b>-x</b></a></dt>
+  <dd></dd>
+  <dt id="strings~2"><a class="permalink" href="#strings~2"><b>--strings-in-hex</b>=<b>non-ascii</b></a></dt>
+  <dd>Prints all non-ASCII strings in hexadecimal string format.</dd>
+  <dt id="xx"><a class="permalink" href="#xx"><b>-xx</b></a></dt>
+  <dd></dd>
+  <dt id="strings~3"><a class="permalink" href="#strings~3"><b>--strings-in-hex</b>[=<b>all</b>]</a></dt>
+  <dd>Prints all strings in hexadecimal string format.</dd>
+  <dt id="X"><a class="permalink" href="#X"><b>-X </b><i>format</i></a></dt>
+  <dd></dd>
+  <dt id="const"><a class="permalink" href="#const"><b>--const-print-style</b>=<b><i>format</i></b></a></dt>
+  <dd>Sets the format for printing of named constants and flags. Supported
+      <i>format</i> values are:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="raw"><a class="permalink" href="#raw"><b>raw</b></a></dt>
+  <dd>Raw number output, without decoding.</dd>
+  <dt id="abbrev"><a class="permalink" href="#abbrev"><b>abbrev</b></a></dt>
+  <dd>Outputs a named constant or a set of flags instead of the raw number if
+      they are found. This is the default <b>strace</b> behaviour.</dd>
+  <dt id="verbose"><a class="permalink" href="#verbose"><b>verbose</b></a></dt>
+  <dd>Outputs both the raw value and the decoded string (as a comment).</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt id="y"><a class="permalink" href="#y"><b>-y</b></a></dt>
+  <dd></dd>
+  <dt id="decode~3"><a class="permalink" href="#decode~3"><b>--decode-fds</b></a></dt>
+  <dd></dd>
+  <dt id="decode~4"><a class="permalink" href="#decode~4"><b>--decode-fds</b>=<b>path</b></a></dt>
+  <dd>Prints paths associated with file descriptor arguments and with the
+      <b>AT_FDCWD</b> constant.</dd>
+  <dt id="yy"><a class="permalink" href="#yy"><b>-yy</b></a></dt>
+  <dd></dd>
+  <dt id="decode~5"><a class="permalink" href="#decode~5"><b>--decode-fds</b>=<b>all</b></a></dt>
+  <dd>Prints all available information associated with file descriptors:
+      protocol-specific information associated with socket file descriptors,
+      block/character device number associated with device file descriptors, and
+      PIDs associated with pidfd file descriptors.</dd>
+  <dt><b>--pidns-translation</b></dt>
+  <dd></dd>
+  <dt id="decode~6"><a class="permalink" href="#decode~6"><b>--decode-pids</b>=<b>pidns</b></a></dt>
+  <dd>If strace and tracee are in different PID namespaces, print PIDs in
+      strace's namespace, too.</dd>
+  <dt id="Y"><a class="permalink" href="#Y"><b>-Y</b></a></dt>
+  <dd></dd>
+  <dt id="decode~7"><a class="permalink" href="#decode~7"><b>--decode-pids</b>=<b>comm</b></a></dt>
+  <dd>Prints command names for PIDs.</dd>
+  <dt id="always"><a class="permalink" href="#always"><b>--always-show-pid</b></a></dt>
+  <dd>Shows PID prefix also for the process started by strace. Implied when -f
+      and -o are both specified.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Statistics"><a class="permalink" href="#Statistics">Statistics</a></h2>
+<dl class="Bl-tag">
+  <dt id="c"><a class="permalink" href="#c"><b>-c</b></a></dt>
+  <dd></dd>
+  <dt><b>--summary-only</b></dt>
+  <dd>Counts time, calls, and errors for each system call and report a summary
+      on program exit, suppressing the regular output. This shows system time
+      (CPU time spent in the kernel), which is independent of wall clock time.
+      If <b>-c</b> is used with <b>-f</b>, only aggregate totals for all traced
+      processes are kept.</dd>
+  <dt id="C"><a class="permalink" href="#C"><b>-C</b></a></dt>
+  <dd></dd>
+  <dt id="summary"><a class="permalink" href="#summary"><b>--summary</b></a></dt>
+  <dd>Like <b>-c</b>, but also prints the regular output while processes are
+      running.</dd>
+  <dt id="O"><a class="permalink" href="#O"><b>-O </b><i>overhead</i></a></dt>
+  <dd></dd>
+  <dt><b>--summary-syscall-overhead</b>=<b><i>overhead</i></b></dt>
+  <dd>Sets the overhead for tracing system calls to <i>overhead</i>. This is
+      useful for overriding the default heuristic, which estimates the time
+      spent in the measurement process itself when timing system calls with the
+      <b>-c</b> option. The accuracy of the heuristic can be gauged by timing a
+      given program run without tracing (using <b>time</b>(1)) and comparing the
+      accumulated system call time to the total produced using <b>-c</b>.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>The format of <i>overhead</i> specification is described in section
+      <i>Time specification format description</i>.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="S"><a class="permalink" href="#S"><b>-S </b><i>sortby</i></a></dt>
+  <dd></dd>
+  <dt><b>--summary-sort-by</b>=<b><i>sortby</i></b></dt>
+  <dd>Sorts the output of the histogram printed by the <b>-c</b> option by the
+      specified criterion. Valid values are <b>time</b> (or <b>time-percent</b>
+      or <b>time-total</b> or <b>total-time</b>), <b>min-time</b> (or
+      <b>shortest</b> or <b>time-min</b>), <b>max-time</b> (or <b>longest</b> or
+      <b>time-max</b>), <b>avg-time</b> (or <b>time-avg</b>), <b>calls</b> (or
+      <b>count</b>), <b>errors</b> (or <b>error</b>), <b>name</b> (or
+      <b>syscall</b> or <b>syscall-name</b>), and <b>nothing</b> (or
+      <b>none</b>); default is <b>time</b>.</dd>
+  <dt id="U"><a class="permalink" href="#U"><b>-U </b><i>columns</i></a></dt>
+  <dd></dd>
+  <dt><b>--summary-columns</b>=<b><i>columns</i></b></dt>
+  <dd>Configures the set and order of columns shown in the call summary. The
+      <i>columns</i> argument is a comma-separated list containing one or more
+      of the following values:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt><b>time-percent</b> (or <b>time</b>)</dt>
+  <dd>Percentage of cumulative time consumed by a specific system call.</dd>
+  <dt id="total"><a class="permalink" href="#total"><b>total-time</b> (or
+    <b>time-total</b>)</a></dt>
+  <dd>Total system (or wall clock, if <b>-w</b> option is provided) time
+      consumed by a specific system call.</dd>
+  <dt id="min"><a class="permalink" href="#min"><b>min-time</b> (or
+    <b>shortest</b> or <b>time-min</b>)</a></dt>
+  <dd>Minimum observed call duration.</dd>
+  <dt id="max"><a class="permalink" href="#max"><b>max-time</b> (or
+    <b>longest</b> or <b>time-max</b>)</a></dt>
+  <dd>Maximum observed call duration.</dd>
+  <dt id="avg"><a class="permalink" href="#avg"><b>avg-time</b> (or
+    <b>time-avg</b>)</a></dt>
+  <dd>Average call duration.</dd>
+  <dt id="calls"><a class="permalink" href="#calls"><b>calls</b> (or
+    <b>count</b>)</a></dt>
+  <dd>Call count.</dd>
+  <dt id="errors"><a class="permalink" href="#errors"><b>errors</b> (or
+    <b>error</b>)</a></dt>
+  <dd>Error count.</dd>
+  <dt id="name"><a class="permalink" href="#name"><b>name</b> (or <b>syscall</b>
+    or <b>syscall-name</b>)</a></dt>
+  <dd>System call name.</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>The default value is
+      <b>time-percent</b>,<b>total-time</b>,<b>avg-time</b>,<b>calls</b>,<b>errors</b>,<b>name</b>.
+      If the <b>name</b> field is not supplied explicitly, it is added as the
+      last column.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="w"><a class="permalink" href="#w"><b>-w</b></a></dt>
+  <dd></dd>
+  <dt><b>--summary-wall-clock</b></dt>
+  <dd>Summarizes the wall clock time for each system call, measured from its
+      beginning to its end. The default is to summarize the system time.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Tampering"><a class="permalink" href="#Tampering">Tampering</a></h2>
+<dl class="Bl-tag">
+  <dt id="inject"><a class="permalink" href="#inject"><b>--inject</b>=<i>syscall_set</i>[:<b>error</b>=<i>errno</i>|:<b>retval</b>=<i>value</i>][:<b>signal</b>=<i>sig</i>][:<b>syscall</b>=<i>syscall</i>][:<b>delay_enter</b>=<i>delay</i>][:<b>delay_exit</b>=<i>delay</i>][:<b>poke_enter</b>=<i>@argN=DATAN,@argM=DATAM...</i>][:<b>poke_exit</b>=<i>@argN=DATAN,@argM=DATAM...</i>][:<b>when</b>=<i>expr</i>]
+    </a></dt>
+  <dd>Performs system call tampering for the specified set of system calls.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>The syntax of the <i>syscall_set</i> specification is the same as in the
+      <b>--trace</b> option.</dd>
+  <dt></dt>
+  <dd>At least one of <b>error</b>, <b>retval</b>, <b>signal</b>,
+      <b>delay_enter</b>, <b>delay_exit</b>, <b>poke_enter</b>, or
+      <b>poke_exit</b> action options must be specified. <b>error</b> and
+      <b>retval</b> are mutually exclusive.</dd>
+  <dt></dt>
+  <dd>If the <b>error</b>=<i>errno</i> option is specified, a fault is injected
+      into the system call. This is achieved by replacing the system call number
+      with -1 (representing an invalid system call) and setting the error code
+      to the specified <i>errno</i>. This behavior of replacing the syscall
+      number with -1 can be overridden using the <b>syscall</b>= option. The
+      <i>errno</i> can be a symbolic name like <b>ENOSYS</b> or a numeric value
+      in the range 1..4095.</dd>
+  <dt></dt>
+  <dd>If the <b>retval</b>=<i>value</i> option is specified, a success value is
+      injected. The system call number is replaced as with the <b>error</b>=
+      option, but instead of an error, the specified success <i>value</i> is
+      returned to the caller process.</dd>
+  <dt></dt>
+  <dd>If the <b>signal</b>=<i>sig</i> option is specified with either a symbolic
+      value like <b>SIGSEGV</b> or a numeric value within 1..<b>SIGRTMAX</b>
+      range, that signal is delivered on entering every system call specified by
+      the <i>syscall_set</i>.</dd>
+  <dt></dt>
+  <dd>If the <b>delay_enter</b>=<i>delay</i> or <b>delay_exit</b>=<i>delay</i>
+      options are specified, delay injection is performed: the tracee is delayed
+      by time period specified by <i>delay</i> on entering or exiting the system
+      call, respectively. The format of <i>delay</i> specification is described
+      in section <i>Time specification format description</i>.</dd>
+  <dt></dt>
+  <dd>If the <b>poke_enter</b>=<i>@argN=DATAN,@argM=DATAM...</i> or
+      <b>poke_exit</b>=<i>@argN=DATAN,@argM=DATAM...</i> options are specified,
+      tracee's memory at locations, pointed to by system call arguments
+      <i>argN</i> and <i>argM</i> (going from <i>arg1</i> to <i>arg7</i>) is
+      overwritten by data <i>DATAN</i> and <i>DATAM</i> (specified in
+      hexadecimal format; for example
+      <b>poke_enter</b>=<i>@arg1=0000DEAD0000BEEF</i>). The <b>poke_enter</b>
+      option modifies memory on system call enter, while <b>poke_exit</b> does
+      so on system call exit.</dd>
+  <dt></dt>
+  <dd>The injection actions are independent. For example, specifying only
+      <b>signal</b>= delivers a signal without altering the system call's
+      outcome or delaying it. Similarly, specifying only <b>error</b>= injects a
+      system call fault without adding a signal or delay.</dd>
+  <dt></dt>
+  <dd>If the <b>signal</b>=<i>sig</i> option is specified together with
+      <b>error</b>=<i>errno</i> or <b>retval</b>=<i>value</i>, then both
+      injection of a fault or success and signal delivery are performed.</dd>
+  <dt></dt>
+  <dd>If the <b>syscall</b>=<i>syscall</i> option is specified, the given
+      <i>syscall</i> is injected instead of the default -1. The specified
+      <i>syscall</i> must have no side effects; currently, only system calls
+      from the <b>%pure</b> set are supported.</dd>
+  <dt></dt>
+  <dd>Unless the <b>when</b>=<i>expr</i> subexpression is specified, an
+      injection is being made into every invocation of each system call from the
+      <i>syscall_set</i>.</dd>
+  <dt></dt>
+  <dd>The format of the subexpression is:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd><i>first</i>[<b>..</b><i>last</i>][<b>+</b>[<i>step</i>]]</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>Number <i>first</i> stands for the first invocation number in the range,
+      number <i>last</i> stands for the last invocation number in the range, and
+      <i>step</i> stands for the step between two consecutive invocations. The
+      following combinations are useful:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="first"><a class="permalink" href="#first"><i>first</i></a></dt>
+  <dd>Injects into invocation number <i>first</i> only for each system call in
+      the <i>syscall_set</i>.</dd>
+  <dt><i>first</i><b>..</b><i>last</i></dt>
+  <dd>Injects into invocations from <i>first</i> through <i>last</i> (inclusive)
+      for each system call in the <i>syscall_set</i>.</dd>
+  <dt><i>first</i><b>+</b></dt>
+  <dd>Injects into every invocation, starting with number <i>first</i>, for each
+      system call in the <i>syscall_set</i>.</dd>
+  <dt><i>first</i><b>+</b><i>step</i></dt>
+  <dd>Injects into invocations number <i>first</i>, <i>first</i>+<i>step</i>,
+      <i>first</i>+<i>step</i>+<i>step</i>, and so on, for each system call in
+      the <i>syscall_set</i>.</dd>
+  <dt><i>first</i><b>..</b><i>last</i><b>+</b><i>step</i></dt>
+  <dd>Same as the previous, but consider only invocations with numbers up to
+      <i>last</i> (inclusive).</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>For example, to fail each third and subsequent chdir system calls with
+      <b>ENOENT</b>, use
+      <b>--inject</b>=<i>chdir</i>:<b>error</b>=<i>ENOENT</i>:<b>when</b>=<i>3</i><b>+</b>.</dd>
+  <dt></dt>
+  <dd>The valid range for numbers <i>first</i> and <i>step</i> is 1..65535, and
+      for number <i>last</i> is 1..65534.</dd>
+  <dt></dt>
+  <dd>An injection expression can contain at most one fault or return value
+      specification (i.e., either <b>error</b>= or <b>retval</b>=) and at most
+      one <b>signal</b>= specification. If an injection expression contains
+      multiple <b>when</b>= specifications, the last one takes precedence.</dd>
+  <dt></dt>
+  <dd>Accounting of system calls that are subject to injection is done per
+      system call and per tracee.</dd>
+  <dt></dt>
+  <dd>Specification of system call injection can be combined with other system
+      call filtering options, for example, <b>-P </b><i>/dev/urandom
+      </i><b>--inject</b>=<i>file</i>:<b>error</b>=<i>ENOENT</i>.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="e~32"><a class="permalink" href="#e~32"><b>-e&#x00A0;inject</b>=<i>args</i></a></dt>
+  <dd>This is equivalent to <b>--inject</b>=<i>args</i>.</dd>
+  <dt id="fault"><a class="permalink" href="#fault"><b>--fault</b>=<i>syscall_set</i>[:<b>error</b>=<i>errno</i>][:<b>when</b>=<i>expr</i>]</a></dt>
+  <dd>Performs system call fault injection for the specified set of system
+      calls.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>This is a shortcut for the more general <b>--inject</b>= option, using a
+      default <i>errno</i> of <b>ENOSYS</b>.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="e~33"><a class="permalink" href="#e~33"><b>-e&#x00A0;fault</b>=<i>args</i></a></dt>
+  <dd>This is equivalent to <b>--fault</b>=<i>args</i>.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Miscellaneous"><a class="permalink" href="#Miscellaneous">Miscellaneous</a></h2>
+<dl class="Bl-tag">
+  <dt id="d"><a class="permalink" href="#d"><b>-d</b></a></dt>
+  <dd></dd>
+  <dt id="debug"><a class="permalink" href="#debug"><b>--debug</b></a></dt>
+  <dd>Shows some debugging output of <b>strace</b> itself on the standard
+    error.</dd>
+  <dt id="F"><a class="permalink" href="#F"><b>-F</b></a></dt>
+  <dd>This option is deprecated. It is retained for backward compatibility only
+      and may be removed in future releases. Using multiple <b>-F</b> options is
+      equivalent to a single <b>-f</b>. This option is ignored entirely if used
+      in conjunction with one or more <b>-f</b> options.</dd>
+  <dt id="h"><a class="permalink" href="#h"><b>-h</b></a></dt>
+  <dd></dd>
+  <dt id="help"><a class="permalink" href="#help"><b>--help</b></a></dt>
+  <dd>Prints the help summary.</dd>
+  <dt id="seccomp"><a class="permalink" href="#seccomp"><b>--seccomp-bpf</b></a></dt>
+  <dd>Attempts to use seccomp-bpf (see <b>seccomp</b>(2)) to cause the kernel to
+      stop the tracee only for the system calls that are being traced.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>This option has no effect unless <b>-f</b>/<b>--follow-forks</b> is also
+      specified. <b>--seccomp-bpf</b> is not compatible with
+      <b>--syscall-limit</b> and <b>-b</b>/<b>--detach-on</b> options. It is
+      also not applicable to processes attached using <b>-p</b>/<b>--attach</b>
+      option.</dd>
+  <dt></dt>
+  <dd>An attempt to enable system calls filtering using seccomp-bpf may fail for
+      various reasons, e.g. there are too many system calls to filter, the
+      seccomp API is not available, or <b>strace</b> itself is being traced. If
+      the seccomp-bpf filter setup fails, <b>strace</b> proceeds as usual,
+      stopping traced processes on every system call.</dd>
+  <dt></dt>
+  <dd>When <b>--seccomp-bpf</b> is activated and <b>-p</b>/<b>--attach</b>
+      option is not used, <b>--kill-on-exit</b> option is activated as
+    well.</dd>
+  <dt></dt>
+  <dd>Note that in cases when the tracee has another seccomp filter that returns
+      an action value with a precedence greater than <b>SECCOMP_RET_TRACE</b>,
+      <b>strace --seccomp-bpf</b> will not be notified. That is, if another
+      seccomp filter, for example, disables the system call or kills the tracee,
+      then <b>strace --seccomp-bpf</b> will not be aware of that system call
+      invocation at all.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="tips"><a class="permalink" href="#tips"><b>--tips</b>[=[[<b>id:</b>]<b><i>id</i></b>],[[<b>format:</b>]<b><i>format</i></b>]]</a></dt>
+  <dd>Shows strace tips, tricks, and tweaks before exit. The <i>id</i> can be a
+      non-negative integer to print a specific tip (note: these IDs are not
+      guaranteed to be stable). It can also be <b>random</b> (the default), in
+      which case a random tip is printed. <i>format</i> can be one of the
+      following:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="none~3"><a class="permalink" href="#none~3"><b>none</b></a></dt>
+  <dd>No tip is printed. Can be used to override the previous setting.</dd>
+  <dt id="compact"><a class="permalink" href="#compact"><b>compact</b></a></dt>
+  <dd>Prints the tip just big enough to contain all the text.</dd>
+  <dt id="full"><a class="permalink" href="#full"><b>full</b></a></dt>
+  <dd>Prints the tip in its full glory.</dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>Default is <b>id:random,format:compact</b>.</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="V"><a class="permalink" href="#V"><b>-V</b></a></dt>
+  <dd></dd>
+  <dt id="version"><a class="permalink" href="#version"><b>--version</b></a></dt>
+  <dd>Prints the version number of <b>strace</b> and the list of enabled
+      optional features. Multiple instances of this option beyond specific
+      threshold tend to increase der Strauss awareness.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Time_specification_format_description"><a class="permalink" href="#Time_specification_format_description">Time
+  specification format description</a></h2>
+<p class="Pp">Time values are specified as a decimal floating point number (in a
+    format accepted by <b>strtod</b>(3)), optionally followed by a suffix to
+    indicate the unit of time: <b>s</b> (seconds), <b>ms</b> (milliseconds),
+    <b>us</b> (microseconds), or <b>ns</b> (nanoseconds). If no suffix is
+    specified, the value defaults to microseconds.</p>
+<p class="Pp">The described format is used for <b>-O</b>,
+    <b>--inject</b>=<b>delay_enter</b>, and <b>--inject</b>=<b>delay_exit</b>
+    options.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DIAGNOSTICS"><a class="permalink" href="#DIAGNOSTICS">DIAGNOSTICS</a></h1>
+<p class="Pp">When <i>command</i> exits, <b>strace</b> exits with the same exit
+    status. If <i>command</i> is terminated by a signal, <b>strace</b>
+    terminates itself with the same signal, so that <b>strace</b> can be used as
+    a wrapper process transparent to the invoking parent process. Note that the
+    parent-child relationship (signal stop notifications, the <b>getppid</b>(2)
+    value, etc) between the traced process and its parent is not preserved
+    unless <b>-D</b> is used.</p>
+<p class="Pp">When using <b>-p</b> without a <i>command</i>, the exit status of
+    <b>strace</b> is zero unless no processes have been attached or an
+    unexpected error occurred during tracing.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SETUID_INSTALLATION"><a class="permalink" href="#SETUID_INSTALLATION">SETUID
+  INSTALLATION</a></h1>
+<p class="Pp">If <b>strace</b> is installed setuid to root, then the invoking
+    user will be able to attach to and trace processes owned by any user. In
+    addition, setuid and setgid programs will be executed and traced with the
+    correct effective privileges. Since these capabilities should only be
+    granted to users with full root privileges, installing <b>strace</b> as
+    setuid to root is only appropriate when its use is restricted to such
+    trusted users. For example, a special version of <b>strace</b> could be
+    installed with mode 'rwsr-x---', user <b>root,</b> and group <b>trace</b>.
+    In this configuration, only trusted users who are members of the
+    <b>trace</b> group could execute it. If you use this feature, remember to
+    also install a regular, non-setuid version of <b>strace</b> for ordinary
+    users.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="MULTIPLE_PERSONALITIES_SUPPORT"><a class="permalink" href="#MULTIPLE_PERSONALITIES_SUPPORT">MULTIPLE
+  PERSONALITIES SUPPORT</a></h1>
+<p class="Pp">On some architectures, <b>strace</b> can decode system calls for
+    processes that use a different Application Binary Interface (ABI) from the
+    one <b>strace</b> uses. Specifically, in addition to decoding native ABI,
+    <b>strace</b> can decode the following ABIs on the following
+  architectures:</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td><b>Architecture</b></td>
+    <td><b>ABIs supported</b></td>
+  </tr>
+  <tr>
+    <td>x86_64</td>
+    <td>i386, x32 [1]; i386 [2]</td>
+  </tr>
+  <tr>
+    <td>AArch64</td>
+    <td>ARM 32-bit EABI</td>
+  </tr>
+  <tr>
+    <td>PowerPC 64-bit [3]</td>
+    <td>PowerPC 32-bit</td>
+  </tr>
+  <tr>
+    <td>s390x</td>
+    <td>s390</td>
+  </tr>
+  <tr>
+    <td>SPARC 64-bit</td>
+    <td>SPARC 32-bit</td>
+  </tr>
+  <tr>
+    <td>TILE 64-bit</td>
+    <td>TILE 32-bit</td>
+  </tr>
+</table>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt>[1]</dt>
+  <dd>When <b>strace</b> is built as an x86_64 application</dd>
+  <dt>[2]</dt>
+  <dd>When <b>strace</b> is built as an x32 application</dd>
+  <dt>[3]</dt>
+  <dd>Big endian only</dd>
+</dl>
+</div>
+<p class="Pp">This support is optional and depends on the ability to generate
+    and parse structure definitions at build time. Refer to the output of the
+    <b>strace -V</b> command to determine which ABIs are supported by your
+    <b>strace</b> build. In this context, &quot;non-native&quot; refers to an
+    ABI that differs from the one <b>strace</b> is using:</p>
+<dl class="Bl-tag">
+  <dt id="m32"><a class="permalink" href="#m32"><b>m32-mpers</b></a></dt>
+  <dd><b>strace</b> can trace and properly decode non-native 32-bit
+    binaries.</dd>
+  <dt id="no~2"><a class="permalink" href="#no~2"><b>no-m32-mpers</b></a></dt>
+  <dd><b>strace</b> can trace, but cannot properly decode non-native 32-bit
+      binaries.</dd>
+  <dt id="mx32"><a class="permalink" href="#mx32"><b>mx32-mpers</b></a></dt>
+  <dd><b>strace</b> can trace and properly decode non-native 32-on-64-bit
+      binaries.</dd>
+  <dt id="no~3"><a class="permalink" href="#no~3"><b>no-mx32-mpers</b></a></dt>
+  <dd><b>strace</b> can trace, but cannot properly decode non-native
+      32-on-64-bit binaries.</dd>
+</dl>
+<p class="Pp">If the output contains neither <b>m32-mpers</b> nor
+    <b>no-m32-mpers</b>, it means that support for decoding non-native 32-bit
+    binaries is not applicable to the architecture.</p>
+<p class="Pp">Likewise, if the output contains neither <b>mx32-mpers</b> nor
+    <b>no-mx32-mpers</b>, it means that support for decoding non-native
+    32-on-64-bit binaries is not applicable to the architecture.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="NOTES"><a class="permalink" href="#NOTES">NOTES</a></h1>
+<p class="Pp">Systems that use shared libraries often produce a large amount of
+    tracing output when loading them.</p>
+<p class="Pp">It is instructive to think about system call inputs and outputs as
+    data-flow across the user/kernel boundary. Because user-space and
+    kernel-space are separate and address-protected, it is sometimes possible to
+    make deductive inferences about process behavior using inputs and outputs as
+    propositions.</p>
+<p class="Pp">In some cases, a system call will differ from the documented
+    behavior or have a different name. For example, the underlying
+    <b>faccessat</b>(2) system call does not have a <i>flags</i> argument, and
+    the <b>setrlimit</b>(2) library function is implemented using
+    <b>prlimit64</b>(2) system call on modern (2.6.38+) kernels. These
+    discrepancies are normal characteristics of the system call interface and
+    are handled by C library wrapper functions.</p>
+<p class="Pp">Some system calls have different names in different architectures
+    and personalities. In these cases, system call filtering and printing uses
+    the names that match corresponding <b>__NR_</b>* kernel macros of the
+    tracee's architecture and personality. There are two exceptions from this
+    general rule: <b>arm_fadvise64_64</b>(2) ARM system call and
+    <b>xtensa_fadvise64_64</b>(2) Xtensa system call are filtered and printed as
+    <b>fadvise64_64</b>(2).</p>
+<p class="Pp">On the x32 ABI, some system calls are intended for 64-bit
+    processes but can be invoked from x32 by setting the
+    <b>__X32_SYSCALL_BIT</b> flag. When this occurs, <b>strace</b> designates
+    these calls with a <b>#64</b> suffix. An example is <b>readv</b>(2), which
+    is syscall number 19 on x86_64, whereas its distinct x32 counterpart is
+    syscall number 515.</p>
+<p class="Pp">On some platforms, a process attached with the <b>-p</b> option
+    may receive a spurious <b>EINTR</b> error from a non-restartable system
+    call. This can have an unpredictable effect on the process if it does not
+    attempt to restart the call. Ideally, all system calls should be restarted
+    on <b>strace</b> attach, making the attach invisible to the traced process,
+    but a few system calls aren't. Arguably, every instance of such behavior is
+    a kernel bug.</p>
+<p class="Pp">Since <b>strace</b> executes the specified <i>command</i> directly
+    without a shell, scripts that lack a shebang line (e.g., #!/bin/sh) will
+    fail with an <b>ENOEXEC</b> error, even if a shell could run them correctly.
+    It is advisable to manually supply a shell as a <i>command</i> with the
+    script as its argument.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="BUGS"><a class="permalink" href="#BUGS">BUGS</a></h1>
+<p class="Pp">Programs that use the <i>setuid</i> bit do not have effective user
+    <small>ID</small> privileges while being traced.</p>
+<p class="Pp">A traced process runs more slowly than a non-traced one. The
+    performance impact can be mitigated by using the <b>--seccomp-bpf</b>
+    option.</p>
+<p class="Pp">When tracing a <i>command</i>, its descendant processes may be
+    left running after <b>strace</b> is terminated by an interrupt signal (such
+    as CTRL-C<b>).</b> This can be prevented by using the <b>--kill-on-exit</b>
+    option, or by using <b>--seccomp-bpf</b> option in a way that implies
+    <b>--kill-on-exit</b>.</p>
+<p class="Pp">A traced process can use the <b>CLONE_UNTRACED</b> flag with the
+    <b>clone</b> system call to create a child process that is not traced by
+    strace. This breaks a guarantee of the <b>--seccomp-bpf</b> option, as this
+    untraced child may be left with an active seccomp filter after strace
+    terminates.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="HISTORY"><a class="permalink" href="#HISTORY">HISTORY</a></h1>
+<p class="Pp">The original <b>strace</b> was written by Paul Kranenburg for
+    SunOS and was inspired by its <b>trace</b> utility. The SunOS version of
+    <b>strace</b> was ported to Linux and enhanced by Branko Lankester, who also
+    wrote the Linux kernel support. Even though Paul released <b>strace</b> 2.5
+    in 1992, Branko's work was based on Paul's <b>strace</b> 1.5 release from
+    1991.</p>
+<p class="Pp">In 1993, Rick Sladkey took on the project. He merged <b>strace</b>
+    2.5 for SunOS with the second release of <b>strace</b> for Linux, added many
+    features from SVR4's <b>truss</b>(1), and produced a version of
+    <b>strace</b> that worked on both platforms. In 1994 Rick ported
+    <b>strace</b> to SVR4 and Solaris and wrote the automatic configuration
+    support. In 1995 he ported <b>strace</b> to Irix (and became tired of
+    writing about himself in the third person).</p>
+<p class="Pp">Beginning with 1996, <b>strace</b> was maintained by Wichert
+    Akkerman. During his tenure, <b>strace</b> development migrated to CVS;
+    ports to FreeBSD and many architectures on Linux (including ARM, IA-64,
+    MIPS, PA-RISC, PowerPC, s390, SPARC) were introduced.</p>
+<p class="Pp">In 2002, responsibility for <b>strace</b> maintenance was
+    transferred to Roland McGrath. Since then, <b>strace</b> gained support for
+    several new Linux architectures (AMD64, s390x, SuperH), bi-architecture
+    support for some of them, and received numerous additions and improvements
+    in system calls decoders on Linux; <b>strace</b> development migrated to
+    <b>Git</b> during that period.</p>
+<p class="Pp">Since 2009, <b>strace</b> has been actively maintained by Dmitry
+    Levin. During this period, <b>strace</b> has gained support for the AArch64,
+    ARC, AVR32, Blackfin, C-SKY, LoongArch, Meta, Nios II, OpenRISC 1000,
+    RISC-V, Tile/TileGx, and Xtensa architectures. In 2012, unmaintained and
+    apparently broken support for non-Linux operating systems was removed. Also,
+    in 2012 <b>strace</b> gained support for path tracing and file descriptor
+    path decoding. In 2014, support for stack trace printing was added. In 2016,
+    system call tampering was implemented.</p>
+<p class="Pp">For the additional information, please refer to the <b>NEWS</b>
+    file and <b>strace</b> repository commit log.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="REPORTING_BUGS"><a class="permalink" href="#REPORTING_BUGS">REPORTING
+  BUGS</a></h1>
+<p class="Pp">Problems with <b>strace</b> should be reported to the
+    <a class="Lk" href="mailto:strace-devel@lists.strace.io"><b>strace</b>
+    mailing list</a>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>strace-log-merge</b>(1), <b>ltrace</b>(1),
+    <b>perf-trace</b>(1), <b>trace-cmd</b>(1), <b>time</b>(1), <b>ptrace</b>(2),
+    <b>seccomp</b>(2), <b>syscall</b>(2), <b>proc</b>(5), <b>signal</b>(7)</p>
+<p class="Pp"><a class="Lk" href="https://strace.io/"><b>strace</b> Home
+    Page</a></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp">The complete list of <b>strace</b> contributors can be found in
+    the <b>CREDITS</b> file.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2025-11-13</td>
+    <td class="foot-os">strace 6.19</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

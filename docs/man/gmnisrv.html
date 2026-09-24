@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gmnisrv(1) · Copal Linux</title>
+<meta name="description" content="gmnisrv - serve clients over the gemini protocol">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-gmnisrv">gmnisrv in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">gmnisrv 1.0-r3 — man1/gmnisrv.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">gmnisrv(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">gmnisrv(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">gmnisrv - serve clients over the gemini protocol</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNPOSIS"><a class="permalink" href="#SYNPOSIS">SYNPOSIS</a></h1>
+<p class="Pp"><b>gmnisrv</b> [-C <i>path</i>]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>gmnisrv</b> is a daemon which serves network clients over the
+    gemini protocol. It requires a config file; by default this shall be read
+    from /etc/gmnisrv.ini unless the installation was configured with a
+    different SYSCONFDIR or the user provides the -C flag.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp"><b>-C</b> <i>path</i></p>
+<div class="Bd-indent">Specifies an alternate path to read the config file
+  from.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="LOG_FORMAT"><a class="permalink" href="#LOG_FORMAT">LOG
+  FORMAT</a></h1>
+<p class="Pp">Server diagnostics and client errors are printed to <b>stderr</b>
+    in an unspecified format. Nominal client logging is printed to
+    <b>stdout</b>, with each of the following fields in order, separated by
+    whitespace:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Client IP</li>
+  <li>Request hostname</li>
+  <li>Request path</li>
+  <li>Service time</li>
+  <li>Response body size in bytes</li>
+  <li>Response status</li>
+  <li>Response meta</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>gmnisrv.ini</b>(5)</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2025-08-08</td>
+    <td class="foot-os"></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

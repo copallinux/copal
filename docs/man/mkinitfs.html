@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mkinitfs(1) · Copal Linux</title>
+<meta name="description" content="mkinitfs - Generate an initramfs">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-mkinitfs">mkinitfs in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">mkinitfs 3.14.1-r0 — man1/mkinitfs.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">MKINITFS(1)</td>
+    <td class="head-vol">Early startup</td>
+    <td class="head-rtitle">MKINITFS(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">mkinitfs - Generate an initramfs</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">mkinitfs [<i>OPTIONS</i>] [<i>KERNELVERSION</i>]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>mkinitfs</b> collects files from the root file system and
+    creates a compressed initramfs from it.</p>
+<dl class="Bl-tag">
+  <dt id="b"><a class="permalink" href="#b"><b>-b</b> <i>BASEDIR</i></a></dt>
+  <dd>Dont use files from the root file system, use specified path instead.</dd>
+  <dt id="c"><a class="permalink" href="#c"><b>-c</b> <i>CONFIGFILE</i></a></dt>
+  <dd>Use configfile instead of <i>/etc/mkinitfs/mkinitfs.conf</i>.</dd>
+  <dt id="C"><a class="permalink" href="#C"><b>-C</b> <i>ALGORITHM</i></a></dt>
+  <dd>Compress initramfs using gzip (default), xz, zstd, lz4 or none.</dd>
+  <dt id="f"><a class="permalink" href="#f"><b>-f</b> <i>FSTAB</i></a></dt>
+  <dd>Use fstab instead of <i>/usr/share/mkinitfs/fstab</i>.</dd>
+  <dt id="F"><a class="permalink" href="#F"><b>-F</b> <i>FEATURES</i></a></dt>
+  <dd>Use specified features.</dd>
+  <dt id="h"><a class="permalink" href="#h"><b>-h</b></a></dt>
+  <dd>Print this help.</dd>
+  <dt id="i"><a class="permalink" href="#i"><b>-i </b><i>INITFILE</i></a></dt>
+  <dd>Use initfile as init instead of
+    <i>/usr/share/mkinitfs/initramfs-init</i>.</dd>
+  <dt id="k"><a class="permalink" href="#k"><b>-k</b></a></dt>
+  <dd>Do not clean up temporary files.</dd>
+  <dt id="K"><a class="permalink" href="#K"><b>-K</b></a></dt>
+  <dd>Also copy host apk keys to initramfs.</dd>
+  <dt id="l"><a class="permalink" href="#l"><b>-l</b></a></dt>
+  <dd>Do a dry run and only list files that would have been used.</dd>
+  <dt id="L"><a class="permalink" href="#L"><b>-L</b></a></dt>
+  <dd>List all available features.</dd>
+  <dt id="n"><a class="permalink" href="#n"><b>-n</b></a></dt>
+  <dd>Don't include kernel modules or firmware into the initramfs.</dd>
+  <dt id="o"><a class="permalink" href="#o"><b>-o </b><i>OUTFILE</i></a></dt>
+  <dd>Set another outfile.</dd>
+  <dt id="P"><a class="permalink" href="#P"><b>-P
+    </b><i>FEATURESDIR</i></a></dt>
+  <dd>Prepend features.d search path. Use this if you want to define your own
+      features outside of the system-wide directories.</dd>
+  <dt id="q"><a class="permalink" href="#q"><b>-q</b></a></dt>
+  <dd>Quiet mode.</dd>
+  <dt id="s"><a class="permalink" href="#s"><b>-s</b></a></dt>
+  <dd>Include modloop signature.</dd>
+  <dt id="t"><a class="permalink" href="#t"><b>-t </b><i>TMPDIR</i></a></dt>
+  <dd>Use tempdir when creating initramfs image.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<dl class="Bl-tag">
+  <dt><i>/etc/mkinitfs/mkinitfs.conf</i></dt>
+  <dd>Default configuration file. It contains the list of default features in
+      the format of <b>features=&quot;...&quot;</b>.</dd>
+  <dt><i>/etc/mkinitfs/features.d/FEATURE.modules</i></dt>
+  <dd>Contains a list of kernel modules. Using the feature will cause the given
+      kernel modules to be included in the initramfs. The modules are given by
+      their filesystem paths, relative to
+    <i>/lib/modules/KERNELVERSION/</i>.</dd>
+  <dt><i>/etc/mkinitfs/features.d/FEATURE.files</i></dt>
+  <dd>Contains a list of absolute file names which will be included into the
+      generated initramfs if the feature is enabled.</dd>
+  <dt><i>/usr/share/mkinitfs/initramfs-init</i></dt>
+  <dd>Shell script which will be placed as <i>/init</i> in the initramfs. This
+      functions as the first executed program in early userspace.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHOR"><a class="permalink" href="#AUTHOR">AUTHOR</a></h1>
+<p class="Pp">Written by Natanael Copa &lt;ncopa@alpinelinux.org&gt;, Timo
+    Ter&#x00E4;s &lt;timo.teras@iki.fi&gt; and others.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="REPORTING_BUGS"><a class="permalink" href="#REPORTING_BUGS">REPORTING
+  BUGS</a></h1>
+<p class="Pp">Alpine Linux GitLab:
+    &lt;https://gitlab.alpinelinux.org/alpine/mkinitfs/-/issues&gt;</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp">mkinitfs-bootparam(7)</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">July 2018</td>
+    <td class="foot-os">mkinitfs 3.14.1-r0</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

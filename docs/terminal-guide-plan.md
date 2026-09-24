@@ -224,6 +224,37 @@ Each ends with a review of what it produced before the next begins.
   `mandoc-apropos`, `man-pages`, and 152 doc packages, 146 MiB; `ghc-doc`
   (753 MiB) skipped by the cap. Option (a) would have been 2.0 GiB.
 
+### Phase 2, as built
+
+- **`tools/copal-command-ref.py`**: `inventory` (from the repository),
+  `collect` and `man-html` (on a Copal machine); `make commands-facts`
+  runs the last two and refuses to run anywhere else.
+- **The inventory is 289**, not 292: a program in two catalogue rows is one
+  entry (`python3` is three rows), and nine core commands share a
+  catalogue row (`rsync`, `tmux`, `gdb`...), kept as one entry with both
+  origins. `iwctl` and `nmcli` left the core list — Copal installs neither;
+  its wifi is `wpa_supplicant` (stage 10), so `wpa_cli`, `wpa_passphrase`
+  and `iw` joined it.
+- **Copal's own 41** are found by the lines that write them (`cat >`,
+  `install -m`, and `cp` for `copal` itself) and placed in a stage through
+  copal-init.sh's call graph — heredoc-aware, since the whole of
+  copal-init.sh is one heredoc in copal-prep.sh and copal-store's own
+  functions are text inside it. Three run on every start (stage 0).
+- **Facts**, batched: one `apk info -W` for every path, one `apk query`
+  for every package (version, description, URL, origin, dependencies), one
+  for every library's provider. 21 s for all 289, from 9 min 19 s one at a
+  time. The man page is the one named exactly after the command, section
+  1, 8, 6, 7 then 5 (`man -w apk` answers apk-package(5)); a BusyBox applet
+  gets BusyBox's page and says so; no page, the `--help` usage.
+- **A phase 1 fix it found**: a page is in the `-doc` of the package's
+  ORIGIN — `ssh` is `openssh-client-default`'s, its page `openssh-doc`;
+  `lsblk` is `util-linux-misc`'s, its page `util-linux-doc`. install_manuals
+  and the store now resolve origins (`apk query --fields origin`); 12 more
+  pages on the full monty.
+- **`docs/man/`**: 168 pages, mandoc's HTML in the site's type, a
+  cross-reference a link when its page is here. 9.0 MB, 2.3 MB compressed
+  as GitHub Pages serves it.
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.

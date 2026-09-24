@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pip(1) · Copal Linux</title>
+<meta name="description" content="pip - package manager for Python packages">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-pip">pip in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">py3-pip 26.1.2-r0 — man1/pip.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">PIP(1)</td>
+    <td class="head-vol">pip</td>
+    <td class="head-rtitle">PIP(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">pip - package manager for Python packages</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">pip &lt;command&gt; [options]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">pip is the PyPA recommended package manager for Python
+  packages</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="h,"><a class="permalink" href="#h,"><b>-h, --help</b></a></dt>
+  <dd>Show help.
+    <p class="Pp">(environment variable: <b>PIP_HELP</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="debug"><a class="permalink" href="#debug"><b>--debug</b></a></dt>
+  <dd>Let unhandled exceptions propagate outside the main subroutine, instead of
+      logging them to stderr.
+    <p class="Pp">(environment variable: <b>PIP_DEBUG</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="isolated"><a class="permalink" href="#isolated"><b>--isolated</b></a></dt>
+  <dd>Run pip in an isolated mode, ignoring environment variables and user
+      configuration.
+    <p class="Pp">(environment variable: <b>PIP_ISOLATED</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="require"><a class="permalink" href="#require"><b>--require-virtualenv</b></a></dt>
+  <dd>Allow pip to only run in a virtual environment; exit with an error
+      otherwise.
+    <p class="Pp">(environment variable: <b>PIP_REQUIRE_VIRTUALENV</b>,
+        <b>PIP_REQUIRE_VENV</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="python"><a class="permalink" href="#python"><b>--python
+    &lt;python&gt;</b></a></dt>
+  <dd>Run pip with the specified Python interpreter.
+    <p class="Pp">(environment variable: <b>PIP_PYTHON</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="v,"><a class="permalink" href="#v,"><b>-v, --verbose</b></a></dt>
+  <dd>Give more output. Option is additive, and can be used up to 3 times.
+    <p class="Pp">(environment variable: <b>PIP_VERBOSE</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="V,"><a class="permalink" href="#V,"><b>-V, --version</b></a></dt>
+  <dd>Show version and exit.
+    <p class="Pp">(environment variable: <b>PIP_VERSION</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="q,"><a class="permalink" href="#q,"><b>-q, --quiet</b></a></dt>
+  <dd>Give less output. Option is additive, and can be used up to 3 times
+      (corresponding to WARNING, ERROR, and CRITICAL logging levels).
+    <p class="Pp">(environment variable: <b>PIP_QUIET</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="log"><a class="permalink" href="#log"><b>--log
+    &lt;path&gt;</b></a></dt>
+  <dd>Path to a verbose appending log.
+    <p class="Pp">(environment variable: <b>PIP_LOG</b>, <b>PIP_LOG_FILE</b>,
+        <b>PIP_LOCAL_LOG</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="no"><a class="permalink" href="#no"><b>--no-input</b></a></dt>
+  <dd>Disable prompting for input.
+    <p class="Pp">(environment variable: <b>PIP_NO_INPUT</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="keyring"><a class="permalink" href="#keyring"><b>--keyring-provider
+    &lt;keyring_provider&gt;</b></a></dt>
+  <dd>Enable the credential lookup via the keyring library if user input is
+      allowed. Specify which mechanism to use [auto, disabled, import,
+      subprocess]. (default: auto)
+    <p class="Pp">(environment variable: <b>PIP_KEYRING_PROVIDER</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="proxy"><a class="permalink" href="#proxy"><b>--proxy
+    &lt;proxy&gt;</b></a></dt>
+  <dd>Specify a proxy in the form scheme://[user:passwd@]proxy.server:port.
+    <p class="Pp">(environment variable: <b>PIP_PROXY</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="retries"><a class="permalink" href="#retries"><b>--retries
+    &lt;retries&gt;</b></a></dt>
+  <dd>Maximum attempts to establish a new HTTP connection. (default: 5)
+    <p class="Pp">(environment variable: <b>PIP_RETRIES</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="timeout"><a class="permalink" href="#timeout"><b>--timeout
+    &lt;sec&gt;</b></a></dt>
+  <dd>Set the socket timeout (default 15 seconds).
+    <p class="Pp">(environment variable: <b>PIP_TIMEOUT</b>,
+        <b>PIP_DEFAULT_TIMEOUT</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="exists"><a class="permalink" href="#exists"><b>--exists-action
+    &lt;action&gt;</b></a></dt>
+  <dd>Default action when a path already exists: (s)witch, (i)gnore, (w)ipe,
+      (b)ackup, (a)bort.
+    <p class="Pp">(environment variable: <b>PIP_EXISTS_ACTION</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="trusted"><a class="permalink" href="#trusted"><b>--trusted-host
+    &lt;hostname&gt;</b></a></dt>
+  <dd>Mark this host or host:port pair as trusted, even though it does not have
+      valid or any HTTPS.
+    <p class="Pp">(environment variable: <b>PIP_TRUSTED_HOST</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="cert"><a class="permalink" href="#cert"><b>--cert
+    &lt;path&gt;</b></a></dt>
+  <dd>Path to PEM-encoded CA certificate bundle. If provided, overrides the
+      default. See 'SSL Certificate Verification' in pip documentation for more
+      information.
+    <p class="Pp">(environment variable: <b>PIP_CERT</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="client"><a class="permalink" href="#client"><b>--client-cert
+    &lt;path&gt;</b></a></dt>
+  <dd>Path to SSL client certificate, a single file containing the private key
+      and the certificate in PEM format.
+    <p class="Pp">(environment variable: <b>PIP_CLIENT_CERT</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="cache"><a class="permalink" href="#cache"><b>--cache-dir
+    &lt;dir&gt;</b></a></dt>
+  <dd>Store the cache data in &lt;dir&gt;.
+    <p class="Pp">(environment variable: <b>PIP_CACHE_DIR</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="no~2"><a class="permalink" href="#no~2"><b>--no-cache-dir</b></a></dt>
+  <dd>Disable the cache.
+    <p class="Pp">(environment variable: <b>PIP_NO_CACHE_DIR</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="disable"><a class="permalink" href="#disable"><b>--disable-pip-version-check</b></a></dt>
+  <dd>Don't periodically check PyPI to determine whether a new version of pip is
+      available for download. Implied with --no-index.
+    <p class="Pp">(environment variable:
+      <b>PIP_DISABLE_PIP_VERSION_CHECK</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="no~3"><a class="permalink" href="#no~3"><b>--no-color</b></a></dt>
+  <dd>Suppress colored output.
+    <p class="Pp">(environment variable: <b>PIP_NO_COLOR</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="use"><a class="permalink" href="#use"><b>--use-feature
+    &lt;feature&gt;</b></a></dt>
+  <dd>Enable new functionality, that may be backward incompatible.
+    <p class="Pp">(environment variable: <b>PIP_USE_FEATURE</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="use~2"><a class="permalink" href="#use~2"><b>--use-deprecated
+    &lt;feature&gt;</b></a></dt>
+  <dd>Enable deprecated functionality, that will be removed in the future.
+    <p class="Pp">(environment variable: <b>PIP_USE_DEPRECATED</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="resume"><a class="permalink" href="#resume"><b>--resume-retries
+    &lt;resume_retries&gt;</b></a></dt>
+  <dd>Maximum attempts to resume or restart an incomplete download. (default: 5)
+    <p class="Pp">(environment variable: <b>PIP_RESUME_RETRIES</b>)</p>
+  </dd>
+</dl>
+</div>
+<br/>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COMMANDS"><a class="permalink" href="#COMMANDS">COMMANDS</a></h1>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="pip"><a class="permalink" href="#pip"><b>pip-install(1)</b></a></dt>
+  <dd>Install packages.</dd>
+  <dt id="pip~2"><a class="permalink" href="#pip~2"><b>pip-download(1)</b></a></dt>
+  <dd>Download packages.</dd>
+  <dt id="pip~3"><a class="permalink" href="#pip~3"><b>pip-uninstall(1)</b></a></dt>
+  <dd>Uninstall packages.</dd>
+  <dt id="pip~4"><a class="permalink" href="#pip~4"><b>pip-freeze(1)</b></a></dt>
+  <dd>Output installed packages in requirements format.</dd>
+  <dt id="pip~5"><a class="permalink" href="#pip~5"><b>pip-lock(1)</b></a></dt>
+  <dd>Generate a lock file for requirements and their dependencies.</dd>
+  <dt id="pip~6"><a class="permalink" href="#pip~6"><b>pip-list(1)</b></a></dt>
+  <dd>List installed packages.</dd>
+  <dt id="pip~7"><a class="permalink" href="#pip~7"><b>pip-show(1)</b></a></dt>
+  <dd>Show information about installed packages.</dd>
+  <dt id="pip~8"><a class="permalink" href="#pip~8"><b>pip-check(1)</b></a></dt>
+  <dd>Verify installed packages have compatible dependencies.</dd>
+  <dt id="pip~9"><a class="permalink" href="#pip~9"><b>pip-search(1)</b></a></dt>
+  <dd>Search PyPI for packages.</dd>
+  <dt id="pip~10"><a class="permalink" href="#pip~10"><b>pip-wheel(1)</b></a></dt>
+  <dd>Build wheels from your requirements.</dd>
+  <dt id="pip~11"><a class="permalink" href="#pip~11"><b>pip-hash(1)</b></a></dt>
+  <dd>Compute hashes of package archives.</dd>
+  <dt id="pip~12"><a class="permalink" href="#pip~12"><b>pip-help(1)</b></a></dt>
+  <dd>Show help for pip commands.</dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHOR"><a class="permalink" href="#AUTHOR">AUTHOR</a></h1>
+<p class="Pp">pip developers</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COPYRIGHT"><a class="permalink" href="#COPYRIGHT">COPYRIGHT</a></h1>
+<p class="Pp">The pip developers</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">June 1, 2026</td>
+    <td class="foot-os">26.1</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

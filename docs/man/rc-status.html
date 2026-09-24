@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rc-status(8) · Copal Linux</title>
+<meta name="description" content="rc-status – show status info about runlevels">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-rc-status">rc-status in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">openrc 0.63.2-r0 — man8/rc-status.8.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">RC-STATUS(8)</td>
+    <td class="head-vol">System Manager's Manual (smm)</td>
+    <td class="head-rtitle">RC-STATUS(8)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><code class="Nm">rc-status</code> &#x2014; <span class="Nd">show
+    status info about runlevels</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-status</code></td>
+    <td>[<code class="Fl">-C</code>] [<code class="Fl">-f</code>
+      <var class="Ar">ini</var>] [<code class="Fl">-i</code>
+      <var class="Ar">state</var>] [<var class="Ar">runlevel</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-status</code></td>
+    <td>[<code class="Fl">-C</code>] [<code class="Fl">-f</code>
+      <var class="Ar">ini</var>] [-a | -m | -S | -s | -u]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-status</code></td>
+    <td>[<code class="Fl">-C</code>] [-c | -l | -r]</td>
+  </tr>
+</table>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><code class="Nm">rc-status</code> gathers and displays information
+    about the status of services in different runlevels. The default behavior is
+    to show information about the current runlevel and any unassigned services
+    that are not stopped, but any runlevel can be quickly examined.</p>
+<p class="Pp">If an active service is being supervised by
+    <span class="Xr">supervise-daemon(8)</span>, the
+    amount of time the daemon has been active along with the number of times it
+    has been respawned in the current respawn period will be displayed.</p>
+<p class="Pp">The options are as follows:</p>
+<dl class="Bl-tag">
+  <dt id="a"><a class="permalink" href="#a"><code class="Fl">-a</code></a>,
+    <code class="Fl">--all</code></dt>
+  <dd>Show all runlevels and their services.</dd>
+  <dt id="c"><a class="permalink" href="#c"><code class="Fl">-c</code></a>,
+    <code class="Fl">--crashed</code></dt>
+  <dd>List all services that have crashed (in any runlevel) in plain text
+      format.</dd>
+  <dt id="f"><a class="permalink" href="#f"><code class="Fl">-f</code></a>,
+    <code class="Fl">--format</code></dt>
+  <dd>Select a format for the output. Currently, the only one that can be
+      specified is ini, which outputs in *.ini format.</dd>
+  <dt id="i"><a class="permalink" href="#i"><code class="Fl">-i</code></a>,
+    <code class="Fl">--in-state</code></dt>
+  <dd>Show services in given state. Can be combined, e.g <var class="Ar">-i
+      started -i crashed</var> will select any services which are either in
+      started or crashed state. Available states are: &#x201C;stopped&#x201D;,
+      &#x201C;started&#x201D;, &#x201C;stopping&#x201D;,
+      &#x201C;starting&#x201D;, &#x201C;inactive&#x201D;,
+      &#x201C;hotplugged&#x201D;, &#x201C;failed&#x201D;,
+      &#x201C;scheduled&#x201D; and &#x201C;crashed&#x201D;.</dd>
+  <dt id="l"><a class="permalink" href="#l"><code class="Fl">-l</code></a>,
+    <code class="Fl">--list</code></dt>
+  <dd>List all defined runlevels.</dd>
+  <dt id="m"><a class="permalink" href="#m"><code class="Fl">-m</code></a>,
+    <code class="Fl">--manual</code></dt>
+  <dd>Show all manually started services.</dd>
+  <dt id="r"><a class="permalink" href="#r"><code class="Fl">-r</code></a>,
+    <code class="Fl">--runlevel</code></dt>
+  <dd>Print the current runlevel name.</dd>
+  <dt id="S"><a class="permalink" href="#S"><code class="Fl">-S</code></a>,
+    <code class="Fl">--supervised</code></dt>
+  <dd>Show all supervised services.</dd>
+  <dt id="s"><a class="permalink" href="#s"><code class="Fl">-s</code></a>,
+    <code class="Fl">--servicelist</code></dt>
+  <dd>Show all services (in any runlevel).</dd>
+  <dt id="u"><a class="permalink" href="#u"><code class="Fl">-u</code></a>,
+    <code class="Fl">--unused</code></dt>
+  <dd>Show services not assigned to any runlevel.</dd>
+  <dt id="C"><a class="permalink" href="#C"><code class="Fl">-C</code></a>,
+    <code class="Fl">--nocolor</code></dt>
+  <dd>Disable color output.</dd>
+  <dt><var class="Ar">runlevel</var></dt>
+  <dd>Show information only for the named <var class="Ar">runlevel</var>.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXIT_STATUS"><a class="permalink" href="#EXIT_STATUS">EXIT
+  STATUS</a></h1>
+<p class="Pp"><code class="Nm">rc-status</code> exits 0, except when checking
+    for crashed services and it doesn't find any.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="IMPLEMENTATION_NOTES"><a class="permalink" href="#IMPLEMENTATION_NOTES">IMPLEMENTATION
+  NOTES</a></h1>
+<p class="Pp"><code class="Nm">rc-status</code> tries to list services within
+    each runlevel in the presently resolved dependency order if the dependency
+    tree is available.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><a class="Xr" href="openrc.html">openrc(8)</a>,
+    <a class="Xr" href="rc-update.html">rc-update(8)</a>,
+    <span class="Xr">supervise-daemon(8)</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp"><span class="An">Roy Marples &lt;roy@marples.name&gt;</span></p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">March 16, 2025</td>
+    <td class="foot-os">OpenRC</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

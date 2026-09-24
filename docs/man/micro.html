@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>micro(1) · Copal Linux</title>
+<meta name="description" content="micro - A modern and intuitive terminal-based text editor">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-micro">micro in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">micro 2.0.15-r6 — man1/micro.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">micro(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">micro(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">micro - A modern and intuitive terminal-based text editor</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>micro</b> [<i>OPTION</i>]... [<i>FILE</i>]...
+    [+<i>LINE</i>[:<i>COL</i>]] [+/<i>REGEX</i>]
+  <br/>
+  <b>micro</b> [<i>OPTION</i>]... [<i>FILE</i>[:<i>LINE</i>[:<i>COL</i>]]]...
+    (only if the `parsecursor` option is enabled)</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Micro is a terminal-based text editor that aims to be easy to use
+    and intuitive, while also taking advantage of the full capabilities of
+    modern terminals. It comes as one single, batteries-included, static binary
+    with no dependencies.</p>
+<p class="Pp">As the name indicates, micro aims to be somewhat of a successor to
+    the nano editor by being easy to install and use in a pinch, but micro also
+    aims to be enjoyable to use full time, whether you work in the terminal
+    because you prefer it (like me), or because you need to (over ssh).</p>
+<p class="Pp">Use Ctrl-q to quit, Ctrl-s to save, and Ctrl-g to open the
+    in-editor help menu.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp"><b>-clean</b></p>
+<div class="Bd-indent">Clean the configuration directory and exit</div>
+<p class="Pp"><b>-config-dir</b> <i>dir</i></p>
+<div class="Bd-indent">Specify a custom location for the configuration
+  directory</div>
+<p class="Pp"><i>FILE</i>:<i>LINE</i>[:<i>COL</i>] (only if the `parsecursor`
+    option is enabled)
+  <br/>
+  <i>FILE</i>&#x00A0;+<i>LINE</i>[:<i>COL</i>]</p>
+<div class="Bd-indent">Specify a line and column to start the cursor at when
+  opening a buffer</div>
+<p class="Pp">+/<i>REGEX</i></p>
+<div class="Bd-indent">Specify a regex to search for when opening a buffer</div>
+<p class="Pp"><b>-options</b></p>
+<div class="Bd-indent">Show all options help and exit</div>
+<p class="Pp"><b>-debug</b></p>
+<div class="Bd-indent">Enable debug mode (enables logging to ./log.txt)</div>
+<p class="Pp"><b>-profile</b></p>
+<div class="Bd-indent">Enable CPU profiling (writes profile info to ./micro.prof
+  so it can be analyzed later with &quot;go tool pprof micro.prof&quot;)</div>
+<p class="Pp"><b>-version</b></p>
+<div class="Bd-indent">Show the version number and information and exit</div>
+<p class="Pp">Micro's plugins can be managed at the command line with the
+    following commands.</p>
+<div class="Bd-indent">
+<p class="Pp"><b>-plugin install</b> [<i>PLUGIN</i>]...</p>
+<div class="Bd-indent">Install plugin(s)</div>
+<p class="Pp"><b>-plugin remove</b> [<i>PLUGIN</i>]...</p>
+<div class="Bd-indent">Remove plugin(s)</div>
+<p class="Pp"><b>-plugin update</b> [<i>PLUGIN</i>]...</p>
+<div class="Bd-indent">Update plugin(s) (if no argument is given, updates all
+  plugins)</div>
+<p class="Pp"><b>-plugin search</b> [<i>PLUGIN</i>]...</p>
+<div class="Bd-indent">Search for a plugin</div>
+<p class="Pp"><b>-plugin list</b></p>
+<div class="Bd-indent">List installed plugins</div>
+<p class="Pp"><b>-plugin available</b></p>
+<div class="Bd-indent">List available plugins</div>
+</div>
+<p class="Pp">Micro's options can also be set via command line arguments for
+    quick adjustments. For real configuration, please use the settings.json file
+    (see 'help options').</p>
+<div class="Bd-indent">
+<p class="Pp"><b>-&lt;</b><i>option</i><b>&gt;</b> <i>value</i></p>
+<div class="Bd-indent">Set `option` to `value` for this session.
+<br/>
+For example: `micro -syntax off file.c`</div>
+</div>
+<p class="Pp">Use `micro -options` to see the full list of configuration
+    options.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CONFIGURATION"><a class="permalink" href="#CONFIGURATION">CONFIGURATION</a></h1>
+<p class="Pp">Micro uses $MICRO_CONFIG_HOME as the configuration directory. If
+    this environment variable is not set, it uses $XDG_CONFIG_HOME/micro
+    instead. If that environment variable is not set, it uses ~/.config/micro as
+    the configuration directory. In the documentation, we use ~/.config/micro to
+    refer to the configuration directory (even if it may in fact be somewhere
+    else if you have set either of the above environment variables).</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="NOTICE"><a class="permalink" href="#NOTICE">NOTICE</a></h1>
+<p class="Pp">This manpage is intended only to serve as a quick guide to the
+    invocation of micro and is not intended to replace the full documentation
+    included with micro which can be accessed from within micro. Micro tells you
+    what key combination to press to get help in the lower right.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="BUGS"><a class="permalink" href="#BUGS">BUGS</a></h1>
+<p class="Pp">A comprehensive list of bugs will not be listed in this manpage.
+    See the Github page at <b>https://github.com/zyedidia/micro/issues</b> for a
+    list of known bugs and to report any newly encountered bugs you may find. We
+    strive to correct bugs as swiftly as possible.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COPYRIGHT"><a class="permalink" href="#COPYRIGHT">COPYRIGHT</a></h1>
+<p class="Pp">Copyright &#x00A9; 2020 Zachary Yedidia, et al. MIT license. See
+    <b>https://github.com/zyedidia/micro</b> for details.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2025-09-03</td>
+    <td class="foot-os"></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

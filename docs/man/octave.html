@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>octave(1) · Copal Linux</title>
+<meta name="description" content="octave - A high-level interactive programming language for numerical computations.">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-octave">octave in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">octave 11.1.0-r0 — man1/octave.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">OCTAVE(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">OCTAVE(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">octave - A high-level interactive programming language for
+    numerical computations.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>octave</b> [<i>options</i>]... [<i>file</i>]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Octave is a high-level interactive scientific programming
+    language. It has a powerful mathematics-oriented syntax for solving problems
+    numerically, as well as built-in 2-D/3-D plotting and visualization tools.
+    Octave provides an integrated development environment in either graphical or
+    command-line form. Programs may also be run in batch mode to process data
+    without interaction.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp">A list of the most useful command-line options for <b>octave</b>
+    is available by running the following command from the shell.</p>
+<pre>
+<b>octave --help</b>
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DOCUMENTATION"><a class="permalink" href="#DOCUMENTATION">DOCUMENTATION</a></h1>
+<p class="Pp">The primary documentation for Octave is written using Texinfo, the
+    GNU documentation system, which allows the same source files to be used to
+    produce online and printed versions of the manual.</p>
+<p class="Pp">You can read the built-in copy of the Octave documentation by
+    issuing the following command from within <b>octave</b>.</p>
+<pre>
+<br/>
+    octave:1&gt; <b>doc</b>
+</pre>
+The Info files may also be read with a stand-alone program such as <b>info</b>
+  or <b>xinfo</b>. HTML, Postscript, or PDF versions of the documentation are
+  installed on many systems as well. The latest version of the documentation is
+  available at
+  <a class="Lk" href="https://docs.octave.org/latest">https://docs.octave.org/latest</a>.
+</section>
+<section class="Sh">
+<h1 class="Sh" id="BUGS"><a class="permalink" href="#BUGS">BUGS</a></h1>
+<p class="Pp">The Octave project maintains a bug tracker at
+    <a class="Lk" href="https://bugs.octave.org">https://bugs.octave.org</a>.
+    Before submitting a new item please read the instructions at
+    <a class="Lk" href="https://www.octave.org/bugs.html">https://www.octave.org/bugs.html</a>&#x00A0;on
+    how to submit a useful report.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<p class="Pp">Upon startup Octave looks for four initialization files. Each file
+    may contain any number of valid Octave commands.</p>
+<dl class="Bl-tag">
+  <dt id="octave_home"><a class="permalink" href="#octave_home"><i>octave-home</i>/share/octave/site/m/startup/octaverc</a></dt>
+  <dd>Site-wide initialization file which changes options for all users.
+      <i>octave-home</i> is the directory where Octave was installed such as
+      <i>/usr/local</i>.</dd>
+  <dt id="octave_home~2"><a class="permalink" href="#octave_home~2"><i>octave-home</i>/share/octave/<i>version</i>/m/startup/octaverc</a></dt>
+  <dd>Site-wide initialization file for Octave version <i>version</i>.</dd>
+  <dt>~/.octaverc</dt>
+  <dd>User's personal initialization file.</dd>
+  <dt>.octaverc</dt>
+  <dd>Project-specific initialization file located in the current
+    directory.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHOR"><a class="permalink" href="#AUTHOR">AUTHOR</a></h1>
+<p class="Pp">John W. Eaton and many others. The list of contributors to the
+    Octave project may be shown with <b>info octave Acknowledgements</b>. The
+    list is also available online at
+    <a class="Lk" href="https://docs.octave.org/latest/Acknowledgements.html">https://docs.octave.org/latest/Acknowledgements.html</a>.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">3 January 2024</td>
+    <td class="foot-os">GNU Octave</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

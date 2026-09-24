@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>apk(8) · Copal Linux</title>
+<meta name="description" content="apk - Alpine Package Keeper">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-apk">apk in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">apk-tools 3.0.8-r0 — man8/apk.8.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">apk(8)</td>
+    <td class="head-vol">System Manager's Manual</td>
+    <td class="head-rtitle">apk(8)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">apk - Alpine Package Keeper</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>apk</b> [&lt;<i>global options</i>&gt;...] <i>command</i>
+    [&lt;<i>options</i>&gt;...] [&lt;<i>arguments</i>&gt;...]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>apk</b> manages packages installed on the system. The set of
+    top level constraints on system packages is called the <i>world</i> (see
+    <b>apk-world</b>(5)).</p>
+<p class="Pp"><b>apk</b> supports various sub-commands to query and manipulate
+    <i>world</i> and package repositories.</p>
+<p class="Pp">All apk commands which modify the database are logged to
+    /var/log/apk.log.</p>
+<p class="Pp">By default apk is non-interactive. See <b>FILES</b> or
+    <b>--interactive</b> on changing this default to be interactive.</p>
+<p class="Pp">Only <i>global options</i> should be specified before
+    <i>command</i>. For backwards compatibility a best effort attempt is made to
+    parse applet specific options before the <i>command</i>, but this is
+    deprecated and subject to be removed.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COMMANDS"><a class="permalink" href="#COMMANDS">COMMANDS</a></h1>
+<p class="Pp">Each command is documented in detail on its manual page.</p>
+<section class="Ss">
+<h2 class="Ss" id="PACKAGE_INSTALLATION_AND_REMOVAL"><a class="permalink" href="#PACKAGE_INSTALLATION_AND_REMOVAL">PACKAGE
+  INSTALLATION AND REMOVAL</a></h2>
+<table class="tbl">
+  <tr>
+    <td><b>apk-add</b>(8)</td>
+    <td>Add or modify constraints in <i>world</i> and commit changes</td>
+  </tr>
+  <tr>
+    <td><b>apk-del</b>(8)</td>
+    <td>Remove constraints from <i>world</i> and commit changes</td>
+  </tr>
+</table>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="SYSTEM_MAINTENANCE"><a class="permalink" href="#SYSTEM_MAINTENANCE">SYSTEM
+  MAINTENANCE</a></h2>
+<table class="tbl">
+  <tr>
+    <td><b>apk-fix</b>(8)</td>
+    <td>Fix, reinstall or upgrade packages without modifying <i>world</i></td>
+  </tr>
+  <tr>
+    <td><b>apk-update</b>(8)</td>
+    <td>Update repository indexes</td>
+  </tr>
+  <tr>
+    <td><b>apk-upgrade</b>(8)</td>
+    <td>Install upgrades available from repositories</td>
+  </tr>
+  <tr>
+    <td><b>apk-cache</b>(8)</td>
+    <td>Manage the local package cache</td>
+  </tr>
+</table>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="QUERYING_PACKAGE_INFORMATION"><a class="permalink" href="#QUERYING_PACKAGE_INFORMATION">QUERYING
+  PACKAGE INFORMATION</a></h2>
+<table class="tbl">
+  <tr>
+    <td><b>apk-query</b>(8)</td>
+    <td>Query information about packages by various criteria</td>
+  </tr>
+  <tr>
+    <td><b>apk-list</b>(8)</td>
+    <td>List packages matching a pattern or other criteria</td>
+  </tr>
+  <tr>
+    <td><b>apk-dot</b>(8)</td>
+    <td>Render dependencies as graphviz graphs</td>
+  </tr>
+  <tr>
+    <td><b>apk-policy</b>(8)</td>
+    <td>Show repository policy for packages</td>
+  </tr>
+  <tr>
+    <td><b>apk-search</b>(8)</td>
+    <td>Search for packages by name or description</td>
+  </tr>
+  <tr>
+    <td><b>apk-info</b>(8)</td>
+    <td>Give detailed information about packages or repositories</td>
+  </tr>
+</table>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="REPOSITORY_AND_PACKAGE_MAINTENANCE"><a class="permalink" href="#REPOSITORY_AND_PACKAGE_MAINTENANCE">REPOSITORY
+  AND PACKAGE MAINTENANCE</a></h2>
+<table class="tbl">
+  <tr>
+    <td><b>apk-mkndx</b>(8)</td>
+    <td>Create repository index (v3) file from packages</td>
+  </tr>
+  <tr>
+    <td><b>apk-mkpkg</b>(8)</td>
+    <td>Create package (v3)</td>
+  </tr>
+  <tr>
+    <td><b>apk-index</b>(8)</td>
+    <td>Create repository index (v2) file from packages</td>
+  </tr>
+  <tr>
+    <td><b>apk-fetch</b>(8)</td>
+    <td>Download packages from repositories to a local directory</td>
+  </tr>
+  <tr>
+    <td><b>apk-manifest</b>(8)</td>
+    <td>Show checksums of package contents</td>
+  </tr>
+  <tr>
+    <td><b>apk-extract</b>(8)</td>
+    <td>Extract package file contents</td>
+  </tr>
+  <tr>
+    <td><b>apk-verify</b>(8)</td>
+    <td>Verify package integrity and signature</td>
+  </tr>
+  <tr>
+    <td><b>apk-adbsign</b>(8)</td>
+    <td>Sign, resign or recompress v3 packages and indexes</td>
+  </tr>
+</table>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="MISCELLANEOUS"><a class="permalink" href="#MISCELLANEOUS">MISCELLANEOUS</a></h2>
+<table class="tbl">
+  <tr>
+    <td><b>apk-audit</b>(8)</td>
+    <td>Audit system for changes</td>
+  </tr>
+  <tr>
+    <td><b>apk-stats</b>(8)</td>
+    <td>Show statistics about repositories and installations</td>
+  </tr>
+  <tr>
+    <td><b>apk-version</b>(8)</td>
+    <td>Compare package versions or perform tests on version strings</td>
+  </tr>
+  <tr>
+    <td><b>apk-adbdump</b>(8)</td>
+    <td>Dump v3 files in textual representation</td>
+  </tr>
+  <tr>
+    <td><b>apk-adbgen</b>(8)</td>
+    <td>Generate v3 files from text representation</td>
+  </tr>
+  <tr>
+    <td><b>apk-convdb</b>(8)</td>
+    <td>Convert v2 installed database to v3 format</td>
+  </tr>
+  <tr>
+    <td><b>apk-convndx</b>(8)</td>
+    <td>Convert v2 indexes to v3 format</td>
+  </tr>
+</table>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTION_SYNTAX"><a class="permalink" href="#OPTION_SYNTAX">OPTION
+  SYNTAX</a></h1>
+<p class="Pp">The <i>BOOL</i> argument for options is '<b>yes</b>' or
+    '<b>no</b>'. The <i>AUTO</i> argument for options is '<b>yes</b>',
+    '<b>no</b>' or '<b>auto</b>'. The default value for these arguments is
+    options specific.</p>
+<p class="Pp">For options with an <i>AUTO</i> or <i>BOOL</i> argument, the
+    argument must be specified with the <b>--option=argument</b> format (that
+    is, the <b>--option argument</b> format is not supported). Additionally the
+    following aliases are available:</p>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li><b>--option</b> equals <b>--option=yes</b></li>
+  <li><b>--no-option</b> equals <b>--option=no</b></li>
+</ul>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="GLOBAL_OPTIONS"><a class="permalink" href="#GLOBAL_OPTIONS">GLOBAL
+  OPTIONS</a></h1>
+<p class="Pp">The following options are available for all commands.</p>
+<p class="Pp"><b>--allow-untrusted</b></p>
+<div class="Bd-indent">Install packages with untrusted signature or no
+  signature.</div>
+<p class="Pp"><b>--arch</b> <i>ARCH</i></p>
+<div class="Bd-indent">Temporarily override architectures. The first given
+  <b>--arch</b> will be used as the primary architecture. It will be used to
+  determine the paths where to download package indexes from. The additional
+  architectures specify compatible packages which are considered for
+  installation.
+<p class="Pp">When used with --root the architecture will also be saved.</p>
+</div>
+<p class="Pp"><b>--cache</b>[=<i>BOOL</i>]</p>
+<div class="Bd-indent">When disabled, prevents using any local cache
+  paths.</div>
+<p class="Pp"><b>--cache-dir</b> <i>CACHEDIR</i></p>
+<div class="Bd-indent">Temporarily override the cache directory. <i>CACHEDIR</i>
+  is treated relative to the <i>ROOT</i>.</div>
+<p class="Pp"><b>--cache-max-age</b> <i>AGE</i></p>
+<div class="Bd-indent">Maximum AGE (in minutes) for index in cache before it's
+  refreshed. <b>0</b> means always refresh.</div>
+<p class="Pp"><b>--cache-packages</b>[=<i>BOOL</i>]</p>
+<div class="Bd-indent">Store a copy of packages at installation time to cache.
+  Enabled automatically if <b>/etc/apk/cache</b> symlink exists.</div>
+<p class="Pp"><b>--cache-predownload</b>[=<i>BOOL</i>]</p>
+<div class="Bd-indent">Download needed packages to cache before starting to
+  commit a transaction. Requires cache to be configured to be functional.
+  Implies <b>--cache-packages</b>.</div>
+<p class="Pp"><b>--check-certificate</b>[=<i>BOOL</i>]</p>
+<div class="Bd-indent">When disabled, omits the validation of the HTTPS server
+  certificate.</div>
+<p class="Pp"><b>--force</b>, <b>-f</b></p>
+<div class="Bd-indent">Enable selected --force-* options (deprecated).</div>
+<p class="Pp"><b>--force-binary-stdout</b></p>
+<div class="Bd-indent">Continue even if binary data will be printed to the
+  terminal.</div>
+<p class="Pp"><b>--force-broken-world</b></p>
+<div class="Bd-indent">DANGEROUS: Delete world constraints until a solution
+  without conflicts is found. This does not allow installation of packages with
+  unsatisfiable dependencies and is mainly intended to be used initramfs boot
+  and is implied by <b>--initramfs-diskless-boot</b>. The primary purpose is to
+  allow run-from-tmpfs systems to boot if media was upgraded and some packages
+  are no longer available in the new release.
+<p class="Pp">APK will try to determine the world constraints that causes
+    packages with conflicting dependencies and start disabling the world
+    constraints in this order until a satisfiable set of constraints is left.
+    Using this switch on hard disk installation will likely result in unexpected
+    removal of some packages. If uncertain, use with <b>--interactive</b> or
+    <b>--simulate</b> first.</p>
+</div>
+<p class="Pp"><b>--force-missing-repositories</b></p>
+<div class="Bd-indent">Continue even if some of the repository indexes are not
+  available.</div>
+<p class="Pp"><b>--force-no-chroot</b></p>
+<div class="Bd-indent">Disable chroot for scripts. This can be used for rootfs
+  creation when chroot is not available. Scripts running outside a chroot
+  environment may modify and damage the host system.</div>
+<p class="Pp"><b>--force-non-repository</b></p>
+<div class="Bd-indent">Continue even if packages may be lost on reboot. This can
+  happen when running in run-from-tmpfs mode, and installing non-repository
+  package.</div>
+<p class="Pp"><b>--force-old-apk</b></p>
+<div class="Bd-indent">Continue even if packages use unsupported features.</div>
+<p class="Pp"><b>--force-overwrite</b></p>
+<div class="Bd-indent">Overwrite files in other packages.</div>
+<p class="Pp"><b>--force-refresh</b></p>
+<div class="Bd-indent">Do not use cached files (local or from proxy).</div>
+<p class="Pp"><b>--help</b>, <b>-h</b></p>
+<div class="Bd-indent">Print the list of all commands with descriptions.</div>
+<p class="Pp"><b>--interactive</b>[=<i>AUTO</i>]</p>
+<div class="Bd-indent">Determine if questions can be asked before performing
+  certain operations. In <b>auto</b> mode, the interactive mode is enabled if
+  running on a tty. Defaults to <b>no</b>, or <b>auto</b> if
+  <b>/etc/apk/interactive</b> exists.</div>
+<p class="Pp"><b>--keys-dir</b> <i>KEYSDIR</i></p>
+<div class="Bd-indent">Override the default system trusted keys directories. If
+  specified the only this directory is processed. The <i>KEYSDIR</i> is treated
+  relative to <i>ROOT</i>.</div>
+<p class="Pp"><b>--legacy-info</b>[=<i>BOOL</i>]</p>
+<div class="Bd-indent">Print output from &quot;info&quot; applet in legacy
+  format or new &quot;query&quot; format. Defaults to no currently, but the
+  default is subject to change to yes in a future release.</div>
+<p class="Pp"><b>--logfile</b>[=<i>BOOL</i>]</p>
+<div class="Bd-indent">If turned off, disables the writing of the log
+  file.</div>
+<p class="Pp"><b>--network</b>[=<i>BOOL</i>]</p>
+<div class="Bd-indent">If turned off, does not use the network. The packages
+  from network repositories in the cache are used.</div>
+<p class="Pp"><b>--preserve-env</b>[=<i>BOOL</i>]</p>
+<div class="Bd-indent">Allow passing the user environment down to scripts
+  (excluding variables starting APK_ which are reserved).</div>
+<p class="Pp"><b>--pretty-print</b>[=<i>AUTO</i>]</p>
+<div class="Bd-indent">Determine if output should be stylized to be human
+  readable. Defaults to <b>auto</b> which resolves to <b>yes</b> if running on a
+  tty.</div>
+<p class="Pp"><b>--preupgrade-depends</b> <i>DEPS</i></p>
+<div class="Bd-indent">Add or modify preupgrade dependencies. The preupgrade
+  dependencies are used to match installed packages that are eligible for
+  preupgrade. E.g. 'apk-tools' will always preupgrade the 'apk-tools' package,
+  but 'baselayout&lt;2' would preupgrade the 'baselayout' only if the installed
+  version of baselayout is less than 2 and an upgrade is available. See also
+  <b>apk-upgrade</b>(8).</div>
+<p class="Pp"><b>--print-arch</b></p>
+<div class="Bd-indent">Print default arch and exit.</div>
+<p class="Pp"><b>--progress</b>[=<i>AUTO</i>]</p>
+<div class="Bd-indent">Enable or disable progress bar. Defaults to <b>auto</b>
+  which resolves to <b>yes</b> if running on a tty.</div>
+<p class="Pp"><b>--progress-fd</b> <i>FD</i></p>
+<div class="Bd-indent">Write progress to the specified file descriptor.</div>
+<p class="Pp"><b>--purge</b>[=<i>BOOL</i>]</p>
+<div class="Bd-indent">Purge modified configuration and cached packages. Enables
+  deletion of modified configuration files on package removal. On cache clean
+  action this enables deletion of unneeded cached packages (uninstalled packages
+  on tmpfs installations or all packages on disk installations).</div>
+<p class="Pp"><b>--quiet</b>, <b>-q</b></p>
+<div class="Bd-indent">Print less information.</div>
+<p class="Pp"><b>--repositories-file</b> <i>REPOFILE</i></p>
+<div class="Bd-indent">Override system repositories, see
+  <b>apk-repositories</b>(5). Specifying this option overrides the normal
+  repositories file and repositories.d directory processing. The given
+  <i>REPOFILE</i> is relative to the startup directory since apk
+  2.12.0_rc2.</div>
+<p class="Pp"><b>--repository</b>, <b>-X</b> <i>REPO</i></p>
+<div class="Bd-indent">Specify additional package repository.
+  <b>apk-repositories</b>(5) specified commands are not parsed (use
+  <b>--repository-config</b> for that). Additionally, relative paths are
+  accepted and interpreted relative to the startup directory.</div>
+<p class="Pp"><b>--repository-config</b> <i>REPOCONFIG</i></p>
+<div class="Bd-indent">Specify additional package repository configuration. The
+  <i>REPOCONFIG</i> is parsed exactly the same way as if it was read from a
+  <b>apk-repositories</b>(5) specified <b>.list</b> file.</div>
+<p class="Pp"><b>--root</b>, <b>-p</b> <i>ROOT</i></p>
+<div class="Bd-indent">Manage file system at <i>ROOT</i>.</div>
+<p class="Pp"><b>--root-tmpfs</b>[=<i>AUTO</i>]</p>
+<div class="Bd-indent">Specify if the <i>ROOT</i> is a temporary filesystem.
+  Defaults to <b>auto</b> which determines the filesystem type automatically.
+<p class="Pp">This affects:</p>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li>reading and creation of 'installed' index in the cache</li>
+  <li>purging of packages in cache</li>
+  <li>safety checks to not install non-repository packages</li>
+</ul>
+</div>
+</div>
+<p class="Pp"><b>--sync</b>[=<i>AUTO</i>]</p>
+<div class="Bd-indent">Determine if filesystem caches should be committed to
+  disk. Defaults to <b>auto</b> which resolves to <b>yes</b> if <b>--root</b> is
+  not specified, the database is not in usermode, and running on the root pid
+  namespace (not containerized).</div>
+<p class="Pp"><b>--timeout</b> <i>TIME</i></p>
+<div class="Bd-indent">Timeout network connections if no progress is made in
+  TIME seconds. The default is 60 seconds.</div>
+<p class="Pp"><b>--update-cache</b>, <b>-U</b></p>
+<div class="Bd-indent">Alias for '--cache-max-age 0'.</div>
+<p class="Pp"><b>--uvol-manager</b> <i>UVOL</i></p>
+<div class="Bd-indent">Specify the OpenWRT <i>uvol</i> volume manager executable
+  location.</div>
+<p class="Pp"><b>--verbose</b>, <b>-v</b></p>
+<div class="Bd-indent">Print more information (can be specified twice).</div>
+<p class="Pp"><b>--version</b>, <b>-V</b></p>
+<div class="Bd-indent">Print program version and exit.</div>
+<p class="Pp"><b>--wait</b> <i>TIME</i></p>
+<div class="Bd-indent">Wait for TIME seconds to get an exclusive repository lock
+  before failing.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COMMIT_OPTIONS"><a class="permalink" href="#COMMIT_OPTIONS">COMMIT
+  OPTIONS</a></h1>
+<p class="Pp">The following options are available for all commands which commit
+    the database.</p>
+<p class="Pp"><b>--clean-protected</b>[=<i>BOOL</i>]</p>
+<div class="Bd-indent">If disabled, prevents creation of .apk-new files in
+  configuration directories.</div>
+<p class="Pp"><b>--commit-hooks</b>[=<i>BOOL</i>]</p>
+<div class="Bd-indent">If disabled, skips the pre/post hook scripts (but not
+  other scripts).</div>
+<p class="Pp"><b>--initramfs-diskless-boot</b></p>
+<div class="Bd-indent">Used by initramfs when it's recreating root tmpfs. This
+  enables selected force options to minimize failure, and disables commit hooks,
+  among other features.</div>
+<p class="Pp"><b>--overlay-from-stdin</b></p>
+<div class="Bd-indent">Read list of overlay files from stdin. Normally this is
+  used only during initramfs when booting run-from-tmpfs installation.</div>
+<p class="Pp"><b>--scripts</b>[=<i>BOOL</i>]</p>
+<div class="Bd-indent">If disabled, prevents execution of all scripts. Useful
+  for extracting a system image for different architecture on alternative
+  <i>ROOT</i>.</div>
+<p class="Pp"><b>--simulate</b>[=<i>BOOL</i>], <b>-s</b></p>
+<div class="Bd-indent">Simulate the requested operation without making any
+  changes. The database is opened in read only mode, and auto-updating of
+  indexes is disabled. You may want to run &quot;apk update&quot; before running
+  a simulation to make sure it is done with up-to-date repository indexes.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="GENERATION_OPTIONS"><a class="permalink" href="#GENERATION_OPTIONS">GENERATION
+  OPTIONS</a></h1>
+<p class="Pp">The following options are available for all commands which
+    generate APKv3 files.</p>
+<p class="Pp"><b>--compression</b>, <b>-c</b> <i>ALGORITHM[:LEVEL]</i></p>
+<div class="Bd-indent">Compress the file with given <i>ALGORITHM</i> and
+  <i>LEVEL</i>. Supported algorithms:
+<ul class="Bl-bullet">
+  <li>none</li>
+  <li>deflate (level 1-9)</li>
+  <li>zstd (level 1-22)</li>
+</ul>
+</div>
+<p class="Pp"><b>--sign-key</b> <i>KEYFILE</i></p>
+<div class="Bd-indent">Sign the file with a private key in the specified
+  <i>KEYFILE</i>.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENVIRONMENT"><a class="permalink" href="#ENVIRONMENT">ENVIRONMENT</a></h1>
+<p class="Pp"><b>APK_CONFIG</b></p>
+<div class="Bd-indent">Override the default config file name. See
+  <b>/etc/apk/config</b></div>
+<p class="Pp"><b>LANG</b></p>
+<div class="Bd-indent">Used to determine if UTF-8 is supported, and set the
+  default progress character accordingly.</div>
+<p class="Pp"><b>SOURCE_DATE_EPOCH</b></p>
+<div class="Bd-indent">See <b>apk-index</b>(8).</div>
+<p class="Pp"><b>TERM</b></p>
+<div class="Bd-indent">Used to determine if the terminal is dumb or not.
+  Progress bar is not enabled on dumb terminals by default.</div>
+<section class="Ss">
+<h2 class="Ss" id="Variables_to_configure_built-in_libfetch"><a class="permalink" href="#Variables_to_configure_built-in_libfetch">Variables
+  to configure built-in libfetch</a></h2>
+<p class="Pp"><b>FETCH_BIND_ADDRESS</b></p>
+<div class="Bd-indent">A local IP address to which libfetch will bind all
+  sockets it creates. Can be useful for source routing.</div>
+<p class="Pp"><b>NETRC</b></p>
+<div class="Bd-indent">Specify the <b>.netrc</b> file to read for authentication
+  secrets. If not set, defaults to <b>$HOME/.netrc</b>.</div>
+<p class="Pp"><b>HTTP_AUTH</b>
+  <br/>
+  <b>HTTP_REFERER</b>
+  <br/>
+  <b>HTTP_USER_AGENT</b></p>
+<div class="Bd-indent">Specify a custom HTTP level <b>Authorization</b>,
+  <b>Referer</b> or <b>User-Agent</b> header.</div>
+<p class="Pp"><b>HTTP_PROXY</b>, <b>http_proxy</b>
+  <br/>
+  <b>HTTPS_PROXY</b>, <b>https_proxy</b>
+  <br/>
+  If set, these variables should contain the proxy URL for <b>http</b></p>
+<div class="Bd-indent">and <b>https</b> connections respectively.</div>
+<p class="Pp"><b>HTTP_PROXY_AUTH</b></p>
+<div class="Bd-indent">Specify a HTTP <b>Proxy-Authorization</b> header. Used
+  only if the connection is established through a configured HTTP proxy.</div>
+<p class="Pp"><b>NO_PROXY</b>, <b>no_proxy</b></p>
+<div class="Bd-indent">Comma-separated list of domain extensions or CIDR
+  notation IP addresses to which a proxy should <i>not</i> be used for. This is
+  used explicitly to test the URL hostname portion only. That is, specifying an
+  IP address or CIDR block will not match a DNS name that resolves to the IP
+  address.</div>
+<p class="Pp"><b>SSL_CLIENT_CERT_FILE</b>
+  <br/>
+  <b>SSL_CLIENT_KEY_FILE</b></p>
+<div class="Bd-indent">Override default SSL client certificate and corresponding
+  private key filename.</div>
+<p class="Pp"><b>SSL_NO_VERIFY_HOSTNAME</b></p>
+<div class="Bd-indent">If set to anything, disables the server certificate name
+  verification.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Environment_for_the_scripts_APK_executes"><a class="permalink" href="#Environment_for_the_scripts_APK_executes">Environment
+  for the scripts APK executes</a></h2>
+<p class="Pp">Normally <b>apk</b> will execute scripts with a sanitized, minimal
+    environment containing only <b>PATH</b>. See also <b>--preserve-env</b> to
+    pass additional environment variables.</p>
+<p class="Pp">Before executing a script, apk will set working directory as
+    <i>ROOT</i> and performs a chroot unless <b>--force-no-chroot</b> is
+    specified. In either case, the script working directory should be treated as
+    the system root.</p>
+<p class="Pp">The environment variables defined by APK are the following:</p>
+<p class="Pp"><b>APK_PACKAGE</b></p>
+<div class="Bd-indent">Package name (package scripts only).</div>
+<p class="Pp"><b>APK_SCRIPT</b></p>
+<div class="Bd-indent">Set to one of the package or commit script types. Use
+  this to determine the script hook type if needed. The filename ($0) is not
+  reliable since apk prefers to execute package scripts from a memfd file.</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Configuration_files"><a class="permalink" href="#Configuration_files">Configuration
+  files</a></h2>
+<p class="Pp"><b>/etc/apk/config</b>
+  <br/>
+  <b>/lib/apk/config</b></p>
+<div class="Bd-indent">Default global options. Only the first file existing in
+  the above list is read and parsed. The file in <b>/lib</b> is intended to be
+  for distribution default options, which can be then overridden by user with
+  the file in <b>/etc</b>. See also <b>APK_CONFIG</b> environment variable.
+<p class="Pp">A configuration file contains one long option per line. For
+    example:</p>
+<div class="Bd-indent">no-cache
+<br/>
+timeout 120</div>
+</div>
+<p class="Pp"><b>/etc/apk/interactive</b></p>
+<div class="Bd-indent">If this file exists it defaults <b>--interactive</b> to
+  <b>auto</b>.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Configuration_files_(relative_to_--root)"><a class="permalink" href="#Configuration_files_(relative_to_--root)">Configuration
+  files (relative to --root)</a></h2>
+<p class="Pp"><b>/etc/apk/arch</b></p>
+<div class="Bd-indent">The CPU architecture for this database. See
+  <b>apk-package</b>(5) section on package metadata field <b>arch</b> for the
+  list.</div>
+<p class="Pp"><b>/etc/apk/cache</b></p>
+<div class="Bd-indent">This is expected to be a symlink to directory what apk
+  will use as package cache. See also <b>apk-cache</b>(5) and
+  <b>apk-cache</b>(8).</div>
+<p class="Pp"><b>/etc/apk/commit_hooks.d/*</b>
+  <br/>
+  <b>/lib/apk/commit_hooks.d/*</b></p>
+<div class="Bd-indent">Hook scripts which are executed before anything has been
+  written to the filesystem and after all the changes have been committed. The
+  script executed gets as an argument the stage name (<b>pre-commit</b> or
+  <b>post-commit</b>). If the script returns failure during <b>pre-commit</b>
+  stage, the commit is aborted.
+<p class="Pp">See also the ENVIRONMENT section for the environment
+  variables.</p>
+<p class="Pp">If <b>--no-scripts</b> or <b>--no-commit-hooks</b> option is
+    specified, these hook scripts are not executed.</p>
+</div>
+<p class="Pp"><b>/etc/apk/keys</b>
+  <br/>
+  <b>/lib/apk/keys</b></p>
+<div class="Bd-indent">Directories for trusted signing keys. The directories are
+  enumerated in the above mentioned order. Once a given filename is seen, any
+  file of the same name in subsequent directories is ignored.</div>
+<p class="Pp"><b>/etc/apk/protected_paths.d/*.list</b></p>
+<div class="Bd-indent">Configuration files to specify how to treat changes to
+  specified directory or file masks. The file format is further documented in
+  <b>apk-protected_paths</b>(5).</div>
+<p class="Pp"><b>/etc/apk/repositories</b>
+  <br/>
+  <b>/etc/apk/repositories.d/*.list</b>
+  <br/>
+  <b>/lib/apk/repositories.d/*.list</b></p>
+<div class="Bd-indent">Configuration files to specify repositories. The
+  directories are enumerated in the above mentioned order. Once a given filename
+  is seen, any file of the same name in subsequent directories is ignored. See
+  <b>apk-repositories</b>(5) for details.</div>
+<p class="Pp"><b>/etc/apk/world</b></p>
+<div class="Bd-indent">Top level requirements and constraints on what should be
+  installed. See <b>apk-world</b>(5) for details.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Configuration_files_for_built-in_libfetch"><a class="permalink" href="#Configuration_files_for_built-in_libfetch">Configuration
+  files for built-in libfetch</a></h2>
+<p class="Pp"><b>/etc/apk/ca.pem</b></p>
+<div class="Bd-indent">CA certificate store bundle for verifying server
+  certificates. If not present, the default system CA store is used.</div>
+<p class="Pp"><b>/etc/apk/crl.pem</b></p>
+<div class="Bd-indent">CRL store to check the server certificates against.</div>
+<p class="Pp"><b>/etc/apk/cert.key</b></p>
+<div class="Bd-indent">Client certificate private key.</div>
+<p class="Pp"><b>/etc/apk/cert.pem</b></p>
+<div class="Bd-indent">Client certificate to use for authentication.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="System_files"><a class="permalink" href="#System_files">System
+  files</a></h2>
+<p class="Pp"><b>/lib/apk/db/lock</b></p>
+<div class="Bd-indent">A lock file used to allow only one concurrent write
+  transaction on the system.</div>
+<p class="Pp"><b>/lib/apk/db/installed</b></p>
+<div class="Bd-indent">Database of installed packages and their contents.</div>
+<p class="Pp"><b>/lib/apk/db/scripts.tar</b>
+  <br/>
+  <b>/lib/apk/db/scripts.tar.gz</b></p>
+<div class="Bd-indent">Collection of all package scripts from currently
+  installed packages.</div>
+<p class="Pp"><b>/lib/apk/db/triggers</b></p>
+<div class="Bd-indent">List of triggers rules for currently installed
+  packages.</div>
+<p class="Pp"><b>/lib/apk/db-uvol</b></p>
+<div class="Bd-indent">Database symlink or a directory with similar structure as
+  <b>/lib/apk/db/</b>, but which used for package content when managed using
+  OpenWRT <b>uvol</b> volume manager.</div>
+<p class="Pp"><b>/lib/apk/exec</b></p>
+<div class="Bd-indent">Temporary directory for extraction and execution of
+  package scripts and triggers.</div>
+<p class="Pp"><b>/var/log/apk.log</b></p>
+<div class="Bd-indent">Log file for changes done to the system.</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="NOTES"><a class="permalink" href="#NOTES">NOTES</a></h1>
+<p class="Pp">This apk has coffee making abilities.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-09-01</td>
+    <td class="foot-os"></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

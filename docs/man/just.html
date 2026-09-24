@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>just(1) · Copal Linux</title>
+<meta name="description" content="just - 🤖 Just a command runner - https://github.com/casey/just">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-just">just in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">just 1.48.1-r0 — man1/just.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">just(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">just(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">just - &#x1F916; Just a command runner -
+    https://github.com/casey/just</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>just</b> [<b>--alias-style</b>] [<b>--allow-missing</b>]
+    [<b>--ceiling</b>] [<b>--check</b>] [<b>--chooser</b>]
+    [<b>--clear-shell-args</b>] [<b>--color</b>] [<b>--command-color</b>]
+    [<b>--cygpath</b>] [<b>--dotenv-filename</b>]
+    [<b>-E</b>|<b>--dotenv-path</b>] [<b>-n</b>|<b>--dry-run</b>]
+    [<b>--dump-format</b>] [<b>--explain</b>]
+    [<b>-g</b>|<b>--global-justfile</b>] [<b>--group</b>] [<b>--highlight</b>]
+    [<b>-f</b>|<b>--justfile</b>] [<b>--list-heading</b>] [<b>--list-prefix</b>]
+    [<b>--list-submodules</b>] [<b>--no-aliases</b>] [<b>--no-deps</b>]
+    [<b>--no-dotenv</b>] [<b>--no-highlight</b>] [<b>--one</b>]
+    [<b>-q</b>|<b>--quiet</b>] [<b>--set</b>] [<b>--shell</b>]
+    [<b>--shell-arg</b>] [<b>--shell-command</b>] [<b>--changelog</b>]
+    [<b>--choose</b>] [<b>-c</b>|<b>--command</b>] [<b>--completions</b>]
+    [<b>--dump</b>] [<b>-e</b>|<b>--edit</b>] [<b>--evaluate</b>] [<b>--fmt</b>]
+    [<b>--groups</b>] [<b>--init</b>] [<b>--json</b>] [<b>-l</b>|<b>--list</b>]
+    [<b>--man</b>] [<b>-s</b>|<b>--show</b>] [<b>--summary</b>] [<b>--usage</b>]
+    [<b>--variables</b>] [<b>--tempdir</b>] [<b>--timestamp</b>]
+    [<b>--timestamp-format</b>] [<b>-u</b>|<b>--unsorted</b>]
+    [<b>--unstable</b>] [<b>-v</b>|<b>--verbose</b>]...
+    [<b>-d</b>|<b>--working-directory</b>] [<b>--yes</b>]
+    [<b>-h</b>|<b>--help</b>] [<b>-V</b>|<b>--version</b>]
+  [<i>ARGUMENTS</i>]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">&#x1F916; Just a command runner -
+  https://github.com/casey/just</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<dl class="Bl-tag">
+  <dt id="alias"><a class="permalink" href="#alias"><b>--alias-style</b>
+    <i>&lt;ALIAS_STYLE&gt;</i> [default: right]</a></dt>
+  <dd>Set list command alias display style
+    <p class="Pp"><i>Possible values:</i></p>
+  </dd>
+</dl>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li>left</li>
+  <li>right</li>
+  <li>separate</li>
+</ul>
+</div>
+<dl class="Bl-tag">
+  <dt id="allow"><a class="permalink" href="#allow"><b>--allow-missing</b></a></dt>
+  <dd>Ignore missing recipe and module errors</dd>
+  <dt id="ceiling"><a class="permalink" href="#ceiling"><b>--ceiling</b>
+    <i>&lt;CEILING&gt;</i></a></dt>
+  <dd>Do not ascend above &lt;CEILING&gt; directory when searching for a
+      justfile.</dd>
+  <dt id="check"><a class="permalink" href="#check"><b>--check</b></a></dt>
+  <dd>Run `--fmt` in 'check' mode. Exits with 0 if justfile is formatted
+      correctly. Exits with 1 and prints a diff if formatting is required.</dd>
+  <dt id="chooser"><a class="permalink" href="#chooser"><b>--chooser</b>
+    <i>&lt;CHOOSER&gt;</i></a></dt>
+  <dd>Override binary invoked by `--choose`</dd>
+  <dt id="clear"><a class="permalink" href="#clear"><b>--clear-shell-args</b></a></dt>
+  <dd>Clear shell arguments</dd>
+  <dt id="color"><a class="permalink" href="#color"><b>--color</b>
+    <i>&lt;COLOR&gt;</i> [default: auto]</a></dt>
+  <dd>Print colorful output
+    <p class="Pp"><i>Possible values:</i></p>
+  </dd>
+</dl>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li>always</li>
+  <li>auto</li>
+  <li>never</li>
+</ul>
+</div>
+<dl class="Bl-tag">
+  <dt id="command"><a class="permalink" href="#command"><b>--command-color</b>
+    <i>&lt;COMMAND_COLOR&gt;</i></a></dt>
+  <dd>Echo recipe lines in &lt;COMMAND-COLOR&gt;
+    <p class="Pp"><i>Possible values:</i></p>
+  </dd>
+</dl>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li>black</li>
+  <li>blue</li>
+  <li>cyan</li>
+  <li>green</li>
+  <li>purple</li>
+  <li>red</li>
+  <li>yellow</li>
+</ul>
+</div>
+<dl class="Bl-tag">
+  <dt id="cygpath"><a class="permalink" href="#cygpath"><b>--cygpath</b>
+    <i>&lt;CYGPATH&gt;</i> [default: cygpath]</a></dt>
+  <dd>Use binary at &lt;CYGPATH&gt; to convert between unix and Windows
+    paths.</dd>
+  <dt id="dotenv"><a class="permalink" href="#dotenv"><b>--dotenv-filename</b>
+    <i>&lt;DOTENV-FILENAME&gt;</i></a></dt>
+  <dd>Search for environment file named &lt;DOTENV-FILENAME&gt; instead of
+      `.env`</dd>
+  <dt id="E"><a class="permalink" href="#E"><b>-E</b>, <b>--dotenv-path</b>
+    <i>&lt;DOTENV-PATH&gt;</i></a></dt>
+  <dd>Load &lt;DOTENV-PATH&gt; as environment file instead of searching for
+    one</dd>
+  <dt id="n"><a class="permalink" href="#n"><b>-n</b>, <b>--dry-run</b></a></dt>
+  <dd>Print what just would do without doing it</dd>
+  <dt id="dump"><a class="permalink" href="#dump"><b>--dump-format</b>
+    <i>&lt;FORMAT&gt;</i> [default: just]</a></dt>
+  <dd>Dump justfile as &lt;FORMAT&gt;
+    <p class="Pp"><i>Possible values:</i></p>
+  </dd>
+</dl>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li>json</li>
+  <li>just</li>
+</ul>
+</div>
+<dl class="Bl-tag">
+  <dt id="explain"><a class="permalink" href="#explain"><b>--explain</b></a></dt>
+  <dd>Print recipe doc comment before running it</dd>
+  <dt id="g"><a class="permalink" href="#g"><b>-g</b>,
+    <b>--global-justfile</b></a></dt>
+  <dd>Use global justfile</dd>
+  <dt id="group"><a class="permalink" href="#group"><b>--group</b>
+    <i>&lt;GROUP&gt;</i></a></dt>
+  <dd>Only list recipes in &lt;GROUP&gt;</dd>
+  <dt id="highlight"><a class="permalink" href="#highlight"><b>--highlight</b></a></dt>
+  <dd>Highlight echoed recipe lines in bold</dd>
+  <dt id="f"><a class="permalink" href="#f"><b>-f</b>, <b>--justfile</b>
+    <i>&lt;JUSTFILE&gt;</i></a></dt>
+  <dd>Use &lt;JUSTFILE&gt; as justfile</dd>
+  <dt id="list"><a class="permalink" href="#list"><b>--list-heading</b>
+    <i>&lt;TEXT&gt;</i> [default: Available recipes:</a></dt>
+  <dd>] Print &lt;TEXT&gt; before list</dd>
+  <dt id="list~2"><a class="permalink" href="#list~2"><b>--list-prefix</b>
+    <i>&lt;TEXT&gt;</i> [default: ]</a></dt>
+  <dd>Print &lt;TEXT&gt; before each list item</dd>
+  <dt id="list~3"><a class="permalink" href="#list~3"><b>--list-submodules</b></a></dt>
+  <dd>List recipes in submodules</dd>
+  <dt id="no"><a class="permalink" href="#no"><b>--no-aliases</b></a></dt>
+  <dd>Don't show aliases in list</dd>
+  <dt id="no~2"><a class="permalink" href="#no~2"><b>--no-deps</b></a></dt>
+  <dd>Don't run recipe dependencies</dd>
+  <dt id="no~3"><a class="permalink" href="#no~3"><b>--no-dotenv</b></a></dt>
+  <dd>Don't load `.env` file</dd>
+  <dt id="no~4"><a class="permalink" href="#no~4"><b>--no-highlight</b></a></dt>
+  <dd>Don't highlight echoed recipe lines in bold</dd>
+  <dt id="one"><a class="permalink" href="#one"><b>--one</b></a></dt>
+  <dd>Forbid multiple recipes from being invoked on the command line</dd>
+  <dt id="q"><a class="permalink" href="#q"><b>-q</b>, <b>--quiet</b></a></dt>
+  <dd>Suppress all output</dd>
+  <dt id="set"><a class="permalink" href="#set"><b>--set</b>
+    <i>&lt;VARIABLE&gt;</i><i> </i><i>&lt;VALUE&gt;</i></a></dt>
+  <dd>Override &lt;VARIABLE&gt; with &lt;VALUE&gt;</dd>
+  <dt id="shell"><a class="permalink" href="#shell"><b>--shell</b>
+    <i>&lt;SHELL&gt;</i></a></dt>
+  <dd>Invoke &lt;SHELL&gt; to run recipes</dd>
+  <dt id="shell~2"><a class="permalink" href="#shell~2"><b>--shell-arg</b>
+    <i>&lt;SHELL_ARG&gt;</i></a></dt>
+  <dd>Invoke shell with &lt;SHELL-ARG&gt; as an argument</dd>
+  <dt id="shell~3"><a class="permalink" href="#shell~3"><b>--shell-command</b></a></dt>
+  <dd>Invoke &lt;COMMAND&gt; with the shell used to run recipe lines and
+      backticks</dd>
+  <dt id="tempdir"><a class="permalink" href="#tempdir"><b>--tempdir</b>
+    <i>&lt;TEMPDIR&gt;</i></a></dt>
+  <dd>Save temporary files to &lt;TEMPDIR&gt;.</dd>
+  <dt id="timestamp"><a class="permalink" href="#timestamp"><b>--timestamp</b></a></dt>
+  <dd>Print recipe command timestamps</dd>
+  <dt id="timestamp~2"><a class="permalink" href="#timestamp~2"><b>--timestamp-format</b>
+    <i>&lt;TIMESTAMP_FORMAT&gt;</i> [default: %H:%M:%S]</a></dt>
+  <dd>Timestamp format string</dd>
+  <dt id="u"><a class="permalink" href="#u"><b>-u</b>,
+    <b>--unsorted</b></a></dt>
+  <dd>Return list and summary entries in source order</dd>
+  <dt id="unstable"><a class="permalink" href="#unstable"><b>--unstable</b></a></dt>
+  <dd>Enable unstable features</dd>
+  <dt id="v"><a class="permalink" href="#v"><b>-v</b>, <b>--verbose</b></a></dt>
+  <dd>Use verbose output</dd>
+  <dt id="d"><a class="permalink" href="#d"><b>-d</b>,
+    <b>--working-directory</b> <i>&lt;WORKING-DIRECTORY&gt;</i></a></dt>
+  <dd>Use &lt;WORKING-DIRECTORY&gt; as working directory. --justfile must also
+      be set</dd>
+  <dt id="yes"><a class="permalink" href="#yes"><b>--yes</b></a></dt>
+  <dd>Automatically confirm all recipes.</dd>
+  <dt id="h"><a class="permalink" href="#h"><b>-h</b>, <b>--help</b></a></dt>
+  <dd>Print help</dd>
+  <dt id="V"><a class="permalink" href="#V"><b>-V</b>, <b>--version</b></a></dt>
+  <dd>Print version</dd>
+  <dt>[<i>ARGUMENTS</i>]</dt>
+  <dd>Overrides and recipe(s) to run, defaulting to the first recipe in the
+      justfile</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COMMANDS"><a class="permalink" href="#COMMANDS">COMMANDS</a></h1>
+<dl class="Bl-tag">
+  <dt id="changelog"><a class="permalink" href="#changelog"><b>--changelog</b></a></dt>
+  <dd>Print changelog</dd>
+  <dt id="choose"><a class="permalink" href="#choose"><b>--choose</b></a></dt>
+  <dd>Select one or more recipes to run using a binary chooser. If `--chooser`
+      is not passed the chooser defaults to the value of $JUST_CHOOSER, falling
+      back to `fzf`</dd>
+  <dt id="c"><a class="permalink" href="#c"><b>-c</b>, <b>--command</b>
+    <i>&lt;COMMAND&gt;...</i></a></dt>
+  <dd>Run an arbitrary command with the working directory, `.env`, overrides,
+      and exports set</dd>
+  <dt id="completions"><a class="permalink" href="#completions"><b>--completions</b>
+    <i>&lt;SHELL&gt;</i></a></dt>
+  <dd>Print shell completion script for &lt;SHELL&gt;
+    <p class="Pp"><i>Possible values:</i></p>
+  </dd>
+</dl>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li>bash</li>
+  <li>elvish</li>
+  <li>fish</li>
+  <li>nushell</li>
+  <li>powershell</li>
+  <li>zsh</li>
+</ul>
+</div>
+<dl class="Bl-tag">
+  <dt id="dump~2"><a class="permalink" href="#dump~2"><b>--dump</b></a></dt>
+  <dd>Print justfile</dd>
+  <dt id="e"><a class="permalink" href="#e"><b>-e</b>, <b>--edit</b></a></dt>
+  <dd>Edit justfile with editor given by $VISUAL or $EDITOR, falling back to
+      `vim`</dd>
+  <dt id="evaluate"><a class="permalink" href="#evaluate"><b>--evaluate</b></a></dt>
+  <dd>Evaluate and print all variables. If a variable name is given as an
+      argument, only print that variable's value.</dd>
+  <dt id="fmt"><a class="permalink" href="#fmt"><b>--fmt</b></a></dt>
+  <dd>Format and overwrite justfile</dd>
+  <dt id="groups"><a class="permalink" href="#groups"><b>--groups</b></a></dt>
+  <dd>List recipe groups</dd>
+  <dt id="init"><a class="permalink" href="#init"><b>--init</b></a></dt>
+  <dd>Initialize new justfile in project root</dd>
+  <dt id="json"><a class="permalink" href="#json"><b>--json</b></a></dt>
+  <dd>Print justfile as JSON</dd>
+  <dt id="l"><a class="permalink" href="#l"><b>-l</b>, <b>--list</b>
+    [<i>&lt;MODULE&gt;...</i>]</a></dt>
+  <dd>List available recipes in &lt;MODULE&gt; or root if omitted</dd>
+  <dt id="man"><a class="permalink" href="#man"><b>--man</b></a></dt>
+  <dd>Print man page</dd>
+  <dt id="s"><a class="permalink" href="#s"><b>-s</b>, <b>--show</b>
+    <i>&lt;PATH&gt;...</i></a></dt>
+  <dd>Show recipe at &lt;PATH&gt;</dd>
+  <dt id="summary"><a class="permalink" href="#summary"><b>--summary</b></a></dt>
+  <dd>List names of available recipes</dd>
+  <dt id="usage"><a class="permalink" href="#usage"><b>--usage</b>
+    <i>&lt;PATH&gt;...</i></a></dt>
+  <dd>Print recipe usage information</dd>
+  <dt id="variables"><a class="permalink" href="#variables"><b>--variables</b></a></dt>
+  <dd>List names of variables</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="VERSION"><a class="permalink" href="#VERSION">VERSION</a></h1>
+<p class="Pp">v1.48.1</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp">Casey Rodarmor &lt;casey@rodarmor.com&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">just 1.48.1</td>
+    <td class="foot-os"></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

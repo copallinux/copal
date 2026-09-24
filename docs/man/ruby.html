@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ruby(1) · Copal Linux</title>
+<meta name="description" content="ruby - Interpreted object-oriented scripting language">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-ruby">ruby in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">ruby 3.4.9-r0 — man1/ruby.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">RUBY(1)</td>
+    <td class="head-vol">UNIX</td>
+    <td class="head-rtitle">RUBY(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><b>ruby</b> - Interpreted object-oriented scripting language</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>ruby</b> [<b>--copyright</b>] [<b>--version</b>]
+    [<b>-SUacdlnpswvy</b>] [<b>-0</b>[<i>octal</i>]] [<b>-C</b>
+    <i>directory</i>] [<b>-E</b> <i>external</i>[:<i>internal</i>]]
+    [<b>-F</b>[<i>pattern</i>]] [<b>-I</b> <i>directory</i>]
+    [<b>-K</b>[<i>c</i>]] [<b>-T</b>[<i>level</i>]] [<b>-W</b>[<i>level</i>]]
+    [<b>-e</b> <i>command</i>] [<b>-i</b>[<i>extension</i>]] [<b>-r</b>
+    <i>library</i>] [<b>-x</b>[<i>directory</i>]]
+    [<b>--</b>{<b>enable</b>|<b>disable</b>}-<i>FEATURE</i>]
+    [<b>--dump</b>=<i>target</i>] [<b>--verbose</b>]
+    [<b>--crash-report</b>=<i>template</i>] [<b>--</b>] [<i>program_file</i>]
+    [<i>argument</i> ...]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Ruby is an interpreted scripting language for quick and easy
+    object-oriented programming. It has many features to process text files and
+    to do system management tasks (like in Perl). It is simple,
+    straight-forward, and extensible.</p>
+<p class="Pp">If you want a language for easy object-oriented programming, or
+    you don't like the Perl ugliness, or you do like the concept of LISP, but
+    don't like too many parentheses, Ruby might be your language of choice.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FEATURES"><a class="permalink" href="#FEATURES">FEATURES</a></h1>
+<p class="Pp">Ruby's features are as follows:</p>
+<dl class="Bl-tag">
+  <dt id="Interpretive"><a class="permalink" href="#Interpretive"><b>Interpretive</b></a></dt>
+  <dd>Ruby is an interpreted language, so you don't have to recompile programs
+      written in Ruby to execute them.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Variables"><a class="permalink" href="#Variables"><b>Variables have no
+    type (dynamic typing)</b></a></dt>
+  <dd>Variables in Ruby can contain data of any type. You don't have to worry
+      about variable typing. Consequently, it has a weaker compile time check.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="No"><a class="permalink" href="#No"><b>No declaration
+    needed</b></a></dt>
+  <dd>You can use variables in your Ruby programs without any declarations.
+      Variable names denote their scope - global, class, instance, or local.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Simple"><a class="permalink" href="#Simple"><b>Simple
+    syntax</b></a></dt>
+  <dd>Ruby has a simple syntax influenced slightly from Eiffel.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="No~2"><a class="permalink" href="#No~2"><b>No user-level memory
+    management</b></a></dt>
+  <dd>Ruby has automatic memory management. Objects no longer referenced from
+      anywhere are automatically collected by the garbage collector built into
+      the interpreter.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Everything"><a class="permalink" href="#Everything"><b>Everything is
+    an object</b></a></dt>
+  <dd>Ruby is a purely object-oriented language, and was so since its creation.
+      Even such basic data as integers are seen as objects.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Class,"><a class="permalink" href="#Class,"><b>Class, inheritance, and
+    methods</b></a></dt>
+  <dd>Being an object-oriented language, Ruby naturally has basic features like
+      classes, inheritance, and methods.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Singleton"><a class="permalink" href="#Singleton"><b>Singleton
+    methods</b></a></dt>
+  <dd>Ruby has the ability to define methods for certain objects. For example,
+      you can define a press-button action for certain widget by defining a
+      singleton method for the button. Or, you can make up your own prototype
+      based object system using singleton methods, if you want to.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Mix-in"><a class="permalink" href="#Mix-in"><b>Mix-in by
+    modules</b></a></dt>
+  <dd>Ruby intentionally does not have the multiple inheritance as it is a
+      source of confusion. Instead, Ruby has the ability to share
+      implementations across the inheritance tree. This is often called a
+      `Mix-in'.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Iterators"><a class="permalink" href="#Iterators"><b>Iterators</b></a></dt>
+  <dd>Ruby has iterators for loop abstraction.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Closures"><a class="permalink" href="#Closures"><b>Closures</b></a></dt>
+  <dd>In Ruby, you can objectify the procedure.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Text"><a class="permalink" href="#Text"><b>Text processing and regular
+    expressions</b></a></dt>
+  <dd>Ruby has a bunch of text processing features like in Perl.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="M17N,"><a class="permalink" href="#M17N,"><b>M17N, character set
+    independent</b></a></dt>
+  <dd>Ruby supports multilingualized programming. Easy to process texts written
+      in many different natural languages and encoded in many different
+      character encodings, without dependence on Unicode.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Bignums"><a class="permalink" href="#Bignums"><b>Bignums</b></a></dt>
+  <dd>With built-in bignums, you can for example calculate factorial(400).
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Reflection"><a class="permalink" href="#Reflection"><b>Reflection and
+    domain-specific languages</b></a></dt>
+  <dd>Class is also an instance of the Class class. Definition of classes and
+      methods is an expression just as 1+1 is. So your programs can even write
+      and modify programs. Thus, you can write your application in your own
+      programming language on top of Ruby.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Exception"><a class="permalink" href="#Exception"><b>Exception
+    handling</b></a></dt>
+  <dd>As in Java(tm).
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Direct"><a class="permalink" href="#Direct"><b>Direct access to the
+    OS</b></a></dt>
+  <dd>Ruby can use most UNIX system calls, often used in system programming.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Dynamic"><a class="permalink" href="#Dynamic"><b>Dynamic
+    loading</b></a></dt>
+  <dd>On most UNIX systems, you can load object files into the Ruby interpreter
+      on-the-fly.</dd>
+  <dt id="Rich"><a class="permalink" href="#Rich"><b>Rich libraries</b></a></dt>
+  <dd>In addition to the ``builtin libraries'' and ``standard libraries'' that
+      are bundled with Ruby, a vast amount of third-party libraries (``gems'')
+      are available via the package management system called `RubyGems', namely
+      the <b>gem</b>(1) command. Visit RubyGems.org
+      (<b>https://rubygems.org/</b>) to find the gems you need, and explore
+      GitHub (<b>https://github.com/</b>) to see how they are being developed
+      and used.
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp">The Ruby interpreter accepts the following command-line options
+    (switches). They are quite similar to those of <b>perl</b>(1).</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt id="copyright"><a class="permalink" href="#copyright"><b>--copyright</b></a></dt>
+  <dd>Prints the copyright notice, and quits immediately without running any
+      script.
+    <p class="Pp"></p>
+  </dd>
+  <dt><b>--version</b></dt>
+  <dd>Prints the version of the Ruby interpreter, and quits immediately without
+      running any script.
+    <p class="Pp"></p>
+  </dd>
+  <dt><b>-0</b>[<i>octal</i>]</dt>
+  <dd>(The digit ``zero''.) Specifies the input record separator
+      (&quot;$/&quot;) as an octal number. If no digit is given, the null
+      character is taken as the separator. Other switches may follow the digits.
+      <b>-00</b> turns Ruby into paragraph mode. <b>-0777</b> makes Ruby read
+      whole file at once as a single string since there is no legal character
+      with that value.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="C"><a class="permalink" href="#C"><b>-C</b> <i>directory</i></a></dt>
+  <dd></dd>
+  <dt id="X"><a class="permalink" href="#X"><b>-X</b> <i>directory</i></a></dt>
+  <dd>Causes Ruby to switch to the directory.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="E"><a class="permalink" href="#E"><b>-E</b>
+    <i>external</i>[:<i>internal</i>]</a></dt>
+  <dd></dd>
+  <dt id="encoding"><a class="permalink" href="#encoding"><b>--encoding</b>
+    <i>external</i>[:<i>internal</i>]</a></dt>
+  <dd>Specifies the default value(s) for external encodings and internal
+      encoding. Values should be separated with colon (:).
+    <p class="Pp">You can omit the one for internal encodings, then the value
+        (&quot;Encoding.default_internal&quot;) will be nil.</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="external_encoding"><a class="permalink" href="#external_encoding"><b>--external-encoding</b>=<i>encoding</i></a></dt>
+  <dd></dd>
+  <dt id="internal_encoding"><a class="permalink" href="#internal_encoding"><b>--internal-encoding</b>=<i>encoding</i></a></dt>
+  <dd>Specify the default external or internal character encoding
+    <p class="Pp"></p>
+  </dd>
+  <dt id="F"><a class="permalink" href="#F"><b>-F</b> <i>pattern</i></a></dt>
+  <dd>Specifies input field separator (&quot;$;&quot;).
+    <p class="Pp"></p>
+  </dd>
+  <dt id="I"><a class="permalink" href="#I"><b>-I</b> <i>directory</i></a></dt>
+  <dd>Used to tell Ruby where to load the library scripts. Directory path will
+      be added to the load-path variable (&quot;$:&quot;).
+    <p class="Pp"></p>
+  </dd>
+  <dt id="K"><a class="permalink" href="#K"><b>-K</b> <i>kcode</i></a></dt>
+  <dd>Specifies KANJI (Japanese) encoding. The default value for script
+      encodings (&quot;__ENCODING__&quot;) and external encodings
+      (&quot;Encoding.default_external&quot;) will be the specified one.
+      <i>kcode</i> can be one of</dd>
+  <dt id="e"><a class="permalink" href="#e"><b>e</b></a></dt>
+  <dd>EUC-JP
+    <p class="Pp"></p>
+  </dd>
+  <dt id="s"><a class="permalink" href="#s"><b>s</b></a></dt>
+  <dd>Windows-31J (CP932)
+    <p class="Pp"></p>
+  </dd>
+  <dt id="u"><a class="permalink" href="#u"><b>u</b></a></dt>
+  <dd>UTF-8
+    <p class="Pp"></p>
+  </dd>
+  <dt id="n"><a class="permalink" href="#n"><b>n</b></a></dt>
+  <dd>ASCII-8BIT (BINARY)
+    <p class="Pp"></p>
+  </dd>
+  <dt id="S"><a class="permalink" href="#S"><b>-S</b></a></dt>
+  <dd>Makes Ruby use the <i>PATH</i> environment variable to search for script,
+      unless its name begins with a slash. This is used to emulate #! on
+      machines that don't support it, in the following manner:
+    <p class="Pp">#! /usr/local/bin/ruby
+      <br/>
+      # This line makes the next one a comment in Ruby \
+      <br/>
+       exec /usr/local/bin/ruby -S $0 $*</p>
+    <p class="Pp">On some systems &quot;$0&quot; does not always contain the
+        full pathname, so you need the <b>-S</b> switch to tell Ruby to search
+        for the script if necessary (to handle embedded spaces and such). A
+        better construct than &quot;$*&quot; would be ${1+&quot;$@&quot;}, but
+        it does not work if the script is being interpreted by
+      <b>csh</b>(1).</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="T"><a class="permalink" href="#T"><b>-T</b>[<i>level=1</i>]</a></dt>
+  <dd>Turns on taint checks at the specified level (default 1).
+    <p class="Pp"></p>
+  </dd>
+  <dt id="U"><a class="permalink" href="#U"><b>-U</b></a></dt>
+  <dd>Sets the default value for internal encodings
+      (&quot;Encoding.default_internal&quot;) to UTF-8.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="W"><a class="permalink" href="#W"><b>-W</b>[<i>level=2</i>]</a></dt>
+  <dd>Turns on verbose mode at the specified level without printing the version
+      message at the beginning. The level can be;</dd>
+  <dt><b>0</b></dt>
+  <dd>Verbose mode is &quot;silence&quot;. It sets the &quot;$VERBOSE&quot; to
+      nil.
+    <p class="Pp"></p>
+  </dd>
+  <dt><b>1</b></dt>
+  <dd>Verbose mode is &quot;medium&quot;. It sets the &quot;$VERBOSE&quot; to
+      false.
+    <p class="Pp"></p>
+  </dd>
+  <dt><b>2 (default)</b></dt>
+  <dd>Verbose mode is &quot;verbose&quot;. It sets the &quot;$VERBOSE&quot; to
+      true. <b>-W</b> 2 is the same as <b>-w</b>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="a"><a class="permalink" href="#a"><b>-a</b></a></dt>
+  <dd>Turns on auto-split mode when used with <b>-n</b> or <b>-p</b>. In
+      auto-split mode, Ruby executes
+    <pre>  $F = $_.split</pre>
+    at beginning of each loop.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="backtrace_limit"><a class="permalink" href="#backtrace_limit"><b>--backtrace-limit</b>=<i>num</i></a></dt>
+  <dd>Limits the maximum length of backtraces to <i>num</i> lines (default -1,
+      meaning no limit).
+    <p class="Pp"></p>
+  </dd>
+  <dt id="c"><a class="permalink" href="#c"><b>-c</b></a></dt>
+  <dd>Causes Ruby to check the syntax of the script and exit without executing.
+      If there are no syntax errors, Ruby will print ``Syntax OK'' to the
+      standard output.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="d"><a class="permalink" href="#d"><b>-d</b></a></dt>
+  <dd></dd>
+  <dt id="debug"><a class="permalink" href="#debug"><b>--debug</b></a></dt>
+  <dd>Turns on debug mode. &quot;$DEBUG&quot; will be set to true.
+    <p class="Pp"></p>
+  </dd>
+  <dt><b>-e</b> <i>command</i></dt>
+  <dd>Specifies script from command-line while telling Ruby not to search the
+      rest of the arguments for a script file name.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="h"><a class="permalink" href="#h"><b>-h</b></a></dt>
+  <dd></dd>
+  <dt><b>--help</b></dt>
+  <dd>Prints a summary of the options.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="i"><a class="permalink" href="#i"><b>-i</b> <i>extension</i></a></dt>
+  <dd>Specifies in-place-edit mode. The extension, if specified, is added to old
+      file name to make a backup copy. For example:
+    <p class="Pp">% echo matz &gt; /tmp/junk
+      <br/>
+      % cat /tmp/junk
+      <br/>
+      matz
+      <br/>
+      % ruby -p -i.bak -e '$_.upcase!' /tmp/junk
+      <br/>
+      % cat /tmp/junk
+      <br/>
+      MATZ
+      <br/>
+      % cat /tmp/junk.bak
+      <br/>
+      matz</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="l"><a class="permalink" href="#l"><b>-l</b></a></dt>
+  <dd>(The lowercase letter ``ell''.) Enables automatic line-ending processing,
+      which means to firstly set &quot;$\&quot; to the value of &quot;$/&quot;,
+      and secondly chops every line read using chomp!.
+    <p class="Pp"></p>
+  </dd>
+  <dt><b>-n</b></dt>
+  <dd>Causes Ruby to assume the following loop around your script, which makes
+      it iterate over file name arguments somewhat like <b>sed</b> <b>-n</b> or
+      <b>awk</b>.
+    <p class="Pp">while gets
+      <br/>
+       ...
+      <br/>
+      end</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="p"><a class="permalink" href="#p"><b>-p</b></a></dt>
+  <dd>Acts mostly same as -n switch, but print the value of variable
+      &quot;$_&quot; at the each end of the loop. For example:
+    <p class="Pp">% echo matz | ruby -p -e '$_.tr! &quot;a-z&quot;,
+        &quot;A-Z&quot;'
+      <br/>
+      MATZ</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="r"><a class="permalink" href="#r"><b>-r</b> <i>library</i></a></dt>
+  <dd>Causes Ruby to load the library using require. It is useful when using
+      <b>-n</b> or <b>-p</b>.
+    <p class="Pp"></p>
+  </dd>
+  <dt><b>-s</b></dt>
+  <dd>Enables some switch parsing for switches after script name but before any
+      file name arguments (or before a <b>--</b>). Any switches found there are
+      removed from ARGV and set the corresponding variable in the script. For
+      example:
+    <p class="Pp">#! /usr/local/bin/ruby -s
+      <br/>
+      # prints &quot;true&quot; if invoked with `-xyz' switch.
+      <br/>
+      print &quot;true\n&quot; if $xyz</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="v"><a class="permalink" href="#v"><b>-v</b></a></dt>
+  <dd>Enables verbose mode. Ruby will print its version at the beginning and set
+      the variable &quot;$VERBOSE&quot; to true. Some methods print extra
+      messages if this variable is true. If this switch is given, and no other
+      switches are present, Ruby quits after printing its version.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="w"><a class="permalink" href="#w"><b>-w</b></a></dt>
+  <dd>Enables verbose mode without printing version message at the beginning. It
+      sets the &quot;$VERBOSE&quot; variable to true.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="x"><a class="permalink" href="#x"><b>-x</b>[<i>directory</i>]</a></dt>
+  <dd>Tells Ruby that the script is embedded in a message. Leading garbage will
+      be discarded until the first line that starts with ``#!'' and contains the
+      string, ``ruby''. Any meaningful switches on that line will be applied.
+      The end of the script must be specified with either EOF, &quot;^D&quot;
+      (&quot;control-D&quot;), &quot;^Z&quot; (&quot;control-Z&quot;), or the
+      reserved word __END__. If the directory name is specified, Ruby will
+      switch to that directory before executing script.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="y"><a class="permalink" href="#y"><b>-y</b></a></dt>
+  <dd></dd>
+  <dt><b>--yydebug</b></dt>
+  <dd>This option is not guaranteed to be compatible.
+    <p class="Pp">Turns on compiler debug mode. Ruby will print a bunch of
+        internal state messages during compilation. Only specify this switch you
+        are going to debug the Ruby interpreter.</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="disable-"><a class="permalink" href="#disable-"><b>--disable-</b><i>FEATURE</i></a></dt>
+  <dd></dd>
+  <dt id="enable-"><a class="permalink" href="#enable-"><b>--enable-</b><i>FEATURE</i></a></dt>
+  <dd>Disables (or enables) the specified <i>FEATURE</i>.</dd>
+  <dt id="disable_gems"><a class="permalink" href="#disable_gems"><b>--disable-gems</b></a></dt>
+  <dd></dd>
+  <dt id="enable_gems"><a class="permalink" href="#enable_gems"><b>--enable-gems</b></a></dt>
+  <dd>Disables (or enables) RubyGems libraries. By default, Ruby will load the
+      latest version of each installed gem. The Gem constant is true if RubyGems
+      is enabled, false if otherwise.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="disable_rubyopt"><a class="permalink" href="#disable_rubyopt"><b>--disable-rubyopt</b></a></dt>
+  <dd></dd>
+  <dt id="enable_rubyopt"><a class="permalink" href="#enable_rubyopt"><b>--enable-rubyopt</b></a></dt>
+  <dd>Ignores (or considers) the <i>RUBYOPT</i> environment variable. By
+      default, Ruby considers the variable.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="disable_all"><a class="permalink" href="#disable_all"><b>--disable-all</b></a></dt>
+  <dd></dd>
+  <dt id="enable_all"><a class="permalink" href="#enable_all"><b>--enable-all</b></a></dt>
+  <dd>Disables (or enables) all features.
+    <p class="Pp"></p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="dump"><a class="permalink" href="#dump"><b>--dump</b>=<i>target</i></a></dt>
+  <dd>Dump some information.
+    <p class="Pp">Prints the specified target. <i>target</i> can be one of:</p>
+  </dd>
+  <dt id="version"><a class="permalink" href="#version"><b>version</b></a></dt>
+  <dd>Print version description (same as <b>--version).</b></dd>
+  <dt id="usage"><a class="permalink" href="#usage"><b>usage</b></a></dt>
+  <dd>Print a brief usage message (same as <b>-h).</b></dd>
+  <dt id="help"><a class="permalink" href="#help"><b>help</b></a></dt>
+  <dd>Show long help message (same as <b>--help).</b></dd>
+  <dt id="syntax"><a class="permalink" href="#syntax"><b>syntax</b></a></dt>
+  <dd>Check syntax (same as <b>-c</b> <b>--yydebug).</b>
+    <p class="Pp"></p>
+    <p class="Pp">Or one of the following, which are intended for debugging the
+        interpreter:</p>
+  </dd>
+  <dt id="yydebug"><a class="permalink" href="#yydebug"><b>yydebug</b></a></dt>
+  <dd>Enable compiler debug mode (same as <b>--yydebug).</b></dd>
+  <dt id="parsetree"><a class="permalink" href="#parsetree"><b>parsetree</b></a></dt>
+  <dd>Print a textual representation of the Ruby AST for the program.</dd>
+  <dt id="insns"><a class="permalink" href="#insns"><b>insns</b></a></dt>
+  <dd>Print a list of disassembled bytecode instructions.</dd>
+  <dt id="optimize"><a class="permalink" href="#optimize"><b>-optimize</b></a></dt>
+  <dd>Disable various optimizations to print a list disassembled bytecode
+      instructions.</dd>
+  <dt><b>+error-tolerant</b></dt>
+  <dd>Enable error-tolerant parsing, when yydebug or parsetree.</dd>
+  <dt><b>+comment</b></dt>
+  <dd>Annotate a textual representation of the Ruby AST for the program with the
+      associated Ruby source code.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="verbose"><a class="permalink" href="#verbose"><b>--verbose</b></a></dt>
+  <dd>Enables verbose mode without printing version message at the beginning. It
+      sets the &quot;$VERBOSE&quot; variable to true. If this switch is given,
+      and no script arguments (script file or <b>-e</b> options) are present,
+      Ruby quits immediately.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="crash_report"><a class="permalink" href="#crash_report"><b>--crash-report</b>=<i>template</i></a></dt>
+  <dd>Sets the template of path name to save crash report. See
+      <i>RUBY_CRASH_REPORT</i> environment variable for details.
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENVIRONMENT"><a class="permalink" href="#ENVIRONMENT">ENVIRONMENT</a></h1>
+<dl class="Bl-tag">
+  <dt id="RUBYLIB"><a class="permalink" href="#RUBYLIB"><b>RUBYLIB</b></a></dt>
+  <dd>A colon-separated list of directories that are added to Ruby's library
+      load path (&quot;$:&quot;). Directories from this environment variable are
+      searched before the standard load path is searched.
+    <p class="Pp">e.g.:</p>
+    <pre>  RUBYLIB=&quot;$HOME/lib/ruby:$HOME/lib/rubyext&quot;</pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBYOPT"><a class="permalink" href="#RUBYOPT"><b>RUBYOPT</b></a></dt>
+  <dd>Additional Ruby options.
+    <p class="Pp">e.g.</p>
+    <pre>  RUBYOPT=&quot;-w -Ke&quot;</pre>
+    <p class="Pp">Note that RUBYOPT can contain only
+        <b>-d</b>,<b>-E</b>,<b>-I</b>,<b>-K</b>,<b>-r</b>,<b>-T</b>,<b>-U</b>,<b>-v</b>,<b>-w</b>,<b>-W,</b>
+        <b>--debug</b>, <b>--disable-</b><i>FEATURE</i> and
+        <b>--enable-</b><i>FEATURE</i>.</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBYPATH"><a class="permalink" href="#RUBYPATH"><b>RUBYPATH</b></a></dt>
+  <dd>A colon-separated list of directories that Ruby searches for Ruby programs
+      when the <b>-S</b> flag is specified. This variable precedes the
+      <i>PATH</i> environment variable.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBYSHELL"><a class="permalink" href="#RUBYSHELL"><b>RUBYSHELL</b></a></dt>
+  <dd>The path to the system shell command. This environment variable is enabled
+      for only mswin32, mingw32, and OS/2 platforms. If this variable is not
+      defined, Ruby refers to <i>COMSPEC.</i>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_FREE_AT_EXIT"><a class="permalink" href="#RUBY_FREE_AT_EXIT"><b>RUBY_FREE_AT_EXIT</b></a></dt>
+  <dd>If set, Ruby tries to free all dynamically allocated memories. Introduced
+      in Ruby 3.3, default: unset.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_IO_BUFFER_DEFAULT_SIZE"><a class="permalink" href="#RUBY_IO_BUFFER_DEFAULT_SIZE"><b>RUBY_IO_BUFFER_DEFAULT_SIZE</b></a></dt>
+  <dd>The custom default buffer size of IO::Buffer.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_MAX_CPU"><a class="permalink" href="#RUBY_MAX_CPU"><b>RUBY_MAX_CPU</b></a></dt>
+  <dd>The maximum number of native threads used by M:N Threads scheduler
+      Introduced in Ruby 3.3, default: 8.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_MN_THREADS"><a class="permalink" href="#RUBY_MN_THREADS"><b>RUBY_MN_THREADS</b></a></dt>
+  <dd>If set to 1, M:N Thread scheduler is enabled on the main Ractor.
+      Introduced in Ruby 3.3, default: unset.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_PAGER"><a class="permalink" href="#RUBY_PAGER"><b>RUBY_PAGER</b></a></dt>
+  <dd>The pager command that will be used for
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_THREAD_TIMESLICE"><a class="permalink" href="#RUBY_THREAD_TIMESLICE"><b>RUBY_THREAD_TIMESLICE</b></a></dt>
+  <dd>Sets the default thread time slice (thread quantum) in milliseconds.
+      Introduced in Ruby 3.4, default: 100ms. <b>--help</b> option. Introduced
+      in Ruby 3.0, default: <i>PAGER</i> environment variable.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="PATH"><a class="permalink" href="#PATH"><b>PATH</b></a></dt>
+  <dd>Ruby refers to the <i>PATH</i> environment variable on calling
+      Kernel#system.
+    <p class="Pp">And Ruby depends on some RubyGems related environment
+        variables unless RubyGems is disabled. See the help of <b>gem</b>(1) as
+        below.</p>
+    <p class="Pp">% gem help</p>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="GC_ENVIRONMENT"><a class="permalink" href="#GC_ENVIRONMENT">GC
+  ENVIRONMENT</a></h1>
+<p class="Pp">The Ruby garbage collector (GC) tracks objects in fixed-sized
+    slots, but each object may have auxiliary memory allocations handled by the
+    malloc family of C standard library calls ( <b>malloc</b>(3),
+    <b>calloc</b>(3), and <b>realloc</b>(3)) In this documentation, the
+    &quot;heap&quot; refers to the Ruby object heap of fixed-sized slots, while
+    &quot;malloc&quot; refers to auxiliary allocations commonly referred to as
+    the &quot;process heap&quot;. Thus there are at least two possible ways to
+    trigger GC:</p>
+<dl class="Bl-tag">
+  <dt><b>1</b></dt>
+  <dd>Reaching the object limit.</dd>
+  <dt><b>2</b></dt>
+  <dd>Reaching the malloc limit.
+    <p class="Pp">In Ruby 2.1, the generational GC was introduced and the limits
+        are divided into young and old generations, providing two additional
+        ways to trigger a GC:</p>
+  </dd>
+  <dt><b>3</b></dt>
+  <dd>Reaching the old object limit.</dd>
+  <dt><b>4</b></dt>
+  <dd>Reaching the old malloc limit.
+    <p class="Pp">There are currently 4 possible areas where the GC may be tuned
+        by the following environment variables:</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_HEAP_"><a class="permalink" href="#RUBY_GC_HEAP_"><b>RUBY_GC_HEAP_<i>n</i>.IR
+    _INIT_SLOTS</b></a></dt>
+  <dd>Initial allocation of slots in a specific heap. The available heaps can be
+      found in the keys of GC.stat_heap. <i>n</i> is a decimal number between 0
+      and 4. Introduced in Ruby 3.3.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_HEAP_FREE_SLOTS"><a class="permalink" href="#RUBY_GC_HEAP_FREE_SLOTS"><b>RUBY_GC_HEAP_FREE_SLOTS</b></a></dt>
+  <dd>Prepare at least this amount of slots after GC. Allocate this number slots
+      if there are not enough slots. Introduced in Ruby 2.1, default: 4096
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_HEAP_GROWTH_FACTOR"><a class="permalink" href="#RUBY_GC_HEAP_GROWTH_FACTOR"><b>RUBY_GC_HEAP_GROWTH_FACTOR</b></a></dt>
+  <dd>Increase allocation rate of heap slots by this factor. Introduced in Ruby
+      2.1, default: 1.8, minimum: 1.0 (no growth)
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_HEAP_GROWTH_MAX_SLOTS"><a class="permalink" href="#RUBY_GC_HEAP_GROWTH_MAX_SLOTS"><b>RUBY_GC_HEAP_GROWTH_MAX_SLOTS</b></a></dt>
+  <dd>Allocation rate is limited to this number of slots, preventing excessive
+      allocation due to RUBY_GC_HEAP_GROWTH_FACTOR. Introduced in Ruby 2.1,
+      default: 0 (no limit)
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_HEAP_OLDOBJECT_LIMIT_FACTOR"><a class="permalink" href="#RUBY_GC_HEAP_OLDOBJECT_LIMIT_FACTOR"><b>RUBY_GC_HEAP_OLDOBJECT_LIMIT_FACTOR</b></a></dt>
+  <dd>Perform a full GC when the number of old objects is more than R * N, where
+      R is this factor and N is the number of old objects after the last full
+      GC. Introduced in Ruby 2.1.1, default: 2.0
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_HEAP_REMEMBERED_WB_UNPROTECTED_OBJECTS_LIMIT_RATIO"><a class="permalink" href="#RUBY_GC_HEAP_REMEMBERED_WB_UNPROTECTED_OBJECTS_LIMIT_RATIO"><b>RUBY_GC_HEAP_REMEMBERED_WB_UNPROTECTED_OBJECTS_LIMIT_RATIO</b></a></dt>
+  <dd>Used to calculate the remembered_wb_unprotected_objects_limit using a
+      ratio of old_objects. Introduced in Ruby 3.3, default: 0.1, minimum:
+    0.0</dd>
+  <dt id="RUBY_GC_MALLOC_LIMIT"><a class="permalink" href="#RUBY_GC_MALLOC_LIMIT"><b>RUBY_GC_MALLOC_LIMIT</b></a></dt>
+  <dd>The initial limit of young generation allocation from the malloc-family.
+      GC will start when this limit is reached. Default: 16MB
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_MALLOC_LIMIT_MAX"><a class="permalink" href="#RUBY_GC_MALLOC_LIMIT_MAX"><b>RUBY_GC_MALLOC_LIMIT_MAX</b></a></dt>
+  <dd>The maximum limit of young generation allocation from malloc before GC
+      starts. Prevents excessive malloc growth due to
+      RUBY_GC_MALLOC_LIMIT_GROWTH_FACTOR. Introduced in Ruby 2.1, default: 32MB.
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_MALLOC_LIMIT_GROWTH_FACTOR"><a class="permalink" href="#RUBY_GC_MALLOC_LIMIT_GROWTH_FACTOR"><b>RUBY_GC_MALLOC_LIMIT_GROWTH_FACTOR</b></a></dt>
+  <dd>Increases the limit of young generation malloc calls, reducing GC
+      frequency but increasing malloc growth until RUBY_GC_MALLOC_LIMIT_MAX is
+      reached. Introduced in Ruby 2.1, default: 1.4, minimum: 1.0 (no growth)
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_HEAP_FREE_SLOTS_MIN_RATIO"><a class="permalink" href="#RUBY_GC_HEAP_FREE_SLOTS_MIN_RATIO"><b>RUBY_GC_HEAP_FREE_SLOTS_MIN_RATIO</b></a></dt>
+  <dd>Allocate additional pages when the number of free slots is lower than the
+      value (total_slots * (this ratio)). Introduced in Ruby 2.4, default: 0.2,
+      minimum: 0.0, maximum: 1.0
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_HEAP_FREE_SLOTS_MAX_RATIO"><a class="permalink" href="#RUBY_GC_HEAP_FREE_SLOTS_MAX_RATIO"><b>RUBY_GC_HEAP_FREE_SLOTS_MAX_RATIO</b></a></dt>
+  <dd>Allow to free pages when the number of free slots is greater than the
+      value (total_slots * (this ratio)). Introduced in Ruby 2.4, default: 0.4,
+      minimum: RUBY_GC_HEAP_FREE_SLOTS_MIN_RATIO, maximum: 1.0
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_HEAP_FREE_SLOTS_GOAL_RATIO"><a class="permalink" href="#RUBY_GC_HEAP_FREE_SLOTS_GOAL_RATIO"><b>RUBY_GC_HEAP_FREE_SLOTS_GOAL_RATIO</b></a></dt>
+  <dd>Allocate slots to satisfy this formula: free_slots = total_slots *
+      goal_ratio In other words, prepare (total_slots * goal_ratio) free slots.
+      if this value is 0.0, then use RUBY_GC_HEAP_GROWTH_FACTOR directly.
+      Introduced in Ruby 2.4, default: 0.65, minimum:
+      RUBY_GC_HEAP_FREE_SLOTS_MIN_RATIO, maximum:
+      RUBY_GC_HEAP_FREE_SLOTS_MAX_RATIO
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_OLDMALLOC_LIMIT"><a class="permalink" href="#RUBY_GC_OLDMALLOC_LIMIT"><b>RUBY_GC_OLDMALLOC_LIMIT</b></a></dt>
+  <dd>The initial limit of old generation allocation from malloc, a full GC will
+      start when this limit is reached. Introduced in Ruby 2.1, default: 16MB
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_OLDMALLOC_LIMIT_MAX"><a class="permalink" href="#RUBY_GC_OLDMALLOC_LIMIT_MAX"><b>RUBY_GC_OLDMALLOC_LIMIT_MAX</b></a></dt>
+  <dd>The maximum limit of old generation allocation from malloc before a full
+      GC starts. Prevents excessive malloc growth due to
+      RUBY_GC_OLDMALLOC_LIMIT_GROWTH_FACTOR. Introduced in Ruby 2.1, default:
+      128MB
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_GC_OLDMALLOC_LIMIT_GROWTH_FACTOR"><a class="permalink" href="#RUBY_GC_OLDMALLOC_LIMIT_GROWTH_FACTOR"><b>RUBY_GC_OLDMALLOC_LIMIT_GROWTH_FACTOR</b></a></dt>
+  <dd>Increases the limit of old generation malloc allocation, reducing full GC
+      frequency but increasing malloc growth until RUBY_GC_OLDMALLOC_LIMIT_MAX
+      is reached. Introduced in Ruby 2.1, default: 1.2, minimum: 1.0 (no growth)
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_SHARED_FIBER_POOL_FREE_STACKS"><a class="permalink" href="#RUBY_SHARED_FIBER_POOL_FREE_STACKS"><b>RUBY_SHARED_FIBER_POOL_FREE_STACKS</b></a></dt>
+  <dd>Frees stacks of pooled fibers, if set to 1. Do not free the stacks if set
+      to 0. Introduced in Ruby 2.7, default: 1 (no growth)
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="STACK_SIZE_ENVIRONMENT"><a class="permalink" href="#STACK_SIZE_ENVIRONMENT">STACK
+  SIZE ENVIRONMENT</a></h1>
+<p class="Pp">Stack size environment variables are implementation-dependent and
+    subject to change with different versions of Ruby. The VM stack is used for
+    pure-Ruby code and managed by the virtual machine. Machine stack is used by
+    the operating system and its usage is dependent on C extensions as well as C
+    compiler options. Using lower values for these may allow applications to
+    keep more Fibers or Threads running; but increases the chance of
+    SystemStackError exceptions and segmentation faults (SIGSEGV). These
+    environment variables are available since Ruby 2.0.0. All values are
+    specified in bytes.</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt id="RUBY_THREAD_VM_STACK_SIZE"><a class="permalink" href="#RUBY_THREAD_VM_STACK_SIZE"><b>RUBY_THREAD_VM_STACK_SIZE</b></a></dt>
+  <dd>VM stack size used at thread creation. default: 524288 (32-bit CPU) or
+      1048575 (64-bit)
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_THREAD_MACHINE_STACK_SIZE"><a class="permalink" href="#RUBY_THREAD_MACHINE_STACK_SIZE"><b>RUBY_THREAD_MACHINE_STACK_SIZE</b></a></dt>
+  <dd>Machine stack size used at thread creation. default: 524288 or 1048575
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_FIBER_VM_STACK_SIZE"><a class="permalink" href="#RUBY_FIBER_VM_STACK_SIZE"><b>RUBY_FIBER_VM_STACK_SIZE</b></a></dt>
+  <dd>VM stack size used at fiber creation. default: 65536 or 131072
+    <p class="Pp"></p>
+  </dd>
+  <dt id="RUBY_FIBER_MACHINE_STACK_SIZE"><a class="permalink" href="#RUBY_FIBER_MACHINE_STACK_SIZE"><b>RUBY_FIBER_MACHINE_STACK_SIZE</b></a></dt>
+  <dd>Machine stack size used at fiber creation. default: 262144 or 524288
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CRASH_REPORT_ENVIRONMENT"><a class="permalink" href="#CRASH_REPORT_ENVIRONMENT">CRASH
+  REPORT ENVIRONMENT</a></h1>
+<dl class="Bl-tag">
+  <dt id="RUBY_CRASH_REPORT"><a class="permalink" href="#RUBY_CRASH_REPORT"><b>RUBY_CRASH_REPORT</b></a></dt>
+  <dd>The template of path name to save crash report. default: none</dd>
+</dl>
+<section class="Ss">
+<h2 class="Ss" id="Naming_crash_report_files"><a class="permalink" href="#Naming_crash_report_files">Naming
+  crash report files</a></h2>
+<p class="Pp">The template can contain <b>%</b> specifiers which are substituted
+    by the following values when a crash report file is created:</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt><b>%%</b></dt>
+  <dd>A single <b>%</b> character.</dd>
+  <dt><b>%e</b></dt>
+  <dd>Basename of executable.</dd>
+  <dt><b>%E</b></dt>
+  <dd>Pathname of executable, with slashes (<b>/</b>) replaced by exclamation
+      marks (<b>!</b>).</dd>
+  <dt><b>%f</b></dt>
+  <dd>Basename of the program name, &quot;$0&quot;.</dd>
+  <dt><b>%F</b></dt>
+  <dd>Pathname of the program name, &quot;$0&quot;, with slashes (<b>/</b>)
+      replaced by exclamation marks (<b>!</b>).</dd>
+  <dt><b>%p</b></dt>
+  <dd>PID of dumped process.</dd>
+  <dt><b>%t</b></dt>
+  <dd>Time of dump, expressed as seconds since the Epoch, 1970-01-01 00:00:00
+      +0000 (UTC).</dd>
+  <dt><b>%NNN</b></dt>
+  <dd>A character code in octal.
+    <p class="Pp">A single <b>%</b> at the end of the template is dropped from
+        the core filename, as is the combination of a <b>%</b> followed by any
+        character other than those listed above. All other characters in the
+        template become a literal part of the core filename. The template may
+        include '/' characters, which are interpreted as delimiters for
+        directory names.</p>
+  </dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Piping_crash_reports_to_a_program"><a class="permalink" href="#Piping_crash_reports_to_a_program">Piping
+  crash reports to a program</a></h2>
+<p class="Pp">If the first character of this file is a pipe symbol (<b>|</b>),
+    then the remainder of the line is interpreted as the command-line for a
+    program (or script) that is to be executed.</p>
+<p class="Pp">The pipe template is split on spaces into an argument list before
+    the template parameters are expanded.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="MISC_ENVIRONMENT"><a class="permalink" href="#MISC_ENVIRONMENT">MISC
+  ENVIRONMENT</a></h1>
+<dl class="Bl-tag">
+  <dt id="RUBY_TCP_NO_FAST_FALLBACK"><a class="permalink" href="#RUBY_TCP_NO_FAST_FALLBACK"><b>RUBY_TCP_NO_FAST_FALLBACK</b></a></dt>
+  <dd>If set to 1, disables the fast fallback feature by default in
+      TCPSocket.new and Socket.tcp. When set to 0 or left unset, the fast
+      fallback feature is enabled. Introduced in Ruby 3.4, default: unset.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<dl class="Bl-tag">
+  <dt id="https://www.ruby-lang.org/"><a class="permalink" href="#https://www.ruby-lang.org/"><b>https://www.ruby-lang.org/</b></a></dt>
+  <dd>The official web site.</dd>
+  <dt id="https://www.ruby-toolbox.com/"><a class="permalink" href="#https://www.ruby-toolbox.com/"><b>https://www.ruby-toolbox.com/</b></a></dt>
+  <dd>Comprehensive catalog of Ruby libraries.
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="REPORTING_BUGS"><a class="permalink" href="#REPORTING_BUGS">REPORTING
+  BUGS</a></h1>
+<ul class="Bl-bullet">
+  <li>Security vulnerabilities should be reported via an email to Mt
+      security@ruby-lang.org. Reported problems will be published after being
+      fixed.
+    <p class="Pp"></p>
+  </li>
+  <li>Other bugs and feature requests can be reported via the Ruby Issue
+      Tracking System (<b>https://bugs.ruby-lang.org/</b>). Do not report
+      security vulnerabilities via this system because it publishes the
+      vulnerabilities immediately.</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp">Ruby is designed and implemented by Yukihiro Matsumoto
+    &lt;matz@netlab.jp&gt;.</p>
+<p class="Pp">See
+    &lt;<b>https://github.com/ruby/ruby/graphs/contributors</b>&gt; for
+    contributors to Ruby.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Ruby Programmer's Reference Guide</td>
+    <td class="foot-os">April 14, 2018</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

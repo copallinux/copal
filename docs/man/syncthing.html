@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>syncthing(1) · Copal Linux</title>
+<meta name="description" content="syncthing - Syncthing">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-syncthing">syncthing in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">syncthing 2.1.0-r1 — man1/syncthing.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">SYNCTHING(1)</td>
+    <td class="head-vol">Syncthing</td>
+    <td class="head-rtitle">SYNCTHING(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">syncthing - Syncthing</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<div class="Bd-indent">
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>syncthing [serve]
+<br/>
+          [--home=&lt;dir&gt; | --config=&lt;dir&gt; --data=&lt;dir&gt;]
+<br/>
+          [--allow-newer-config] [--audit] [--auditfile=&lt;file|-|--&gt;]
+<br/>
+          [--db-maintenance-interval=&lt;interval&gt;]
+<br/>
+          [--db-delete-retention-interval=&lt;interval&gt;]
+<br/>
+          [--gui-address=&lt;address&gt;] [--gui-apikey=&lt;key&gt;]
+<br/>
+          [--log-level=&lt;level&gt;] [--log-file=&lt;filename&gt;]
+<br/>
+          [--log-max-old-files=&lt;num&gt;] [--log-max-size=&lt;num&gt;]
+<br/>
+          [--log-format-timestamp=&lt;format&gt;] [--no-log-format-level-string]
+<br/>
+          [--log-format-level-syslog]
+<br/>
+          [--no-browser] [--no-console]
+<br/>
+          [--no-port-probing] [--no-restart] [--no-upgrade]
+<br/>
+          [--paused] [--unpaused]
+<br/>
+          [--version] [--help] [--debug-*]
+syncthing cli
+<br/>
+          [--home=&lt;dir&gt; | --config=&lt;dir&gt; --data=&lt;dir&gt;]
+<br/>
+          [--gui-address=&lt;address&gt;] [--gui-apikey=&lt;key&gt;]
+<br/>
+          [--help]
+<br/>
+          &lt;command&gt; [command options...] [arguments...]
+syncthing browser
+<br/>
+          [--home=&lt;dir&gt; | --config=&lt;dir&gt; --data=&lt;dir&gt;]
+<br/>
+          [--help]
+syncthing decrypt (--to=&lt;dir&gt; | --verify-only)
+<br/>
+          [--home=&lt;dir&gt; | --config=&lt;dir&gt; --data=&lt;dir&gt;]
+<br/>
+          [--password=&lt;pw&gt;] [--folder-id=&lt;id&gt;] [--token-path=&lt;file&gt;]
+<br/>
+          [--continue] [--verbose] [--help]
+<br/>
+          &lt;path&gt;
+syncthing device-id
+<br/>
+          [--home=&lt;dir&gt; | --config=&lt;dir&gt; --data=&lt;dir&gt;]
+<br/>
+          [--help]
+syncthing generate
+<br/>
+          [--home=&lt;dir&gt; | --config=&lt;dir&gt; --data=&lt;dir&gt;]
+<br/>
+          [--gui-user=&lt;username&gt;] [--gui-password=&lt;password|-&gt;]
+<br/>
+          [--no-port-probing]
+<br/>
+          [--help]
+syncthing paths
+<br/>
+          [--home=&lt;dir&gt; | --config=&lt;dir&gt; --data=&lt;dir&gt;]
+<br/>
+          [--help]
+syncthing upgrade
+<br/>
+          [--home=&lt;dir&gt; | --config=&lt;dir&gt; --data=&lt;dir&gt;]
+<br/>
+          [--check-only] [--from=&lt;url&gt;]
+<br/>
+          [--help]
+syncthing version
+<br/>
+          [--home=&lt;dir&gt; | --config=&lt;dir&gt; --data=&lt;dir&gt;]
+<br/>
+          [--help]
+syncthing debug &lt;command&gt;
+<br/>
+          [--home=&lt;dir&gt; | --config=&lt;dir&gt; --data=&lt;dir&gt;]
+<br/>
+          [--help]
+</pre>
+</div>
+<br/>
+</div>
+<br/>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Syncthing lets you synchronize your files bidirectionally across
+    multiple devices. This means the creation, modification or deletion of files
+    on one machine will automatically be replicated to your other devices. We
+    believe your data is your data alone and you deserve to choose where it is
+    stored. Therefore Syncthing does not upload your data to the cloud but
+    exchanges your data across your machines as soon as they are online at the
+    same time.</p>
+<p class="Pp">The <b>syncthing</b> core application is a command-line program
+    which usually runs in the background and handles the synchronization. It
+    provides a built-in, HTML and JavaScript based user interface to be
+    controlled from a web browser. This frontend communicates with the core
+    application through some HTTP APIs, which other apps like graphical system
+    integration helpers can use as well, for greatest flexibility. A link to
+    reach the GUI and API is printed among the first few log messages.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COMMON_OPTIONS"><a class="permalink" href="#COMMON_OPTIONS">COMMON
+  OPTIONS</a></h1>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="home=_dir_,"><a class="permalink" href="#home=_dir_,"><b>--home=&lt;dir&gt;,
+    -H &lt;dir&gt; ($STHOMEDIR)</b></a></dt>
+  <dd>Set common configuration and data directory. The default configuration
+      directory is <b>$XDG_STATE_HOME/syncthing</b> or
+      <b>$HOME/.local/state/syncthing</b> (Unix-like),
+      <b>$HOME/Library/Application Support/Syncthing</b> (Mac) and
+      <b>%LOCALAPPDATA%\Syncthing</b> (Windows).</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="config=_dir_,"><a class="permalink" href="#config=_dir_,"><b>--config=&lt;dir&gt;,
+    -C &lt;dir&gt; ($STCONFDIR)</b></a></dt>
+  <dd>Set configuration directory. Alternative to <b>--home</b> and must be used
+      together with <b>--data</b>.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="data=_dir_,"><a class="permalink" href="#data=_dir_,"><b>--data=&lt;dir&gt;,
+    -D &lt;dir&gt; ($STDATADIR)</b></a></dt>
+  <dd>Set data (e.g. database) directory. Alternative to <b>--home</b> and must
+      be used together with <b>--config</b>.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="help,"><a class="permalink" href="#help,"><b>--help, -h</b></a></dt>
+  <dd>Show help text about command line usage. Context-sensitive depending on
+      the given subcommand.</dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SERVE_OPTIONS"><a class="permalink" href="#SERVE_OPTIONS">SERVE
+  OPTIONS</a></h1>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="allow"><a class="permalink" href="#allow"><b>--allow-newer-config
+    ($STALLOWNEWERCONFIG)</b></a></dt>
+  <dd>Try loading a config file written by a newer program version, instead of
+      failing immediately.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="audit"><a class="permalink" href="#audit"><b>--audit
+    ($STAUDIT)</b></a></dt>
+  <dd>Write events to timestamped file <b>audit-YYYYMMDD-HHMMSS.log</b>.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="auditfile=_file_"><a class="permalink" href="#auditfile=_file_"><b>--auditfile=&lt;file|-|--&gt;
+    ($STAUDITFILE)</b></a></dt>
+  <dd>Use specified file or stream (<b>&quot;-&quot;</b> for stdout,
+      <b>&quot;--&quot;</b> for stderr) for audit events, rather than the
+      timestamped default file name.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="db"><a class="permalink" href="#db"><b>--db-maintenance-interval=&lt;interval&gt;
+    ($STDBMAINTENANCEINTERVAL)</b></a></dt>
+  <dd>Database maintenance interval &#x2013; internal database maintenance
+      routines run this often. The format is that of a Go duration string (see
+      <i>https://pkg.go.dev/time#ParseDuration</i>).</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="db~2"><a class="permalink" href="#db~2"><b>--db-delete-retention-interval=&lt;interval&gt;
+    ($STDBDELETERETENTIONINTERVAL)</b></a></dt>
+  <dd>Database deleted item retention interval &#x2013; deleted items are
+      forgotten from the database after this interval. The format is that of a
+      Go duration string (see
+    <i>https://pkg.go.dev/time#ParseDuration</i>).</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="gui"><a class="permalink" href="#gui"><b>--gui-address=&lt;address&gt;
+    ($STGUIADDRESS)</b></a></dt>
+  <dd>Override GUI listen address. Set this to an address (<b>0.0.0.0:8384</b>)
+      or a URL (<b>http://0.0.0.0:8384</b>). Supported schemes are <b>http</b>
+      for plain HTTP, <b>https</b> for HTTP over TLS, <b>unix</b> for plain Unix
+      sockets or <b>unixs</b> for TLS over Unix sockets. A Unix socket could
+      look like this: <b>unix:///run/syncthing/syncthing.socket</b> (notice the
+      three slashes: two as part of the URL structure, one to specify an
+      absolute path).</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="gui~2"><a class="permalink" href="#gui~2"><b>--gui-apikey=&lt;string&gt;
+    ($STGUIAPIKEY)</b></a></dt>
+  <dd>Override the API key needed to access the GUI / REST API.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="log"><a class="permalink" href="#log"><b>--log-file=&lt;filename&gt;
+    ($STLOGFILE)</b></a></dt>
+  <dd>Set destination filename for logging (use <b>&quot;-&quot;</b> for stdout,
+      which is the default option).</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="log~2"><a class="permalink" href="#log~2"><b>--log-level=&lt;level&gt;
+    ($STLOGLEVEL)</b></a></dt>
+  <dd>Set the log level for all packages. Valid levels are DEBUG, INFO, WARN,
+      and ERROR.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="log~3"><a class="permalink" href="#log~3"><b>--log-max-old-files=&lt;num&gt;
+    ($STLOGMAXOLDFILES)</b></a></dt>
+  <dd>Number of old files to keep (zero to keep only current). Applies only when
+      log rotation is enabled through <b>--log-max-size</b>.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="log~4"><a class="permalink" href="#log~4"><b>--log-max-size=&lt;num&gt;
+    ($STLOGMAXSIZE)</b></a></dt>
+  <dd>Maximum size in bytes of any log file (zero to disable log rotation).</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="log~5"><a class="permalink" href="#log~5"><b>--log-format-timestamp=&lt;format&gt;
+    ($STLOGFORMATTIMESTAMP)</b></a></dt>
+  <dd>Format for timestamp, set to empty to disable timestamps. The format is
+      that of the Go time formatter (see
+    <i>https://pkg.go.dev/time#Layout</i>).</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt><b>--[no-]log-format-level-string ($STLOGFORMATLEVELSTRING)</b></dt>
+  <dd>Whether to include level string (e.g. &#x201C;INF&#x201D;) in log
+    line.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt><b>--[no-]log-format-level-syslog ($STLOGFORMATLEVELSYSLOG)</b></dt>
+  <dd>Whether to include level as syslog prefix (e.g. &#x201C;&lt;6&gt;&#x201D;)
+      in log line.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="no"><a class="permalink" href="#no"><b>--no-browser
+    ($STNOBROWSER)</b></a></dt>
+  <dd>Do not start a browser.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="no~2"><a class="permalink" href="#no~2"><b>--no-console
+    ($STNOCONSOLE)</b></a></dt>
+  <dd>Hide the console window. (On Windows only)</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="no~3"><a class="permalink" href="#no~3"><b>--no-port-probing
+    ($STNOPORTPROBING)</b></a></dt>
+  <dd>Don&#x2019;t try to find unused random ports for the GUI and listen
+      address when generating an initial configuration / starting for the first
+      time.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="no~4"><a class="permalink" href="#no~4"><b>--no-restart
+    ($STNORESTART)</b></a></dt>
+  <dd>Do not restart Syncthing when it exits. The monitor process will still run
+      to handle crashes and writing to logfiles (if configured to).</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="no~5"><a class="permalink" href="#no~5"><b>--no-upgrade
+    ($STNOUPGRADE)</b></a></dt>
+  <dd>Disable automatic upgrades.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="paused"><a class="permalink" href="#paused"><b>--paused
+    ($STPAUSED)</b></a></dt>
+  <dd>Start with all devices and folders paused.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="unpaused"><a class="permalink" href="#unpaused"><b>--unpaused
+    ($STUNPAUSED)</b></a></dt>
+  <dd>Start with all devices and folders unpaused.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="version"><a class="permalink" href="#version"><b>--version</b></a></dt>
+  <dd>Show the current version information, then exit.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt><b>--debug-*</b></dt>
+  <dd>Several debug options exist. See <b>syncthing serve --help</b> for the
+      flags that apply to your version.</dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DECRYPT_OPTIONS"><a class="permalink" href="#DECRYPT_OPTIONS">DECRYPT
+  OPTIONS</a></h1>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="to=_dir_"><a class="permalink" href="#to=_dir_"><b>--to=&lt;dir&gt;</b></a></dt>
+  <dd>Destination directory where files should be stored after decryption.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="verify"><a class="permalink" href="#verify"><b>--verify-only</b></a></dt>
+  <dd>Don&#x2019;t write decrypted files to disk (but verify plaintext
+    hashes).</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="password=_pw_"><a class="permalink" href="#password=_pw_"><b>--password=&lt;pw&gt;
+    ($FOLDER_PASSWORD)</b></a></dt>
+  <dd>Folder password for decryption / verification. Can be passed through the
+      <b>FOLDER_PASSWORD</b> environment variable instead to avoid recording in
+      a shell&#x2019;s history buffer or sniffing from the running processes
+      list.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="folder"><a class="permalink" href="#folder"><b>--folder-id=&lt;id&gt;</b></a></dt>
+  <dd>Folder ID of the encrypted folder, if it cannot be determined
+      automatically.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="token"><a class="permalink" href="#token"><b>--token-path=&lt;file&gt;</b></a></dt>
+  <dd>Path to the token file within the folder (used to determine folder
+    ID).</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="continue"><a class="permalink" href="#continue"><b>--continue</b></a></dt>
+  <dd>Continue processing next file in case of error, instead of aborting.</dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="GENERATE_OPTIONS"><a class="permalink" href="#GENERATE_OPTIONS">GENERATE
+  OPTIONS</a></h1>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="gui~3"><a class="permalink" href="#gui~3"><b>--gui-password=&lt;password|-&gt;</b></a></dt>
+  <dd>Specify new GUI authentication password, to update the config file. Read
+      from the standard input stream if only a single dash (<b>-</b>) is given.
+      A plaintext password is hashed before writing to the config file, but an
+      already bcrypt-hashed input is stored verbatim. As a special case, giving
+      the existing password hash as password will leave it untouched.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="gui~4"><a class="permalink" href="#gui~4"><b>--gui-user=&lt;username&gt;</b></a></dt>
+  <dd>Specify new GUI authentication user name, to update the config file.</dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="UPGRADE_OPTIONS"><a class="permalink" href="#UPGRADE_OPTIONS">UPGRADE
+  OPTIONS</a></h1>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="check"><a class="permalink" href="#check"><b>--check-only</b></a></dt>
+  <dd>Do not upgrade, only indicate whether an upgrade is available.</dd>
+</dl>
+</div>
+<br/>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="from=_url_"><a class="permalink" href="#from=_url_"><b>--from=&lt;url&gt;</b></a></dt>
+  <dd>Upgrade to the Syncthing version available from loading the package at the
+      given URL.</dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXIT_CODES"><a class="permalink" href="#EXIT_CODES">EXIT
+  CODES</a></h1>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt><b>0</b></dt>
+  <dd>Success / Shutdown</dd>
+  <dt><b>1</b></dt>
+  <dd>Error</dd>
+  <dt><b>2</b></dt>
+  <dd>Upgrade not available</dd>
+  <dt><b>3</b></dt>
+  <dd>Restarting</dd>
+  <dt><b>4</b></dt>
+  <dd>Upgrading</dd>
+</dl>
+</div>
+<br/>
+<p class="Pp">Exit codes over 125 are usually returned by the shell/binary
+    loader/default signal handler. Exit codes over 128+N on Unix usually
+    represent the signal which caused the process to exit. For example, <b>128 +
+    9 (SIGKILL) = 137</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SUBCOMMANDS"><a class="permalink" href="#SUBCOMMANDS">SUBCOMMANDS</a></h1>
+<p class="Pp">The command line syntax supports different modes of operation
+    through several subcommands, specified as the first argument. If omitted,
+    the default <b>serve</b> is assumed.</p>
+<p class="Pp">The initial setup of a device ID and default configuration can be
+    called explicitly with the <b>generate</b> subcommand. It can also update
+    the configured GUI authentication credentials, without going through the
+    REST API. An existing device certificate is left untouched. If the
+    configuration file already exists, it is validated and updated to the latest
+    configuration schema, including adding default values for any new
+  options.</p>
+<p class="Pp">The <b>decrypt</b> subcommand is used in conjunction with
+    untrusted (encrypted) devices, see the relevant section on <i>decryption</i>
+    for details. It does not depend on Syncthing to be running, but works on
+    offline data.</p>
+<p class="Pp">To work with the REST API for debugging or automating things in
+    Syncthing, the <b>cli</b> subcommand provides easy access to individual
+    features. It basically saves the hassle of handling HTTP connections and API
+    authentication.</p>
+<p class="Pp">The available subcommands are grouped into several nested
+    hierarchies and some parts dynamically generated from the running Syncthing
+    instance. On every level, the <b>--help</b> option lists the available
+    properties, actions and commands for the user to discover interactively. The
+    top-level groups are:</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="config"><a class="permalink" href="#config"><b>config</b></a></dt>
+  <dd>Access the live configuration in a running instance over the REST API to
+      retrieve (get) or update (set) values in a fine-grained way. The hierarchy
+      is based on the same structure as used in the JSON / XML
+    representations.</dd>
+  <dt id="show"><a class="permalink" href="#show"><b>show</b></a></dt>
+  <dd>Show system properties and status of a running instance. The output is
+      passed on directly from the REST API response and therefore requires
+      parsing JSON format.</dd>
+  <dt id="operations"><a class="permalink" href="#operations"><b>operations</b></a></dt>
+  <dd>Control the overall program operation such as restarting or handling
+      upgrades, as well as triggering some actions on a per-folder basis. Can
+      also configure the default ignore patterns from a plain text ignore
+    file.</dd>
+  <dt id="errors"><a class="permalink" href="#errors"><b>errors</b></a></dt>
+  <dd>Examine pending error conditions that need attention from the user, or
+      acknowledge (clear) them.</dd>
+  <dt id="debug"><a class="permalink" href="#debug"><b>debug</b></a></dt>
+  <dd>Various tools to aid in diagnosing problems or collection information for
+      bug reports. Some of these commands access the database directly and can
+      therefore only work when Syncthing is not running.</dd>
+  <dt><b><b>-</b> (a single dash)</b></dt>
+  <dd>Reads subsequent commands from the standard input stream, without needing
+      to call the <b>syncthing cli</b> command over and over. Exits on any
+      invalid command or when EOF (end-of-file) is received.</dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="PROXIES"><a class="permalink" href="#PROXIES">PROXIES</a></h1>
+<p class="Pp">Syncthing can use a SOCKS, HTTP, or HTTPS proxy to talk to the
+    outside world. The proxy is used for outgoing connections only - it is not
+    possible to accept incoming connections through the proxy. The proxy is
+    configured through the environment variable <b>all_proxy</b>. Somewhat
+    unusually, this variable must be named in lower case - it is not
+    &#x201C;ALL_PROXY&#x201D;. For example:</p>
+<div class="Bd-indent">
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>$ export all_proxy=socks://192.0.2.42:8081
+</pre>
+</div>
+<br/>
+</div>
+<br/>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DEVELOPMENT_SETTINGS"><a class="permalink" href="#DEVELOPMENT_SETTINGS">DEVELOPMENT
+  SETTINGS</a></h1>
+<p class="Pp">The following environment variables modify Syncthing&#x2019;s
+    behavior in ways that are mostly useful for developers. Use with care. If
+    you start Syncthing from within service managers like systemd or supervisor,
+    path expansion may not be supported.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="STTRACE"><a class="permalink" href="#STTRACE"><b>STTRACE</b></a></dt>
+  <dd>Used to increase the debugging verbosity in specific facilities, generally
+      mapping to a Go package. Enter a comma-separated string of facilities to
+      trace: <b>api,beacon</b>. Optionally, a log level can be given per
+      facility to specify something other than DEBUG:
+      <b>api:WARN,beacon:ERROR</b>, potentially overriding a global
+      <b>--log-level</b> adjustment.
+    <p class="Pp">The valid facility strings are listed below; additionally,
+        <b>syncthing</b> <b>serve --help</b> always outputs the most up-to-date
+        list.</p>
+  </dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="api"><a class="permalink" href="#api"><b>api</b></a></dt>
+  <dd>REST API</dd>
+  <dt id="beacon"><a class="permalink" href="#beacon"><b>beacon</b></a></dt>
+  <dd>Multicast and broadcast discovery</dd>
+  <dt id="config~2"><a class="permalink" href="#config~2"><b>config</b></a></dt>
+  <dd>Configuration loading and saving</dd>
+  <dt id="connections"><a class="permalink" href="#connections"><b>connections</b></a></dt>
+  <dd>Connection handling</dd>
+  <dt id="db/sqlite"><a class="permalink" href="#db/sqlite"><b>db/sqlite</b></a></dt>
+  <dd>SQLite database</dd>
+  <dt id="dialer"><a class="permalink" href="#dialer"><b>dialer</b></a></dt>
+  <dd>Dialing connections</dd>
+  <dt id="discover"><a class="permalink" href="#discover"><b>discover</b></a></dt>
+  <dd>Remote device discovery</dd>
+  <dt id="events"><a class="permalink" href="#events"><b>events</b></a></dt>
+  <dd>Event generation and logging</dd>
+  <dt id="fs"><a class="permalink" href="#fs"><b>fs</b></a></dt>
+  <dd>Filesystem access</dd>
+  <dt id="main"><a class="permalink" href="#main"><b>main</b></a></dt>
+  <dd>Main package</dd>
+  <dt id="model"><a class="permalink" href="#model"><b>model</b></a></dt>
+  <dd>The root hub</dd>
+  <dt id="nat"><a class="permalink" href="#nat"><b>nat</b></a></dt>
+  <dd>NAT discovery and port mapping</dd>
+  <dt id="pmp"><a class="permalink" href="#pmp"><b>pmp</b></a></dt>
+  <dd>NAT-PMP discovery and port mapping</dd>
+  <dt id="protocol"><a class="permalink" href="#protocol"><b>protocol</b></a></dt>
+  <dd>The BEP protocol</dd>
+  <dt id="relay/client"><a class="permalink" href="#relay/client"><b>relay/client</b></a></dt>
+  <dd>Relay client</dd>
+  <dt id="scanner"><a class="permalink" href="#scanner"><b>scanner</b></a></dt>
+  <dd>File change detection and hashing</dd>
+  <dt id="stun"><a class="permalink" href="#stun"><b>stun</b></a></dt>
+  <dd>STUN functionality</dd>
+  <dt id="syncthing"><a class="permalink" href="#syncthing"><b>syncthing</b></a></dt>
+  <dd>Main run facility</dd>
+  <dt id="upgrade"><a class="permalink" href="#upgrade"><b>upgrade</b></a></dt>
+  <dd>Binary upgrades</dd>
+  <dt id="upnp"><a class="permalink" href="#upnp"><b>upnp</b></a></dt>
+  <dd>UPnP discovery and port mapping</dd>
+  <dt id="ur"><a class="permalink" href="#ur"><b>ur</b></a></dt>
+  <dd>Usage reporting</dd>
+  <dt id="versioner"><a class="permalink" href="#versioner"><b>versioner</b></a></dt>
+  <dd>File versioning</dd>
+  <dt id="watchaggregator"><a class="permalink" href="#watchaggregator"><b>watchaggregator</b></a></dt>
+  <dd>Filesystem event watcher</dd>
+</dl>
+</div>
+<br/>
+<dl class="Bl-tag">
+  <dt id="STLOCKTHRESHOLD"><a class="permalink" href="#STLOCKTHRESHOLD"><b>STLOCKTHRESHOLD</b></a></dt>
+  <dd>Used for debugging internal deadlocks; sets debug sensitivity. Use only
+      under direction of a developer.</dd>
+  <dt id="STVERSIONEXTRA"><a class="permalink" href="#STVERSIONEXTRA"><b>STVERSIONEXTRA</b></a></dt>
+  <dd>Add extra information to the version string in logs and the version line
+      in the GUI. Can be set to the name of a wrapper or tool controlling
+      syncthing to communicate this to the end user.</dd>
+  <dt id="GOMAXPROCS"><a class="permalink" href="#GOMAXPROCS"><b>GOMAXPROCS</b></a></dt>
+  <dd>Set the maximum number of CPU cores to use. Defaults to all available CPU
+      cores.</dd>
+  <dt id="GOGC"><a class="permalink" href="#GOGC"><b>GOGC</b></a></dt>
+  <dd>Percentage of heap growth at which to trigger GC. Default is 100. Lower
+      numbers keep peak memory usage down, at the price of CPU usage (i.e.
+      performance).</dd>
+  <dt id="LOGGER_DISCARD"><a class="permalink" href="#LOGGER_DISCARD"><b>LOGGER_DISCARD</b></a></dt>
+  <dd>Hack to completely disable logging, for example when running benchmarks.
+      Set to any nonempty value to use it.</dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>syncthing-config(5)</b>, <b>syncthing-stignore(5)</b>,
+    <b>syncthing-device-ids(7)</b>, <b>syncthing-security(7)</b>,
+    <b>syncthing-networking(7)</b>, <b>syncthing-versioning(7)</b>,
+    <b>syncthing-faq(7)</b></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHOR"><a class="permalink" href="#AUTHOR">AUTHOR</a></h1>
+<p class="Pp">The Syncthing Authors</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COPYRIGHT"><a class="permalink" href="#COPYRIGHT">COPYRIGHT</a></h1>
+<p class="Pp">2014-2026, The Syncthing Authors</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">April 30, 2026</td>
+    <td class="foot-os">v2.0.0</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>doxygen(1) · Copal Linux</title>
+<meta name="description" content="Doxygen - documentation system for various programming languages">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-doxygen">doxygen in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">doxygen 1.17.0-r0 — man1/doxygen.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">DOXYGEN(1)</td>
+    <td class="head-vol">User Commands</td>
+    <td class="head-rtitle">DOXYGEN(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">Doxygen - documentation system for various programming
+  languages</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Doxygen is a documentation system for C++, C, Java, Objective-C,
+    IDL (CORBA and Microsoft flavors), Fortran, Python, VHDL and to some extent
+    PHP, C#, and D.</p>
+<p class="Pp">You can use Doxygen in several ways:</p>
+<dl class="Bl-tag">
+  <dt>1) Generate a template configuration file*:</dt>
+  <dd></dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>doxygen [-s] <b>-g</b> [configName]</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>2) Update an existing configuration file*:</dt>
+  <dd></dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>doxygen [-s] <b>-u</b> [configName]</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>3) Generate documentation using an existing configuration file*:</dt>
+  <dd></dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>doxygen [configName]</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>4) Generate a template file that controls the layout of the generated
+    documentation:</dt>
+  <dd></dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>doxygen <b>-l</b> [layoutFileName]</dd>
+</dl>
+<div class="Bd-indent">
+<br/>
+ If layoutFileName is omitted, DoxygenLayout.xml will be used as the filename.
+<br/>
+ If - is used for layoutFileName, Doxygen writes to standard output.</div>
+<dl class="Bl-tag">
+  <dt>5) Generate a template style sheet file for RTF, HTML or LaTeX:</dt>
+  <dd></dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>RTF: doxygen <b>-w</b> rtf styleSheetFile</dd>
+  <dt></dt>
+  <dd>HTML: doxygen <b>-w</b> html headerFile footerFile styleSheetFile
+      [configFile]</dd>
+  <dt></dt>
+  <dd>LaTeX: doxygen <b>-w</b> latex headerFile footerFile styleSheetFile
+      [configFile]</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>6) Generate an RTF extensions file:</dt>
+  <dd></dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>RTF: doxygen <b>-e</b> rtf extensionsFile</dd>
+</dl>
+<div class="Bd-indent">
+<br/>
+ If - is used for extensionsFile Doxygen will write to standard output.</div>
+<dl class="Bl-tag">
+  <dt>7) Compare the used configuration file with the template configuration
+    file:</dt>
+  <dd></dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>doxygen <b>-x</b> [configFile]</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt id="Compare"><a class="permalink" href="#Compare">
+  <br/>
+   Compare the used configuration file with the template configuration
+    file</a></dt>
+  <dd></dd>
+</dl>
+<div class="Bd-indent">
+<br/>
+ without replacing the environment variables or CMake type replacement
+  variables:</div>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>doxygen <b>-x_noenv</b> [configFile]</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>8) Show a list of built-in emojis.</dt>
+  <dd></dd>
+</dl>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>doxygen <b>-f</b> emoji outputFileName</dd>
+</dl>
+<div class="Bd-indent">
+<br/>
+ If - is used for outputFileName Doxygen will write to standard output.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">*) If <b>-s</b> is specified, the comments of the
+  configuration items in the config file will be omitted.
+<br/>
+ If configName is omitted, 'Doxyfile' will be used by default.
+<br/>
+ If - is used for configFile, Doxygen will write / read the configuration to /
+  from standard output / input.</div>
+<p class="Pp">If <b>-q</b> is used for a Doxygen documentation run, Doxygen will
+    see this as if QUIET=YES has been set.</p>
+<p class="Pp"><b>-v</b> print version string, <b>-V</b> print extended version
+    information</p>
+<p class="Pp"><b>-h</b>,<b>-?</b> prints usage help information</p>
+<p class="Pp">doxygen <b>-d</b> prints additional usage flags for debugging
+    purposes</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHOR"><a class="permalink" href="#AUTHOR">AUTHOR</a></h1>
+<p class="Pp">Doxygen version 1.17.0, Copyright Dimitri van Heesch 1997-2026</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp">doxywizard(1).</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">26-05-2026</td>
+    <td class="foot-os">doxygen 1.17.0</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

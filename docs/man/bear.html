@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bear(1) · Copal Linux</title>
+<meta name="description" content="Bear - a tool to generate compilation database for Clang tooling.">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-bear">bear in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">bear 4.1.5-r0 — man1/bear.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">BEAR(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">BEAR(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">Bear - a tool to generate compilation database for Clang
+  tooling.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>bear</b> [<i>OPTIONS</i>] [--] [<i>BUILD_COMMAND</i>...]</p>
+<p class="Pp"><b>bear intercept</b> [<i>OPTIONS</i>] [--]
+    <i>BUILD_COMMAND</i>...</p>
+<p class="Pp"><b>bear semantic</b> [<i>OPTIONS</i>]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Bear is a tool that generates a JSON compilation database for
+    Clang tooling by intercepting command executions during the build process.
+    The JSON compilation database is used in the Clang project to provide
+    information about how individual compilation units were processed, enabling
+    tools like clang-tidy, clangd, and other Clang-based analysis tools to
+    understand your project&#x2019;s build configuration.</p>
+<p class="Pp">Bear operates by intercepting system calls during the build
+    process to capture compilation commands. It supports two main interception
+    methods: dynamic library preloading (on Unix-like systems) and wrapper
+    executables (cross-platform). The captured commands are then filtered
+    through semantic analysis to identify actual compiler invocations and
+    generate the final compilation database.</p>
+<p class="Pp">Bear can operate in three modes:</p>
+<ul class="Bl-bullet">
+  <li><b>Combined mode</b> (default): Runs both interception and semantic
+      analysis in sequence</li>
+  <li><b>Intercept mode</b>: Only captures build events to an intermediate
+    file</li>
+  <li><b>Semantic mode</b>: Processes previously captured events to generate the
+      compilation database</li>
+</ul>
+<section class="Ss">
+<h2 class="Ss" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h2>
+<dl class="Bl-tag">
+  <dt id="c,"><a class="permalink" href="#c,"><b>-c, --config</b>
+    <i>FILE</i></a></dt>
+  <dd>Specify a configuration file path. The configuration file controls output
+      formatting, compiler recognition, source filtering, and duplicate
+      handling.</dd>
+  <dt id="o,"><a class="permalink" href="#o,"><b>-o, --output</b>
+    <i>FILE</i></a></dt>
+  <dd>Specify the output file path (default:
+      <span class="Li">compile_commands.json</span>). The output is a JSON
+      compilation database.</dd>
+  <dt id="a,"><a class="permalink" href="#a,"><b>-a, --append</b></a></dt>
+  <dd>Append results to an existing output file instead of overwriting it. This
+      allows incremental updates to the compilation database. New entries are
+      placed before the existing ones, so when a source file is rebuilt its
+      newest invocation survives duplicate filtering and replaces the stale
+      entry (see the <span class="Li">duplicates</span> section).</dd>
+  <dt id="h,"><a class="permalink" href="#h,"><b>-h, --help</b></a></dt>
+  <dd>Print help information.</dd>
+  <dt id="V,"><a class="permalink" href="#V,"><b>-V, --version</b></a></dt>
+  <dd>Print version information.</dd>
+</dl>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COMMANDS"><a class="permalink" href="#COMMANDS">COMMANDS</a></h1>
+<p class="Pp">Calling bear without commands will execute the combined mode, and
+    will intercept the compiler calls and generate a compilation database as
+    output.</p>
+<section class="Ss">
+<h2 class="Ss" id="bear_intercept"><a class="permalink" href="#bear_intercept">bear
+  intercept</a></h2>
+<p class="Pp">Intercepts command execution events during the build process and
+    saves them to an events file for later processing.</p>
+<p class="Pp"><b>bear intercept</b> [<i>OPTIONS</i>] [--]
+    <i>BUILD_COMMAND</i>...</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="bear_semantic"><a class="permalink" href="#bear_semantic">bear
+  semantic</a></h2>
+<p class="Pp">Processes previously captured events to generate a compilation
+    database through semantic analysis.</p>
+<p class="Pp"><b>bear semantic</b> [<i>OPTIONS</i>]</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OUTPUT"><a class="permalink" href="#OUTPUT">OUTPUT</a></h1>
+<p class="Pp">Bear generates a JSON compilation database conforming to the
+    <a class="Lk" href="https://clang.llvm.org/docs/JSONCompilationDatabase.html">Clang
+    JSON Compilation Database</a>&#x00A0;specification. The output is a JSON
+    array of compilation entry objects.</p>
+<section class="Ss">
+<h2 class="Ss" id="Entry_Format"><a class="permalink" href="#Entry_Format">Entry
+  Format</a></h2>
+<p class="Pp">Each compilation database entry contains the following fields:</p>
+<dl class="Bl-tag">
+  <dt id="directory"><a class="permalink" href="#directory"><b>directory</b></a></dt>
+  <dd>The working directory of the compilation (absolute path)</dd>
+  <dt id="file"><a class="permalink" href="#file"><b>file</b></a></dt>
+  <dd>The main translation unit source file (absolute path)</dd>
+  <dt id="arguments"><a class="permalink" href="#arguments"><b>arguments</b></a></dt>
+  <dd>The compilation command as an array of strings (preferred format)</dd>
+  <dt id="command"><a class="permalink" href="#command"><b>command</b></a></dt>
+  <dd>The compilation command as a single shell-escaped string (alternative to
+      arguments)</dd>
+  <dt id="output"><a class="permalink" href="#output"><b>output</b></a></dt>
+  <dd>The output file produced by compilation (optional, absolute path)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Output_Formatting"><a class="permalink" href="#Output_Formatting">Output
+  Formatting</a></h2>
+<p class="Pp">The output format can be controlled through the configuration
+    file:</p>
+<ul class="Bl-bullet">
+  <li><b>Path resolution</b>: Paths can be formatted as absolute, relative,
+      canonical, or as-is</li>
+  <li><b>Entry format</b>: Choose between arguments array (preferred) or command
+      string</li>
+  <li><b>Field inclusion</b>: Control whether the output field is included</li>
+  <li><b>Source filtering</b>: Include/exclude files based on directory
+    rules</li>
+  <li><b>Duplicate filtering</b>: Remove duplicate entries based on configurable
+      field matching</li>
+</ul>
+<p class="Pp">Bear generates entries where all paths are absolute by default,
+    and uses the <span class="Li">arguments</span> field instead of
+    <span class="Li">command</span> to avoid shell escaping issues.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CONFIG_FILE"><a class="permalink" href="#CONFIG_FILE">CONFIG
+  FILE</a></h1>
+<p class="Pp">Bear uses a YAML configuration file to control its behavior. The
+    configuration file follows a structured schema with several main
+  sections.</p>
+<section class="Ss">
+<h2 class="Ss" id="Configuration_Schema"><a class="permalink" href="#Configuration_Schema">Configuration
+  Schema</a></h2>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>
+    <pre>schema<b>:</b> &quot;4.1&quot;
+intercept<b>:</b>
+<br/>
+  mode<b>:</b> wrapper
+compilers<b>:</b>
+<br/>
+  <b>-</b> path<b>:</b> /usr/bin/cc
+<br/>
+    as<b>:</b> gcc
+<br/>
+  <b>-</b> path<b>:</b> /usr/local/bin/gcc
+<br/>
+    ignore<b>:</b> true
+sources<b>:</b>
+<br/>
+  directories<b>:</b>
+<br/>
+    <b>-</b> path<b>:</b> /project/tests
+<br/>
+      action<b>:</b> exclude
+duplicates<b>:</b>
+<br/>
+  match_on<b>:</b>
+<br/>
+    <b>-</b> file
+<br/>
+    <b>-</b> arguments
+format<b>:</b>
+<br/>
+  paths<b>:</b>
+<br/>
+    directory<b>:</b> canonical
+<br/>
+    file<b>:</b> canonical
+<br/>
+  entries<b>:</b>
+<br/>
+    use_array_format<b>:</b> true
+<br/>
+    include_output_field<b>:</b> true
+<br/>
+  arguments<b>:</b>
+<br/>
+    from_response_files<b>:</b> false
+<br/>
+    from_environment<b>:</b> true
+    </pre>
+  </dd>
+</dl>
+<p class="Pp">This example configuration file: sets the interception mode to
+    <span class="Li">wrapper</span>, hints the
+    <span class="Li">/usr/bin/cc</span> to be the main compiler in this project,
+    which is the GNU compiler, hints to ignore the
+    <span class="Li">/usr/local/bin/gcc</span> compilers from the project,
+    instructs to ignore files from <span class="Li">/project/tests</span>,
+    instructs to detect duplicates based on the <span class="Li">file</span> and
+    <span class="Li">arguments</span> fields of the output file, instructs to
+    format the output to use canonical path for the <span class="Li">file</span>
+    and <span class="Li">directory</span> fields of the output file, instructs
+    to use the <span class="Li">arguments</span> over the
+    <span class="Li">command</span> field in the output file, instructs to
+    include the <span class="Li">output</span> field in the output file.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Configuration_Sections"><a class="permalink" href="#Configuration_Sections">Configuration
+  Sections</a></h2>
+<p class="Pp">The configuration file uses schema version
+    <span class="Li">4.1</span> and has the following structure:</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="intercept"><a class="permalink" href="#intercept">intercept</a></h2>
+<p class="Pp">Controls the command interception method:</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>mode</b>: <span class="Li">preload</span> (Unix) or
+      <span class="Li">wrapper</span> (cross-platform)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="compilers"><a class="permalink" href="#compilers">compilers</a></h2>
+<p class="Pp">Contains hints about what compiler needs to be recognized and what
+    that compiler is.</p>
+<ul class="Bl-bullet">
+  <li><b>path</b>: Path to the compiler executable</li>
+  <li><b>as</b>: Compiler type hint for semantic analysis. Valid values are:
+      <span class="Li">gcc</span>, <span class="Li">clang</span>,
+      <span class="Li">flang</span>, <span class="Li">intel-fortran</span>,
+      <span class="Li">cray-fortran</span>, <span class="Li">cuda</span>,
+      <span class="Li">msvc</span>, <span class="Li">clang-cl</span>,
+      <span class="Li">intel_cc</span>, <span class="Li">nvidia-hpc</span>,
+      <span class="Li">armclang</span>, <span class="Li">ibm_xl</span>,
+      <span class="Li">vala</span>.</li>
+  <li><b>ignore</b>: Whether to ignore this compiler.</li>
+</ul>
+<p class="Pp">The generic compiler names <span class="Li">cc</span> and
+    <span class="Li">c++</span> default to GCC semantics. On platforms where
+    these map to a different compiler (macOS, FreeBSD, OpenBSD), use the
+    <span class="Li">as</span> field to override:</p>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>
+    <pre>compilers<b>:</b>
+<br/>
+  <b>-</b> path<b>:</b> /usr/bin/cc
+<br/>
+    as<b>:</b> clang
+<br/>
+  <b>-</b> path<b>:</b> /usr/bin/c++
+<br/>
+    as<b>:</b> clang
+    </pre>
+  </dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="sources"><a class="permalink" href="#sources">sources</a></h2>
+<p class="Pp">Filtering functionality based on the source file location.</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>directories</b>: List of directory-based inclusion/exclusion rules</dd>
+</dl>
+<p class="Pp">Directory rules are evaluated in order, with the last matching
+    rule determining inclusion/exclusion. Empty directories list means include
+    everything.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="duplicates"><a class="permalink" href="#duplicates">duplicates</a></h2>
+<p class="Pp">Filtering functionality based on duplicate detection. Here you can
+    define which fields of the output file should be used in the duplicate
+    detection. Two entries are duplicates when all of the configured fields
+    match; the first occurrence is kept and later duplicates are dropped.</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>match_on</b>: List of fields to use for duplicate detection (file,
+      arguments, directory, command, output). The default is
+      <span class="Li">directory</span> and <span class="Li">file</span>, so by
+      default one entry is kept per source file per directory, regardless of the
+      compiler arguments. A consequence is that when a single build compiles the
+      same file from the same directory with different flags, only one entry is
+      kept (the first seen); add <span class="Li">arguments</span> to
+      <span class="Li">match_on</span> to keep a separate entry per
+      configuration. Combined with <span class="Li">--append</span> (new entries
+      first), the default means a rebuilt file&#x2019;s newest invocation
+      replaces its stale entry.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="format"><a class="permalink" href="#format">format</a></h2>
+<p class="Pp">Output formatting configuration:</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>paths.directory</b> and <b>paths.file</b>: How to format paths of these
+      fields. The allowed values are:</dd>
+</dl>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li><b>as-is</b>: No transformation,</li>
+  <li><b>canonical</b>: Resolve to canonical path,</li>
+  <li><b>relative</b>: Make relative to directory field,</li>
+  <li><b>absolute</b>: Convert to absolute path,</li>
+</ul>
+</div>
+<ul class="Bl-bullet">
+  <li><b>entries.use_array_format</b>: Use the arguments array (default) instead
+      of the command string. Set to <span class="Li">false</span> for consumers
+      that read only the <span class="Li">command</span> field.</li>
+  <li><b>entries.include_output_field</b>: Include output field in entries</li>
+  <li><b>arguments.from_response_files</b>: Replace
+      <span class="Li">@file</span> response-file references in each
+      entry&#x2019;s arguments with the file&#x2019;s tokenized contents
+      (resolved relative to the compiler&#x2019;s working directory, expanded
+      recursively, MSVC/clang-cl using Windows quoting and other compilers using
+      GCC/Clang quoting). Disabled by default, in which case an
+      <span class="Li">@file</span> argument is recorded verbatim. Missing or
+      unreadable files are left literal with a warning.</li>
+  <li><b>arguments.from_environment</b>: Fold compiler environment variables
+      that act as implicit flags into each entry&#x2019;s arguments &#x2013;
+      GCC/Clang header-search paths (<span class="Li">CPATH</span>,
+      <span class="Li">C_INCLUDE_PATH</span>,
+      <span class="Li">CPLUS_INCLUDE_PATH</span>,
+      <span class="Li">OBJC_INCLUDE_PATH</span>) become include flags, and
+      MSVC&#x2019;s <span class="Li">CL</span> / <span class="Li">_CL_</span>
+      become leading / trailing options. Enabled by default. Set to
+      <span class="Li">false</span> to record only the flags that appeared on
+      the command line. (This is unrelated to the <span class="Li">CC=&quot;gcc
+      -std=c11&quot;</span> convention handled during interception.)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Default_Configuration"><a class="permalink" href="#Default_Configuration">Default
+  Configuration</a></h2>
+<p class="Pp">If no configuration file is specified, Bear uses built-in defaults
+    optimized for most use cases.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENVIRONMENT"><a class="permalink" href="#ENVIRONMENT">ENVIRONMENT</a></h1>
+<dl class="Bl-tag">
+  <dt id="RUST_LOG"><a class="permalink" href="#RUST_LOG"><b>RUST_LOG</b></a></dt>
+  <dd>Controls the logging level for Bear&#x2019;s internal operations. This
+      environment variable is essential for troubleshooting and debugging
+      Bear&#x2019;s behavior.</dd>
+</dl>
+<div class="Bd-indent">
+<p class="Pp">Supported log levels (in order of verbosity):</p>
+<ul class="Bl-bullet">
+  <li><span class="Li">error</span> - Only show critical errors</li>
+  <li><span class="Li">warn</span> - Show warnings and errors</li>
+</ul>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><span class="Li">info</span> - Show informational messages, warnings, and
+      errors</li>
+  <li><span class="Li">debug</span> - Show detailed debugging information</li>
+</ul>
+<p class="Pp">Examples:</p>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>
+    <pre>RUST_LOG=debug bear -- make all
+RUST_LOG=info bear intercept -- cmake --build .
+    </pre>
+  </dd>
+</dl>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<p class="Pp">The configuration file <span class="Li">bear.yml</span> is
+    searched in the following locations, in order:</p>
+<dl class="Bl-tag">
+  <dt><b></b><span class="Li"><b>./bear.yml</b></span><b></b></dt>
+  <dd>The current working directory.</dd>
+  <dt><b></b><span class="Li"><b>$XDG_CONFIG_HOME/bear.yml</b></span><b></b>,
+    <b></b><span class="Li"><b>$XDG_CONFIG_HOME/Bear/bear.yml</b></span><b></b>
+    (Unix)</dt>
+  <dd>When <span class="Li">$XDG_CONFIG_HOME</span> is set.</dd>
+  <dt><b></b><span class="Li"><b>$HOME/.config/bear.yml</b></span><b></b>,
+    <b></b><span class="Li"><b>$HOME/.config/Bear/bear.yml</b></span><b></b>
+    (Unix)</dt>
+  <dd>When <span class="Li">$XDG_CONFIG_HOME</span> is unset.</dd>
+  <dt><b></b><span class="Li"><b>%LOCALAPPDATA%\bear.yml</b></span><b></b>,
+    <b></b><span class="Li"><b>%LOCALAPPDATA%\Bear\bear.yml</b></span><b></b>
+    (Windows)</dt>
+  <dd>When <span class="Li">%LOCALAPPDATA%</span> is set.</dd>
+  <dt><b></b><span class="Li"><b>%APPDATA%\bear.yml</b></span><b></b>,
+    <b></b><span class="Li"><b>%APPDATA%\Bear\bear.yml</b></span><b></b>
+    (Windows)</dt>
+  <dd>When <span class="Li">%APPDATA%</span> is set.</dd>
+</dl>
+<p class="Pp">The first file found is loaded; remaining locations are not
+    consulted.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXIT_STATUS"><a class="permalink" href="#EXIT_STATUS">EXIT
+  STATUS</a></h1>
+<p class="Pp">Bear returns the exit status of the executed build command when
+    running in combined or intercept mode. When the build command succeeds, Bear
+    returns 0. When the build command fails, Bear returns the same non-zero exit
+    code.</p>
+<p class="Pp">In semantic mode, Bear returns 0 on success and a non-zero exit
+    code if semantic analysis fails.</p>
+<p class="Pp">If Bear itself encounters an internal error or crashes, it returns
+    a non-zero exit code regardless of the build command&#x2019;s status.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="TROUBLESHOOTING"><a class="permalink" href="#TROUBLESHOOTING">TROUBLESHOOTING</a></h1>
+<p class="Pp">The potential problems you can face with are: the build with and
+    without Bear behaves differently or the output is empty.</p>
+<section class="Ss">
+<h2 class="Ss" id="Debug_Logging"><a class="permalink" href="#Debug_Logging">Debug
+  Logging</a></h2>
+<p class="Pp"><b>Before reporting any issues</b>, always run Bear with debug
+    logging enabled:</p>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>
+    <pre>RUST_LOG=debug bear -- your-build-command
+    </pre>
+  </dd>
+</dl>
+<p class="Pp">This will provide detailed information about Bear&#x2019;s
+    internal operations. And the debug output is essential for diagnosing
+    problems and <b>must</b> <b>be included</b> in any bug reports.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Common_Issues"><a class="permalink" href="#Common_Issues">Common
+  Issues</a></h2>
+<p class="Pp">The most common cause for empty outputs is that the build command
+    did not execute any commands. The reason for that could be, because
+    incremental builds not running the compilers if everything is up-to-date.
+    Remember, Bear does not understand the build file (eg.: makefile), but
+    intercepts the executed commands.</p>
+<p class="Pp">The other common cause for empty output is that the build has a
+    &#x201C;configure&#x201D; step, which captures the compiler to build the
+    project. In case of Bear is using the <i>wrapper</i> mode, it needs to run
+    the configure step with Bear too (and discard that output), before run the
+    build with Bear.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="GLIBC_Version_Errors_in_Cross"><a class="permalink" href="#GLIBC_Version_Errors_in_Cross">GLIBC
+  Version Errors in Cross-Compilation</a></h2>
+<p class="Pp">When the build runs compilers from a cross-compilation SDK and you
+    see an error like <span class="Li">version 'GLIBC_2.33' not found (required
+    by .../libexec.so)</span>, Bear&#x2019;s preload library was built against a
+    newer glibc than the SDK toolchain provides. The library must be
+    ABI-compatible not only with the host system but also with the libc the
+    intercepted compiler process loads from the SDK sysroot. Build (or obtain) a
+    Bear linked against a glibc no newer than the SDK&#x2019;s. See the project
+    wiki Troubleshooting page (LD_PRELOAD errors) for diagnostic commands.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Compiler_Env_Vars_With_Flags"><a class="permalink" href="#Compiler_Env_Vars_With_Flags">Compiler
+  Env Vars With Flags</a></h2>
+<p class="Pp">In wrapper mode, Bear accepts compiler environment variables that
+    carry a trailing flag or two, matching the GNU Make convention:</p>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>
+    <pre>CC=&quot;gcc -std=c11&quot; make
+CXX=&quot;clang++ -stdlib=libc++&quot; make
+CC=&quot;/usr/local/bin/gcc -m32&quot; make
+    </pre>
+  </dd>
+</dl>
+<p class="Pp">Bear splits the value on whitespace, resolves the first token as
+    the compiler, and rewrites the variable so the build still sees the flags
+    (<span class="Li">CC=&lt;wrapper_path&gt; -std=c11</span>).</p>
+<p class="Pp">This convention is a Unix / GNU Make inheritance; it applies when
+    <span class="Li">bear -- make</span> runs under sh/bash (including MSYS2,
+    Git Bash, WSL on Windows), not under native Windows build systems (MSBuild,
+    <span class="Li">nmake</span>, <span class="Li">cmd</span>, PowerShell),
+    which do not consume <span class="Li">CC</span>/<span class="Li">CXX</span>
+    from the environment.</p>
+<p class="Pp">For anything beyond simple whitespace-separated tokens (flags
+    containing spaces, shell quoting, metacharacters, command substitutions),
+    use <span class="Li">CFLAGS</span>, <span class="Li">CXXFLAGS</span>, or
+    <span class="Li">LDFLAGS</span> instead of packing it into
+    <span class="Li">CC</span>. Those variables are the portable channel for
+    compilation flags and every build system expects them. Bear does not parse
+    or rewrite them; they reach the compiler untouched.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Vala_Projects"><a class="permalink" href="#Vala_Projects">Vala
+  Projects</a></h2>
+<p class="Pp">Bear records <span class="Li">valac</span> invocations, producing
+    one entry per <span class="Li">valac</span> invocation (valac compiles all
+    of a target&#x2019;s
+    <span class="Li">.vala</span>/<span class="Li">.gs</span> sources together
+    as one translation unit, so the entry&#x2019;s <span class="Li">file</span>
+    is the first source and every source is kept in the command). Two things are
+    worth knowing:</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>vala-language-server might require the command-string form.</b> It
+      reads the <span class="Li">command</span> field and ignores the
+      <span class="Li">arguments</span> array, so build the database with the
+      array format disabled:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>
+    <pre>format<b>:</b>
+<br/>
+  entries<b>:</b>
+<br/>
+    use_array_format<b>:</b> false
+    </pre>
+  </dd>
+</dl>
+</div>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>Mixed C and Vala projects.</b> <span class="Li">valac</span> transpiles
+      to C and then invokes a C compiler on the generated C, so the database
+      also contains entries for that generated C. A C language server such as
+      clangd indexes every entry and will emit unknown-argument noise on the
+      <span class="Li">valac</span> entries. Exclude the Vala sources on the
+      clangd side with a <span class="Li">.clangd</span> file:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>
+    <pre>If<b>:</b>
+<br/>
+  PathMatch<b>:</b> .*\.vala
+Diagnostics<b>:</b>
+<br/>
+  Suppress<b>:</b> '*'
+    </pre>
+  </dd>
+</dl>
+</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Getting_Help"><a class="permalink" href="#Getting_Help">Getting
+  Help</a></h2>
+<p class="Pp">There could be many reasons for any of these failures. When
+    seeking help:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Always include debug logs</b> (<span class="Li">RUST_LOG=debug</span>)
+      in your report</dd>
+  <dt>2.</dt>
+  <dd>Consult the project wiki page for known problems</dd>
+  <dt>3.</dt>
+  <dd>Search existing issues before opening a new bug report</dd>
+  <dt>4.</dt>
+  <dd>Follow the bug report template, provide the requested fields</dd>
+</dl>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COPYRIGHT"><a class="permalink" href="#COPYRIGHT">COPYRIGHT</a></h1>
+<p class="Pp">Copyright (C) 2012-2026 by L&#x00E1;szl&#x00F3; Nagy
+    <a class="Lk" href="https://github.com/rizsotto/Bear">https://github.com/rizsotto/Bear</a></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp">L&#x00E1;szl&#x00F3; Nagy.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">July 3, 2026</td>
+    <td class="foot-os">Bear User Manuals</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

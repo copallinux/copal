@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hangman(6) · Copal Linux</title>
+<meta name="description" content="hangman – computer version of the game hangman">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-hangman">hangman in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">bsd-games 3.3-r2 — man6/hangman.6.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">HANGMAN(6)</td>
+    <td class="head-vol">Games Manual</td>
+    <td class="head-rtitle">HANGMAN(6)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><code class="Nm">hangman</code> &#x2014; <span class="Nd">computer
+    version of the game hangman</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">hangman</code></td>
+    <td>[<code class="Fl">-d</code> <var class="Ar">wordlist</var>]
+      [<code class="Fl">-m</code> <var class="Ar">minlen</var>]</td>
+  </tr>
+</table>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">In <code class="Nm">hangman</code>, the computer picks a word from
+    the on-line word list and you must try to guess it. The computer keeps track
+    of which letters have been guessed and how many wrong guesses you have made
+    on the screen in a graphic fashion.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<dl class="Bl-tag">
+  <dt id="d"><a class="permalink" href="#d"><code class="Fl">-d</code></a></dt>
+  <dd>Use the specified <var class="Ar">wordlist</var> instead of the default
+      one named below.</dd>
+  <dt id="m"><a class="permalink" href="#m"><code class="Fl">-m</code></a></dt>
+  <dd>Set the minimum word length to use. The default is 6 letters.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<dl class="Bl-tag Bl-compact">
+  <dt><span class="Pa">/usr/share/dict/words</span></dt>
+  <dd>On-line word list</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp"><span class="An">Ken Arnold</span></p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">May 31, 1993</td>
+    <td class="foot-os">Linux 6.18.52-0-lts</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

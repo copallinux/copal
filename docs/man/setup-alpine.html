@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>setup-alpine(8) · Copal Linux</title>
+<meta name="description" content="setup-alpine - Alpine Linux installation and configuration script">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-setup-alpine">setup-alpine in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">alpine-conf 3.22.0-r0 — man8/setup-alpine.8.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">SETUP-ALPINE(8)</td>
+    <td class="head-vol">System Manager's Manual</td>
+    <td class="head-rtitle">SETUP-ALPINE(8)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><b>setup-alpine</b> - Alpine Linux installation and configuration
+    script</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>setup-alpine</b> [-ahq] [-c <i>FILE</i> | -f <i>FILE</i>]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>setup-alpine</b> is the main system setup script for Alpine
+    Linux. It interactively walks through keyboard layout, hostname, networking,
+    timezone, package repository selection, user creation, SSH daemon
+    configuration, and disk installation.</p>
+<p class="Pp">The script sources a number of helper scripts from the same
+    package, each responsible for a specific subsystem.</p>
+<p class="Pp">If run over SSH (detected via <b>SSH_CONNECTION</b>), networking
+    is not restarted while configuring the hostname and interfaces so that the
+    remote connection is not disrupted.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp"><b>-a</b></p>
+<div class="Bd-indent">Create an Alpine Linux overlay archive without performing
+  a disk installation. Files are written to a temporary directory instead of the
+  live root.</div>
+<p class="Pp"><b>-c</b> <i>FILE</i></p>
+<div class="Bd-indent">Create an answer file template at <i>FILE</i> and exit
+  without making any changes. The generated file contains common variables with
+  descriptive comments.</div>
+<p class="Pp"><b>-e</b></p>
+<div class="Bd-indent">Set an empty root password (skip password prompting).
+  Implied by <b>-q</b>.</div>
+<p class="Pp"><b>-f</b> <i>FILE</i></p>
+<div class="Bd-indent">Use the answer file <i>FILE</i> for a non-interactive
+  installation. <i>FILE</i> can also be an HTTP, HTTPS, or FTP URL - the script
+  downloads it and sets up temporary networking if needed.</div>
+<p class="Pp"><b>-h</b></p>
+<div class="Bd-indent">Display usage information and exit.</div>
+<p class="Pp"><b>-q</b></p>
+<div class="Bd-indent">Quick mode. Sets the hostname to &quot;alpine&quot;,
+  configures the first CDN mirror (see <b>setup-apkrepos</b>(8)), and skips
+  timezone, proxy, NTP, user, SSH daemon, disk installation, and overlay backup
+  configuration. Implies <b>-e</b>.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ANSWER_FILE"><a class="permalink" href="#ANSWER_FILE">ANSWER
+  FILE</a></h1>
+<p class="Pp">When <b>-c</b> is used, <b>setup-alpine</b> writes a template
+    answer file. A populated answer file passed with <b>-f</b> is sourced as a
+    shell script. The following variables are recognized:</p>
+<p class="Pp"><b>KEYMAPOPTS</b></p>
+<div class="Bd-indent">Arguments for <b>setup-keymap</b>(8). The value
+  &quot;none&quot; skips keymap configuration.</div>
+<p class="Pp"><b>HOSTNAMEOPTS</b></p>
+<div class="Bd-indent">Hostname argument for <b>setup-hostname</b>(8).</div>
+<p class="Pp"><b>DEVDOPTS</b></p>
+<div class="Bd-indent">Device manager to configure via
+  <b>setup-devd</b>(8).</div>
+<p class="Pp"><b>INTERFACESOPTS</b></p>
+<div class="Bd-indent">Contents of <i>/etc/network/interfaces</i>. If set to
+  &quot;none&quot;, networking is left unconfigured.</div>
+<p class="Pp"><b>WIFIOPTS</b></p>
+<div class="Bd-indent">Path to a <b>wpa_supplicant.conf</b>(5) file passed to
+  <b>setup-interfaces</b>(8).</div>
+<p class="Pp"><b>DNSOPTS</b></p>
+<div class="Bd-indent">Arguments for <b>setup-dns</b>(8).</div>
+<p class="Pp"><b>TIMEZONEOPTS</b></p>
+<div class="Bd-indent">Timezone argument for <b>setup-timezone</b>(8). The value
+  &quot;none&quot; skips timezone configuration.</div>
+<p class="Pp"><b>PROXYOPTS</b></p>
+<div class="Bd-indent">Proxy URL for <b>setup-proxy</b>(8). The value
+  &quot;none&quot; skips proxy configuration.</div>
+<p class="Pp"><b>APKREPOSOPTS</b></p>
+<div class="Bd-indent">Arguments for <b>setup-apkrepos</b>(8) (e.g. <b>-1</b>
+  for the CDN mirror).</div>
+<p class="Pp"><b>USEROPTS</b></p>
+<div class="Bd-indent">Arguments for <b>setup-user</b>(8). If unset, a default
+  interactive user setup is performed.</div>
+<p class="Pp"><b>USERSSHKEY</b></p>
+<div class="Bd-indent">SSH public key or URL for the user, passed with <b>-k</b>
+  to <b>setup-user</b>(8).</div>
+<p class="Pp"><b>SSHDOPTS</b></p>
+<div class="Bd-indent">SSH daemon argument for <b>setup-sshd</b>(8).</div>
+<p class="Pp"><b>ROOTSSHKEY</b></p>
+<div class="Bd-indent">SSH public key or URL for root, passed with <b>-k</b> to
+  <b>setup-sshd</b>(8).</div>
+<p class="Pp"><b>NTPOPTS</b></p>
+<div class="Bd-indent">NTP client argument for <b>setup-ntp</b>(8). The value
+  &quot;none&quot; skips NTP configuration.</div>
+<p class="Pp"><b>DISKOPTS</b></p>
+<div class="Bd-indent">Disk installation arguments for <b>setup-disk</b>(8). The
+  value &quot;none&quot; skips disk installation.</div>
+<p class="Pp"><b>LBUOPTS</b></p>
+<div class="Bd-indent">Local backup medium argument for <b>setup-lbu</b>(8). The
+  value &quot;none&quot; skips lbu configuration.</div>
+<p class="Pp"><b>APKCACHEOPTS</b></p>
+<div class="Bd-indent">APK cache directory argument for
+  <b>setup-apkcache</b>(8). The value &quot;none&quot; skips cache
+  configuration.</div>
+<p class="Pp"><b>XENDOM0OPTS</b></p>
+<div class="Bd-indent">Arguments for <b>setup-xen-dom0</b>(8) (only applicable
+  in Xen Dom0 environments).</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXIT_STATUS"><a class="permalink" href="#EXIT_STATUS">EXIT
+  STATUS</a></h1>
+<p class="Pp">0</p>
+<div class="Bd-indent">Success.</div>
+<p class="Pp">non-zero</p>
+<div class="Bd-indent">An error occurred.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<p class="Pp"><i>/etc/network/interfaces</i></p>
+<div class="Bd-indent">Network interface configuration written by
+  <b>setup-interfaces</b>(8).</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>lbu</b>(8), <b>setup-apkcache</b>(8), <b>setup-apkrepos</b>(8),
+    <b>setup-devd</b>(8), <b>setup-disk</b>(8), <b>setup-dns</b>(8),
+    <b>setup-hostname</b>(8), <b>setup-interfaces</b>(8),
+    <b>setup-keymap</b>(8), <b>setup-lbu</b>(8), <b>setup-ntp</b>(8),
+    <b>setup-proxy</b>(8), <b>setup-sshd</b>(8), <b>setup-timezone</b>(8),
+    <b>setup-user</b>(8), <b>setup-xen-dom0</b>(8)</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp">Natanael Copa &lt;<i>ncopa@alpinelinux.org</i>&gt; and others</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-06-09</td>
+    <td class="foot-os">Alpine Linux</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

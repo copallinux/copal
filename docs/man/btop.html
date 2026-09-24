@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>btop(1) · Copal Linux</title>
+<meta name="description" content="btop - Resource monitor that shows usage and stats for processor, memory, disks, network, and processes.">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-btop">btop in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">btop 1.4.6-r0 — man1/btop.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">btop(1)</td>
+    <td class="head-vol">User Commands</td>
+    <td class="head-rtitle">btop(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">btop - Resource monitor that shows usage and stats for processor,
+    memory, disks, network, and processes.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>btop</b> [<b>-c</b> <i>file</i>] [<b>-d</b>] [<b>-f</b>
+    <i>filter</i>] [<b>-l</b>] [<b>-p</b> <i>id</i>] [<b>-t</b>] [<b>-u</b>
+    <i>ms</i>] [<b>--force-utf</b>] [<b>--themes-dir</b> <i>dir</i>]</p>
+<p class="Pp"><b>btop</b> [<b>--default-config</b> | {<b>-h</b> | <b>--help</b>}
+    | {<b>-V</b> | <b>--version</b>}]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>btop</b> is a program that shows usage and stats for processor,
+    memory, disks, network, and processes.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp">The program follows the usual GNU command line syntax, with long
+    options starting with two dashes (&#x2018;-&#x2019;). A summary of options
+    is included below.</p>
+<dl class="Bl-tag">
+  <dt id="c"><a class="permalink" href="#c"><b>-c</b>, <b>--config
+    </b><b><i>file</i></b><b></b></a></dt>
+  <dd>Path to a config file.</dd>
+  <dt id="d"><a class="permalink" href="#d"><b>-d</b>, <b>--debug</b></a></dt>
+  <dd>Start in debug mode with additional logs and metrics.</dd>
+  <dt id="f"><a class="permalink" href="#f"><b>-f</b>, <b>--filter
+    </b><b><i>filter</i></b><b></b></a></dt>
+  <dd>Set an initial process filter.</dd>
+  <dt id="force_utf"><a class="permalink" href="#force_utf"><b>--force-utf</b></a></dt>
+  <dd>Force start even if no UTF-8 locale was detected.</dd>
+  <dt id="l"><a class="permalink" href="#l"><b>-l</b>,
+    <b>--low-color</b></a></dt>
+  <dd>Disable true color, 256 colors only.</dd>
+  <dt id="p"><a class="permalink" href="#p"><b>-p</b>, <b>--preset
+    </b><b><i>id</i></b><b></b></a></dt>
+  <dd>Start with a preset (0-9).</dd>
+  <dt id="t"><a class="permalink" href="#t"><b>-t</b>, <b>--tty</b></a></dt>
+  <dd>Force tty mode with ANSI graph symbols and 16 colors only.</dd>
+  <dt id="no_tty"><a class="permalink" href="#no_tty"><b>--no-tty</b></a></dt>
+  <dd>Force disable tty mode.</dd>
+  <dt id="themes_dir"><a class="permalink" href="#themes_dir"><b>--themes-dir
+    </b><b><i>dir</i></b><b></b></a></dt>
+  <dd>Path to a custom themes directory. When specified, this directory takes
+      priority over the default theme search paths.</dd>
+  <dt id="u"><a class="permalink" href="#u"><b>-u</b>, <b>--update
+    </b><b><i>ms</i></b><b></b></a></dt>
+  <dd>Set an initial update rate in milliseconds.</dd>
+  <dt id="default_config"><a class="permalink" href="#default_config"><b>--default-config</b></a></dt>
+  <dd>Print default config to standard output.</dd>
+  <dt id="h"><a class="permalink" href="#h"><b>-h</b>, <b>--help</b></a></dt>
+  <dd>Show summary of options.</dd>
+  <dt id="V"><a class="permalink" href="#V"><b>-V</b>, <b>--version</b></a></dt>
+  <dd>Show version of program.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="BUGS"><a class="permalink" href="#BUGS">BUGS</a></h1>
+<p class="Pp">The upstream bug tracker can be found at
+    <a class="Lk" href="https://github.com/aristocratos/btop/issues">https://github.com/aristocratos/btop/issues</a>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>top</b>(1), <b>htop</b>(1)</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHOR"><a class="permalink" href="#AUTHOR">AUTHOR</a></h1>
+<p class="Pp"><b>btop</b> was written by Jakob P. Liljenberg a.k.a.
+    &#x201C;Aristocratos&#x201D;.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2025-05-01</td>
+    <td class="foot-os"></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hyprctl(1) · Copal Linux</title>
+<meta name="description" content="hyprctl - Utility for controlling parts of Hyprland from a CLI or a script">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-hyprctl">hyprctl in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">hyprland 0.54.3-r0 — man1/hyprctl.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">hyprctl(1)</td>
+    <td class="head-vol">hyprctl User Manual</td>
+    <td class="head-rtitle">hyprctl(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">hyprctl - Utility for controlling parts of Hyprland from a CLI or
+    a script</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>hyprctl</b> [<i>(opt)flags</i>] [<b>command</b>]
+    [<i>(opt)args</i>]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>hyprctl</b> is a utility for controlling some parts of the
+    compositor from a CLI or a script.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CONTROL_COMMANDS"><a class="permalink" href="#CONTROL_COMMANDS">CONTROL
+  COMMANDS</a></h1>
+<p class="Pp"><b>dispatch</b></p>
+<div class="Bd-indent">
+<p class="Pp">Call a dispatcher with an argument.</p>
+<p class="Pp">An argument must be present. For dispatchers without parameters it
+    can be anything.</p>
+<p class="Pp">Returns: <i>ok</i> on success, and an error message on
+  failure.</p>
+<dl class="Bl-tag">
+  <dt id="Examples:"><a class="permalink" href="#Examples:">Examples:</a></dt>
+  <dd><b>hyprctl</b> <i>dispatch exec kitty</i></dd>
+</dl>
+<div class="Bd-indent">
+<p class="Pp"><b>hyprctl</b> <i>dispatch pseudo x</i></p>
+</div>
+</div>
+<p class="Pp"><b>keyword</b></p>
+<div class="Bd-indent">
+<p class="Pp">Set a config keyword dynamically.</p>
+<p class="Pp">Returns: <i>ok</i> on success, and an error message on
+  failure.</p>
+<dl class="Bl-tag">
+  <dt id="Examples:~2"><a class="permalink" href="#Examples:~2">Examples:</a></dt>
+  <dd><b>hyprctl</b> <i>keyword bind SUPER,0,pseudo</i></dd>
+</dl>
+<div class="Bd-indent">
+<p class="Pp"><b>hyprctl</b> <i>keyword general:border_size 10</i></p>
+</div>
+</div>
+<p class="Pp"><b>reload</b></p>
+<div class="Bd-indent">
+<p class="Pp">Force a reload of the config file.</p>
+</div>
+<p class="Pp"><b>kill</b></p>
+<div class="Bd-indent">
+<p class="Pp">Enter kill mode, where you can kill an app by clicking on it. You
+    can exit by pressing ESCAPE.</p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="INFO_COMMANDS"><a class="permalink" href="#INFO_COMMANDS">INFO
+  COMMANDS</a></h1>
+<p class="Pp"><b>version</b></p>
+<div class="Bd-indent">
+<p class="Pp">Prints the Hyprland version, flags, commit and branch of
+  build.</p>
+</div>
+<p class="Pp"><b>monitors</b></p>
+<div class="Bd-indent">
+<p class="Pp">Lists all the outputs with their properties.</p>
+</div>
+<p class="Pp"><b>workspaces</b></p>
+<div class="Bd-indent">
+<p class="Pp">Lists all workspaces with their properties.</p>
+</div>
+<p class="Pp"><b>clients</b></p>
+<div class="Bd-indent">
+<p class="Pp">Lists all windows with their properties.</p>
+</div>
+<p class="Pp"><b>devices</b></p>
+<div class="Bd-indent">
+<p class="Pp">Lists all connected input devices.</p>
+</div>
+<p class="Pp"><b>activewindow</b></p>
+<div class="Bd-indent">
+<p class="Pp">Returns the active window name.</p>
+</div>
+<p class="Pp"><b>layers</b></p>
+<div class="Bd-indent">
+<p class="Pp">Lists all the layers.</p>
+</div>
+<p class="Pp"><b>splash</b></p>
+<div class="Bd-indent">
+<p class="Pp">Returns the current random splash.</p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp"><b>--batch</b></p>
+<div class="Bd-indent">
+<p class="Pp">Specify a batch of commands to execute.</p>
+<dl class="Bl-tag">
+  <dt id="Example:"><a class="permalink" href="#Example:">Example:</a></dt>
+  <dd><b>hyprctl</b> <i>--batch &quot;keyword general:border_size 2 ;</i>
+      <i>keyword general:gaps_out 20&quot;</i></dd>
+</dl>
+<div class="Bd-indent">
+<p class="Pp"><i>;</i> separates the commands.</p>
+</div>
+</div>
+<p class="Pp"><b>-j</b></p>
+<div class="Bd-indent">
+<p class="Pp">Outputs information in JSON.</p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="BUGS"><a class="permalink" href="#BUGS">BUGS</a></h1>
+<dl class="Bl-tag">
+  <dt id="Submit"><a class="permalink" href="#Submit">Submit bug reports and
+    request features online at:</a></dt>
+  <dd>&lt;<i>https://github.com/hyprwm/Hyprland/issues</i>&gt;</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp">Sources at: &lt;<i>https://github.com/hyprwm/Hyprland</i>&gt;</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COPYRIGHT"><a class="permalink" href="#COPYRIGHT">COPYRIGHT</a></h1>
+<p class="Pp">Copyright (c) 2022, vaxerski</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp">Vaxerski &lt;<i>https://github.com/vaxerski</i>&gt;.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date"></td>
+    <td class="foot-os"></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

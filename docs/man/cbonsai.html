@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cbonsai(6) · Copal Linux</title>
+<meta name="description" content="cbonsai - grow bonsai trees in your terminal">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-cbonsai">cbonsai in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">cbonsai 1.4.2-r0 — man6/cbonsai.6.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">cbonsai(6)</td>
+    <td class="head-vol">Games Manual</td>
+    <td class="head-rtitle">cbonsai(6)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">cbonsai - grow bonsai trees in your terminal</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">cbonsai [OPTION]...</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">cbonsai is a beautifully random bonsai tree generator.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp"><b>-l</b>, <b>--live</b></p>
+<div class="Bd-indent">live mode: show each step of growth</div>
+<p class="Pp"><b>-t</b>, <b>--time</b>=<i>TIME</i></p>
+<div class="Bd-indent">in live mode, wait TIME secs between steps of growth
+  (must be larger than 0) [default: 0.03]</div>
+<p class="Pp"><b>-i</b>, <b>--infinite</b></p>
+<div class="Bd-indent">infinite mode: keep growing trees</div>
+<p class="Pp"><b>-w</b>, <b>--wait</b>=<i>TIME</i></p>
+<div class="Bd-indent">in infinite mode, wait TIME between each tree generation
+  [default: 4.00]</div>
+<p class="Pp"><b>-S</b>, <b>--screensaver</b></p>
+<div class="Bd-indent">screensaver mode; equivalent to -liWC and quit on any
+  keypress</div>
+<p class="Pp"><b>-m</b>, <b>--message</b>=<i>STR</i></p>
+<div class="Bd-indent">attach message next to the tree</div>
+<p class="Pp"><b>-b</b>, <b>--base</b>=<i>INT</i></p>
+<div class="Bd-indent">ascii-art plant base to use, 0 is none</div>
+<p class="Pp"><b>-c</b>, <b>--leaf</b>=<i>LIST</i></p>
+<div class="Bd-indent">list of comma-delimited strings randomly chosen for
+  leaves [default: &amp;]</div>
+<p class="Pp"><b>-k</b>, <b>--color</b>=<i>LIST</i></p>
+<div class="Bd-indent">list of 4 comma-delimited color indices (0-255) for each
+  of dark leaves, dark wood, light leaves, and light wood, in that order
+  [default: 2,3,10,11]</div>
+<p class="Pp"><b>-M</b>, <b>--multiplier</b>=<i>INT</i></p>
+<div class="Bd-indent">branch multiplier; higher -&gt; more branching (0-20)
+  [default: 5]</div>
+<p class="Pp"><b>-L</b>, <b>--life</b>=<i>INT</i></p>
+<div class="Bd-indent">life; higher -&gt; more growth (0-200) [default:
+  32]</div>
+<p class="Pp"><b>-p</b>, <b>--print</b></p>
+<div class="Bd-indent">print tree to terminal when finished</div>
+<p class="Pp"><b>-s</b>, <b>--seed</b>=<i>INT</i></p>
+<div class="Bd-indent">seed random number generator</div>
+<p class="Pp"><b>-W</b>, <b>--save</b>=<i>FILE</i></p>
+<div class="Bd-indent">save progress to file [default: ~/.cache/cbonsai]</div>
+<p class="Pp"><b>-C</b>, <b>--load</b>=<i>FILE</i></p>
+<div class="Bd-indent">load progress from file [default: ~/.cache/cbonsai]</div>
+<p class="Pp"><b>-v</b>, <b>--verbose</b></p>
+<div class="Bd-indent">increase output verbosity</div>
+<p class="Pp"><b>-h</b>, <b>--help</b></p>
+<div class="Bd-indent">show help</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp">Maintained by John Allbritten &lt;me@johnallbritten.com&gt;, who
+    is assisted by other open source contributors. For more information about
+    cbonsai development, see &lt;https://gitlab.com/jallbrit/cbonsai&gt;.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2025-08-03</td>
+    <td class="foot-os"></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

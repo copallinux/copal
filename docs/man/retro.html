@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>retro(1) · Copal Linux</title>
+<meta name="description" content="">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-retro">retro in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">retroforth 2025.08-r0 — man1/retro.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">RETRO(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">RETRO(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="RETRO"><a class="permalink" href="#RETRO">RETRO</a></h1>
+<p class="Pp"><code class="Nm">retro</code> &#x2014; <span class="Nd">a modern,
+    pragmatic forth development system</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">retro</code></td>
+    <td>[<code class="Fl">-h</code>] [<code class="Fl">-i</code>]
+      [<code class="Fl">-v</code>] [<code class="Fl">-t</code>
+      <var class="Ar">filename</var>] [<code class="Fl">-f</code>
+      <var class="Ar">filename</var>] [<code class="Fl">-p</code>
+      <var class="Ar">filename</var>] [<code class="Fl">-u</code>
+      <var class="Ar">filename</var>] [<code class="Fl">-r</code>
+      <var class="Ar">filename</var>] [<var class="Ar">filename</var>
+      <var class="Ar">script-args</var>]</td>
+  </tr>
+</table>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">RETRO is a modern, pragmatic Forth drawing influences from many
+    sources. It's clean, elegant, tiny, and easy to grasp and adapt to various
+    uses.</p>
+<p class="Pp"><code class="Nm">retro</code> is the main interface for
+    interacting with Retro. It provides both an interactive and a scripting
+    model.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<dl class="Bl-tag">
+  <dt id="h"><a class="permalink" href="#h"><code class="Fl">-h</code></a></dt>
+  <dd>Display a help screen.</dd>
+  <dt id="i"><a class="permalink" href="#i"><code class="Fl">-i</code></a></dt>
+  <dd>Start Retro in interactive mode.</dd>
+  <dt id="s"><a class="permalink" href="#s"><code class="Fl">-s</code></a></dt>
+  <dd>Start Retro in interactive mode and suppress the startup message.</dd>
+  <dt id="v"><a class="permalink" href="#v"><code class="Fl">-v</code></a></dt>
+  <dd>Run in verbose mode, showing debugging information. Verbose output is
+      written to /dev/stderr.</dd>
+  <dt id="t"><a class="permalink" href="#t"><code class="Fl">-t</code></a>
+    <var class="Ar">filename</var></dt>
+  <dd>Run any code and test blocks in the specified file.</dd>
+  <dt id="f"><a class="permalink" href="#f"><code class="Fl">-f</code></a>
+    <var class="Ar">filename</var></dt>
+  <dd>Run any code blocks in the specified file.</dd>
+  <dt id="p"><a class="permalink" href="#p"><code class="Fl">-p</code></a>
+    <var class="Ar">filename</var></dt>
+  <dd>Run the code in the specified file.</dd>
+  <dt id="u"><a class="permalink" href="#u"><code class="Fl">-u</code></a>
+    <var class="Ar">filename</var></dt>
+  <dd>Load and use the specified image file rather than the integral one.</dd>
+  <dt id="r"><a class="permalink" href="#r"><code class="Fl">-r</code></a>
+    <var class="Ar">filename</var></dt>
+  <dd>Load and run the code in the specified image file rather than the integral
+      one.</dd>
+  <dt>filename script-args</dt>
+  <dd>Run code blocks in a single file. Pass script-args to the code being
+    run.</dd>
+</dl>
+<p class="Pp">If invoked with no arguments, <code class="Nm">retro</code> will
+    run in interactive mode.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp"><span class="An">Charles Childers</span>
+    &lt;<a class="Mt" href="mailto:crc@forthworks.com">crc@forthworks.com</a>&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">October 2023</td>
+    <td class="foot-os">Linux 6.18.52-0-lts</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

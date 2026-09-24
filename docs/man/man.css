@@ -1,0 +1,16 @@
+/* A man page, as mandoc writes it, set in the site's type. */
+.man { max-width: var(--measure); }
+.man-src { font-size: .8rem; color: var(--ink-dim); }
+.man table.head, .man table.foot { width: 100%; font: .8rem "JetBrains Mono", monospace; color: var(--ink-dim); }
+.man .head-rtitle, .man .foot-os { text-align: right; }
+.man h1.Sh { font-size: 1rem; letter-spacing: .12em; margin: 2rem 0 .6rem; color: var(--gold); }
+.man h2.Ss { font-size: .95rem; margin: 1.4rem 0 .4rem; }
+.man a.permalink { color: inherit; text-decoration: none; }
+.man code, .man .Nm, .man .Fl, .man .Cm { font-family: "JetBrains Mono", monospace; font-size: .92em; }
+.man var, .man .Ar { font-style: italic; }
+.man dl.Bl-tag dt { font-family: "JetBrains Mono", monospace; margin-top: .6rem; }
+.man dl.Bl-tag dd { margin-left: 1.6rem; }
+.man pre, .man .Bd-literal { overflow-x: auto; background: var(--paper-deep); padding: .6rem .8rem; }
+.man table.Nm td { vertical-align: top; padding-right: .5rem; }
+/* The site boxes inline code; in a man page every flag is code, so no box. */
+.man code { border: 0; background: none; box-shadow: none; padding: 0; color: var(--ink-body); font-weight: 600; }

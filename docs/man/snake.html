@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>snake(6) · Copal Linux</title>
+<meta name="description" content="snake – display chase game">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-snake">snake in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">bsd-games 3.3-r2 — man6/snake.6.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">SNAKE(6)</td>
+    <td class="head-vol">Games Manual</td>
+    <td class="head-rtitle">SNAKE(6)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<p class="Pp"></p>
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><code class="Nm">snake</code> &#x2014; <span class="Nd">display
+    chase game</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">snake</code></td>
+    <td>[width height] [-s]
+    <br/>
+    </td>
+  </tr>
+</table>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><code class="Nm">snake</code> is a display-based game which must
+    be played on a CRT terminal. The object of the game is to make as much money
+    as possible without getting eaten by the snake. Two optional arguments allow
+    specifying the size of the playing field. By default the entire screen is
+    used. If the -s argument is passed, snake will print scores and exit.</p>
+<p class="Pp">You are represented on the screen by an @. The snake is
+    represented by s's with an S at its head. The money is $, and an exit is #.
+    Your score is posted in the upper left hand corner.</p>
+<p class="Pp">You can move around using the same conventions as
+    <span class="Xr">vi(1)</span>, the <code class="Ic">h</code>,
+    <code class="Ic">j</code>, <code class="Ic">k</code>, and
+    <code class="Ic">l</code> keys work, as do the arrow keys.
+  <br/>
+  This lets you quit the game at any time.
+  <br/>
+  Space warp to get out of tight squeezes, at a price.</p>
+<p class="Pp">To earn money, move to the same square the money is on. A new $
+    will appear when you earn the current one. As you get richer, the snake gets
+    hungrier. To leave the game, move to the exit (#).</p>
+<p class="Pp">A record is kept of the personal best score of each player. Scores
+    are only counted if you leave at the exit, getting eaten by the snake is
+    worth nothing.</p>
+<p class="Pp">As in pinball, matching the last digit of your score to the number
+    which appears after the game is worth a bonus.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<p class="Pp">database of personal bests</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="BUGS"><a class="permalink" href="#BUGS">BUGS</a></h1>
+<p class="Pp">When playing on a small screen, it's hard to tell when you hit the
+    edge of the screen.</p>
+<p class="Pp">The scoring function takes into account the size of the screen. A
+    perfect function to do this equitably has not been devised.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">May 31, 1993</td>
+    <td class="foot-os">Linux 6.18.52-0-lts</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

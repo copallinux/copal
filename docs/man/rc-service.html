@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rc-service(8) · Copal Linux</title>
+<meta name="description" content="rc-service – locate and run an OpenRC service with the given arguments">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-rc-service">rc-service in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">openrc 0.63.2-r0 — man8/rc-service.8.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">RC-SERVICE(8)</td>
+    <td class="head-vol">System Manager's Manual (smm)</td>
+    <td class="head-rtitle">RC-SERVICE(8)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><code class="Nm">rc-service</code> &#x2014;
+    <span class="Nd">locate and run an OpenRC service with the given
+    arguments</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-service</code></td>
+    <td>[<code class="Fl">-c</code>, <code class="Fl">--ifcrashed</code>]
+      <var class="Ar">service cmd</var> [<var class="Ar">...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-service</code></td>
+    <td><code class="Fl">-d</code>, <code class="Fl">--debug</code>
+      <var class="Ar">service cmd</var> [<var class="Ar">...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-service</code></td>
+    <td><code class="Fl">-D</code>, <code class="Fl">--nodeps</code>
+      <var class="Ar">service cmd</var> [<var class="Ar">...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-service</code></td>
+    <td>[<code class="Fl">-i</code>, <code class="Fl">--ifexists</code>]
+      <var class="Ar">service cmd</var> [<var class="Ar">...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-service</code></td>
+    <td>[<code class="Fl">-I</code>, <code class="Fl">--ifinactive</code>]
+      <var class="Ar">service cmd</var> [<var class="Ar">...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-service</code></td>
+    <td>[<code class="Fl">-N</code>, <code class="Fl">--ifnotstarted</code>]
+      <var class="Ar">service cmd</var> [<var class="Ar">...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-service</code></td>
+    <td>[<code class="Fl">-s</code>, <code class="Fl">--ifstarted</code>]
+      <var class="Ar">service cmd</var> [<var class="Ar">...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-service</code></td>
+    <td>[<code class="Fl">-S</code>, <code class="Fl">--ifstopped</code>]
+      <var class="Ar">service cmd</var> [<var class="Ar">...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-service</code></td>
+    <td><code class="Fl">-e</code>, <code class="Fl">--exists</code>
+      <var class="Ar">service</var></td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-service</code></td>
+    <td><code class="Fl">-Z</code>, <code class="Fl">--dry-run</code>
+      <var class="Ar">service cmd</var> [<var class="Ar">...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-service</code></td>
+    <td><code class="Fl">-l</code>, <code class="Fl">--list</code></td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-service</code></td>
+    <td><code class="Fl">-r</code>, <code class="Fl">--resolve</code>
+      <var class="Ar">service</var></td>
+  </tr>
+</table>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Service scripts could be in different places on different systems.
+    <code class="Nm">rc-service</code> locates the specified service and runs it
+    with the given arguments. If <code class="Fl">-i</code>,
+    <code class="Fl">--ifexists</code> is given then
+    <code class="Nm">rc-service</code> returns 0 even if the service does not
+    exist. If <code class="Fl">-I</code>, <code class="Fl">--ifinactive</code>
+    or <code class="Fl">-N</code>, <code class="Fl">--ifnotstarted</code> is
+    given then <code class="Nm">rc-service</code> returns 0 if the service
+    exists but is in the wrong state.</p>
+<p class="Pp">If given the <code class="Fl">-l</code>,
+    <code class="Fl">--list</code> argument then
+    <code class="Nm">rc-service</code> will list all available services.</p>
+<p class="Pp"><code class="Fl">-e</code>, <code class="Fl">--exists</code>
+    return 0 if it can find <var class="Ar">service</var>, otherwise -1.
+    <code class="Fl">-r</code>, <code class="Fl">--resolve</code> does the same
+    and also prints the full path of the service to stdout.</p>
+<p class="Pp"><code class="Fl">-d</code>, <code class="Fl">--debug</code> sets
+    -x when running the service script(s).</p>
+<p class="Pp"><code class="Fl">-D</code>, <code class="Fl">--nodeps</code>
+    ignores dependencies when running the service.</p>
+<p class="Pp"><code class="Fl">-Z</code>, <code class="Fl">--dry-run</code>
+    displays commands rather than executing them.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><a class="Xr" href="openrc.html">openrc(8)</a>,
+    <span class="Xr">stdout(3)</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp"><span class="An">Roy Marples &lt;roy@marples.name&gt;</span></p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">May 1, 2009</td>
+    <td class="foot-os">OpenRC</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

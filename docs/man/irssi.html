@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>irssi(1) · Copal Linux</title>
+<meta name="description" content="Irssi - a modular IRC client for UNIX">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-irssi">irssi in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">irssi 1.4.5-r7 — man1/irssi.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">Irssi(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">Irssi(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">Irssi - a modular IRC client for UNIX</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>irssi</b> [--config=PATH] [--home=PATH] [-dv!?] [-c server] [-p
+    port] [-n nickname] [-w password] [-h hostname]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>Irssi</b> is a modular Internet Relay Chat client; it is highly
+    extensible and very secure. Being a fullscreen, termcap based client with
+    many features, <b>Irssi</b> is easily extensible through scripts and
+    modules.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<dl class="Bl-tag">
+  <dt id="config="><a class="permalink" href="#config="><b>--config=</b><i>FILE</i></a></dt>
+  <dd>use <i>FILE</i> instead of ~/.irssi/config</dd>
+  <dt id="home="><a class="permalink" href="#home="><b>--home=</b><i>PATH</i></a></dt>
+  <dd><i>PATH</i> specifies the home directory of Irssi; default is
+      <b>~/.irssi</b></dd>
+  <dt id="c,"><a class="permalink" href="#c,"><b>-c,
+    --connect=</b><i>SERVER</i></a></dt>
+  <dd>connect to <i>SERVER</i></dd>
+  <dt id="w,"><a class="permalink" href="#w,"><b>-w,
+    --password=</b><i>PASSWORD</i></a></dt>
+  <dd>use <i>PASSWORD</i> for authentication.</dd>
+  <dt id="p,"><a class="permalink" href="#p,"><b>-p,
+    --port=</b><i>PORT</i></a></dt>
+  <dd>automatically connect to <i>PORT</i> on server.</dd>
+  <dt><b>-!, --noconnect</b></dt>
+  <dd>disable autoconnecting of servers</dd>
+  <dt id="n,"><a class="permalink" href="#n,"><b>-n,
+    --nick=</b><i>NICKNAME</i></a></dt>
+  <dd>specify <i>NICKNAME</i> as your nick</dd>
+  <dt id="h,"><a class="permalink" href="#h,"><b>-h,
+    --hostname=</b><i>HOSTNAME</i></a></dt>
+  <dd>use <i>HOSTNAME</i> for your irc session</dd>
+  <dt id="v,"><a class="permalink" href="#v,"><b>-v, --version</b></a></dt>
+  <dd>display the version of Irssi</dd>
+  <dt><b>-?, --help</b></dt>
+  <dd>show a help message</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>Irssi</b> has a solid amount of documentation available; check
+    /HELP or look online at https://irssi.org</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<dl class="Bl-tag">
+  <dt><i>~/.irssi/config</i></dt>
+  <dd>personal configuration file</dd>
+  <dt><i>~/.irssi/config.autosave</i></dt>
+  <dd>automatic save of the personal config file when it was changed
+    externally</dd>
+  <dt><i>~/.irssi/default.theme</i></dt>
+  <dd>default irssi theme</dd>
+  <dt><i>~/.irssi/away.log</i></dt>
+  <dd>logged messages in away status</dd>
+  <dt><i>~/.irssi/scripts/</i></dt>
+  <dd>default scripts directory</dd>
+  <dt><i>~/.irssi/scripts/autorun/</i></dt>
+  <dd>directory containing links to scripts that should be loaded automatically
+      on startup</dd>
+  <dt><i>~/.irssi/startup</i></dt>
+  <dd>file containing a list of commands to execute on startup</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS/CREDITS"><a class="permalink" href="#AUTHORS/CREDITS">AUTHORS/CREDITS</a></h1>
+<p class="Pp"><b>Irssi</b> was written by Timo Sirainen; this manpage was
+    written by Istvan Sebestyen, Stefan Tomanek, Geert Hauwaerts.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">June 2015</td>
+    <td class="foot-os">Irssi IRC client</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>moon-buggy(6) · Copal Linux</title>
+<meta name="description" content="moon-buggy - drive some car across the moon">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-moon-buggy">moon-buggy in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">moon-buggy 1.0.51-r1 — man6/moon-buggy.6.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">moon-buggy(6)</td>
+    <td class="head-vol">Games Manual</td>
+    <td class="head-rtitle">moon-buggy(6)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">moon-buggy - drive some car across the moon</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">moon-buggy [-hnsV] [--help] [--no-title] [--show-scores]
+    [--version]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>Moon-buggy</b> is a simple character graphics game, where you
+    drive some kind of car across the moon&#x00B4;s surface. Unfortunately there
+    are dangerous craters there. Fortunately your car can jump over them!</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp">The program understands the following command line options.</p>
+<dl class="Bl-tag">
+  <dt id="h"><a class="permalink" href="#h"><b>-h</b>, <b>--help</b></a></dt>
+  <dd>shows a short usage message.</dd>
+  <dt id="m"><a class="permalink" href="#m"><b>-m</b>, <b>--mesg</b></a></dt>
+  <dd>disable write access to your terminal by other users, so your boss
+      can&#x00B4;t disturb your game play with the help of &quot;write&quot; or
+      &quot;finger&quot;.</dd>
+  <dt id="n"><a class="permalink" href="#n"><b>-n</b>,
+    <b>--no-title</b></a></dt>
+  <dd>skips the title screen.</dd>
+  <dt id="s"><a class="permalink" href="#s"><b>-s</b>,
+    <b>--show-scores</b></a></dt>
+  <dd>shows the current highscore list and exits.</dd>
+  <dt id="V"><a class="permalink" href="#V"><b>-V</b>, <b>--version</b></a></dt>
+  <dd>prints the program&#x00B4;s version to standard output and exits.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="KEYS"><a class="permalink" href="#KEYS">KEYS</a></h1>
+<p class="Pp">The moon-buggy is controlled by a couple of keys, which are
+    described near the bottom of the screen. Most important are the following
+    keys.</p>
+<dl class="Bl-tag">
+  <dt id="SPC,"><a class="permalink" href="#SPC,">SPC, j</a></dt>
+  <dd>makes your car jump. The length of a jump is fixed and you can only start
+      a new jump, while the wheels have contact to the ground.</dd>
+  <dt id="a,"><a class="permalink" href="#a,">a, l</a></dt>
+  <dd>fires the mining laser. The laser is used to remove stones, which may
+      block your way.</dd>
+  <dt id="q"><a class="permalink" href="#q">q</a></dt>
+  <dd>quits the game prematurely. But you still keep your score and may enter
+      the highscore list.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<p class="Pp">The following files on your system are related to moon-buggy.</p>
+<dl class="Bl-tag">
+  <dt><i>/usr/bin/moon-buggy</i></dt>
+  <dd>the moon-buggy executable.</dd>
+  <dt><i>/var/games/moon-buggy/mbscore</i></dt>
+  <dd>the global score file</dd>
+  <dt><i>$HOME/.mbscore</i></dt>
+  <dd>the local score file. This is used, if <b>moon-buggy</b> has no write
+      access to the global score file.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>Moon-buggy Usage and Maintenance</b> by Jochen Voss.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COPYING"><a class="permalink" href="#COPYING">COPYING</a></h1>
+<p class="Pp">Copyright &#x00A9; 2004 Jochen Voss</p>
+<p class="Pp"><b>Moon-buggy</b> is free software. Read the file <i>COPYING</i>
+    of the source code distribution for details or press &#x00B4;c&#x00B4; at
+    <b>moon-buggy</b>&#x00B4;s title screen.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHOR"><a class="permalink" href="#AUTHOR">AUTHOR</a></h1>
+<p class="Pp">The program <b>moon-buggy</b> was implemented by Jochen Voss
+    (voss@seehuhn.de).</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Dec 27 2004</td>
+    <td class="foot-os">moon-buggy 1.0.51</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

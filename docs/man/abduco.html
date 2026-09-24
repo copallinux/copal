@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>abduco(1) · Copal Linux</title>
+<meta name="description" content="abduco - terminal session manager">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-abduco">abduco in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">abduco 0.6-r7 — man1/abduco.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ABDUCO(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">ABDUCO(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">abduco - terminal session manager</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>abduco</b> [<b>-e</b> <i>detachkey</i>] [<b>-r</b>] [<b>-f</b>]
+    -c name command [<i>args</i>&#x00A0;...<i></i>]
+  <br/>
+  <b>abduco</b> [<b>-e</b> <i>detachkey</i>] [<b>-r</b>] [<b>-f</b>] -n name
+    command [<i>args</i>&#x00A0;...<i></i>]
+  <br/>
+  <b>abduco</b> [<b>-e</b> <i>detachkey</i>] [<b>-r</b>] [<b>-f</b>] [<b>-l</b>]
+    -A name command [<i>args</i>&#x00A0;...<i></i>]
+  <br/>
+  <b>abduco</b> [<b>-e</b> <i>detachkey</i>] [<b>-r</b>] [<b>-l</b>] -a name</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>abduco</b> provides a way to disconnect a given application
+    from its controlling terminal, thus it provides roughly the same session
+    attach/detach support as <b>screen(1)</b>,<b> tmux(1)</b> or<b>
+    dtach(1)</b>.</p>
+<p class="Pp">If the <b>command</b> to execute is not specified, the environment
+    variable <b>$ABDUCO_CMD</b> is examined, if it is not set <b>dvtm(1)</b> is
+    executed.</p>
+<p class="Pp">All session related information is stored in the following
+    directories (first to succeed is used):</p>
+<div class="Bd-indent">
+<pre><b>$ABDUCO_SOCKET_DIR/abduco</b>
+<b>$HOME/.abduco</b>
+<b>$TMPDIR/abduco/$USER</b>
+<b>/tmp/abduco/$USER</b></pre>
+</div>
+<p class="Pp">However if a given session name represents either a relative or
+    absolute path it is used unmodified.</p>
+<p class="Pp">If for some reason the <b>unix(7)</b> domain socket representing a
+    session is deleted, sending <b>SIGUSR1</b> to the server process will
+    recreate it.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp">If no command line arguments are given all currently active
+    sessions are printed sorted by their respective creation date. Lines
+    starting with an asterik <b>*</b> indicate that at least one client is
+    connected. A plus sign <b>+</b> indicates that the command terminated while
+    no client was connected, attach to get its exit status.</p>
+<dl class="Bl-tag">
+  <dt id="v"><a class="permalink" href="#v"><b>-v</b></a></dt>
+  <dd>Print version information to standard output and exit.</dd>
+  <dt id="r"><a class="permalink" href="#r"><b>-r</b></a></dt>
+  <dd>Readonly session, i.e. user input is ignored.</dd>
+  <dt id="e"><a class="permalink" href="#e"><b>-e <i>detachkey</i></b></a></dt>
+  <dd>Set the key to detach which by default is set to CTRL+\ i.e. ^\ to
+      detachkey.</dd>
+  <dt id="f"><a class="permalink" href="#f"><b>-f</b></a></dt>
+  <dd>Force creation of session when there is an already terminated session of
+      the same name, after showing its exit status.</dd>
+  <dt id="c"><a class="permalink" href="#c"><b>-c</b></a></dt>
+  <dd>Create a new session and attach immediately to it.</dd>
+  <dt id="n"><a class="permalink" href="#n"><b>-n</b></a></dt>
+  <dd>Create a new session but do not attach to it.</dd>
+  <dt id="A"><a class="permalink" href="#A"><b>-A</b></a></dt>
+  <dd>Try to connect to an existing session, upon failure create said session
+      and attach immediately to it.</dd>
+  <dt id="a"><a class="permalink" href="#a"><b>-a</b></a></dt>
+  <dd>Attach to an existing session.</dd>
+  <dt id="l"><a class="permalink" href="#l"><b>-l</b></a></dt>
+  <dd>Attach with the lowest priority, meaning this client will be the last to
+      control the size.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXAMPLE"><a class="permalink" href="#EXAMPLE">EXAMPLE</a></h1>
+<p class="Pp">Start a new session (assuming <b>dvtm(1)</b> is in <b>$PATH</b>)
+    with</p>
+<pre>
+<b>abduco -c my-session</b>
+</pre>
+<p class="Pp">do some work, then detach by pressing <b>CTRL+\</b> and later
+    reattach with</p>
+<pre>
+<b>abduco -a my-session</b>
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHOR"><a class="permalink" href="#AUTHOR">AUTHOR</a></h1>
+<p class="Pp">abduco is written by Marc Andr&#x00E9; Tanner &lt;mat at
+    brain-dump.org&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">abduco-0.6</td>
+    <td class="foot-os"></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

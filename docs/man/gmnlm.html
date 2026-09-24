@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gmnlm(1) · Copal Linux</title>
+<meta name="description" content="gmnlm - Gemini line-mode browser">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-gmnlm">gmnlm in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">gmni 1.0-r3 — man1/gmnlm.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">gmnlm(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">gmnlm(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">gmnlm - Gemini line-mode browser</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNPOSIS"><a class="permalink" href="#SYNPOSIS">SYNPOSIS</a></h1>
+<p class="Pp"><b>gmnlm</b> [-PU] [-j <i>mode</i>] [-W <i>width</i>]
+    <i>gemini://...</i></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>gmnlm</b> is an interactive line-mode Gemini browser.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp"><b>-j</b> <i>mode</i></p>
+<div class="Bd-indent">Sets the TOFU (trust on first use) configuration, which
+  controls if the client shall trust new certificates. <i>mode</i> can be one of
+  <b>always</b>, <b>once</b>, or <b>fail</b>.</div>
+<p class="Pp"><b>-P</b></p>
+<div class="Bd-indent">Disable pagination.</div>
+<p class="Pp"><b>-U</b></p>
+<div class="Bd-indent">Disable conservative use of Unicode symbols to render
+  Gemini layout features.</div>
+<p class="Pp"><b>-W</b> <i>width</i></p>
+<div class="Bd-indent">Sets the maximum width, in columns, of Gemtext
+  pages.</div>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2024-10-12</td>
+    <td class="foot-os"></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,1159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>newsraft(1) · Copal Linux</title>
+<meta name="description" content="newsraft - feed reader for terminal">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-newsraft">newsraft in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">newsraft 0.37-r0 — man1/newsraft.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">NEWSRAFT(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">NEWSRAFT(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">newsraft - feed reader for terminal</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>newsraft</b> [<b>-f</b> <i>FILE1</i>] [<b>-c</b> <i>FILE2</i>]
+    [<b>-d</b> <i>FILE3</i>] [<b>-l</b> <i>FILE4</i>] [<b>-e</b> <i>ACTION</i>]
+    [<b>-v</b>] [<b>-h</b>]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Newsraft is a small text based program for reading syndication
+    feeds. It obtains content from a given set of sources and lets you browse it
+    all via one streamlined user interface.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp"><b>-f</b> <i>FILE</i></p>
+<div class="Bd-indent">Force <b>feeds</b> file to <i>FILE</i>.</div>
+<p class="Pp"><b>-c</b> <i>FILE</i></p>
+<div class="Bd-indent">Force <b>config</b> file to <i>FILE</i>.</div>
+<p class="Pp"><b>-d</b> <i>FILE</i></p>
+<div class="Bd-indent">Force <b>database</b> file to <i>FILE</i>.</div>
+<p class="Pp"><b>-l</b> <i>FILE</i></p>
+<div class="Bd-indent">Write logs to <i>FILE</i>.</div>
+<p class="Pp"><b>-e</b> <i>ACTION</i></p>
+<div class="Bd-indent">Execute one-time <i>ACTION</i> from the following list:
+<div class="Bd-indent"><b>convert-opml-to-feeds</b> (takes OPML from standard
+  input)
+<br/>
+<b>convert-feeds-to-opml</b> (takes feeds from <b>feeds</b> file)
+<br/>
+<b>reload-all</b>
+<br/>
+<b>print-unread-items-count</b>
+<br/>
+<b>purge-abandoned</b></div>
+</div>
+<p class="Pp"><b>-v</b></p>
+<div class="Bd-indent">Print version information.</div>
+<p class="Pp"><b>-h</b></p>
+<div class="Bd-indent">Print usage information.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="STARTER_GUIDE"><a class="permalink" href="#STARTER_GUIDE">STARTER
+  GUIDE</a></h1>
+<p class="Pp">To start using Newsraft you have to create a <b>feeds</b> file
+    with the list of links to feeds you want to receive news from. Check out
+    <b>FEEDS FILE</b> section for file syntax and valid paths.</p>
+<p class="Pp">When <b>feeds</b> file is ready, you can launch Newsraft. There
+    are only 4 menus you will have to deal with: <i>sections</i>, <i>feeds</i>,
+    <i>items</i> and <i>pager</i>. Default binds are listed in <b>ACTIONS</b>
+    section.</p>
+<p class="Pp"><i>Sections</i> menu consists of section entries which are needed
+    to organize feeds in groups to be able to process them in bulk. They are
+    kind of directories for feeds. If you didn't specify any section
+    declarations in your <b>feeds</b> file then you will get to the <i>feeds</i>
+    menu straightaway.</p>
+<p class="Pp"><i>Feeds</i> menu consists of feed entries. Every feed entry
+    contains news downloaded from one specific source which you have set in
+    <b>feeds</b> file. To update a single feed you have to select it and press
+    <b>r</b> or <b>R</b> if you want to update all feeds. From <i>feeds</i> menu
+    you can get to the <i>items</i> menu by entering some feed.</p>
+<p class="Pp"><i>Items</i> menu consists of feed item entries (i. e. single
+    pieces of news) which you get when you update feeds in the previous menu.
+    Every feed item entry has two switchable properties - read state and
+    importance state. Keys to change read state: <b>d</b> to mark read, <b>D</b>
+    to mark unread, <b>^D</b> to mark everything read. Keys to change importance
+    state: <b>f</b> to flag important, <b>F</b> to flag unimportant. To view
+    item's content you have to go to <i>pager</i> menu by entering selected
+    item.</p>
+<p class="Pp"><i>Pager</i> menu will display some details about selected item
+    and render its content if it was provided by feed. Usually feed item entries
+    have a links section with one link pointing to a related web page and
+    several links that were mentioned in the item's content. You can copy these
+    links into your clipboard with <b>y</b> key and open them in your web
+    browser with <b>o</b> key. To target a key action to link with a specific
+    index you have to prefix your key with this index. For example, <b>5y</b>
+    will copy fifth link and <b>17o</b> will open seventeenth link in the web
+    browser. You can also setup custom command bindings to execute any commands
+    with these links. Consider this <b>config</b> file:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><i>bind m exec mpv &quot;%l&quot;</i>
+<br/>
+<i>bind f exec feh &quot;%l&quot;</i></div>
+<p class="Pp">With this you will be able to open any link in <b>mpv</b>(1) and
+    <b>feh</b>(1) directly from your terminal! Isn't it awesome? It is freaking
+    amazing!</p>
+<p class="Pp">For both <i>sections</i> menu and <i>feeds</i> menu there is a
+    special explore mode. You can toggle it by pressing the <b>tab</b> key. It's
+    truly miraculous: it reveals all the news in the current context (combines
+    news from all feeds of the current menu into one list). This mode may come
+    in handy when you want to quickly scroll through all the news without
+    switching between sections and feeds back and forth.</p>
+<p class="Pp">And for a dessert, I'll tell you about the search functionality.
+    You can type <b>/</b> to begin search input - enter the desired query here
+    and press <b>Enter</b>. This will open up an <i>items</i> menu with all the
+    items matching your query in the current context.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CONFIGURATION"><a class="permalink" href="#CONFIGURATION">CONFIGURATION</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="FEEDS_FILE"><a class="permalink" href="#FEEDS_FILE">FEEDS
+  FILE</a></h2>
+<p class="Pp">This file contains feed entries that Newsraft will display and
+    process. There are 4 types of lines in <b>feeds</b> file.</p>
+<p class="Pp">Comment lines start with <i>#</i> character. These lines are
+    completely ignored. For example:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><i># Look closely. The beautiful may be small.</i></div>
+<p class="Pp">Feed lines start with a URL. After at least one whitespace
+    character, the name of the feed may be specified - it must be enclosed in
+    double quotes. For example:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><i>https://example.org/feed.xml &quot;Lorem Ipsum
+  Blog&quot;</i></div>
+<p class="Pp">Generator lines start with a command enclosed in <b>$()</b>. These
+    act just like feed lines but instead of fetching resources from a remote
+    server they use the output of the specified command to obtain the
+  content.</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><i>$(cat ~/local-feed.xml) &quot;Lorem Ipsum
+  Blog&quot;</i></div>
+<p class="Pp">Section lines start with <b>@</b> character. After any number of
+    whitespace characters, the name of the section must be specified. For
+    example:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><i>@ Software Releases</i></div>
+<p class="Pp">Both feed and section lines allow you to set individual settings
+    and binds for them. The syntax is as follows:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><i>@ Lorem Ipsum &lt; reload-period 1440</i>
+<br/>
+<i>http://example.org/feed1.xml &quot;Dolor Sit&quot; &lt; reload-period 60;
+  item-limit 500</i>
+<br/>
+<i>http://example.org/feed2.xml &quot;Id Est&quot; &lt; bind b mark-read; exec
+  book.sh &quot;%l&quot;</i></div>
+<p class="Pp">Settings set for feeds take precedence over the settings specified
+    for sections. Not every setting supports individual assignment - only
+    settings with asterisk <b>(*)</b> on them do (see <b>SETTINGS</b>
+  section).</p>
+<p class="Pp">Search precedence:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><i>$XDG_CONFIG_HOME</i>/newsraft/feeds</dd>
+  <dt>2.</dt>
+  <dd><i>$HOME</i>/.config/newsraft/feeds</dd>
+  <dt>3.</dt>
+  <dd><i>$HOME</i>/.newsraft/feeds</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="CONFIG_FILE"><a class="permalink" href="#CONFIG_FILE">CONFIG
+  FILE</a></h2>
+<p class="Pp">This file is used to override default settings and bindings of
+    Newsraft. Presence of <b>config</b> file is totally optional and Newsraft
+    will work without it just fine. There are 3 types of lines in <b>config</b>
+    file.</p>
+<p class="Pp">Comment lines start with <i>#</i> character. These lines are
+    completely ignored. For example:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><i># Good design is as little design as
+  possible.</i></div>
+<p class="Pp">Setting lines start with a setting name and end with a setting
+    value. Available settings are listed in the <b>SETTINGS</b> and <b>COLOR
+    SETTINGS</b> sections. Here are a couple of examples:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><b>scrolloff</b> <i>5000</i>
+<br/>
+<b>list-entry-date-format</b> <i>&quot;%D&quot;</i>
+<br/>
+<b>feeds-menu-paramount-explore</b> <i>true</i></div>
+<p class="Pp">Binding lines start with the <b>bind</b> word. They define actions
+    that are performed when certain keys are pressed. Complete list of available
+    actions can be found in the <b>ACTIONS</b> section. Here's an example:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><b>bind</b> r <i>reload-all</i></div>
+<p class="Pp">The special <i>exec</i> action makes it possible to run shell
+    commands when the bound key is pressed. Specifiers within the command are
+    replaced with values corresponding to the currently selected entry as per
+    <b>menu-item-entry-format</b>:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><b>bind</b> m <i>exec</i> w3m &quot;%l&quot;</div>
+<p class="Pp">There's also <b>exec-quiet</b>, which does the same but doesn't
+    update the UI. Useful with commands which are guaranteed not to take over
+    the terminal:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><b>bind</b> m <i>exec-quiet</i> setsid mpv --terminal=no
+  &quot;%l&quot; &amp;</div>
+<p class="Pp">The <i>edit</i> action runs a specified SQL query on the
+    <b>database</b>, so please be careful! <i>@selected</i> specifier is
+    replaced with a condition which identifies the currently selected entry -
+    make sure to include it if you want to target individual item/feed rather
+    than the whole database:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><b>bind</b> w <i>edit</i> UPDATE items SET user_data =
+  json_set(IFNULL(user_data, '{}'), '$.toWatch', 1) WHERE <i>@selected</i>
+<br/>
+<b>bind</b> W <i>edit</i> UPDATE items SET user_data =
+  json_set(IFNULL(user_data, '{}'), '$.toWatch', 0) WHERE <i>@selected</i></div>
+<p class="Pp">Use the <i>find</i> action to retrieve items based on a specified
+    SQL condition in the current context. For instance, to search for items
+    marked as toWatch (as shown in the previous example), one can use the
+    bindings like the following:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><b>bind</b> f <i>find</i> user_data LIKE
+  '%&quot;toWatch&quot;:1%'
+<br/>
+<b>bind</b> f <i>find</i> json_extract(user_data, '$.toWatch') = 1</div>
+<p class="Pp">Binding lines can fit multiple actions in a single key. These
+    actions will be executed in the order in which they are specified. Assigned
+    actions must be separated with semicolon (;) characters, for example:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><b>bind</b> key <i>action</i>; <i>exec</i> command;
+  <i>action</i>; <i>edit</i> query; <i>action</i></div>
+<p class="Pp">In case you want to disable some binding which was set in Newsraft
+    by default, you can use a line according to this format:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><b>unbind</b> key</div>
+<p class="Pp">Search precedence:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><i>$XDG_CONFIG_HOME</i>/newsraft/config</dd>
+  <dt>2.</dt>
+  <dd><i>$HOME</i>/.config/newsraft/config</dd>
+  <dt>3.</dt>
+  <dd><i>$HOME</i>/.newsraft/config</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="DATABASE_FILE"><a class="permalink" href="#DATABASE_FILE">DATABASE
+  FILE</a></h2>
+<p class="Pp">This file stores everything you download from feeds in
+    <b>sqlite3</b>(1) format. Although you now know the format in which the data
+    is stored, it is highly recommended to avoid modifying the database manually
+    - things will break and it will be very sad.</p>
+<p class="Pp">Search precedence:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><i>$XDG_DATA_HOME</i>/newsraft/newsraft.sqlite3</dd>
+  <dt>2.</dt>
+  <dd><i>$HOME</i>/.local/share/newsraft/newsraft.sqlite3</dd>
+  <dt>3.</dt>
+  <dd><i>$HOME</i>/.newsraft/newsraft.sqlite3</dd>
+</dl>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SETTINGS"><a class="permalink" href="#SETTINGS">SETTINGS</a></h1>
+<p class="Pp">Settings with asterisk <b>(*)</b> on them can be set for
+    individual feeds and sections.</p>
+<section class="Ss">
+<h2 class="Ss" id="reload"><a class="permalink" href="#reload">reload-period
+  (*)</a></h2>
+<p class="Pp">Default: <i>0</i>. Feed auto reload period in minutes. If set to
+    <i>0</i>, no auto reloads will be run.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="suppress"><a class="permalink" href="#suppress">suppress-errors
+  (*)</a></h2>
+<p class="Pp">Default: <i>false</i>. If <i>true</i>, feed update error
+    indication in the menu will be disabled. It's recommended to set this
+    setting only for specific feeds that are expected to fail frequently and you
+    are tired of seeing their errors.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">item-rule (*)</h2>
+<p class="Pp">Default: <i>&quot;&quot;</i>. Item search condition when accessing
+    database. This can be very useful in managing feeds with a heavy spam flow:
+    you set a condition based on some parameters and only those entries that
+    meet this condition will be shown in the feed. It's specified in SQL format.
+    It probably only makes sense to set this setting for individual feeds, and
+    not globally (see <b>FEEDS FILE</b> section to understand how).</p>
+<p class="Pp">Available parameters:</p>
+<table class="tbl">
+  <tr>
+    <td><i>guid</i></td>
+    <td>(string)</td>
+    <td>Globally unique identifier of the article which is expected to be unique
+      within the originating feed</td>
+  </tr>
+  <tr>
+    <td><i>title</i></td>
+    <td>(string)</td>
+    <td>Title of the article</td>
+  </tr>
+  <tr>
+    <td><i>link</i></td>
+    <td>(string)</td>
+    <td>URL of the article</td>
+  </tr>
+  <tr>
+    <td><i>content</i></td>
+    <td>(string)</td>
+    <td>Content of the article which is stored exactly as it appears in the
+      feed, with all original HTML preserved</td>
+  </tr>
+  <tr>
+    <td><i>attachments</i></td>
+    <td>(string)</td>
+    <td>Serialized string of all attachments with URL links, MIME types and byte
+      sizes</td>
+  </tr>
+  <tr>
+    <td><i>persons</i></td>
+    <td>(string)</td>
+    <td>Serialized string of all people related to the article with names and
+      email addresses</td>
+  </tr>
+  <tr>
+    <td><i>download_date</i></td>
+    <td>(integer)</td>
+    <td>Timestamp of download date in seconds since 1970</td>
+  </tr>
+  <tr>
+    <td><i>publication_date</i></td>
+    <td>(integer)</td>
+    <td>Timestamp of publication date in seconds since 1970</td>
+  </tr>
+  <tr>
+    <td><i>update_date</i></td>
+    <td>(integer)</td>
+    <td>Timestamp of update date in seconds since 1970</td>
+  </tr>
+  <tr>
+    <td><i>user_data</i></td>
+    <td>(string)</td>
+    <td>User-defined data for the item. It can be modified using the <b>edit</b>
+      action (see <b>CONFIG FILE</b> section)</td>
+  </tr>
+</table>
+<p class="Pp">Here are some examples of correct setting values:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><i>title NOT LIKE '%Rust%'</i>
+<br/>
+<i>persons LIKE '%PHARMACIST%' OR persons LIKE '%OFFL1NX%'</i>
+<br/>
+<i>attachments LIKE '%audio/mp3%' OR attachments LIKE '%video/mp4%'</i>
+<br/>
+<i>CAST(strftime('%Y', publication_date, 'unixepoch') AS INTEGER) &gt;= 2024</i>
+<br/>
+<i>NOT (title REGEXP '.+:.+\&quot;.+\&quot;.+by' OR title LIKE '%(ultra
+  slowed)%' OR title LIKE '%(1 hour version)%')</i></div>
+<p class="Pp">REGEXP operator uses POSIX Extended Regular Expression syntax, see
+    <b>regex</b>(7).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">item-limit (*)</h2>
+<p class="Pp">Default: <i>0</i>. Maximum number of items stored in a feed. If
+    set to <i>0</i>, no limit will be set.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">item-limit-unread (*)</h2>
+<p class="Pp">Default: <i>true</i>. If <i>true</i>, <b>item-limit</b> setting
+    will also cap unread items.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">item-limit-important (*)</h2>
+<p class="Pp">Default: <i>false</i>. If <i>true</i>, <b>item-limit</b> setting
+    will also cap important items.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="scrolloff"><a class="permalink" href="#scrolloff">scrolloff</a></h2>
+<p class="Pp">Default: <i>0</i>. Minimal number of list menu entries to keep
+    above and below the selected entry. If you set it to a very large value the
+    selected entry will always be in the middle of the list menu (except for
+    start and end of the list menu).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="scrollwrap"><a class="permalink" href="#scrollwrap">scrollwrap</a></h2>
+<p class="Pp">Default: <i>false</i>. If <i>true</i>, moving down while on the
+    last item in a list will wrap around to the top and vice versa.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">pager-width (*)</h2>
+<p class="Pp">Default: <i>100</i>. Pager width in characters. If set to
+    <i>0</i>, the pager will take up all available space.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">pager-centering (*)</h2>
+<p class="Pp">Default: <i>true</i>. If <i>true</i> and <b>pager-width</b> is not
+    <i>0</i>, pager will center its content horizontally.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">close-pager-on-toggle-read (*)</h2>
+<p class="Pp">Default: <i>false</i>. If <i>true</i>, pager will close on
+    <b>toggle-read</b> action.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">close-pager-on-toggle-important (*)</h2>
+<p class="Pp">Default: <i>false</i>. If <i>true</i>, pager will close on
+    <b>toggle-important</b> action.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="menu"><a class="permalink" href="#menu">menu-item-sorting</a></h2>
+<p class="Pp">Default: <i>time-desc</i>. Sorting order for the items menu.
+    Available values: <i>time-desc</i>, <i>time-asc</i>,
+    <i>time-download-desc</i>, <i>time-download-asc</i>,
+    <i>time-publication-desc</i>, <i>time-publication-asc</i>,
+    <i>time-update-desc</i>, <i>time-update-asc</i>, <i>rowid-desc</i>,
+    <i>rowid-asc</i>, <i>unread-desc</i>, <i>unread-asc</i>,
+    <i>important-desc</i>, <i>important-asc</i>, <i>alphabet-desc</i>,
+    <i>alphabet-asc</i>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="menu~2"><a class="permalink" href="#menu~2">menu-feed-sorting</a></h2>
+<p class="Pp">Default: <i>none</i>. Sorting order for the feeds menu. Available
+    values: <i>unread-desc</i>, <i>unread-asc</i>, <i>alphabet-desc</i>,
+    <i>alphabet-asc</i>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="menu~3"><a class="permalink" href="#menu~3">menu-section-sorting</a></h2>
+<p class="Pp">Default: <i>none</i>. Sorting order for the sections menu.
+    Available values: <i>unread-desc</i>, <i>unread-asc</i>,
+    <i>alphabet-desc</i>, <i>alphabet-asc</i>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="menu~4"><a class="permalink" href="#menu~4">menu-responsiveness</a></h2>
+<p class="Pp">Default: <i>true</i>. If <i>true</i>, update menu contents as soon
+    as possible. If <i>false</i>, the menu will be updated only when you re-open
+    it.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="open"><a class="permalink" href="#open">open-in-browser-command
+  (*)</a></h2>
+<p class="Pp">Default: <i>auto</i>. Shell command for <b>open-in-browser</b>
+    action. If set to <i>auto</i>, most operating systems will get
+    <i>${BROWSER:-xdg-open} &quot;%l&quot;</i> while macOS users have it set to
+    <i>open &quot;%l&quot;</i>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="copy"><a class="permalink" href="#copy">copy-to-clipboard-command</a></h2>
+<p class="Pp">Default: <i>auto</i>. Shell command for copying text to clipboard.
+    All copied data is piped into the standard input of the specified command.
+    If set to <i>auto</i>, Newsraft will determine the appropriate command based
+    on the user environment:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><i>&quot;wl-copy&quot;</i> if environment variable WAYLAND_DISPLAY is
+    set</li>
+  <li><i>&quot;xclip -selection clipboard&quot;</i> if environment variable
+      DISPLAY is set</li>
+  <li><i>&quot;pbcopy&quot;</i> if Newsraft was built for macOS operating
+    system</li>
+  <li><i>&quot;newsraft-osc-52&quot;</i> otherwise</li>
+</ul>
+<p class="Pp"><i>&quot;newsraft-osc-52&quot;</i> is a special value that doesn't
+    run an external command but instead triggers the OSC 52 escape sequence,
+    instructing the terminal to copy data directly to the system clipboard. This
+    behavior is especially useful when running Newsraft over <b>ssh</b>(1), as
+    it allows clipboard operations to affect the local system rather than the
+    remote one.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="notification"><a class="permalink" href="#notification">notification-command
+  (*)</a></h2>
+<p class="Pp">Default: <i>auto</i>. Shell command for invoking system
+    notifications about new news received. If set to <i>auto</i>, Newsraft will
+    determine the appropriate command based on the user environment:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><i>&quot;notify-send 'Newsraft brought %q news!'&quot;</i> if
+      WAYLAND_DISPLAY or DISPLAY is set in environment</li>
+  <li><i>&quot;osascript -e 'display notification &quot;Newsraft brought %q
+      news!&quot;'&quot;</i> if Newsraft was built for macOS operating
+    system</li>
+  <li><i>&quot;printf '\e]9;Newsraft brought %q news!\a'&quot;</i> (OSC 9 escape
+      sequence) otherwise</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="proxy_(*)"><a class="permalink" href="#proxy_(*)">proxy
+  (*)</a></h2>
+<p class="Pp">Default: <i>&quot;&quot;</i>. Sets the proxy to use for the
+    network requests. It must be either a hostname or dotted numerical IPv4
+    address. To specify IPv6 address you have to enclose it within square
+    brackets. Port number can be set by appending :PORT to the end of setting
+    value. By default proxy protocol is considered HTTP, but you can set a
+    different one by prepending SCHEME:// to the setting value.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">proxy-user (*)</h2>
+<p class="Pp">Default: <i>&quot;&quot;</i>. User for authentication with the
+    proxy server.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">proxy-password (*)</h2>
+<p class="Pp">Default: <i>&quot;&quot;</i>. Password for authentication with the
+    proxy server.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="global"><a class="permalink" href="#global">global-section-name</a></h2>
+<p class="Pp">Default: <i>Global</i>. Name of the section that contains all
+    feeds.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="global~2"><a class="permalink" href="#global~2">global-section-hide</a></h2>
+<p class="Pp">Default: <i>false</i>. If <i>true</i>, global section will not be
+    shown.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="status"><a class="permalink" href="#status">status-show-menu-path</a></h2>
+<p class="Pp">Default: <i>true</i>. If <i>true</i>, print menu path in the
+    status bar.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="status~2"><a class="permalink" href="#status~2">status-placeholder</a></h2>
+<p class="Pp">Default: <i>r:reload R:reload-all tab:explore d:read D:unread
+    f:important F:unimportant n:next-unread N:prev-unread p:next-important
+    P:prev-important</i>.</p>
+<p class="Pp">Placeholder which is put in the status bar if it's empty.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">item-content-format (*)</h2>
+<p class="Pp">Default:
+    <i>&lt;b&gt;Feed&lt;/b&gt;:&amp;nbsp;&amp;nbsp;%f&lt;br&gt;|&lt;b&gt;Title&lt;/b&gt;:&amp;nbsp;%t&lt;br&gt;|&lt;b&gt;Date&lt;/b&gt;:&amp;nbsp;&amp;nbsp;%d&lt;br&gt;|&lt;br&gt;%c&lt;br&gt;|&lt;br&gt;&lt;hr&gt;%L</i>.</p>
+<p class="Pp">Sets the HTML format according to which the item's content will be
+    generated. Fields are separated by <i>|</i> character and ONLY one specifier
+    can be placed in each field. If an item doesn't have a value corresponding
+    to the specifier in the field, then the entire field will not be shown.
+    Specifiers are as follows:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><i>f</i>	feed title if set, feed link otherwise;
+<br/>
+<i>t</i>	item title;
+<br/>
+<i>l</i>	item link;
+<br/>
+<i>d</i>	item date;
+<br/>
+<i>a</i>	item authors;
+<br/>
+<i>c</i>	item content;
+<br/>
+<i>L</i>	item links list.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss">item-content-date-format (*)</h2>
+<p class="Pp">Default: <i>%a, %d %b %Y %H:%M:%S %z</i>. Date format in the
+    item's content. Specifier values correspond to the <b>strftime</b>(3)
+    format.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">item-content-link-format (*)</h2>
+<p class="Pp">Default: <i>&lt;b&gt;[%i]&lt;/b&gt;:&amp;nbsp;%l&lt;br&gt;</i>.
+    Link format in the links list of item's content. <i>%i</i> and <i>%l</i>
+    will be replaced by link index and link address respectively.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="list"><a class="permalink" href="#list">list-entry-date-format</a></h2>
+<p class="Pp">Default: <i>%b %d</i>. Date format of the list entries. Specifier
+    values correspond to the <b>strftime</b>(3) format.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="menu~5"><a class="permalink" href="#menu~5">menu-section-entry-format</a></h2>
+<p class="Pp">Default: <i>%5.0u @ %t</i>. Format of the section list entries.
+    Specifiers are as follows:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><i>i</i>	index number;
+<br/>
+<i>u</i>	unread items count;
+<br/>
+<i>t</i>	section title.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="menu~6"><a class="permalink" href="#menu~6">menu-feed-entry-format</a></h2>
+<p class="Pp">Default: <i>%5.0u &#x2502; %t</i>. Format of the feed list
+    entries. Specifiers are as follows:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><i>i</i>	index number;
+<br/>
+<i>u</i>	unread items count;
+<br/>
+<i>n</i>	total items count;
+<br/>
+<i>l</i>	feed link;
+<br/>
+<i>t</i>	feed name if set, feed link otherwise.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="menu~7"><a class="permalink" href="#menu~7">menu-item-entry-format</a></h2>
+<p class="Pp">Default: <i>&quot; %u &#x2502; %d &#x2502; %o&quot;</i>. Format of
+    the item list entries. Specifiers are as follows:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><i>i</i>	index number;
+<br/>
+<i>u</i>	&quot;N&quot; if item is unread, &quot; &quot; otherwise;
+<br/>
+<i>d</i>	update date formatted according to <b>list-entry-date-format</b>;
+<br/>
+<i>D</i>	publication date formatted according to <b>list-entry-date-format</b>;
+<br/>
+<i>l</i>	item link;
+<br/>
+<i>t</i>	item title;
+<br/>
+<i>o</i>	item title if set, item link otherwise;
+<br/>
+<i>L</i>	feed link;
+<br/>
+<i>T</i>	feed title;
+<br/>
+<i>O</i>	feed title if set, feed link otherwise.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="menu~8"><a class="permalink" href="#menu~8">menu-explore-item-entry-format</a></h2>
+<p class="Pp">Default: <i>&quot; %u &#x2502; %d &#x2502; %-28O &#x2502;
+    %o&quot;</i>. Format of the item list entries in explore mode. Specifiers
+    are the same as in <b>menu-item-entry-format</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="sections"><a class="permalink" href="#sections">sections-ignore-toggle-read</a></h2>
+<p class="Pp">Default: <i>false</i>. If <i>true</i>, read and unread actions on
+    sections are ignored.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="sections~2"><a class="permalink" href="#sections~2">sections-menu-paramount-explore</a></h2>
+<p class="Pp">Default: <i>false</i>. Enables explore mode in sections menu by
+    default.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="feeds"><a class="permalink" href="#feeds">feeds-menu-paramount-explore</a></h2>
+<p class="Pp">Default: <i>false</i>. Enables explore mode in feeds menu by
+    default.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="read"><a class="permalink" href="#read">read-on-arrival
+  (*)</a></h2>
+<p class="Pp">Default: <i>false</i>. Mark new items as read automatically.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">mark-item-unread-on-change (*)</h2>
+<p class="Pp">Default: <i>false</i>. Mark every item that changes on a feed
+    update as unread.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">mark-item-read-on-hover (*)</h2>
+<p class="Pp">Default: <i>false</i>. Mark every item that gets selected as
+  read.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="hide"><a class="permalink" href="#hide">hide-read-feeds</a></h2>
+<p class="Pp">Default: <i>false</i>. If <i>true</i>, only feeds with unread
+    items will be shown.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="hide~2"><a class="permalink" href="#hide~2">hide-read-items</a></h2>
+<p class="Pp">Default: <i>false</i>. If <i>true</i>, only unread items will be
+    shown.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="database"><a class="permalink" href="#database">database-batch-transactions</a></h2>
+<p class="Pp">Default: <i>true</i>. Apply all changes to the <b>database</b>
+    file in one big transaction after all feed updates have finished instead of
+    using a separate transaction for each feed update. This improves update
+    performance a lot with the downside that fetched content will not be saved
+    if you quit Newsraft before update finishes.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="database~2"><a class="permalink" href="#database~2">database-analyze-on-startup</a></h2>
+<p class="Pp">Default: <i>true</i>. Run &quot;ANALYZE&quot; SQLite command on
+    the database every time you start Newsraft. It gathers statistics about
+    database and uses it to optimize some queries making runtime faster.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="database~3"><a class="permalink" href="#database~3">database-clean-on-startup</a></h2>
+<p class="Pp">Default: <i>false</i>. Run &quot;VACUUM&quot; SQLite command on
+    the database every time you start Newsraft. It rebuilds the database file by
+    packing it into a minimal amount of disk space. This can significantly
+    increase startup time.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">download-timeout (*)</h2>
+<p class="Pp">Default: <i>20</i>. Maximum time in seconds that you allow
+    Newsraft to download one feed. Setting to <i>0</i> disables the timeout.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">download-speed-limit (*)</h2>
+<p class="Pp">Default: <i>0</i>. Maximum download speed in kilobytes per second
+    (kB/s). Setting to <i>0</i> disables the limit.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="download"><a class="permalink" href="#download">download-max-connections</a></h2>
+<p class="Pp">Default: <i>500</i>. Maximum amount of simultaneously open
+    connections Newsraft may hold in total. If set to <i>0</i>, there is no
+    limit. You can try to increase this value or even set it to <i>0</i> if you
+    want to squeeze out all performance to the last drop but be aware that
+    things can start to break at high setting values. One obvious example is
+    getaddrinfo() starts to choke with a large number of simultaneous requests
+    trying to resolve domain names.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="download~2"><a class="permalink" href="#download~2">download-max-host-connections</a></h2>
+<p class="Pp">Default: <i>0</i>. Maximum amount of simultaneously open
+    connections Newsraft may hold a single host. If set to <i>0</i>, there is no
+    limit.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="user"><a class="permalink" href="#user">user-agent
+  (*)</a></h2>
+<p class="Pp">Default: <i>auto</i>. User-Agent header sent with download
+    requests. If set to <i>auto</i>, Newsraft will generate it according to the
+    following format:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"><i>&quot;newsraft/&quot;</i> + NEWSRAFT_VERSION +
+  <i>&quot; (&quot;</i> + OS_NAME + <i>&quot;)&quot;</i></div>
+<p class="Pp">OS_NAME shouldn't be a matter of privacy concern, because on most
+    systems it contains nothing more like <i>&quot;Linux&quot;</i> or
+    <i>&quot;Darwin&quot;</i>. If you want to be sure of this, check Newsraft
+    log to see how <b>user-agent</b> is set at startup.</p>
+<p class="Pp">If set to <i>&quot;&quot;</i>, User-Agent header will not be
+  sent.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">respect-ttl-element (*)</h2>
+<p class="Pp">Default: <i>true</i>. Prevents too frequent updates for some
+    feeds. The limit is set by the creators of the feeds in order to save
+    traffic and resources for a very rarely updated feeds. Disabling it is
+    strongly discouraged.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">respect-expires-header (*)</h2>
+<p class="Pp">Default: <i>true</i>. Prevents feed updates until the expiration
+    date of the previously downloaded information in order to save traffic and
+    resources. Disabling it is strongly discouraged.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">send-if-none-match-header (*)</h2>
+<p class="Pp">Default: <i>true</i>. Sends an entity tag corresponding to the
+    previously downloaded information. If the server from which the feed is
+    downloaded contains information with the same tag, then in order to save
+    traffic and resources, it will reject the download request. Disabling it is
+    strongly discouraged.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">send-if-modified-since-header (*)</h2>
+<p class="Pp">Default: <i>true</i>. Sends a date corresponding to the last
+    modification of previously downloaded information. If the server from which
+    the feed is downloaded contains information with the same modification date,
+    then in order to save traffic and resources, it will reject the download
+    request. Disabling it is strongly discouraged.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ignore"><a class="permalink" href="#ignore">ignore-no-color</a></h2>
+<p class="Pp">Default: <i>false</i>. If <i>true</i>, Newsraft will use colors
+    regardless of whether <b>NO_COLOR</b> environment variable is present or
+    not.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COLOR_SETTINGS"><a class="permalink" href="#COLOR_SETTINGS">COLOR
+  SETTINGS</a></h1>
+<p class="Pp">Color settings are the same settings as above, but they take two
+    color words (foreground and background) and optional attribute words.
+    Available colors are <i>default</i>, <i>black</i>, <i>red</i>, <i>green</i>,
+    <i>yellow</i>, <i>blue</i>, <i>magenta</i>, <i>cyan</i>, <i>white</i> and
+    <i>colorN</i> (<i>N</i> can be a number from <i>0</i> to <i>255</i>).
+    Available attributes are <i>bold</i>, <i>italic</i> and
+  <i>underlined</i>.</p>
+<p class="Pp"></p>
+<table class="tbl">
+  <tr>
+    <td>Color setting</td>
+    <td>Default value</td>
+  </tr>
+  <tr>
+    <td><b>color-status</b></td>
+    <td><i>green default bold</i></td>
+  </tr>
+  <tr>
+    <td><b>color-status-info</b></td>
+    <td><i>cyan default bold</i></td>
+  </tr>
+  <tr>
+    <td><b>color-status-fail</b></td>
+    <td><i>red default bold</i></td>
+  </tr>
+  <tr>
+    <td><b>color-list-item</b></td>
+    <td><i>default default</i></td>
+  </tr>
+  <tr>
+    <td><b>color-list-item-selected</b></td>
+    <td>(not set)</td>
+  </tr>
+  <tr>
+    <td><b>color-list-item-unread</b></td>
+    <td><i>yellow default</i></td>
+  </tr>
+  <tr>
+    <td><b>color-list-item-important</b></td>
+    <td><i>magenta default</i></td>
+  </tr>
+  <tr>
+    <td><b>color-list-feed</b></td>
+    <td><i>default default</i></td>
+  </tr>
+  <tr>
+    <td><b>color-list-feed-selected</b></td>
+    <td>(not set)</td>
+  </tr>
+  <tr>
+    <td><b>color-list-feed-unread</b></td>
+    <td><i>yellow default</i></td>
+  </tr>
+  <tr>
+    <td><b>color-list-feed-failed</b></td>
+    <td><i>red default</i></td>
+  </tr>
+  <tr>
+    <td><b>color-list-section</b></td>
+    <td><i>default default</i></td>
+  </tr>
+  <tr>
+    <td><b>color-list-section-selected</b></td>
+    <td>(not set)</td>
+  </tr>
+  <tr>
+    <td><b>color-list-section-unread</b></td>
+    <td><i>yellow default</i></td>
+  </tr>
+  <tr>
+    <td><b>color-list-section-failed</b></td>
+    <td><i>red default</i></td>
+  </tr>
+</table>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ACTIONS"><a class="permalink" href="#ACTIONS">ACTIONS</a></h1>
+<table class="tbl">
+  <tr>
+    <td>Actions</td>
+    <td>Keys</td>
+  </tr>
+  <tr>
+    <td><b>select-next</b></td>
+    <td><i>j</i>, <i>KEY_DOWN</i>, <i>^E</i></td>
+  </tr>
+  <tr>
+    <td><b>select-prev</b></td>
+    <td><i>k</i>, <i>KEY_UP</i>, <i>^Y</i></td>
+  </tr>
+  <tr>
+    <td><b>select-next-page</b></td>
+    <td><i>space</i>, <i>^F</i>, <i>KEY_NPAGE</i></td>
+  </tr>
+  <tr>
+    <td><b>select-next-page-half</b></td>
+    <td><i>^D</i></td>
+  </tr>
+  <tr>
+    <td><b>select-prev-page</b></td>
+    <td><i>^B</i>, <i>KEY_PPAGE</i></td>
+  </tr>
+  <tr>
+    <td><b>select-prev-page-half</b></td>
+    <td><i>^U</i></td>
+  </tr>
+  <tr>
+    <td><b>select-first</b></td>
+    <td><i>g</i>, <i>KEY_HOME</i></td>
+  </tr>
+  <tr>
+    <td><b>select-last</b></td>
+    <td><i>G</i>, <i>KEY_END</i></td>
+  </tr>
+  <tr>
+    <td><b>jump-to-next</b></td>
+    <td><i>J</i></td>
+  </tr>
+  <tr>
+    <td><b>jump-to-prev</b></td>
+    <td><i>K</i></td>
+  </tr>
+  <tr>
+    <td><b>jump-to-next-unread</b></td>
+    <td><i>n</i></td>
+  </tr>
+  <tr>
+    <td><b>jump-to-prev-unread</b></td>
+    <td><i>N</i></td>
+  </tr>
+  <tr>
+    <td><b>jump-to-next-important</b></td>
+    <td><i>p</i></td>
+  </tr>
+  <tr>
+    <td><b>jump-to-prev-important</b></td>
+    <td><i>P</i></td>
+  </tr>
+  <tr>
+    <td><b>next-error</b></td>
+    <td><i>e</i></td>
+  </tr>
+  <tr>
+    <td><b>prev-error</b></td>
+    <td><i>E</i></td>
+  </tr>
+  <tr>
+    <td><b>goto-feed</b></td>
+    <td><i>*</i></td>
+  </tr>
+  <tr>
+    <td><b>shift-west</b></td>
+    <td><i>,</i></td>
+  </tr>
+  <tr>
+    <td><b>shift-east</b></td>
+    <td><i>.</i></td>
+  </tr>
+  <tr>
+    <td><b>shift-reset</b></td>
+    <td><i>&lt;</i></td>
+  </tr>
+  <tr>
+    <td><b>sort-by-time</b></td>
+    <td><i>t</i></td>
+  </tr>
+  <tr>
+    <td><b>sort-by-time-download</b></td>
+    <td>(not set)</td>
+  </tr>
+  <tr>
+    <td><b>sort-by-time-publication</b></td>
+    <td>(not set)</td>
+  </tr>
+  <tr>
+    <td><b>sort-by-time-update</b></td>
+    <td>(not set)</td>
+  </tr>
+  <tr>
+    <td><b>sort-by-rowid</b></td>
+    <td><i>w</i></td>
+  </tr>
+  <tr>
+    <td><b>sort-by-unread</b></td>
+    <td><i>u</i></td>
+  </tr>
+  <tr>
+    <td><b>sort-by-initial</b></td>
+    <td><i>z</i></td>
+  </tr>
+  <tr>
+    <td><b>sort-by-alphabet</b></td>
+    <td><i>a</i></td>
+  </tr>
+  <tr>
+    <td><b>sort-by-important</b></td>
+    <td><i>i</i></td>
+  </tr>
+  <tr>
+    <td><b>enter</b></td>
+    <td><i>enter</i>, <i>l</i>, <i>KEY_ENTER</i>, <i>KEY_RIGHT</i></td>
+  </tr>
+  <tr>
+    <td><b>reload</b></td>
+    <td><i>r</i></td>
+  </tr>
+  <tr>
+    <td><b>reload-all</b></td>
+    <td><i>R</i>, <i>^R</i></td>
+  </tr>
+  <tr>
+    <td><b>mark-read</b>; <b>jump-to-next</b></td>
+    <td><i>d</i></td>
+  </tr>
+  <tr>
+    <td><b>mark-unread</b>; <b>jump-to-next</b></td>
+    <td><i>D</i></td>
+  </tr>
+  <tr>
+    <td><b>mark-read-all</b></td>
+    <td><i>A</i></td>
+  </tr>
+  <tr>
+    <td><b>mark-unread-all</b></td>
+    <td>(not set)</td>
+  </tr>
+  <tr>
+    <td><b>mark-important</b></td>
+    <td><i>f</i></td>
+  </tr>
+  <tr>
+    <td><b>mark-unimportant</b></td>
+    <td><i>F</i></td>
+  </tr>
+  <tr>
+    <td><b>toggle-read</b></td>
+    <td>(not set)</td>
+  </tr>
+  <tr>
+    <td><b>toggle-important</b></td>
+    <td>(not set)</td>
+  </tr>
+  <tr>
+    <td><b>toggle-explore-mode</b></td>
+    <td><i>tab</i></td>
+  </tr>
+  <tr>
+    <td><b>toggle-read-feeds</b>; <b>toggle-read-items</b></td>
+    <td><i>H</i></td>
+  </tr>
+  <tr>
+    <td><b>view-errors</b></td>
+    <td><i>v</i></td>
+  </tr>
+  <tr>
+    <td><b>open-in-browser</b></td>
+    <td><i>o</i></td>
+  </tr>
+  <tr>
+    <td><b>copy-to-clipboard</b></td>
+    <td><i>y</i>, <i>c</i></td>
+  </tr>
+  <tr>
+    <td><b>start-search-input</b></td>
+    <td><i>/</i></td>
+  </tr>
+  <tr>
+    <td><b>clean-status</b></td>
+    <td><i>`</i></td>
+  </tr>
+  <tr>
+    <td><b>navigate-back</b></td>
+    <td><i>h</i>, <i>backspace</i>, <i>KEY_LEFT</i>, <i>KEY_BACKSPACE</i></td>
+  </tr>
+  <tr>
+    <td><b>quit</b></td>
+    <td><i>q</i></td>
+  </tr>
+  <tr>
+    <td><b>quit-hard</b></td>
+    <td><i>Q</i></td>
+  </tr>
+  <tr>
+    <td><b>exec man newsraft</b></td>
+    <td><i>?</i></td>
+  </tr>
+</table>
+<p class="Pp">You can also bind <i>escape</i> key, but this can potentially lead
+    to incomplete processing of escape sequences in the terminal on a very fast
+    input. This is due to the special role of the <i>escape</i> character under
+    the hood of terminals. Your mileage may vary.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FORMATS_SUPPORT"><a class="permalink" href="#FORMATS_SUPPORT">FORMATS
+  SUPPORT</a></h1>
+<p class="Pp">Data formats of feeds which Newsraft recognizes. Not the whole
+    functionality of these formats is implemented, but only the functionality
+    that is most likely to carry the most essential information.</p>
+<p class="Pp"><i>RSS 2.0</i>, <i>1.1</i>, <i>1.0</i>, <i>0.94</i>, <i>0.93</i>,
+    <i>0.92</i>, <i>0.91</i>, <i>0.9</i>
+  <br/>
+  <i>Atom 1.0</i>
+  <br/>
+  <i>RSS Content Module</i>
+  <br/>
+  <i>Media RSS</i>
+  <br/>
+  <i>DublinCore 1.1 Elements</i>
+  <br/>
+  <i>JSON Feed</i></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENVIRONMENT"><a class="permalink" href="#ENVIRONMENT">ENVIRONMENT</a></h1>
+<p class="Pp">Newsraft's behavior depends on the environment variables set,
+    however not all environment variables affect Newsraft directly - many
+    environment variables affect libraries that Newsraft is built upon. For
+    example, <b>libcurl</b>(3) recognizes a large number of different
+    environment variables which you can learn more about on
+    <b>libcurl-env</b>(3).</p>
+<p class="Pp"></p>
+<table class="tbl">
+  <tr>
+    <td><b>XDG_CONFIG_HOME</b></td>
+    <td>Directory in which user-specific configuration files are stored.</td>
+  </tr>
+  <tr>
+    <td><b>XDG_DATA_HOME</b></td>
+    <td>Directory in which user-specific data files are stored.</td>
+  </tr>
+  <tr>
+    <td><b>HOME</b></td>
+    <td>User home directory.</td>
+  </tr>
+  <tr>
+    <td><b>BROWSER</b></td>
+    <td>User web browser.</td>
+  </tr>
+  <tr>
+    <td><b>WAYLAND_DISPLAY</b></td>
+    <td>Identifier of the Wayland graphics display.</td>
+  </tr>
+  <tr>
+    <td><b>DISPLAY</b></td>
+    <td>Identifier of the X graphics display.</td>
+  </tr>
+  <tr>
+    <td><b>NO_COLOR</b></td>
+    <td>Makes the interface monochrome when present.</td>
+  </tr>
+</table>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>mpv</b>(1), <b>feh</b>(1), <b>sqlite3</b>(1), <b>regex</b>(7),
+    <b>ssh</b>(1), <b>strftime</b>(3), <b>libcurl</b>(3),
+  <b>libcurl-env</b>(3)</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="BUGS"><a class="permalink" href="#BUGS">BUGS</a></h1>
+<p class="Pp">Don't be ridiculous...</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp">Grigory Kirillov and contributors</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-08-01</td>
+    <td class="foot-os"></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>crystal(1) · Copal Linux</title>
+<meta name="description" content="crystal - compiler for the Crystal language">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-crystal">crystal in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">crystal 1.20.3-r0 — man1/crystal.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">CRYSTAL(1)</td>
+    <td class="head-vol">Crystal Compiler Command Line Reference Guide</td>
+    <td class="head-rtitle">CRYSTAL(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">crystal - compiler for the Crystal language</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>crystal</b> command [switches] programfile &#x2014;
+  [arguments]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Crystal is a statically type-checked programming language. It was
+    created with the beauty of Ruby and the performance of C in mind.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="USAGE"><a class="permalink" href="#USAGE">USAGE</a></h1>
+<p class="Pp">You can compile and run a program by invoking the compiler with a
+    single filename:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>crystal some_program.cr</pre>
+</div>
+<p class="Pp">Crystal files usually end with the .cr extension, though this is
+    not mandatory.</p>
+<p class="Pp">Alternatively you can use the run command:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>crystal run some_program.cr</pre>
+</div>
+<p class="Pp">To create an executable use the build command:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>crystal build some_program.cr</pre>
+</div>
+<p class="Pp">This will create an executable named &quot;some_program&quot;.</p>
+<p class="Pp">Note that by default the generated executables are not fully
+    optimized. To turn optimizations on, use the <b>--release</b> flag:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>crystal build --release some_program.cr</pre>
+</div>
+<p class="Pp">Make sure to always use <b>--release</b> for production-ready
+    executables and when performing benchmarks.</p>
+<p class="Pp">The optimizations are not turned on by default because the compile
+    times are much faster without them and the performance of the program is
+    still pretty good without them, so it allows to use the <b>crystal</b>
+    command almost to be used as if it was an interpreter.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp">The <b>crystal</b> command accepts the following options</p>
+<section class="Ss">
+<h2 class="Ss" id="init"><a class="permalink" href="#init">init</a></h2>
+<p class="Pp"><b>init</b> TYPE [DIR | NAME DIR]</p>
+<p class="Pp">Generates a new Crystal project.</p>
+<p class="Pp">TYPE is one of:</p>
+<p class="Pp"><b>lib</b>	 Creates a library skeleton
+  <br/>
+  <b>app</b>	 Creates an application skeleton</p>
+<p class="Pp">This initializes the lib/app project folder as a git repository,
+    with a license file, a README file, a shard.yml for use with shards (the
+    Crystal dependency manager), a .gitignore file, and src and spec
+  folders.</p>
+<p class="Pp">DIR - directory where project will be generated</p>
+<p class="Pp">NAME - name of project to be generated (default: basename of
+  DIR)</p>
+<p class="Pp">Options:</p>
+<p class="Pp"><b>-f, --force</b></p>
+<div class="Bd-indent">Force overwrite existing files.</div>
+<p class="Pp"><b>-s, --skip-existing</b></p>
+<div class="Bd-indent">Skip existing files.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="build"><a class="permalink" href="#build">build</a></h2>
+<p class="Pp"><b>build</b> [options] [programfile] [--] [arguments]</p>
+<p class="Pp">Compile program.</p>
+<p class="Pp">Options:</p>
+<p class="Pp"><b>--cross-compile</b></p>
+<div class="Bd-indent">Generate an object file for cross compilation and prints
+  the command to build the executable.	The object file should be copied to the
+  target system and the printed command should be executed there. This flag
+  mainly exists for porting the compiler to new platforms, where possible run
+  the compiler on the target platform directly.</div>
+<p class="Pp"><b>-d</b>, <b>--debug</b></p>
+<div class="Bd-indent">Generate the output with symbolic debug symbols. These
+  are read when debugging the built program with tools like lldb, gdb, valgrind
+  etc. and provide mappings to the original source code for those tools.</div>
+<p class="Pp"><b>--no-debug</b></p>
+<div class="Bd-indent">Generate the output without any symbolic debug
+  symbols.</div>
+<p class="Pp"><b>-D</b> <i>FLAG</i>, <b>--define</b> <i>FLAG</i></p>
+<div class="Bd-indent">Define a compile-time flag. This is useful to
+  conditionally define types, methods, or commands based on flags available at
+  compile time. The default flags are from the target triple given with
+  <b>--target-triple</b> or the hosts default, if none is given.</div>
+<p class="Pp"><b>--emit</b> [asm|llvm-bc|llvm-ir|obj]</p>
+<div class="Bd-indent">Comma separated list of types of output for the compiler
+  to emit. You can use this to see the generated LLVM IR, LLVM bitcode,
+  assembly, and object files.</div>
+<p class="Pp"><b>--x86-asm-syntax</b> [att|intel]</p>
+<div class="Bd-indent">Select the assembly dialect for <b>--emit=asm</b>. The
+  default is <span class="Li">att</span>, which stands for the AT&amp;T syntax
+  supported by tools like the GNU Assembler. <span class="Li">intel</span>
+  selects the Intel syntax which is preferred for Windows tools.</div>
+<p class="Pp"><b>--frame-pointers</b> [auto|always|non-leaf]</p>
+<div class="Bd-indent">Control the preservation of frame pointers. The default
+  value, <span class="Li">--frame-pointers=auto</span>, will preserve frame
+  pointers on debug builds and try to omit them on release builds (certain
+  platforms require them to stay enabled).
+  <span class="Li">--frame-pointers=always</span> will always preserve them, and
+  non-leaf will only force their preservation on non-leaf functions.</div>
+<p class="Pp"><b>-f</b> text|json, <b>--format</b> text|json</p>
+<div class="Bd-indent">Format of output. Defaults to text. The json format can
+  be used to get a more parser-friendly output.</div>
+<p class="Pp"><b>--error-trace</b></p>
+<div class="Bd-indent">Show full error trace. Disabled by default, as the full
+  trace usually makes error messages less readable and may not always deliver
+  relevant information.</div>
+<p class="Pp"><b>--ll</b></p>
+<div class="Bd-indent">Dump LLVM assembly file to output directory.</div>
+<p class="Pp"><b>--link-flags</b> <i>FLAGS</i></p>
+<div class="Bd-indent">Pass additional flags to the linker. Though you can
+  specify those flags on the source code, this is useful for passing environment
+  specific information directly to the linker, like non-standard library paths
+  or names. For more information on specifying linker flags on source, you can
+  read the &quot;C bindings&quot; section of the documentation available on the
+  official web site.</div>
+<p class="Pp"><b>--mcpu</b> <i>CPU</i></p>
+<div class="Bd-indent">Specify a specific CPU to generate code for. This will
+  pass a -mcpu flag to LLVM, and is only intended to be used for cross-
+  compilation. For a list of available CPUs, pass --mcpu help when building any
+  Crystal source code. Passing --mcpu native will pass the host CPU name to tune
+  performance for the host.</div>
+<p class="Pp"><b>--mattr</b> <i>CPU</i></p>
+<div class="Bd-indent">Override or control specific attributes of the target,
+  such as whether SIMD operations are enabled or not. The default set of
+  attributes is set by the current CPU. This will pass a -mattr flag to LLVM,
+  and is only intended to be used for cross-compilation. For a list of available
+  attributes, invoke &quot;llvm-as &lt; /dev/null | llc -march=xyz
+  -mattr=help&quot;.</div>
+<p class="Pp"><b>--mcmodel</b> default|kernel|tiny|small|medium|large</p>
+<div class="Bd-indent">Specifies a specific code model to generate code for.
+  This will pass a --code-model flag to LLVM.</div>
+<p class="Pp"><b>--no-color</b></p>
+<div class="Bd-indent">Disable colored output.</div>
+<p class="Pp"><b>--no-codegen</b></p>
+<div class="Bd-indent">Don&#x2019;t do code generation, just parse the
+  file.</div>
+<p class="Pp"><b>-o</b></p>
+<div class="Bd-indent">Specify filename of output.</div>
+<p class="Pp"><b>--prelude</b></p>
+<div class="Bd-indent">Specify prelude to use. The default one initializes the
+  garbage collector. You can also use --prelude=empty to use no preludes. This
+  can be useful for checking code generation for a specific source code
+  file.</div>
+<p class="Pp"><b>-O</b> <i>LEVEL</i></p>
+<div class="Bd-indent">Optimization mode: 0 (default), 1, 2, 3. See
+  <b>OPTIMIZATIONS</b> for details.</div>
+<p class="Pp"><b>--release</b></p>
+<div class="Bd-indent">Compile in release mode. Equivalent to <b>-O3
+  --single-module</b></div>
+<p class="Pp"><b>-s</b>, <b>--stats</b></p>
+<div class="Bd-indent">Print statistics about the different compiler stages for
+  the current build. Output time and used memory for each compiler
+  process.</div>
+<p class="Pp"><b>-p</b>, <b>--progress</b></p>
+<div class="Bd-indent">Print statistics about the progress for the current
+  build.</div>
+<p class="Pp"><b>-t</b>, <b>--time</b></p>
+<div class="Bd-indent">Print statistics about the execution time.</div>
+<p class="Pp"><b>--single-module</b></p>
+<div class="Bd-indent">Generate a single LLVM module. By default, one LLVM
+  module is created for each type in a program. <b>--release</b> implies this
+  option.</div>
+<p class="Pp"><b>--threads</b> <i>NUM</i></p>
+<div class="Bd-indent">Maximum number of threads to use for code generation. The
+  default is 8 threads.</div>
+<p class="Pp"><b>--target</b> <i>TRIPLE</i></p>
+<div class="Bd-indent">Enable target triple; intended to use for
+  cross-compilation. See llvm documentation for more information about target
+  triple.</div>
+<p class="Pp"><b>--verbose</b></p>
+<div class="Bd-indent">Display the commands executed by the system.</div>
+<p class="Pp"><b>--static</b></p>
+<div class="Bd-indent">Create a statically linked executable.</div>
+<p class="Pp"><b>--stdin-filename</b> <i>FILENAME</i></p>
+<div class="Bd-indent">Source file name to be read from STDIN.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="docs"><a class="permalink" href="#docs">docs</a></h2>
+<p class="Pp">Generate documentation from comments using a subset of markdown.
+    The output is saved in html format on the created docs/ folder. More
+    information about documentation conventions can be found at <i></i>
+    &lt;https://crystal-lang.org/docs/conventions/documenting_code.html&gt;.</p>
+<p class="Pp">Options:</p>
+<p class="Pp"><b>--project-name</b> <i>NAME</i></p>
+<div class="Bd-indent">Set the project name. The default value is extracted from
+  shard.yml if available.
+<p class="Pp">In case no default can be found, this option is mandatory.</p>
+</div>
+<p class="Pp"><b>--project-version</b> <i>VERSION</i></p>
+<div class="Bd-indent">Set the project version. The default value is extracted
+  from current git commit or shard.yml if available.
+<p class="Pp">In case no default can be found, this option is mandatory.</p>
+</div>
+<p class="Pp"><b>--json-config-url</b> <i>URL</i></p>
+<div class="Bd-indent">Set the URL pointing to a config file (used for
+  discovering versions).</div>
+<p class="Pp"><b>--source-refname</b> <i>REFNAME</i></p>
+<div class="Bd-indent">Set source refname (e.g. git tag, commit hash). The
+  default value is extracted from current git commit if available.
+<p class="Pp">If this option is missing and can&#x2019;t be automatically
+    determined, the generator can&#x2019;t produce source code links.</p>
+</div>
+<p class="Pp"><b>--source-url-pattern</b> <i>URL</i></p>
+<div class="Bd-indent">Set URL pattern for source code links. The default value
+  is extracted from git remotes (&quot;origin&quot; or first one) if available
+  and the provider&#x2019;s URL pattern is recognized.
+<p class="Pp">Supported replacement tags:</p>
+<p class="Pp"><b>%{refname}</b></p>
+<div class="Bd-indent">commit reference</div>
+<p class="Pp"><b>%{path}</b></p>
+<div class="Bd-indent">path to source file inside the repository</div>
+<p class="Pp"><b>%{filename}</b></p>
+<div class="Bd-indent">basename of the source file</div>
+<p class="Pp"><b>%{line}</b></p>
+<div class="Bd-indent">line number</div>
+<p class="Pp">If this option is missing and can&#x2019;t be automatically
+    determined, the generator can&#x2019;t produce source code links.</p>
+</div>
+<p class="Pp"><b>-o</b> <i>DIR</i>, <b>--output</b> <i>DIR</i></p>
+<div class="Bd-indent">Set the output directory (default: ./docs).</div>
+<p class="Pp"><b>-b</b> <i>URL</i>, <b>--canonical-base-url</b> <i>URL</i></p>
+<div class="Bd-indent">Indicate the preferred URL with rel=&quot;canonical&quot;
+  link element.</div>
+<p class="Pp"><b>-b</b> <i>URL</i>, <b>--sitemap-base-url</b> <i>URL</i></p>
+<div class="Bd-indent">Set the sitemap base URL. Sitemap will only be generated
+  when this option is set.</div>
+<p class="Pp"><b>--sitemap-priority</b> <i>PRIO</i></p>
+<div class="Bd-indent">Set the priority assigned to sitemap entries (default:
+  1.0).</div>
+<p class="Pp"><b>--sitemap-changefreq</b> <i>FREQ</i></p>
+<div class="Bd-indent">Set the changefreq assigned to sitemap entries (default:
+  never).</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="env"><a class="permalink" href="#env">env</a></h2>
+<p class="Pp"><b>env</b> [variables]</p>
+<p class="Pp">Print Crystal-specific environment variables in a format
+    compatible with shell scripts. If one or more variable names are given as
+    arguments, it prints only the value of each named variable on its own
+  line.</p>
+<p class="Pp">Variables:</p>
+<p class="Pp"><b>CRYSTAL_CACHE_DIR</b></p>
+<div class="Bd-indent">Please see ENVIRONMENT VARIABLES.</div>
+<p class="Pp"><b>CRYSTAL_EXEC_PATH</b></p>
+<div class="Bd-indent">Please see ENVIRONMENT VARIABLES.</div>
+<p class="Pp"><b>CRYSTAL_LIBRARY_PATH</b></p>
+<div class="Bd-indent">Please see ENVIRONMENT VARIABLES.</div>
+<p class="Pp"><b>CRYSTAL_PATH</b></p>
+<div class="Bd-indent">Please see ENVIRONMENT VARIABLES.</div>
+<p class="Pp"><b>CRYSTAL_VERSION</b></p>
+<div class="Bd-indent">Contains Crystal version.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="eval"><a class="permalink" href="#eval">eval</a></h2>
+<p class="Pp"><b>eval</b> [options] [source]</p>
+<p class="Pp">Evaluate code from arguments or, if no arguments are passed, from
+    the standard input. Useful for experiments.</p>
+<p class="Pp">Options:</p>
+<p class="Pp"><b>-d</b>, <b>--debug</b></p>
+<div class="Bd-indent">Generate the output with symbolic debug symbols. These
+  are read when debugging the built program with tools like lldb, gdb, valgrind
+  etc. and provide mappings to the original source code for those tools.</div>
+<p class="Pp"><b>--no-debug</b></p>
+<div class="Bd-indent">Generate the output without any symbolic debug
+  symbols.</div>
+<p class="Pp"><b>-D</b> <i>FLAG</i>, <b>--define</b> <i>FLAG</i></p>
+<div class="Bd-indent">Define a compile-time flag. This is useful to
+  conditionally define types, methods, or commands based on flags available at
+  compile time. The default flags are from the target triple given with
+  --target-triple or the hosts default, if none is given.</div>
+<p class="Pp"><b>--error-trace</b></p>
+<div class="Bd-indent">Show full error trace.</div>
+<p class="Pp"><b>-O</b> <i>LEVEL</i></p>
+<div class="Bd-indent">Optimization mode: 0 (default), 1, 2, 3. See
+  <b>OPTIMIZATIONS</b> for details.</div>
+<p class="Pp"><b>--release</b></p>
+<div class="Bd-indent">Compile in release mode. Equivalent to <b>-O3
+  --single-module</b></div>
+<p class="Pp"><b>-s</b>, <b>--stats</b></p>
+<div class="Bd-indent">Print statistics about the different compiler stages for
+  the current build. Output time and used memory for each compiler
+  process.</div>
+<p class="Pp"><b>-p</b>, <b>--progress</b></p>
+<div class="Bd-indent">Print statistics about the progress for the current
+  build.</div>
+<p class="Pp"><b>-t</b>, <b>--time</b></p>
+<div class="Bd-indent">Print statistics about the execution time.</div>
+<p class="Pp"><b>--no-color</b></p>
+<div class="Bd-indent">Disable colored output.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="play"><a class="permalink" href="#play">play</a></h2>
+<p class="Pp"><b>play</b> [options] [file]</p>
+<p class="Pp">Starts the <b>crystal</b> playground server on port 8080, by
+    default.</p>
+<p class="Pp">Options:</p>
+<p class="Pp"><b>-p</b> <i>PORT</i>, <b>--port</b> <i>PORT</i></p>
+<div class="Bd-indent">Run the playground on the specified port. Default is
+  8080.</div>
+<p class="Pp"><b>-b</b> <i>HOST</i>, <b>--binding</b> <i>HOST</i></p>
+<div class="Bd-indent">Bind the playground to the specified IP.</div>
+<p class="Pp"><b>-v</b>, <b>--verbose</b></p>
+<div class="Bd-indent">Display detailed information of the executed code.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="run"><a class="permalink" href="#run">run</a></h2>
+<p class="Pp"><b>run</b> [options] [programfile] [--] [arguments]</p>
+<p class="Pp">The default command. Compile and run program.</p>
+<p class="Pp">Options: Same as the build options.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="spec"><a class="permalink" href="#spec">spec</a></h2>
+<p class="Pp">spec [options] [files]</p>
+<p class="Pp">Compile and run specs (in spec directory).</p>
+<p class="Pp">Options:</p>
+<p class="Pp"><b>-d</b>, <b>--debug</b></p>
+<div class="Bd-indent">Generate the output with symbolic debug symbols. These
+  are read when debugging the built program with tools like lldb, gdb, valgrind
+  etc. and provide mappings to the original source code for those tools.</div>
+<p class="Pp"><b>--no-debug</b></p>
+<div class="Bd-indent">Generate the output without any symbolic debug
+  symbols.</div>
+<p class="Pp"><b>-D</b> <i>FLAG</i>, <b>--define</b> <i>FLAG</i></p>
+<div class="Bd-indent">Define a compile-time flag. This is useful to
+  conditionally define types, methods, or commands based on flags available at
+  compile time. The default flags are from the target triple given with
+  <b>--target-triple</b> or the hosts default, if none is given.</div>
+<p class="Pp"><b>--error-trace</b></p>
+<div class="Bd-indent">Show full error trace.</div>
+<p class="Pp"><b>-O</b> <i>LEVEL</i></p>
+<div class="Bd-indent">Optimization mode: 0 (default), 1, 2, 3. See
+  <b>OPTIMIZATIONS</b> for details.</div>
+<p class="Pp"><b>--release</b></p>
+<div class="Bd-indent">Compile in release mode. Equivalent to <b>-O3
+  --single-module</b></div>
+<p class="Pp"><b>-s</b>, <b>--stats</b></p>
+<div class="Bd-indent">Print statistics about the different compiler stages for
+  the current build. Output time and used memory for each compiler
+  process.</div>
+<p class="Pp"><b>-p</b>, <b>--progress</b></p>
+<div class="Bd-indent">Print statistics about the progress for the current
+  build.</div>
+<p class="Pp"><b>-t</b>, <b>--time</b></p>
+<div class="Bd-indent">Print statistics about the execution time.</div>
+<p class="Pp"><b>--no-color</b></p>
+<div class="Bd-indent">Disable colored output.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="tool"><a class="permalink" href="#tool">tool</a></h2>
+<p class="Pp"><b>tool</b> [tool] [switches] [programfile] [--] [arguments]</p>
+<p class="Pp">Run a tool. The available tools are: context, dependencies,
+    expand, flags, format, hierarchy, implementations, types, and
+  unreachable.</p>
+<p class="Pp">Tools:</p>
+<p class="Pp"><b>context</b></p>
+<div class="Bd-indent">Show context for given location.</div>
+<p class="Pp"><b>dependencies</b></p>
+<div class="Bd-indent">Show tree of required source files.
+<p class="Pp">Options:</p>
+<p class="Pp"><b>-D</b> <i>FLAG</i>, <b>--define</b>=<i>FLAG</i></p>
+<div class="Bd-indent">Define a compile-time flag. This is useful to con
+  ditionally define types, methods, or commands based on flags available at
+  compile time. The default flags are from the target triple given with
+  <b>--tar</b> get-triple or the hosts default, if none is given.</div>
+<p class="Pp"><b>-f</b> <i>FORMAT</i>, <b>--format</b>=<i>FORMAT</i></p>
+<div class="Bd-indent">Output format 'tree' (default), 'flat', 'dot', or
+  'mermaid'.</div>
+<p class="Pp"><b>-i</b> <i>PATH</i>, <b>--include</b>=<i>PATH</i></p>
+<div class="Bd-indent">Include path in output.</div>
+<p class="Pp"><b>-e</b> <i>PATH</i>, <b>--exclude</b>=<i>PATH</i></p>
+<div class="Bd-indent">Exclude path in output.</div>
+<p class="Pp"><b>--error-trace</b></p>
+<div class="Bd-indent">Show full error trace.</div>
+<p class="Pp"><b>--prelude</b></p>
+<div class="Bd-indent">Specify prelude to use. The default one initializes the
+  garbage collector. You can also use <b>--pre</b> lude=empty to use no
+  preludes. This can be useful for checking code generation for a specific
+  source code file.</div>
+<p class="Pp"><b>--verbose</b></p>
+<div class="Bd-indent">Show skipped and heads of filtered paths</div>
+</div>
+<p class="Pp"><b>expand</b></p>
+<div class="Bd-indent">Show macro expansion for given location.</div>
+<p class="Pp"><b>flags</b></p>
+<div class="Bd-indent">Print all macro 'flag?' values</div>
+<p class="Pp"><b>format</b></p>
+<div class="Bd-indent">Format project, directories and/or files with the coding
+  style used in the standard library. You can use the <b>--checkflag</b> to
+  check whether the formatter would make any changes.</div>
+<p class="Pp"><b>hierarchy</b></p>
+<div class="Bd-indent">Show hierarchy of types from file. Also show class and
+  struct members, with type and size. Types can be filtered with a regex by
+  using the <b>-e</b> flag.</div>
+<p class="Pp"><b>implementations</b></p>
+<div class="Bd-indent">Show implementations for a given call. Use
+  <b>--cursor</b> to specify the cursor position. The format for the cursor
+  position is file:line:column.</div>
+<p class="Pp"><b>types</b></p>
+<div class="Bd-indent">Show type of main variables of file.</div>
+<p class="Pp"><b>unreachable</b></p>
+<div class="Bd-indent">Show methods that are never called. The text output is a
+  list of lines with columns separated by tab.
+<p class="Pp">Output fields:</p>
+<p class="Pp"><b>count</b></p>
+<div class="Bd-indent">sum of all calls to this method (only with
+  <b>--tallies</b> option; otherwise skipped)</div>
+<p class="Pp"><b>location</b></p>
+<div class="Bd-indent">pathname, line and column, all separated by colon
+  name</div>
+<p class="Pp"><b>lines</b></p>
+<div class="Bd-indent">length of the def in lines annotations</div>
+<p class="Pp">Options:</p>
+<p class="Pp"><b>-D</b> <i>FLAG</i>, <b>--define</b>=<i>FLAG</i></p>
+<div class="Bd-indent">Define a compile-time flag. This is useful to con
+  ditionally define types, methods, or commands based on flags available at
+  compile time. The default flags are from the target triple given with
+  <b>--target-triple</b> or the hosts default, if none is given.</div>
+<p class="Pp"><b>-f</b> <i>FORMAT</i>, <b>--format</b>=<i>FORMAT</i></p>
+<div class="Bd-indent">Output format 'text' (default), 'json', 'codecov', or
+  'csv'.</div>
+<p class="Pp"><b>--tallies</b></p>
+<div class="Bd-indent">Print reachable methods and their call counts as
+  well.</div>
+<p class="Pp"><b>--check</b></p>
+<div class="Bd-indent">Exit with error if there is any unreachable code.</div>
+<p class="Pp"><b>-i</b> <i>PATH</i>, <b>--include</b>=<i>PATH</i></p>
+<div class="Bd-indent">Include path in output.</div>
+<p class="Pp"><b>-e</b> <i>PATH</i>, <b>--exclude</b>=<i>PATH</i></p>
+<div class="Bd-indent">Exclude path in output (default: lib).</div>
+<p class="Pp"><b>--error-trace</b></p>
+<div class="Bd-indent">Show full error trace.</div>
+<p class="Pp"><b>--prelude</b></p>
+<div class="Bd-indent">Specify prelude to use. The default one initializes the
+  garbage collector. You can also use <b>--prelude=empty</b> to use no preludes.
+  This can be useful for checking code generation for a specific source code
+  file.</div>
+</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="clear_cache"><a class="permalink" href="#clear_cache">clear_cache</a></h2>
+<p class="Pp">Clear the compiler cache (located at 'CRYSTAL_CACHE_DIR').</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="help"><a class="permalink" href="#help">help</a></h2>
+<p class="Pp">Show help. Option <b>--help</b> or <b>-h</b> can also be added to
+    each command for command-specific help.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="version"><a class="permalink" href="#version">version</a></h2>
+<p class="Pp">Show version.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIMIZATIONS"><a class="permalink" href="#OPTIMIZATIONS">OPTIMIZATIONS</a></h1>
+<p class="Pp">The optimization level specifies the codegen effort for producing
+    optimal code. It&#x2019;s a trade-off between compilation performance
+    (decreasing per optimization level) and runtime performance (increasing per
+    optimization level).</p>
+<p class="Pp">Production builds should usually have the highest optimization
+    level. Best results are achieved with <b>--release</b> which also implies
+    <b>--single-module</b></p>
+<p class="Pp"><b>-O0</b></p>
+<div class="Bd-indent">No optimization (default)</div>
+<p class="Pp"><b>-O1</b></p>
+<div class="Bd-indent">Low optimization</div>
+<p class="Pp"><b>-O2</b></p>
+<div class="Bd-indent">Middle optimization</div>
+<p class="Pp"><b>-O3</b></p>
+<div class="Bd-indent">High optimization</div>
+<p class="Pp"><b>-Os</b></p>
+<div class="Bd-indent">Middle optimization with focus on file size</div>
+<p class="Pp"><b>-Oz</b></p>
+<div class="Bd-indent">Middle optimization aggressively focused on file
+  size</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENVIRONMENT_VARIABLES"><a class="permalink" href="#ENVIRONMENT_VARIABLES">ENVIRONMENT
+  VARIABLES</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="CRYSTAL_CACHE_DIR"><a class="permalink" href="#CRYSTAL_CACHE_DIR">CRYSTAL_CACHE_DIR</a></h2>
+<p class="Pp">Defines path where Crystal caches partial compilation results for
+    faster subsequent builds. This path is also used to temporarily store
+    executables when Crystal programs are run with '<b>crystal</b> run' rather
+    than '<b>crystal</b> build'.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="CRYSTAL_EXEC_PATH"><a class="permalink" href="#CRYSTAL_EXEC_PATH">CRYSTAL_EXEC_PATH</a></h2>
+<p class="Pp">Determines the path where crystal looks for external
+  sub-commands.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="CRYSTAL_LIBRARY_PATH"><a class="permalink" href="#CRYSTAL_LIBRARY_PATH">CRYSTAL_LIBRARY_PATH</a></h2>
+<p class="Pp">Defines paths where Crystal searches for (binary) libraries.
+    Multiple paths can be separated by &quot;:&quot;.	 These paths are passed to
+    the linker as <span class="Li">-L</span> flags.</p>
+<p class="Pp">The pattern '$ORIGIN' at the start of the path expands to the
+    directory where the compiler binary is located. For example,
+    '$ORIGIN/../lib/crystal' resolves the standard library path relative to the
+    compiler location in a generic way, independent of the absolute paths
+    (assuming the relative location is correct).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="CRYSTAL_PATH"><a class="permalink" href="#CRYSTAL_PATH">CRYSTAL_PATH</a></h2>
+<p class="Pp">Defines paths where Crystal searches for required source files.
+    Multiple paths can be separated by &quot;:&quot;.</p>
+<p class="Pp">The pattern '$ORIGIN' at the start of the path expands to the
+    directory where the compiler binary is located. For example,
+    '$ORIGIN/../share/crystal/src' resolves the standard library path relative
+    to the compiler location in a generic way, independent of the absolute paths
+    (assuming the relative location is correct).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="CRYSTAL_OPTS"><a class="permalink" href="#CRYSTAL_OPTS">CRYSTAL_OPTS</a></h2>
+<p class="Pp">Defines options for the Crystal compiler to be used besides the
+    command line arguments. The syntax is identical to the command line
+    arguments. This is handy when using Crystal in build setups, for example
+    'CRYSTAL_OPTS=--debug make build'.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEEALSO"><a class="permalink" href="#SEEALSO">SEEALSO</a></h1>
+<p class="Pp"><b>shards</b>(1)</p>
+<p class="Pp"><i></i> &lt;https://crystal-lang.org/&gt; The official web
+  site.</p>
+<p class="Pp"><i></i> &lt;https://github.com/crystal-lang/crystal&gt; Official
+    Repository.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2025-02-14</td>
+    <td class="foot-os">crystal 1.16.0-dev</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

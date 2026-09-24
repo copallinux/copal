@@ -1,0 +1,2839 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>newsboat(1) · Copal Linux</title>
+<meta name="description" content="newsboat - an RSS/Atom feed reader for text terminals">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-newsboat">newsboat in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">newsboat 2.43-r0 — man1/newsboat.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">NEWSBOAT(1)</td>
+    <td class="head-vol">&#x00A0;</td>
+    <td class="head-rtitle">NEWSBOAT(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">newsboat - an RSS/Atom feed reader for text terminals</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>newsboat</b> [<b>-r</b>] [<b>-e</b>] [<b>-i</b>
+    <i>opmlfile</i>] [<b>-u</b> <i>urlfile</i>] [<b>-c</b> <i>cachefile</i>]
+    [<b>-C</b> <i>configfile</i>] [<b>-X</b>] [<b>-o</b>] [<b>-x</b>
+    <i>command</i>...] [<b>-h</b>]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><i>Newsboat</i> is an RSS/Atom feed reader for text terminals. RSS
+    and Atom are a number of widely-used XML formats to transmit, publish and
+    syndicate articles, for example news or blog articles. Newsboat is designed
+    to be used on text terminals on Unix or Unix-like systems such as GNU/Linux,
+    BSD or macOS.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp"><b>-h</b>, <b>--help</b></p>
+<div class="Bd-indent">Display help</div>
+<p class="Pp"><b>-r</b>, <b>--refresh-on-start</b></p>
+<div class="Bd-indent">Refresh feeds on start</div>
+<p class="Pp"><b>-e</b>, <b>--export-to-opml</b></p>
+<div class="Bd-indent">Export feeds as OPML to stdout. This currently outputs
+  OPML 1.0, losing all tag information, but this is subject to change to 2.0 in
+  the future.</div>
+<p class="Pp"><b>--export-to-opml2</b></p>
+<div class="Bd-indent">Export feeds as OPML 2.0, including tags, to stdout</div>
+<p class="Pp"><b>-X</b>, <b>--vacuum</b></p>
+<div class="Bd-indent">Compact the cache by: 1) reclaiming the space that was
+  left empty when data was deleted; and 2) defragmenting the entries in the
+  cache. This <b>doesn&#x2019;t</b> delete the entries; for that, see
+  <i>cleanup-on-quit</i>, <i>delete-read-articles-on-quit</i>,
+  <i>keep-articles-days</i>, and <i>max-items</i> settings.</div>
+<p class="Pp"><b>--cleanup</b></p>
+<div class="Bd-indent">Remove unreferenced entries from the cache and quit
+  Newsboat. Feeds and their articles will be removed if the feedurl is no longer
+  in the <i>urls</i> file.
+<p class="Pp">Additionally, if the <i>delete-read-articles-on-quit</i>
+    configuration is set, all read articles will be deleted (including articles
+    of feeds which are still in the <i>urls</i> file).</p>
+</div>
+<p class="Pp"><b>-v</b>, <b>-V</b>, <b>--version</b></p>
+<div class="Bd-indent">Get version information about Newsboat and the libraries
+  it uses</div>
+<p class="Pp"><b>-i</b> <i>opmlfile</i>,
+    <b>--import-from-opml</b>=<i>opmlfile</i></p>
+<div class="Bd-indent">Import an OPML file</div>
+<p class="Pp"><b>-u</b> <i>urlfile</i>, <b>--url-file</b>=<i>urlfile</i></p>
+<div class="Bd-indent">Use an alternative URL file</div>
+<p class="Pp"><b>-c</b> <i>cachefile</i>,
+  <b>--cache-file</b>=<i>cachefile</i></p>
+<div class="Bd-indent">Use an alternative cache file</div>
+<p class="Pp"><b>-C</b> <i>configfile</i>,
+    <b>--config-file</b>=<i>configfile</i></p>
+<div class="Bd-indent">Use an alternative configuration file</div>
+<p class="Pp"><b>--queue-file</b>=<i>queuefile</i></p>
+<div class="Bd-indent">Use an alternative queue file</div>
+<p class="Pp"><b>--search-history-file</b>=<i>searchhistoryfile</i></p>
+<div class="Bd-indent">Use an alternative search history file</div>
+<p class="Pp"><b>--cmdline-history-file</b>=<i>cmdlinehistoryfile</i></p>
+<div class="Bd-indent">Use an alternative command line history file</div>
+<p class="Pp"><b>-x</b> <i>command</i> ...,
+  <b>--execute</b>=<i>command</i>...</p>
+<div class="Bd-indent">Execute one or more commands to run Newsboat unattended.
+  Currently available commands are <i>reload</i> and <i>print-unread</i>.</div>
+<p class="Pp"><b>-l</b> <i>loglevel</i>, <b>--log-level</b>=<i>loglevel</i></p>
+<div class="Bd-indent">Generate a logfile with a certain <i>loglevel</i> (valid
+  values: 1 to 6, for user error, critical, error, warning, info, and debug
+  respectively). Filename can be specified using the <b>--log-file</b> option.
+  If not specified, a filename is generated of the form
+  newsboat_&lt;date-time&gt;.log</div>
+<p class="Pp"><b>-d</b> <i>logfile</i>, <b>--log-file</b>=<i>logfile</i></p>
+<div class="Bd-indent">Use this <i>logfile</i> as output when logging debug
+  messages. Please note that this only works when providing a loglevel.</div>
+<p class="Pp"><b>-E</b> <i>file</i>, <b>--export-to-file</b>=<i>file</i></p>
+<div class="Bd-indent">Export a list of read articles (resp. their GUIDs). This
+  can be used to transfer information about read articles between different
+  computers.</div>
+<p class="Pp"><b>-I</b> <i>file</i>, <b>--import-from-file</b>=<i>file</i></p>
+<div class="Bd-indent">Import a list of read articles and mark them as read if
+  they are held in the cache. This is to be used in conjunction with the
+  <b>-E</b> commandline parameter.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FIRST_STEPS"><a class="permalink" href="#FIRST_STEPS">FIRST
+  STEPS</a></h1>
+<p class="Pp">After you&#x2019;ve installed Newsboat, you can run it for the
+    first time by typing <i>newsboat</i> on your command prompt. This will bring
+    you the following message:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>Error: no URLs configured. Please fill the file /home/ak/.newsboat/urls with RSS feed URLs or import an OPML file.
+Newsboat 2.22
+usage: ./newsboat [-i &lt;file&gt;|-e] [-u &lt;urlfile&gt;] [-c &lt;cachefile&gt;] [-x &lt;command&gt; ...] [-h]
+<br/>
+    -e, --export-to-opml            export OPML feed to stdout
+<br/>
+    -r, --refresh-on-start          refresh feeds on start
+<br/>
+    -i, --import-from-opml=&lt;file&gt;   import OPML file
+<br/>
+    -u, --url-file=&lt;urlfile&gt;        read RSS feed URLs from &lt;urlfile&gt;
+<br/>
+    -c, --cache-file=&lt;cachefile&gt;    use &lt;cachefile&gt; as cache file
+<br/>
+    -C, --config-file=&lt;configfile&gt;  read configuration from &lt;configfile&gt;
+<br/>
+    -X, --vacuum                    compact the cache
+<br/>
+    -x, --execute=&lt;command&gt;...      execute list of commands
+<br/>
+    -q, --quiet                     quiet startup
+<br/>
+    -v, --version                   get version information
+<br/>
+    -l, --log-level=&lt;loglevel&gt;      write a log with a certain loglevel (valid values: 1 to 6)
+<br/>
+    -d, --log-file=&lt;logfile&gt;        use &lt;logfile&gt; as output log file
+<br/>
+    -E, --export-to-file=&lt;file&gt;     export list of read articles to &lt;file&gt;
+<br/>
+    -I, --import-from-file=&lt;file&gt;   import list of read articles from &lt;file&gt;
+<br/>
+    -h, --help                      this help
+<br/>
+        --cleanup                   remove unreferenced items from cache</pre>
+</div>
+<p class="Pp">This means that Newsboat can&#x2019;t start without any configured
+    feeds.</p>
+<section class="Ss">
+<h2 class="Ss" id="Adding_Feeds"><a class="permalink" href="#Adding_Feeds">Adding
+  Feeds</a></h2>
+<p class="Pp">To add feeds to Newsboat, you can simply add one feed URL per line
+    to the <i>~/.newsboat/urls</i> configuration file:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>http://rss.cnn.com/rss/cnn_topstories.rss
+http://newsrss.bbc.co.uk/rss/newsonline_world_edition/front_page/rss.xml</pre>
+</div>
+<p class="Pp">You can also import an OPML file by running <i>newsboat -i
+    blogroll.opml</i></p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<p class="Pp"><b>Adding comments</b> Lines that start with <i>#</i> can contain
+    anything you want. Comments are ignored by Newsboat, but can serve as
+    documentation for you. Please note, that commenting out URLs for debugging
+    purposes might lead to unexpected data loss, see <i>cleanup-on-quit</i> for
+    more details.</p>
+</div>
+<p class="Pp"><b>Feeds with restricted access</b></p>
+<p class="Pp">If you need to add URLs that have restricted access, simply
+    provide username/password:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>https://username:password@hostname.domain.tld/feed.rss</pre>
+</div>
+<p class="Pp">In case there is a <i>@</i> in the username, you need to write it
+    as <i>%40</i>.</p>
+<p class="Pp">In order to protect usernames and passwords, make sure to restrict
+    read access for <i>~/.newsboat/urls</i> to you and optionally your
+  group:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ chmod u=rw,g=r,o= ~/.newsboat/urls</pre>
+</div>
+<p class="Pp">Newsboat makes sure to not display usernames and passwords in its
+    user interface.</p>
+<p class="Pp"><b>Local files as feeds</b></p>
+<p class="Pp">You can also configure local files as feeds, by prefixing the
+    local path with <i>file://</i> and adding it to the <i>urls</i> file:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>file:///var/log/rss_eventlog.xml</pre>
+</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="First_UI_Interaction"><a class="permalink" href="#First_UI_Interaction">First
+  UI Interaction</a></h2>
+<p class="Pp">The main UI of Newsboat consists of three views</p>
+<p class="Pp"><i>Feed List View &#x2192; Article List View &#x2192; Article
+    View</i></p>
+<p class="Pp">You can drill down those views by pressing
+    <span class="Li">Enter</span> and move to the previous one by pressing
+    <span class="Li">Q</span>. Pressing <span class="Li">Q</span> on the <i>Feed
+    List View</i> &#x2014; or pressing
+    <span class="Li">Shift&#x00A0;+&#x00A0;Q</span> from anywhere &#x2014;
+    closes Newsboat.</p>
+<p class="Pp">You can also search articles' title or content by pressing
+    <span class="Li">/</span> on the <i>Feed List View</i> or the <i>Article
+    List View</i>. On the <i>Feed List View</i> all articles of all feeds are
+    taken into account. On the <i>Article List View</i> the articles of the
+    current feed are taken into account. When opening an article from a search
+    result dialog, the search phrase is highlighted.</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<p class="Pp"><b>Search history</b> The history of all your searches is saved to
+    the filesystem, to the <i>history.search</i> file (stored next to the
+    <i>cache.db</i> file). By default, the last 100 search phrases are
+  stored.</p>
+<p class="Pp">You can influence how many search phrases are stored by
+    configuring <i>history-limit</i>.</p>
+</div>
+<p class="Pp"><b>Feed List View</b></p>
+<p class="Pp">When you start Newsboat, it presents you with a list of feeds that
+    you added previously.</p>
+<p class="Pp">You can now:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;Press
+  <span class="Li">Shift&#x00A0;+&#x00A0;R</span> to download articles for all
+  feeds.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;Press <span class="Li">R</span> to download
+  articles for the selected feed.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;Press <span class="Li">/</span> to search all
+  articles in all feeds.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;Press <span class="Li">Enter</span> to go to the
+  article list of a selected feed.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;Press <span class="Li">Q</span> to close
+  Newsboat.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<p class="Pp"><b>Local articles</b> Newsboat keeps the articles that it
+    downloads. When you start Newsboat again and reload a feed, old articles can
+    still be read even if they aren&#x2019;t in the current RSS feeds anymore.
+    The maximum number of articles is controlled by <i>max-items</i>.</p>
+</div>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<p class="Pp"><b>Caching</b> Newsboat uses a number of measures to preserve the
+    users' and feed providers' bandwidth through the use of conditional HTTP
+    downloading. It saves every feed&#x2019;s &quot;Last-Modified&quot; and
+    &quot;ETag&quot; response header values (if present) and advises the
+    feed&#x2019;s HTTP server to only send data if the feed has been updated.
+    This doesn&#x2019;t only make feed downloads for RSS feeds with no new
+    updates faster, it also reduces the amount of transferred data per
+  request.</p>
+<p class="Pp">You can disable conditional HTTP downloading per feed by
+    configuring <i>always-download</i>.</p>
+</div>
+<p class="Pp"><b>Article List View</b></p>
+<p class="Pp">After you entered a feed, you can see the list of available
+    articles by their title. A <i>N</i> on the left indicates that an article
+    wasn&#x2019;t read yet.</p>
+<p class="Pp">You can now:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;Press <span class="Li">Q</span> to go back to the
+  <i>Feed List View</i>.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;Press <span class="Li">/</span> to search all
+  articles of this feed.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;Press <span class="Li">Enter</span> to read a
+  selected article.</div>
+<p class="Pp"><b>Article View</b></p>
+<p class="Pp">On an article you can scroll through the text and read it. Each
+    link in the article has a number next to it.</p>
+<p class="Pp">You can now:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;Press any number to open an article link in the
+  browser. For numbers larger than 9 type <span class="Li">#</span>, then the
+  number and press <span class="Li">Enter</span>.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;Press <span class="Li">O</span> to open the
+  article in the browser.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;Press <span class="Li">Q</span> to go back to the
+  <i>Article List View</i>.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<p class="Pp"><b>Browser view</b> Sometimes the content of an article is empty
+    or just an abstract or short description. You can always press
+    <span class="Li">O</span> to view the complete article in a browser. The
+    default browser is <i>lynx</i>.</p>
+<p class="Pp">You can use your browser of choice by configuring
+  <i>browser</i>.</p>
+</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CONFIGURATION"><a class="permalink" href="#CONFIGURATION">CONFIGURATION</a></h1>
+<p class="Pp">Several aspects of Newsboat can be configured via a <i>config</i>
+    file, which is stored next to the <i>urls</i> file. A configuration line
+    looks like this in general:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>&lt;config-command&gt; &lt;arg1&gt; ...</pre>
+</div>
+<p class="Pp">The configuration file can contain comments, which start with the
+    <i>#</i> character and go as far as the end of line.</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<p class="Pp"><b>User contrib</b> Newsboat also comes with user contributed
+    content like scripts and color themes. The user contributed content can be
+    found in <i>/usr/share/doc/newsboat/contrib/</i>. End users are encouraged
+    to take a look as they may find something useful.</p>
+</div>
+<section class="Ss">
+<h2 class="Ss" id="Example"><a class="permalink" href="#Example">Example</a></h2>
+<p class="Pp">An example configuration looks like this</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre># a comment
+max-items        100 # such comments are possible, too
+browser          links
+show-read-feeds  no
+unbind-key       R
+bind             ^R feedlist reload-all</pre>
+</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Splitting_long_lines_into_multiple_ones"><a class="permalink" href="#Splitting_long_lines_into_multiple_ones">Splitting
+  long lines into multiple ones</a></h2>
+<p class="Pp">Settings such as macros and <i>ignore-article</i> can be quite
+    lengthy. A long line can be broken into multiple ones using backslashes. A
+    backslash must be the last character on the line and will immediately
+    concatenate it with the following line. It&#x2019;s important that
+    <i>nothing</i> follows the <i>\</i> on the same line, otherwise the <i>\</i>
+    character is treated &quot;as is&quot;. For example:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>macro p open; \
+reload; quit; \
+quit;         \
+quit -- &quot;Opens, reloads then makes sure to quit newsboat&quot;</pre>
+</div>
+<p class="Pp">Please note that a backslash only makes Newsboat ignore the
+    following newline. It doesn&#x2019;t do <i>anything</i> else at all. For
+    example, this nicely formatted option:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>ignore-article \
+<br/>
+    &quot;*&quot; \
+<br/>
+    &quot;author =~ \&quot;(\
+<br/>
+        John Doe| \
+<br/>
+        Mary Sue \
+<br/>
+    )\&quot;&quot;</pre>
+</div>
+<p class="Pp"><i>does not</i> turn into this:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>ignore-article &quot;*&quot; &quot;author =~ \&quot;(John Doe|Mary Sue)\&quot;&quot;</pre>
+</div>
+<p class="Pp">Instead, as only newlines are removed, it turns to this:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>ignore-article     &quot;*&quot;     &quot;author =~ \&quot;(        John Doe|         Mary Sue     )\&quot;&quot;</pre>
+</div>
+<p class="Pp">For this reason, be conscious of where you&#x2019;re splitting the
+    lines, because it might matter.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Using_Double_Quotes"><a class="permalink" href="#Using_Double_Quotes">Using
+  Double Quotes</a></h2>
+<div class="Bd-indent">
+<p class="Pp"><b>TL;DR</b> Use double quotes for strings that contain spaces or
+    double quotes. Escape double quotes (use \&quot;) and backslashes (use \\).
+    Don&#x2019;t escape stuff outside of double quotes, and don&#x2019;t use
+    single quotes for quoting&#x00A0;&#x2014; Newsboat doesn&#x2019;t support
+    that.</p>
+</div>
+<p class="Pp">Many of Newsboat&#x2019;s options expect strings as arguments, be
+    it commands, passwords, dialog titles, URLs etc. Some options even take
+    <i>multiple</i> strings at once. These strings can contain spaces, which
+    might confuse Newsboat since it already uses spaces to separate option names
+    from option arguments.</p>
+<p class="Pp">To help Newsboat understand your intent, put such strings into
+    double quotes:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>browser &quot;firefox --new-tab %u&quot;</pre>
+</div>
+<p class="Pp">What if you need a double quote inside a string? Escape it with a
+    backslash:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>ocnews-password &quot;UnbalancedQuotes\&quot;AreSoFun!&quot;</pre>
+</div>
+<p class="Pp">And what about the backslash itself? Escape it, too! Suppose you
+    have a program called <i>my favourite pager</i>, and you want to view
+    articles with it. Newsboat ultimately passes commands to the shell, and
+    shell expects spaces to be escaped if you want them preserved. But since
+    Newsboat interprets backslashes, you have to add <i>another</i> layer of
+    escaping. Thus, you end up with a command like this:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>pager &quot;/usr/bin/my\\ favourite\\ pager&quot;</pre>
+</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Shell_Evaluation"><a class="permalink" href="#Shell_Evaluation">Shell
+  Evaluation</a></h2>
+<p class="Pp">It is also possible to integrate the output of external commands
+    into the configuration. The text between two <i>`</i> backticks is evaluated
+    as shell command, and its output is used. This works like backtick
+    evaluation in Bourne-compatible shells and allows users to use external
+    information from the system within the configuration.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Escaping"><a class="permalink" href="#Escaping">Escaping</a></h2>
+<p class="Pp">Backticks and <i>#</i> characters can be escaped with a backslash
+    (e.g. <i>\`</i> and <i>\#</i>). In this case, they are replaced with literal
+    <i>`</i> or <i>#</i> in the configuration.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Key_Bindings"><a class="permalink" href="#Key_Bindings">Key
+  Bindings</a></h2>
+<p class="Pp"><i>New style key bindings described here are supported since
+    Newsboat 2.39.</i></p>
+<p class="Pp">You can bind a key (or sequence of keys) to an operation (or a
+    list of operations) with the <i>bind</i> configuration command.</p>
+<p class="Pp">The syntax for a binding looks like this:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>bind &lt;key-sequence&gt; &lt;dialog&gt;[,&lt;dialog&gt;] &lt;operation-list&gt; [-- &quot;&lt;description&gt;&quot;]</pre>
+</div>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<br/>
+<b>Warning<i>: Limitations</i></b>
+<p class="Pp">Bindings that share a prefix must all have the same length;
+    otherwise, only the
+  <br/>
+  last binding is created.</p>
+<p class="Pp">For example:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>bind ab everywhere &#x2026;
+bind abc everywhere &#x2026;</pre>
+</div>
+<p class="Pp">will only create a binding for <i>abc</i>. Re-ordering the
+    commands will create a binding for <i>ab</i>.</p>
+<p class="Pp">This avoids ambiguity when <i>ab</i> is typed and Newsboat
+    doesn&#x2019;t know if it should run the binding for <i>ab</i> already or
+    the user is going to press <i>c</i> next, triggering the other binding.</p>
+<p class="Pp">To have both bindings, either:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;rename them to have different prefixes (e.g.
+  <i>ab</i> and <i>bcd</i>), or</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;make them the same length (e.g. rename <i>ab</i>
+  to <i>abd</i> to match the length of <i>abc</i>).</div>
+<p class="Pp"></p>
+</div>
+<p class="Pp"><b>Key Sequence</b></p>
+<p class="Pp">Lowercase keys, uppercase keys and special characters are written
+    literally.</p>
+<p class="Pp">Key combinations with <span class="Li">Ctrl</span> are written
+    using the caret <i>^</i>. For instance
+    <span class="Li">Ctrl&#x00A0;+&#x00A0;R</span> equals to <i>^R</i>. Please
+    be aware that all <span class="Li">Ctrl</span>-related key combinations need
+    to be written in uppercase.</p>
+<p class="Pp">Alternatively, key combinations using
+    <span class="Li">Shift</span> or <span class="Li">Ctrl</span> can be written
+    like <i>&lt;S-a&gt;</i> and <i>&lt;C-a&gt;</i>, for
+    <span class="Li">Shift&#x00A0;+&#x00A0;A</span> and
+    <span class="Li">Ctrl&#x00A0;+&#x00A0;A</span> respectively. Note that this
+    alternative syntax only works with the <i>bind</i> command. It is not
+    supported with the older <i>bind-key</i> command.</p>
+<p class="Pp">The following identifiers for special keys are supported:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;ENTER&gt;</i> (Enter key)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;BACKSPACE&gt;</i> (backspace key)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;LEFT&gt;</i> (left cursor)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;RIGHT&gt;</i> (right cursor)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;UP&gt;</i> (up cursor)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;DOWN&gt;</i> (down cursor)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;PPAGE&gt;</i> (page up cursor)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;NPAGE&gt;</i> (page down cursor)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;HOME&gt;</i> (cursor to beginning of
+  list/article)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;END&gt;</i> (cursor to end of
+  list/article)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;ESC&gt;</i> (Esc key)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;TAB&gt;</i> (Tab key)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;LT&gt;</i> (<i>&lt;</i> key)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;GT&gt;</i> (<i>&gt;</i> key)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;^&gt;</i> (<i>^</i> key, can also be
+  specified as just <i>^</i> if it is not followed by a letter)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&lt;F1&gt;</i> to <i>&lt;F12&gt;</i> (F1 key
+  to F12 key)</div>
+<p class="Pp">Multiple keys can be placed in sequence. For example <i>gg</i>
+    means pressing <span class="Li">g</span> twice and <i>^O&lt;ENTER&gt;</i>
+    means pressing <span class="Li">Ctrl&#x00A0;+&#x00A0;O</span> followed by
+    <span class="Li">Enter</span>. Pressing <span class="Li">Esc</span> will
+    cancel a multi-key input.</p>
+<p class="Pp"><b>Dialog</b></p>
+<p class="Pp">A dialog is a context in which the key binding is active.
+    Available dialogs are:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>everywhere</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>feedlist</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>filebrowser</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>help</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>articlelist</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>article</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>tagselection</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>filterselection</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>urlview</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>podboat</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>dirbrowser</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>searchresultslist</i></div>
+<p class="Pp">Multiple dialogs can be specified with a comma in between. For
+    example:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>bind k feedlist,articlelist,urlview up
+bind j feedlist,articlelist,urlview down</pre>
+</div>
+<p class="Pp">or using <i>everywhere</i> to apply the binding in all
+  dialogs:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>bind k everywhere up
+bind j everywhere down</pre>
+</div>
+<p class="Pp"><b>Operation List</b></p>
+<p class="Pp">Operations get executed when pressing the corresponding sequence
+    of keys. For a complete list of available operations see
+    [_newsboat_operations] and [_podboat_operations].</p>
+<p class="Pp">Multiple operations can be specified by writing them down
+    separated by a semicolon. Some operations allow specifying an argument, e.g.
+    <i>set &lt;config option&gt; &lt;config value&gt;</i> can be used to change
+    a configuration option.</p>
+<p class="Pp">A sequence with two dashes followed by text between double quotes
+    can be used to add a description to a binding (e.g. <i>-- &quot;some
+    description&quot;</i>). If present, the description is shown in the help
+    dialog.</p>
+<p class="Pp">In combination, this might look like:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>bind of everywhere set browser &quot;firefox&quot; ; open-in-browser -- &quot;Open in Firefox&quot;</pre>
+</div>
+<p class="Pp">The above example means that pressing <span class="Li">o</span>
+    followed by <span class="Li">f</span> will change the configured browser to
+    <i>firefox</i> and then run the <i>open-in-browser</i> command to open the
+    feed/article in the configured browser.</p>
+<p class="Pp"><i>bind</i> is similar to macros but is more flexible. Macros are
+    configured globally, whereas <i>bind</i> can be applied to specific dialogs.
+    Additionally, macros always require pressing 2 keys (<i>macro-prefix</i>
+    followed by a key specific to the macro) while <i>bind</i> can specify a
+    key-sequence of any length.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Old_Style_Key_Bindings"><a class="permalink" href="#Old_Style_Key_Bindings">Old
+  Style Key Bindings</a></h2>
+<p class="Pp">You can bind a single key to a single operation with the
+    <i>bind-key</i> configuration command. This is an older, more limited form
+    of keybinding syntax. You can specify an optional dialog. This is the
+    context in which the key binding is active.</p>
+<p class="Pp">The syntax for an old style key binding looks like this:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>bind-key &lt;key&gt; &lt;operation&gt; [&lt;dialog&gt;]</pre>
+</div>
+<p class="Pp"><b>Key</b></p>
+<p class="Pp">Lowercase keys, uppercase keys and special characters are written
+    literally.</p>
+<p class="Pp">Key combinations with <span class="Li">Ctrl</span> are written
+    using the caret <i>^</i>. For instance
+    <span class="Li">Ctrl&#x00A0;+&#x00A0;R</span> equals to <i>^R</i>. Please
+    be aware that all <span class="Li">Ctrl</span>-related key combinations need
+    to be written in uppercase.</p>
+<p class="Pp">The following identifiers for special keys are supported:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>ENTER</i> (Enter key)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>BACKSPACE</i> (backspace key)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>LEFT</i> (left cursor)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>RIGHT</i> (right cursor)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>UP</i> (up cursor)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>DOWN</i> (down cursor)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>PPAGE</i> (page up cursor)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>NPAGE</i> (page down cursor)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>HOME</i> (cursor to beginning of
+  list/article)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>END</i> (cursor to end of list/article)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>ESC</i> (Esc key)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>TAB</i> (Tab key)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>F1</i> to <i>F12</i> (F1 key to F12 key)</div>
+<p class="Pp"><b>Operation</b></p>
+<p class="Pp">An operation gets executed when pressing the corresponding key.
+    For a complete list of available operations see [_newsboat_operations] and
+    [_podboat_operations].</p>
+<p class="Pp"><b>Dialog</b></p>
+<p class="Pp">A dialog is a context in which the key binding is active.
+    Available dialogs are:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>all</i> (default if not specified)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>feedlist</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>filebrowser</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>help</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>articlelist</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>article</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>tagselection</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>filterselection</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>urlview</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>podboat</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>dirbrowser</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>searchresultslist</i></div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Colors"><a class="permalink" href="#Colors">Colors</a></h2>
+<p class="Pp">It is possible to configure custom color settings in Newsboat. The
+    basic configuration syntax is:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>color &lt;element&gt; &lt;foreground color&gt; &lt;background color&gt; [&lt;attribute&gt; ...]</pre>
+</div>
+<p class="Pp">This means that if you configure colors for a certain element, you
+    need to provide a foreground color and a background color as a minimum. The
+    following colors are supported:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>black</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>red</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>green</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>yellow</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>blue</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>magenta</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>cyan</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>white</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>default</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>color&lt;n&gt;</i>, e.g. <i>color123</i></div>
+<p class="Pp">The <i>default</i> color means that the terminal&#x2019;s default
+    color will be used. The <i>color&lt;n&gt;</i> color name (where
+    <i>&lt;n&gt;</i> is a decimal number <b>not</b> starting with zero) can be
+    used if your terminal supports 256 colors (e.g. <i>gnome-terminal</i>, or
+    <i>xterm</i> with <i>TERM</i> set to <i>xterm-256color</i>). Newsboat
+    contains support for 256 color terminals since version 2.1. For a complete
+    chart of colors and their corresponding numbers, please see <i></i>
+    &lt;https://www.calmar.ws/vim/256-xterm-24bit-rgb-color-chart.html&gt;.</p>
+<p class="Pp">Optionally, you can also add one or more attributes. The following
+    attributes are supported:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>standout</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>underline</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>reverse</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>blink</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>dim</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>bold</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>protect</i></div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>invis</i></div>
+<p class="Pp">Currently, the following elements are supported:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>background</i>: the application
+  background</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>listnormal</i>: a normal list item</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>listfocus</i>: the currently selected list
+  item</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>listnormal_unread</i>: an unread list
+  item</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>listfocus_unread</i>: the currently selected
+  unread list item</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>title</i> (<i>added in 2.25</i>): current
+  dialog&#x2019;s title, which is usually at the top of the screen (but see
+  <i>show-title-bar</i> and <i>swap-title-and-hints</i>). If you don&#x2019;t
+  specify a style for this element, then the <i>info</i> style is used</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>info</i>: the hints bar, which is usually at
+  the bottom of the screen (but see <i>show-keymap-hint</i> and
+  <i>swap-title-and-hints</i>)</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>hint-key</i> (<i>added in 2.25</i>): a key in
+  the hints bar. If you don&#x2019;t specify a style for this element, then the
+  <i>info</i> style is used</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>hint-keys-delimiter</i> (<i>added in
+  2.25</i>): the comma that separates keys in the hints bar. If you don&#x2019;t
+  specify a style for this element, then the <i>info</i> style is used</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>hint-separator</i> (<i>added in 2.25</i>): the
+  colon separating keys from their descriptions in the hints bar. If you
+  don&#x2019;t specify a style for this element, then the <i>info</i> style is
+  used</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>hint-description</i> (<i>added in 2.25</i>): a
+  description of a key in the hints bar. If you don&#x2019;t specify a style for
+  this element, then the <i>info</i> style is used</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>article</i>: the article text</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>end-of-text-marker</i>: filler lines (~) below
+  blocks of text</div>
+<p class="Pp">The default color configuration of Newsboat looks like this:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>color background          white   black
+color listnormal          white   black
+color listfocus           yellow  blue   bold
+color listnormal_unread   white   black  bold
+color listfocus_unread    yellow  blue   bold
+color title               yellow  blue   bold
+color info                yellow  blue   bold
+color hint-key            yellow  blue   bold
+color hint-keys-delimiter white   blue
+color hint-separator      white   blue   bold
+color hint-description    white   blue
+color article             white   black</pre>
+</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CONFIGURATION_COMMANDS"><a class="permalink" href="#CONFIGURATION_COMMANDS">CONFIGURATION
+  COMMANDS</a></h1>
+<p class="Pp"><i>always-display-description</i> (parameters: [yes/no]; default
+    value: <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then the description will always be
+  displayed even if e.g. a <i>&lt;content:encoded&gt;</i> tag has been found.
+  (example: always-display-description yes)</div>
+<p class="Pp"><i>always-download</i> (parameters: &lt;url&gt; [&lt;url&gt;...];
+    default value: <i>n/a</i>)</p>
+<div class="Bd-indent">Specifies one or more feed URLs that should always be
+  downloaded, regardless of their Last-Modified timestamp and ETag header. This
+  option can be specified multiple times. (example: always-download
+  &quot;https://www.n-tv.de/23.rss&quot;)</div>
+<p class="Pp"><i>article-sort-order</i> (parameters:
+    &lt;sortfield&gt;[-&lt;direction&gt;]; default value: <i>date-asc</i>)</p>
+<div class="Bd-indent">The &lt;sortfield&gt; specifies which article property
+  shall be used for sorting. Currently available are: <i>date</i>, <i>title</i>,
+  <i>flags</i>, <i>author</i>, <i>link</i>, <i>guid</i>, and <i>random</i>. The
+  optional &lt;direction&gt; can be either <i>asc</i> for ascending order, or
+  <i>desc</i> for descending order. Note that direction does not affect the
+  <i>random</i> sorting. For <i>date</i>, <i>desc</i> order is the default, i.e.
+  <i>date</i> is the same as <i>date-desc</i>; for all others, <i>asc</i> is the
+  default. Also, the directions for <i>date</i> are reversed: <i>desc</i> means
+  the newest items are first, whereas <i>asc</i> means the oldest items are
+  first. These inconsistencies will be fixed in a future major version of
+  Newsboat. (example: article-sort-order author-desc)</div>
+<p class="Pp"><i>articlelist-format</i> (parameters: &lt;format&gt;; default
+    value: <i>&quot;%4i %f %D %6L %?T?|%-17T| ?%t&quot;</i>)</p>
+<div class="Bd-indent">This variable defines the format of entries in the
+  article list. See the FORMAT STRINGS section in the documentation for more
+  information. (example: articlelist-format &quot;%4i %f %D %?T?|%-17T|
+  ?%t&quot;)</div>
+<p class="Pp"><i>articlelist-title-format</i> (parameters: &lt;format&gt;;
+    default value: <i>&quot;%N %V - Articles in feed '%T' (%u unread, %t
+    total)%?F? matching filter '%F'&amp;? - %U&quot; (localized)</i>)</p>
+<div class="Bd-indent">Format of the title in article list. See the FORMAT
+  STRINGS section of the Newsboat manual for details on available formats.
+  (example: articlelist-title-format &quot;Articles in feed '%T' (%u
+  unread)&quot;)</div>
+<p class="Pp"><i>auto-reload</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, all feeds will be automatically
+  reloaded at start up and then continuously after a certain time has passed
+  (see <i>reload-time</i>). See also <i>refresh-on-startup</i> to only reload
+  the feeds at start up, but not continuously. Enabling
+  <i>suppress-first-reload</i> omits the reload on start up. (example:
+  auto-reload yes)</div>
+<p class="Pp"><i>bind</i> (parameters: &lt;key-sequence&gt;
+    &lt;dialog&gt;[,&lt;dialog&gt;] &lt;command-list&gt; [-- &quot;&lt;binding
+    description&gt;&quot;]; default value: <i>n/a</i>)</p>
+<div class="Bd-indent">Bind sequence of keys &lt;key-sequence&gt; to
+  &lt;command-list&gt;. This means that whenever the keys in
+  &lt;key-sequence&gt; are pressed in order, then the list of commands in
+  &lt;command-list&gt; is executed (if applicable in the current dialog). For
+  more information see Key Bindings. Optionally, a description can be added. If
+  present, the description is shown in the help form. See also <i>unbind-key</i>
+  to remove a key binding. (example: bind of everywhere set browser
+  &quot;firefox&quot; ; open-in-browser)</div>
+<p class="Pp"><i>bind-key</i> (parameters: &lt;key&gt; &lt;operation&gt;
+    [&lt;dialog&gt;]; default value: <i>n/a</i>)</p>
+<div class="Bd-indent">Bind key &lt;key&gt; to &lt;operation&gt;. This means
+  that whenever &lt;key&gt; is pressed, then &lt;operation&gt; is executed (if
+  applicable in the current dialog). For more information see Old Style Key
+  Bindings. See also <i>unbind-key</i> to remove a key binding. (example:
+  bind-key ^R reload-all)</div>
+<p class="Pp"><i>bookmark-autopilot</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, the configured bookmark command is
+  executed without any further input asked from user, unless the url or the
+  title cannot be found/guessed. (example: bookmark-autopilot yes)</div>
+<p class="Pp"><i>bookmark-cmd</i> (parameters: &lt;command&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set, then &lt;command&gt; will be used as bookmarking
+  plugin. See the documentation on bookmarking for further information.
+  (example: bookmark-cmd &quot;~/bin/delicious-bookmark.sh&quot;)</div>
+<p class="Pp"><i>bookmark-interactive</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then the configured bookmark
+  command is an interactive program. (example: bookmark-interactive yes)</div>
+<p class="Pp"><i>browser</i> (parameters: &lt;command&gt;; default value:
+    <i>%BROWSER, otherwise lynx</i>)</p>
+<div class="Bd-indent">Set the browser command to use when opening an article in
+  the browser. If the <i>BROWSER</i> environment variable is set, it will be
+  used as the default browser, otherwise lynx will be used. For more
+  information, see Using Browser. (example: browser &quot;w3m %u&quot;)</div>
+<p class="Pp"><i>cache-file</i> (parameters: &lt;path&gt;; default value:
+    <i>&quot;~/.newsboat/cache.db&quot; or &quot;~/.local/share/cache.db&quot;
+    (see the FILES section)</i>)</p>
+<div class="Bd-indent">This configuration option sets the cache file. This is
+  especially useful if the filesystem of your home directory doesn&#x2019;t
+  support proper locking (e.g. NFS). (example: cache-file
+  &quot;/tmp/testcache.db&quot;)</div>
+<p class="Pp"><i>cleanup-on-quit</i> (parameters: [yes/no/nudge]; default value:
+    <i>nudge</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then the cache gets locked and
+  superfluous feeds and items are removed, such as feeds that can&#x2019;t be
+  found in the urls configuration file anymore. Run <i>newsboat --cleanup</i> to
+  do this manually. If you encounter a warning about unreachable feeds having
+  been found, you may see the feed urls listed by creating a log file via the
+  <i>error-log</i> option. With nudge, newsboat will wait for user input if the
+  warning is printed. (example: cleanup-on-quit yes)</div>
+<p class="Pp"><i>color</i> (parameters: &lt;element&gt; &lt;fgcolor&gt;
+    &lt;bgcolor&gt; [&lt;attribute&gt; ...]; default value: <i>n/a</i>)</p>
+<div class="Bd-indent">Set the foreground color, background color and optional
+  attributes for a certain element. (example: color background white
+  black)</div>
+<p class="Pp"><i>confirm-delete-all-articles</i> (parameters: [yes/no]; default
+    value: <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then Newsboat will ask for
+  confirmation whether the user wants to delete all articles. (example:
+  confirm-delete-all-articles no)</div>
+<p class="Pp"><i>confirm-exit</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then Newsboat will ask for
+  confirmation whether the user really wants to quit Newsboat. (example:
+  confirm-exit yes)</div>
+<p class="Pp"><i>confirm-mark-all-feeds-read</i> (parameters: [yes/no]; default
+    value: <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then Newsboat will ask for
+  confirmation whether the user wants to mark all feeds as read. (example:
+  confirm-mark-all-feeds-read no)</div>
+<p class="Pp"><i>confirm-mark-feed-read</i> (parameters: [yes/no]; default
+    value: <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then Newsboat will ask for
+  confirmation on whether the user wants to mark a feed as read. (example:
+  confirm-mark-feed-read no)</div>
+<p class="Pp"><i>cookie-cache</i> (parameters: &lt;path&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Set a cookie cache. If set, cookies will be cached in
+  (i.e. read from and written to) this file, using <i>Netscape format</i>
+  &lt;http://www.cookiecentral.com/faq/#3.5&gt;. (example: cookie-cache
+  &quot;~/.newsboat/cookies.txt&quot;)</div>
+<p class="Pp"><i>datetime-format</i> (parameters: &lt;date/time format&gt;;
+    default value: <i>%b %d</i>)</p>
+<div class="Bd-indent">This format specifies the date/time format in the article
+  list. For a detailed documentation on most of the allowed formats, consult the
+  manpage of strftime(3). %L is a custom format not available in strftime which
+  lists the days since the article was published (e.g. &quot;2 days ago&quot;).
+  (example: datetime-format &quot;%D, %R&quot;)</div>
+<p class="Pp"><i>define-filter</i> (parameters: &lt;name&gt; &lt;filterexpr&gt;;
+    default value: <i>n/a</i>)</p>
+<div class="Bd-indent">With this command, you can predefine filters, which you
+  can later select from a list, and which are then applied after selection. This
+  is especially useful for filters that you need often and you don&#x2019;t want
+  to enter them every time you need them. (example: define-filter &quot;all
+  feeds with 'fun' tag&quot; &quot;tags # \&quot;fun\&quot;&quot;)</div>
+<p class="Pp"><i>delete-read-articles-on-quit</i> (parameters: [yes/no]; default
+    value: <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, all read articles will be deleted
+  when quiting Newsboat. This option only applies if <i>cleanup-on-quit</i> is
+  set to <i>yes</i> or if the <i>&#x2014;cleanup</i> argument is passed.
+  (example: delete-read-articles-on-quit yes)</div>
+<p class="Pp"><i>dialogs-title-format</i> (parameters: &lt;format&gt;; default
+    value: <i>&quot;%N %V - Dialogs&quot; (localized)</i>)</p>
+<div class="Bd-indent">Format of the title in dialog list. See the FORMAT
+  STRINGS section of the Newsboat manual for details on available formats.
+  (example: dialogs-title-format &quot;%N %V - Dialogs&quot;)</div>
+<p class="Pp"><i>dirbrowser-title-format</i> (parameters: &lt;format&gt;;
+    default value: <i>&quot;%N %V - %?O?Open Directory&amp;Save File? - %f&quot;
+    (localized)</i>)</p>
+<div class="Bd-indent">Format of the title in directory browser. See the FORMAT
+  STRINGS section of the Newsboat manual for details on available formats.
+  (example: dirbrowser-file-format &quot;%?O?Open Directory&amp;Save File? -
+  %f&quot;)</div>
+<p class="Pp"><i>display-article-progress</i> (parameters: [yes/no]; default
+    value: <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then a read progress (in percent)
+  is displayed in the article view. Otherwise, no read progress is displayed.
+  (example: display-article-progress no)</div>
+<p class="Pp"><i>download-full-page</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then for all feed items with no
+  content but with a link, the link is downloaded and the result used as content
+  instead. This may significantly increase the download times of
+  &quot;empty&quot; feeds. (example: download-full-page yes)</div>
+<p class="Pp"><i>download-retries</i> (parameters: &lt;number&gt;; default
+    value: <i>1</i>)</p>
+<div class="Bd-indent">How many times Newsboat shall try to successfully
+  download a feed before giving up. This is an option to improve the success of
+  downloads on slow and shaky connections such as via a TOR proxy. (example:
+  download-retries 4)</div>
+<p class="Pp"><i>download-timeout</i> (parameters: &lt;number&gt;; default
+    value: <i>30</i>)</p>
+<div class="Bd-indent">The number of seconds Newsboat shall wait when
+  downloading a feed before giving up. This is an option to improve the success
+  of downloads on slow and shaky connections such as via a TOR proxy. (example:
+  download-timeout 60)</div>
+<p class="Pp"><i>error-log</i> (parameters: &lt;path&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set, then user errors (e.g. errors regarding defunct
+  RSS feeds) will be logged to this file. (example: error-log
+  &quot;~/.newsboat/error.log&quot;)</div>
+<p class="Pp"><i>external-url-viewer</i> (parameters: &lt;command&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set, then <i>show-urls</i> will pipe the current
+  article to a specific external tool instead of using the internal URL viewer.
+  This can be used to integrate tools such as urlview. (example:
+  external-url-viewer &quot;urlview&quot;)</div>
+<p class="Pp"><i>feed-sort-order</i> (parameters:
+    &lt;sortfield&gt;[-&lt;direction&gt;]; default value: <i>none</i>)</p>
+<div class="Bd-indent">The &lt;sortfield&gt; specifies which feed property shall
+  be used for sorting; currently available are: <i>firsttag</i>, <i>title</i>,
+  <i>articlecount</i>, <i>unreadarticlecount</i>, <i>lastupdated</i>,
+  <i>latestunread</i> and <i>none</i>. The optional &lt;direction&gt; specifies
+  the sort direction. <i>asc</i> specifies ascending sorting, <i>desc</i>
+  specifies descending sorting. <i>desc</i> is the default. (example:
+  feed-sort-order firsttag)</div>
+<p class="Pp"><i>feedbin-flag-star</i> (parameters: &lt;flag&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set and Feedbin support is used, then all articles
+  that are flagged with the specified flag are being &quot;starred&quot; in
+  Feedbin and appear in the list of &quot;Starred items&quot;. (example:
+  feedbin-flag-star &quot;b&quot;)</div>
+<p class="Pp"><i>feedbin-login</i> (parameters: &lt;login&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">This variable sets your Feedbin login for Feedbin
+  support. (example: feedbin-login &quot;your-login&quot;)</div>
+<p class="Pp"><i>feedbin-password</i> (parameters: &lt;password&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">This variable sets your Feedbin password for Feedbin
+  support. Double quotes and backslashes within it should be escaped. (example:
+  feedbin-password &quot;here_goesAquote:\&quot;&quot;)</div>
+<p class="Pp"><i>feedbin-passwordeval</i> (parameters: &lt;command&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">A more secure alternative to the above, is providing your
+  password from an external command that is evaluated during login. This can be
+  used to read your password from a gpg encrypted file or your system keyring.
+  (example: feedbin-passwordeval &quot;gpg --decrypt
+  ~/.newsboat/feedbin-password.gpg&quot;)</div>
+<p class="Pp"><i>feedbin-passwordfile</i> (parameters: &lt;path&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Another alternative, by storing your plaintext password
+  elsewhere in your system. (example: feedbin-passwordfile
+  &quot;~/.newsboat/feedbin-pw.txt&quot;)</div>
+<p class="Pp"><i>feedbin-url</i> (parameters: &lt;url&gt;; default value:
+    <i>&quot;https://api.feedbin.com&quot;</i>)</p>
+<div class="Bd-indent">Configures the URL where the Feedbin installation you
+  want to use resides. (example: feedbin-url
+  &quot;https://example.com/feedbin/&quot;)</div>
+<p class="Pp"><i>feedhq-flag-share</i> (parameters: &lt;flag&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set and FeedHQ support is used, then all articles that
+  are flagged with the specified flag are being &quot;shared&quot; in FeedHQ so
+  that people that follow you can see it. (example: feedhq-flag-share
+  &quot;a&quot;)</div>
+<p class="Pp"><i>feedhq-flag-star</i> (parameters: &lt;flag&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set and FeedHQ support is used, then all articles that
+  are flagged with the specified flag are being &quot;starred&quot; in FeedHQ
+  and appear in the list of &quot;Starred items&quot;. (example:
+  feedhq-flag-star &quot;b&quot;)</div>
+<p class="Pp"><i>feedhq-login</i> (parameters: &lt;login&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">This variable sets your FeedHQ login for FeedHQ support.
+  (example: feedhq-login &quot;your-login&quot;)</div>
+<p class="Pp"><i>feedhq-min-items</i> (parameters: &lt;number&gt;; default
+    value: <i>20</i>)</p>
+<div class="Bd-indent">This variable sets the number of articles that are loaded
+  from FeedHQ per feed. (example: feedhq-min-items 100)</div>
+<p class="Pp"><i>feedhq-password</i> (parameters: &lt;password&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">This variable sets your FeedHQ password for FeedHQ
+  support. Double quotes and backslashes within it should be escaped. (example:
+  feedhq-password &quot;here_goesAquote:\&quot;&quot;)</div>
+<p class="Pp"><i>feedhq-passwordeval</i> (parameters: &lt;command&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">A more secure alternative to the above, is providing your
+  password from an external command that is evaluated during login. This can be
+  used to read your password from a gpg encrypted file or your system keyring.
+  (example: feedhq-passwordeval &quot;gpg --decrypt
+  ~/.newsboat/feedhq-password.gpg&quot;)</div>
+<p class="Pp"><i>feedhq-passwordfile</i> (parameters: &lt;path&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Another alternative, by storing your plaintext password
+  elsewhere in your system. (example: feedhq-passwordfile
+  &quot;~/.newsboat/feedhq-pw.txt&quot;)</div>
+<p class="Pp"><i>feedhq-show-special-feeds</i> (parameters: [yes/no]; default
+    value: <i>yes</i>)</p>
+<div class="Bd-indent">If set and FeedHQ support is used, then &quot;special
+  feeds&quot; like &quot;People you follow&quot; (articles shared by people you
+  follow), &quot;Starred items&quot; (your starred articles) and &quot;Shared
+  items&quot; (your shared articles) appear in your subscription list. (example:
+  feedhq-show-special-feeds &quot;no&quot;)</div>
+<p class="Pp"><i>feedhq-url</i> (parameters: &lt;url&gt;; default value:
+    <i>&quot;https://feedhq.org/&quot;</i>)</p>
+<div class="Bd-indent">Configures the URL where your FeedHQ instance resides.
+  (example: feedhq-url &quot;https://feedhq.example.com/&quot;)</div>
+<p class="Pp"><i>feedlist-format</i> (parameters: &lt;format&gt;; default value:
+    <i>&quot;%4i %n %11u %t&quot;</i>)</p>
+<div class="Bd-indent">This variable defines the format of entries in the feed
+  list. See the FORMAT STRINGS section in the documentation for more
+  information. (example: feedlist-format &quot; %n %4i - %11u -%&gt;
+  %t&quot;)</div>
+<p class="Pp"><i>feedlist-title-format</i> (parameters: &lt;format&gt;; default
+    value: <i>&quot;%N %V - %?F?Feeds&amp;Your feeds? (%u unread, %t total)%?F?
+    matching filter '%F'&amp;?%?T? - tag '%T'&amp;?&quot; (localized)</i>)</p>
+<div class="Bd-indent">Format of the title in feed list. See the FORMAT STRINGS
+  section of the Newsboat manual for details on available formats. (example:
+  feedlist-title-format &quot;Feeds (%u unread, %t total)&quot;)</div>
+<p class="Pp"><i>filebrowser-title-format</i> (parameters: &lt;format&gt;;
+    default value: <i>&quot;%N %V - %?O?Open File&amp;Save File? - %f&quot;
+    (localized)</i>)</p>
+<div class="Bd-indent">Format of the title in file browser. See the FORMAT
+  STRINGS section of the Newsboat manual for details on available formats.
+  (example: filebrowser-title-format &quot;%?O?Open File&amp;Save File? -
+  %f&quot;)</div>
+<p class="Pp"><i>freshrss-flag-star</i> (parameters: &lt;flag&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set and FreshRSS support is used, then all articles
+  that are flagged with the specified flag are being &quot;starred&quot; in
+  FreshRSS and appear in the list of &quot;Starred items&quot;. (example:
+  freshrss-flag-star &quot;b&quot;)</div>
+<p class="Pp"><i>freshrss-login</i> (parameters: &lt;login&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">This variable sets your FreshRSS login for FreshRSS
+  support. (example: freshrss-login &quot;your-login&quot;)</div>
+<p class="Pp"><i>freshrss-min-items</i> (parameters: &lt;number&gt;; default
+    value: <i>20</i>)</p>
+<div class="Bd-indent">This variable sets the number of articles that are loaded
+  from FreshRSS per feed. (example: freshrss-min-items 100)</div>
+<p class="Pp"><i>freshrss-password</i> (parameters: &lt;password&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">This variable sets your FreshRSS password for FreshRSS
+  support. Double quotes and backslashes within it should be escaped. (example:
+  freshrss-password &quot;here_goesAquote:\&quot;&quot;)</div>
+<p class="Pp"><i>freshrss-passwordeval</i> (parameters: &lt;command&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">A more secure alternative to the above, is providing your
+  password from an external command that is evaluated during login. This can be
+  used to read your password from a gpg encrypted file or your system keyring.
+  (example: freshrss-passwordeval &quot;gpg --decrypt
+  ~/.newsboat/freshrss-password.gpg&quot;)</div>
+<p class="Pp"><i>freshrss-passwordfile</i> (parameters: &lt;path&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Another alternative, by storing your plaintext password
+  elsewhere in your system. (example: freshrss-passwordfile
+  &quot;~/.newsboat/freshrss-pw.txt&quot;)</div>
+<p class="Pp"><i>freshrss-show-special-feeds</i> (parameters: [yes/no]; default
+    value: <i>yes</i>)</p>
+<div class="Bd-indent">If set and FreshRSS support is used, then a &quot;Starred
+  items&quot; feed (containing your starred/favourited articles) appears in your
+  subscription list. (example: freshrss-show-special-feeds &quot;no&quot;)</div>
+<p class="Pp"><i>freshrss-url</i> (parameters: &lt;url&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Configures the URL for the Google Reader API endpoint of
+  your FreshRSS instance. (example: freshrss-url
+  &quot;https://freshrss.example.com/api/greader.php&quot;)</div>
+<p class="Pp"><i>goto-first-unread</i> (parameters: [yes/no]; default value:
+    <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then the first unread article will
+  be selected whenever a feed is entered. (example: goto-first-unread no)</div>
+<p class="Pp"><i>goto-next-feed</i> (parameters: [yes/no]; default value:
+    <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then the next-unread, prev-unread
+  and random-unread keys will search in other feeds for unread articles if all
+  articles in the current feed are read. If set to <i>no</i>, then these keys
+  will stop in the current feed. (example: goto-next-feed no)</div>
+<p class="Pp"><i>help-title-format</i> (parameters: &lt;format&gt;; default
+    value: <i>&quot;%N %V - Help&quot; (localized)</i>)</p>
+<div class="Bd-indent">Format of the title in help window. See the FORMAT
+  STRINGS section of the Newsboat manual for details on available formats.
+  (example: help-title-format &quot;%N %V - Help&quot;)</div>
+<p class="Pp"><i>highlight</i> (parameters: &lt;target&gt; &lt;regex&gt;
+    &lt;fgcolor&gt; [&lt;bgcolor&gt; [&lt;attribute&gt; ...]]; default value:
+    <i>n/a</i>)</p>
+<div class="Bd-indent">With this command, you can highlight text parts in the
+  feed list, the article list and the article view. (example: highlight all
+  &quot;newsboat&quot; red)</div>
+<p class="Pp"><i>highlight-article</i> (parameters: &lt;filterexpr&gt;
+    &lt;fgcolor&gt; &lt;bgcolor&gt; [&lt;attribute&gt; ...]; default value:
+    <i>n/a</i>)</p>
+<div class="Bd-indent">With this command, you can highlight articles in the
+  article list if they match a filter expression. (example: highlight-article
+  &quot;author =~ \&quot;Andreas Krennmair\&quot;&quot; white red bold)</div>
+<p class="Pp"><i>highlight-feed</i> (parameters: &lt;filterexpr&gt;
+    &lt;fgcolor&gt; &lt;bgcolor&gt; [&lt;attribute&gt; ...]; default value:
+    <i>n/a</i>)</p>
+<div class="Bd-indent">With this command, you can highlight feeds in the feed
+  list if they match a filter expression. (example: highlight-feed
+  <i>unread&#x00A0;&#x203A;&#x00A0;100</i> white red bold)</div>
+<p class="Pp"><i>history-limit</i> (parameters: &lt;number&gt;; default value:
+    <i>100</i>)</p>
+<div class="Bd-indent">Defines the maximum number of entries of commandline
+  resp. search history to be saved. To disable history saving, set it to 0.
+  (example: history-limit 0)</div>
+<p class="Pp"><i>html-renderer</i> (parameters: &lt;command&gt;; default value:
+    <i>internal</i>)</p>
+<div class="Bd-indent">If set to <i>internal</i>, then the internal HTML
+  renderer will be used. Otherwise, the specified command will be executed, the
+  HTML to be rendered will be written to the command&#x2019;s stdin, and the
+  program&#x2019;s output will be displayed. This makes it possible to use
+  other, external programs, such as w3m, links or lynx, to render HTML.
+  (example: html-renderer &quot;w3m -dump -T text/html&quot;)</div>
+<p class="Pp"><i>http-auth-method</i> (parameters: &lt;method&gt;; default
+    value: <i>any</i>)</p>
+<div class="Bd-indent">Set HTTP authentication method. Allowed values:
+  <i>any</i>, <i>basic</i>, <i>digest</i>, <i>digest_ie</i> (only available with
+  libcurl 7.19.3 and newer), <i>gssnegotiate</i>, <i>ntlm</i> and
+  <i>anysafe</i>. (example: http-auth-method digest)</div>
+<p class="Pp"><i>ignore-article</i> (parameters: &lt;feed&gt;
+    &lt;filterexpr&gt;; default value: <i>n/a</i>)</p>
+<div class="Bd-indent">If a downloaded article from &lt;feed&gt; matches
+  &lt;filterexpr&gt;, then it is ignored and not presented to the user. This
+  command is further explained in the KILLFILES section below. (example:
+  ignore-article &quot;*&quot; &quot;title =~ \&quot;Windows\&quot;&quot;)</div>
+<p class="Pp"><i>ignore-mode</i> (parameters: [download/display]; default value:
+    <i>download</i>)</p>
+<div class="Bd-indent">This configuration option defines in what way an article
+  is ignored (see <i>ignore-article</i>). If set to <i>download</i>, then it is
+  ignored in the download/parsing phase and thus never written to the cache, if
+  it set to <i>display</i>, it is ignored when displaying articles but is kept
+  in the cache. (example: ignore-mode &quot;display&quot;)</div>
+<p class="Pp"><i>include</i> (parameters: &lt;path&gt;; default value:
+    <i>n/a</i>)</p>
+<div class="Bd-indent">With this command, you can include other files to be
+  interpreted as configuration files. This is especially useful to separate your
+  configuration into several files, e.g. key configuration, color configuration,
+  ... (example: include &quot;~/.newsboat/colors&quot;)</div>
+<p class="Pp"><i>inoreader-app-id</i> (parameters: &lt;string&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Unique application ID issued by Inoreader. See
+  &quot;Inoreader&quot; section. (example: inoreader-app-id
+  &quot;123456789&quot;)</div>
+<p class="Pp"><i>inoreader-app-key</i> (parameters: &lt;string&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Application key issued by Inoreader. See
+  &quot;Inoreader&quot; section. (example: inoreader-app-key
+  &quot;TmV3c2JvYXQgcm9ja3MgOikK&quot;)</div>
+<p class="Pp"><i>inoreader-flag-share</i> (parameters: &lt;flag&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set and Inoreader support is used, then all articles
+  that are flagged with the specified flag are being &quot;shared&quot; in
+  Inoreader so that people that follow you can see it. (example:
+  inoreader-flag-share &quot;a&quot;)</div>
+<p class="Pp"><i>inoreader-flag-star</i> (parameters: &lt;flag&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set and Inoreader support is used, then all articles
+  that are flagged with the specified flag are being &quot;starred&quot; in
+  Inoreader and appear in the list of &quot;Starred items&quot;. (example:
+  inoreader-flag-star &quot;b&quot;)</div>
+<p class="Pp"><i>inoreader-login</i> (parameters: &lt;login&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">This variable sets your Inoreader login for Inoreader
+  support. (example: inoreader-login &quot;your-login&quot;)</div>
+<p class="Pp"><i>inoreader-min-items</i> (parameters: &lt;number&gt;; default
+    value: <i>20</i>)</p>
+<div class="Bd-indent">This variable sets the number of articles that are loaded
+  from Inoreader per feed. (example: inoreader-min-items 100)</div>
+<p class="Pp"><i>inoreader-password</i> (parameters: &lt;password&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">This variable sets your Inoreader password for Inoreader
+  support. Double quotes and backslashes within it should be escaped. (example:
+  inoreader-password &quot;here_goesAquote:\&quot;&quot;)</div>
+<p class="Pp"><i>inoreader-passwordeval</i> (parameters: &lt;command&gt;;
+    default value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">A more secure alternative to the above, is providing your
+  password from an external command that is evaluated during login. This can be
+  used to read your password from a gpg encrypted file or your system keyring.
+  (example: inoreader-passwordeval &quot;gpg --decrypt
+  ~/.newsboat/inoreader-password.gpg&quot;)</div>
+<p class="Pp"><i>inoreader-passwordfile</i> (parameters: &lt;path&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Another alternative, by storing your plaintext password
+  elsewhere in your system. (example: inoreader-passwordfile
+  &quot;~/.newsboat/inoreader-pw.txt&quot;)</div>
+<p class="Pp"><i>inoreader-show-special-feeds</i> (parameters: [yes/no]; default
+    value: <i>yes</i>)</p>
+<div class="Bd-indent">If set and Inoreader support is used, then &quot;special
+  feeds&quot; like &quot;Starred items&quot; (your starred articles) and
+  &quot;Shared items&quot; (your shared articles) appear in your subscription
+  list. (example: inoreader-show-special-feeds &quot;no&quot;)</div>
+<p class="Pp"><i>itemview-title-format</i> (parameters: &lt;format&gt;; default
+    value: <i>&quot;%N %V - Article '%T' (%u unread, %t total)&quot;
+    (localized)</i>)</p>
+<div class="Bd-indent">Format of the title in article view. See the FORMAT
+  STRINGS section of the Newsboat manual for details on available formats.
+  (example: itemview-title-format &quot;Article '%T'&quot;)</div>
+<p class="Pp"><i>keep-articles-days</i> (parameters: &lt;number&gt;; default
+    value: <i>0</i>)</p>
+<div class="Bd-indent">If set to a number greater than 0, only articles that
+  were published within the last &lt;number&gt; days are kept, and older
+  articles are deleted. If set to 0, this option is not active. Note that
+  changing this setting won&#x2019;t bring back the articles that were deleted
+  earlier; currently, there&#x2019;s no non-hacky way to bring back deleted
+  articles. (example: keep-articles-days 30)</div>
+<p class="Pp"><i>macro</i> (parameters: &lt;macro key&gt; &lt;command list&gt;
+    [-- &quot;&lt;macro description&gt;&quot;]; default value: <i>n/a</i>)</p>
+<div class="Bd-indent">With this command, you can define a macro key and specify
+  a list of commands that shall be executed when the macro prefix and the macro
+  key are pressed. Optionally, a description can be added. If present, the
+  description is shown in the help form. (example: macro k open; reload; quit --
+  &quot;enter feed to reload it&quot;)</div>
+<p class="Pp"><i>mark-as-read-on-hover</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then all articles that get selected
+  in the article list are marked as read. (example: mark-as-read-on-hover
+  yes)</div>
+<p class="Pp"><i>max-browser-tabs</i> (parameters: &lt;number&gt;; default
+    value: <i>10</i>)</p>
+<div class="Bd-indent">Set the maximum number of articles to open in a browser
+  when using the <i>open-all-unread-in-browser</i> or
+  <i>open-all-unread-in-browser-and-mark-read</i> commands. (example:
+  max-browser-tabs 4)</div>
+<p class="Pp"><i>max-download-speed</i> (parameters: &lt;number&gt;; default
+    value: <i>0</i>)</p>
+<div class="Bd-indent">If set to a number greater than 0, the download speed per
+  download is set to that limit (in KB/s). (example: max-download-speed
+  50)</div>
+<p class="Pp"><i>max-items</i> (parameters: &lt;number&gt;; default value:
+    <i>0</i>)</p>
+<div class="Bd-indent">Set the maximum number of articles a feed can contain.
+  When the threshold is crossed, old articles are dropped. If the number is set
+  to 0, then all articles are kept. (example: max-items 100)</div>
+<p class="Pp"><i>miniflux-flag-save</i> (parameters: &lt;flag&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set and Miniflux support is used, then all articles
+  that are flagged with the specified flag are being saved to external service
+  configured on Miniflux instance. (example: miniflux-flag-save
+  &quot;b&quot;)</div>
+<p class="Pp"><i>miniflux-flag-star</i> (parameters: &lt;flag&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set and Miniflux support is used, then all articles
+  that are flagged with the specified flag are being &quot;starred&quot; in
+  Miniflux and appear in the list of &quot;Starred items&quot;. (example:
+  miniflux-flag-star &quot;b&quot;)</div>
+<p class="Pp"><i>miniflux-login</i> (parameters: &lt;username&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Sets the username for use with Miniflux. (example:
+  miniflux-login &quot;admin&quot;)</div>
+<p class="Pp"><i>miniflux-min-items</i> (parameters: &lt;number&gt;; default
+    value: <i>100</i>)</p>
+<div class="Bd-indent">This variable sets the number of articles that are loaded
+  from Miniflux per feed. (example: miniflux-min-items 20)</div>
+<p class="Pp"><i>miniflux-password</i> (parameters: &lt;password&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Configures the password for use with Miniflux. Double
+  quotes and backslashes within it should be escaped. (example:
+  miniflux-password &quot;here_goesAquote:\&quot;&quot;)</div>
+<p class="Pp"><i>miniflux-passwordeval</i> (parameters: &lt;command&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">A more secure alternative to the above, is providing your
+  password from an external command that is evaluated during login. This can be
+  used to read your password from a gpg encrypted file or your system keyring.
+  (example: miniflux-passwordeval &quot;gpg --decrypt
+  ~/.newsboat/miniflux-password.gpg&quot;)</div>
+<p class="Pp"><i>miniflux-passwordfile</i> (parameters: &lt;path&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Another alternative, by storing your plaintext password
+  elsewhere in your system. (example: miniflux-passwordfile
+  &quot;~/.newsboat/miniflux-pw.txt&quot;)</div>
+<p class="Pp"><i>miniflux-show-special-feeds</i> (parameters: [yes/no]; default
+    value: <i>yes</i>)</p>
+<div class="Bd-indent">If set and Miniflux support is used, then a &quot;Starred
+  items&quot; feed (containing your starred/favourited articles) appears in your
+  subscription list. (example: miniflux-show-special-feeds &quot;no&quot;)</div>
+<p class="Pp"><i>miniflux-token</i> (parameters: &lt;API Token&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Sets the API Token for use with Miniflux. (example:
+  miniflux-token &quot;E-uTqU8r55KucuHz26tJbXfrZVRndwY_mZAsEfcC8Bg=&quot;)</div>
+<p class="Pp"><i>miniflux-tokeneval</i> (parameters: &lt;command&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">A more secure alternative to the above, is providing your
+  API token from an external command that is evaluated during login. This can be
+  used to read your token from a gpg encrypted file or your system keyring.
+  (example: miniflux-tokeneval &quot;gpg --decrypt
+  ~/.newsboat/miniflux-token.gpg&quot;)</div>
+<p class="Pp"><i>miniflux-tokenfile</i> (parameters: &lt;API Token&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Another alternative, by storing your plaintext token
+  elsewhere in your system. (example: miniflux-tokenfile
+  &quot;~/.newsboat/miniflux-token.txt&quot;)</div>
+<p class="Pp"><i>miniflux-url</i> (parameters: &lt;url&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Configures the URL where the Miniflux installation you
+  want to use resides. (example: miniflux-url
+  &quot;https://example.com/miniflux/&quot;)</div>
+<p class="Pp"><i>newsblur-login</i> (parameters: &lt;login&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">This variable sets your NewsBlur login for NewsBlur
+  support. (example: newsblur-login &quot;your-login&quot;)</div>
+<p class="Pp"><i>newsblur-min-items</i> (parameters: &lt;number&gt;; default
+    value: <i>20</i>)</p>
+<div class="Bd-indent">This variable sets the number of articles that are loaded
+  from NewsBlur per feed. (example: newsblur-min-items 100)</div>
+<p class="Pp"><i>newsblur-password</i> (parameters: &lt;password&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">This variable sets your NewsBlur password for NewsBlur
+  support. Double quotes and backslashes within it should be escaped. (example:
+  newsblur-password &quot;here_goesAquote:\&quot;&quot;)</div>
+<p class="Pp"><i>newsblur-passwordeval</i> (parameters: &lt;command&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">A more secure alternative to the above, is providing your
+  password from an external command that is evaluated during login. This can be
+  used to read your password from a gpg encrypted file or your system keyring.
+  (example: newsblur-passwordeval &quot;gpg --decrypt
+  ~/.newsboat/newsblur-password.gpg&quot;)</div>
+<p class="Pp"><i>newsblur-passwordfile</i> (parameters: &lt;path&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Another alternative, by storing your plaintext password
+  elsewhere in your system. (example: newsblur-passwordfile
+  &quot;~/.newsboat/newsblur-pw.txt&quot;)</div>
+<p class="Pp"><i>newsblur-url</i> (parameters: &lt;url&gt;; default value:
+    <i>&quot;https://newsblur.com&quot;</i>)</p>
+<div class="Bd-indent">Configures the URL where the NewsBlur instance resides.
+  (example: newsblur-url &quot;https://localhost&quot;)</div>
+<p class="Pp"><i>notify-always</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>no</i>, notifications will only be made when
+  there are new feeds or articles. If set to <i>yes</i>, notifications will be
+  made regardless. (example: notify-always yes)</div>
+<p class="Pp"><i>notify-beep</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then the speaker will beep on new
+  articles. (example: notify-beep yes)</div>
+<p class="Pp"><i>notify-format</i> (parameters: &lt;string&gt;; default value:
+    <i>&quot;Newsboat: finished reload, %f unread feeds (%n unread articles
+    total)&quot; (localized)</i>)</p>
+<div class="Bd-indent">Format string that is used for formatting notifications.
+  (example: notify-format &quot;%d new articles (%n unread articles, %f unread
+  feeds)&quot;)</div>
+<p class="Pp"><i>notify-program</i> (parameters: &lt;command&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set, then the configured program will be executed if
+  new articles arrived (through a reload) or if <i>notify-always</i> is
+  <i>yes</i>. The first parameter of the called program contains the
+  notification message. In order to pass other hard-coded arguments to the
+  program, write an appropriate wrapper shell script and use it as
+  &lt;command&gt; instead. (example: notify-program
+  &quot;~/bin/my-notifier&quot;)</div>
+<p class="Pp"><i>notify-screen</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then a &quot;privacy message&quot;
+  will be sent to the terminal, containing a notification message about new
+  articles. This is especially useful if you use terminal emulations such as GNU
+  screen which implement privacy messages. (example: notify-screen yes)</div>
+<p class="Pp"><i>notify-xterm</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then the xterm window title will be
+  set to a notification message about new articles. (example: notify-xterm
+  yes)</div>
+<p class="Pp"><i>ocnews-flag-star</i> (parameters: &lt;character&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set and ownCloud News support is used, then all
+  articles that are flagged with the specified flag are being
+  &quot;starred&quot; in ownCloud News. (example: ocnews-flag-star
+  &quot;s&quot;)</div>
+<p class="Pp"><i>ocnews-login</i> (parameters: &lt;username&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Sets the username to use with the ownCloud instance.
+  (example: ocnews-login &quot;user&quot;)</div>
+<p class="Pp"><i>ocnews-password</i> (parameters: &lt;password&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Configures the password to use with the ownCloud
+  instance. Double quotes and backslashes within it should be escaped. (example:
+  ocnews-password &quot;here_goesAquote:\&quot;&quot;)</div>
+<p class="Pp"><i>ocnews-passwordeval</i> (parameters: &lt;command&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">A more secure alternative to the above, is providing your
+  password from an external command that is evaluated during login. This can be
+  used to read your password from a gpg encrypted file or your system keyring.
+  (example: ocnews-passwordeval &quot;gpg --decrypt
+  ~/.newsboat/ocnews-password.gpg&quot;)</div>
+<p class="Pp"><i>ocnews-passwordfile</i> (parameters: &lt;path&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Another alternative, by storing your plaintext password
+  elsewhere in your system. (example: ocnews-passwordfile
+  &quot;~/.newsboat/ocnews-pw.txt&quot;)</div>
+<p class="Pp"><i>ocnews-url</i> (parameters: &lt;url&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Configures the URL where the ownCloud instance resides.
+  (example: ocnews-url &quot;https://localhost/owncloud&quot;)</div>
+<p class="Pp"><i>oldreader-flag-share</i> (parameters: &lt;flag&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set and The Old Reader support is used, then all
+  articles that are flagged with the specified flag are being &quot;shared&quot;
+  in The Old Reader so that people that follow you can see it. (example:
+  oldreader-flag-share &quot;a&quot;)</div>
+<p class="Pp"><i>oldreader-flag-star</i> (parameters: &lt;flag&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set and The Old Reader support is used, then all
+  articles that are flagged with the specified flag are being
+  &quot;starred&quot; in The Old Reader and appear in the list of &quot;Starred
+  items&quot;. (example: oldreader-flag-star &quot;b&quot;)</div>
+<p class="Pp"><i>oldreader-login</i> (parameters: &lt;login&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">This variable sets your The Old Reader login for The
+  Older Reader support. (example: oldreader-login &quot;your-login&quot;)</div>
+<p class="Pp"><i>oldreader-min-items</i> (parameters: &lt;number&gt;; default
+    value: <i>20</i>)</p>
+<div class="Bd-indent">This variable sets the number of articles that are loaded
+  from The Old Reader per feed. (example: oldreader-min-items 100)</div>
+<p class="Pp"><i>oldreader-password</i> (parameters: &lt;password&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">This variable sets your The Old Reader password for The
+  Old Reader support. Double quotes and backslashes within it should be escaped.
+  (example: oldreader-password &quot;here_goesAquote:\&quot;&quot;)</div>
+<p class="Pp"><i>oldreader-passwordeval</i> (parameters: &lt;command&gt;;
+    default value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">A more secure alternative to the above, is providing your
+  password from an external command that is evaluated during login. This can be
+  used to read your password from a gpg encrypted file or your system keyring.
+  (example: oldreader-passwordeval &quot;gpg --decrypt
+  ~/.newsboat/oldreader-password.gpg&quot;)</div>
+<p class="Pp"><i>oldreader-passwordfile</i> (parameters: &lt;path&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Another alternative, by storing your plaintext password
+  elsewhere in your system. (example: oldreader-passwordfile
+  &quot;~/.newsboat/oldreader-pw.txt&quot;)</div>
+<p class="Pp"><i>oldreader-show-special-feeds</i> (parameters: [yes/no]; default
+    value: <i>yes</i>)</p>
+<div class="Bd-indent">If set and The Old reader support is used, then
+  &quot;special feeds&quot; like &quot;People you follow&quot; (articles shared
+  by people you follow), &quot;Starred items&quot; (your starred articles) and
+  &quot;Shared items&quot; (your shared articles) appear in your subscription
+  list. (example: oldreader-show-special-feeds &quot;no&quot;)</div>
+<p class="Pp"><i>openbrowser-and-mark-jumps-to-next-unread</i> (parameters:
+    [yes/no]; default value: <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, jump to the next unread item when
+  an item is opened in the browser and marked as read. (example:
+  openbrowser-and-mark-jumps-to-next-unread yes)</div>
+<p class="Pp"><i>opml-url</i> (parameters: &lt;url&gt; ...; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If the OPML online subscription mode is enabled, then the
+  list of feeds will be taken from the OPML file found on this location.
+  Optionally, you can specify more than one URL. All the listed OPML URLs will
+  then be taken into account when loading the feed list. (example: opml-url
+  &quot;https://host.domain.tld/blogroll.opml&quot;
+  &quot;https://example.com/anotheropmlfile.opml&quot;)</div>
+<p class="Pp"><i>pager</i> (parameters: [&lt;command&gt;/internal]; default
+    value: <i>internal</i>)</p>
+<div class="Bd-indent">If set to <i>internal</i>, then the internal pager will
+  be used. Otherwise, the article to be displayed will be rendered to be a
+  temporary file and then displayed with the configured pager. If the command is
+  set to an empty string, the content of the <i>PAGER</i> environment variable
+  will be used. If the command contains a placeholder <i>%f</i>, it will be
+  replaced with the temporary filename. (example: pager &quot;less
+  %f&quot;)</div>
+<p class="Pp"><i>podcast-auto-enqueue</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then all podcast URLs that are
+  found in articles are added to the podcast download queue. See the PODCAST
+  SUPPORT section in the documentation for more information. (example:
+  podcast-auto-enqueue yes)</div>
+<p class="Pp"><i>prepopulate-query-feeds</i> (parameters: [yes/no]; default
+    value: <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then all query feeds are
+  prepopulated with articles on startup. (example: prepopulate-query-feeds
+  yes)</div>
+<p class="Pp"><i>proxy</i> (parameters: &lt;server:port&gt;; default value:
+    <i>n/a</i>)</p>
+<div class="Bd-indent">Set the proxy to use for downloading RSS feeds.
+  (Don&#x2019;t forget to actually enable the proxy with <i>use-proxy yes</i>.)
+  Note that the <i>NO_PROXY</i> environment variable can disable the proxy for
+  certain sites. (example: proxy localhost:3128)</div>
+<p class="Pp"><i>proxy-auth</i> (parameters: &lt;auth&gt;; default value:
+    <i>n/a</i>)</p>
+<div class="Bd-indent">Set the proxy authentication string. (example: proxy-auth
+  user:password)</div>
+<p class="Pp"><i>proxy-auth-method</i> (parameters: &lt;method&gt;; default
+    value: <i>any</i>)</p>
+<div class="Bd-indent">Set proxy authentication method. Allowed values:
+  <i>any</i>, <i>basic</i>, <i>digest</i>, <i>digest_ie</i> (only available with
+  libcurl 7.19.3 and newer), <i>gssnegotiate</i>, <i>ntlm</i> and
+  <i>anysafe</i>. (example: proxy-auth-method ntlm)</div>
+<p class="Pp"><i>proxy-type</i> (parameters: &lt;type&gt;; default value:
+    <i>http</i>)</p>
+<div class="Bd-indent">Set proxy type. Allowed values: <i>http</i>,
+  <i>socks4</i>, <i>socks4a</i>, <i>socks5</i> and <i>socks5h</i>. (example:
+  proxy-type socks5)</div>
+<p class="Pp"><i>refresh-on-startup</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then all feeds will be reloaded
+  when Newsboat starts up. This is equivalent to the <i>-r</i> commandline
+  option. See also <i>auto-reload</i> to additionally reload the feeds
+  continuously. (example: refresh-on-startup yes)</div>
+<p class="Pp"><i>reload-only-visible-feeds</i> (parameters: [yes/no]; default
+    value: <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then manually reloading all feeds
+  will only reload the currently visible feeds, e.g. if a filter or a tag is
+  set. (example: reload-only-visible-feeds yes)</div>
+<p class="Pp"><i>reload-threads</i> (parameters: &lt;number&gt;; default value:
+    <i>1</i>)</p>
+<div class="Bd-indent">The number of parallel reload threads that shall be
+  started when all feeds are reloaded. (example: reload-threads 3)</div>
+<p class="Pp"><i>reload-time</i> (parameters: &lt;number&gt;; default value:
+    <i>60</i>)</p>
+<div class="Bd-indent">The number of minutes between automatic reloads.
+  (example: reload-time 120)</div>
+<p class="Pp"><i>reset-unread-on-update</i> (parameters: &lt;url&gt;
+    [&lt;url&gt;...]; default value: <i>n/a</i>)</p>
+<div class="Bd-indent">Specifies one or more feed URLs for whose articles the
+  unread flag will be reset if an article has been updated, i.e. its content has
+  been changed. This is especially useful for RSS feeds where single articles
+  are updated after publication, and you want to be notified of the updates.
+  This option can be specified multiple times. (example: reset-unread-on-update
+  &quot;https://blog.fefe.de/rss.xml?html&quot;)</div>
+<p class="Pp"><i>restrict-filename</i> (parameters: [yes/no]; default value:
+    <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>no</i>, Newsboat will not limit saved
+  article filenames to ASCII characters. (example: restrict-filename no)</div>
+<p class="Pp"><i>run-on-startup</i> (parameters: &lt;list of operations&gt;;
+    default value: <i>n/a</i>)</p>
+<div class="Bd-indent">Specifies one or more Newsboat operations, separated by
+  semicolons, which are executed on Newsboat startup. (example: run-on-startup
+  next-unread; open; random-unread; open)</div>
+<p class="Pp"><i>save-path</i> (parameters: &lt;path-to-directory&gt;; default
+    value: <i>~/</i>)</p>
+<div class="Bd-indent">The default path where articles shall be saved to. If an
+  invalid path is specified, the current directory is used. (example: save-path
+  &quot;~/Saved Articles&quot;)</div>
+<p class="Pp"><i>scrolloff</i> (parameters: &lt;number&gt;; default value:
+    <i>0</i>)</p>
+<div class="Bd-indent">Keep the configured number of lines above and below the
+  selected item in lists. Configure a high number to keep the selected item in
+  the center of the screen. (example: scrolloff 5)</div>
+<p class="Pp"><i>search-highlight-colors</i> (parameters: &lt;fgcolor&gt;
+    &lt;bgcolor&gt; [&lt;attribute&gt; ...]; default value: <i>black yellow
+    bold</i>)</p>
+<div class="Bd-indent">This configuration command specifies the highlighting
+  colors when searching for text from the article view. (example:
+  search-highlight-colors white black bold)</div>
+<p class="Pp"><i>searchresult-title-format</i> (parameters: &lt;format&gt;;
+    default value: <i>&quot;%N %V - Search results for '%s' (%u unread, %t
+    total)%?F? matching filter '%F'&amp;?&quot; (localized)</i>)</p>
+<div class="Bd-indent">Format of the title in search result. See the FORMAT
+  STRINGS section of the Newsboat manual for details on available formats.
+  (example: searchresult-title-format &quot;Search result&quot;)</div>
+<p class="Pp"><i>selectfilter-title-format</i> (parameters: &lt;format&gt;;
+    default value: <i>&quot;%N %V - Select Filter&quot; (localized)</i>)</p>
+<div class="Bd-indent">Format of the title in filter selection dialog. See the
+  FORMAT STRINGS section of the Newsboat manual for details on available
+  formats. (example: selectfilter-title-format &quot;Select Filter&quot;)</div>
+<p class="Pp"><i>selecttag-format</i> (parameters: &lt;format&gt;; default
+    value: <i>&quot;%4i %T (%u)&quot;</i>)</p>
+<div class="Bd-indent">Format of the lines in &quot;Select tag&quot; dialog. See
+  the FORMAT STRINGS section in the documentation for more information.
+  (example: selecttag-format &quot;[%2i] %T (%n unread articles in %f feeds, %u
+  feeds total)&quot;)</div>
+<p class="Pp"><i>selecttag-title-format</i> (parameters: &lt;format&gt;; default
+    value: <i>&quot;%N %V - Select Tag&quot; (localized)</i>)</p>
+<div class="Bd-indent">Format of the title in tag selection dialog. See the
+  FORMAT STRINGS section of the Newsboat manual for details on available
+  formats. (example: selecttag-title-format &quot;Select Tag&quot;)</div>
+<p class="Pp"><i>show-keymap-hint</i> (parameters: [yes/no]; default value:
+    <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>no</i>, then the keymap hints will not be
+  displayed. (The keymap hints are usually at the bottom of the screen, but see
+  <i>swap-title-and-hints</i> setting.) (example: show-keymap-hint no)</div>
+<p class="Pp"><i>show-read-articles</i> (parameters: [yes/no]; default value:
+    <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then all articles of a feed are
+  listed in the article list. If set to <i>no</i>, then only unread articles are
+  listed. (example: show-read-articles no)</div>
+<p class="Pp"><i>show-read-feeds</i> (parameters: [yes/no]; default value:
+    <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then all feeds, including those
+  without unread articles, are listed. If set to <i>no</i>, then only feeds with
+  one or more unread articles are list. (example: show-read-feeds no)</div>
+<p class="Pp"><i>show-title-bar</i> (parameters: [yes/no]; default value:
+    <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>no</i>, then the title bar will not be
+  displayed. (The title bar is usually at the top of the screen, but see
+  <i>swap-title-and-hints</i> setting.) (example: show-title-bar no)</div>
+<p class="Pp"><i>ssl-verifyhost</i> (parameters: [yes/no]; default value:
+    <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>no</i>, skip verification of the
+  certificate&#x2019;s name against host. (example: ssl-verifyhost no)</div>
+<p class="Pp"><i>ssl-verifypeer</i> (parameters: [yes/no]; default value:
+    <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>no</i>, skip verification of the
+  peer&#x2019;s SSL certificate. (example: ssl-verifypeer no)</div>
+<p class="Pp"><i>suppress-first-reload</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then the first automatic reload
+  will be suppressed if <i>auto-reload</i> is set to <i>yes</i>. (example:
+  suppress-first-reload yes)</div>
+<p class="Pp"><i>swap-title-and-hints</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then the title (which is usually at
+  the top of the screen) and the keymap hints (usually at the bottom) will
+  exchange places. These bars can be hidden entirely, via the
+  <i>show-keymap-hints</i> and <i>show-title-bar</i> settings. (example:
+  swap-title-and-hints yes)</div>
+<p class="Pp"><i>text-width</i> (parameters: &lt;number&gt;; default value:
+    <i>0</i>)</p>
+<div class="Bd-indent">If set to a number greater than 0, all HTML will be
+  rendered to this maximum line length or the terminal width (whichever is
+  smaller). If set to 0, the terminal width will always be used in the article
+  view, while <i>pipe-to</i>, <i>save</i>, and <i>save-all</i> will wrap at 80
+  columns instead. Does not apply when using external renderer or viewing the
+  source. Also note that &quot;Link&quot; header and &quot;Links&quot; section
+  won&#x2019;t be affected by it&#x2014;they contain URLs which are better not
+  wrapped. (example: text-width 72)</div>
+<p class="Pp"><i>toggleitemread-jumps-to-next</i> (parameters: [yes/no]; default
+    value: <i>yes</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, jump to the next item when an
+  item&#x2019;s read status is toggled in the article list. If set to <i>no</i>,
+  the cursor stays on the toggled item. (example: toggleitemread-jumps-to-next
+  no)</div>
+<p class="Pp"><i>toggleitemread-jumps-to-next-unread</i> (parameters: [yes/no];
+    default value: <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, jump to the next unread item when
+  an item&#x2019;s read status is toggled in the article list. If set to
+  <i>no</i>, the behaviour is dictated by <i>toggleitemread-jumps-to-next</i>.
+  (example: toggleitemread-jumps-to-next-unread yes)</div>
+<p class="Pp"><i>ttrss-flag-publish</i> (parameters: &lt;character&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set and Tiny Tiny RSS support is used, then all
+  articles that are flagged with the specified flag are being marked as
+  &quot;published&quot; in Tiny Tiny RSS. (example: ttrss-flag-publish
+  &quot;b&quot;)</div>
+<p class="Pp"><i>ttrss-flag-star</i> (parameters: &lt;character&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set and Tiny Tiny RSS support is used, then all
+  articles that are flagged with the specified flag are being
+  &quot;starred&quot; in Tiny Tiny RSS. (example: ttrss-flag-star
+  &quot;a&quot;)</div>
+<p class="Pp"><i>ttrss-login</i> (parameters: &lt;username&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Sets the username for use with Tiny Tiny RSS. (example:
+  ttrss-login &quot;admin&quot;)</div>
+<p class="Pp"><i>ttrss-mode</i> (parameters: [multi/single]; default value:
+    <i>multi</i>)</p>
+<div class="Bd-indent">Configures the mode in which Tiny Tiny RSS is used. In
+  single-user mode, login and password are used for HTTP authentication, while
+  in multi-user mode, they are used for authenticating with Tiny Tiny RSS.
+  (example: ttrss-mode &quot;single&quot;)</div>
+<p class="Pp"><i>ttrss-password</i> (parameters: &lt;password&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Configures the password for use with Tiny Tiny RSS.
+  Double quotes and backslashes within it should be escaped. (example:
+  ttrss-password &quot;here_goesAquote:\&quot;&quot;)</div>
+<p class="Pp"><i>ttrss-passwordeval</i> (parameters: &lt;command&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">A more secure alternative to the above, is providing your
+  password from an external command that is evaluated during login. This can be
+  used to read your password from a gpg encrypted file or your system keyring.
+  (example: ttrss-passwordeval &quot;gpg --decrypt
+  ~/.newsboat/ttrss-password.gpg&quot;)</div>
+<p class="Pp"><i>ttrss-passwordfile</i> (parameters: &lt;path&gt;; default
+    value: <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Another alternative, by storing your plaintext password
+  elsewhere in your system. (example: ttrss-passwordfile
+  &quot;~/.newsboat/ttrss-pw.txt&quot;)</div>
+<p class="Pp"><i>ttrss-url</i> (parameters: &lt;url&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">Configures the URL where the Tiny Tiny RSS installation
+  you want to use resides. (example: ttrss-url
+  &quot;https://example.com/ttrss/&quot;)</div>
+<p class="Pp"><i>unbind-key</i> (parameters: &lt;key&gt; [&lt;dialog&gt;];
+    default value: <i>n/a</i>)</p>
+<div class="Bd-indent">Unbind key &lt;key&gt;. This means that no operation is
+  called when &lt;key&gt; is pressed. <i>unbind-key</i> uses the syntax for
+  special keys as specified in the <b>Key</b> section of Old Style Key Bindings.
+  If you provide &quot;-a&quot; as &lt;key&gt;, all currently bound keys will
+  become unbound. Optionally, you can specify a dialog (for a list of available
+  dialogs, see <i>bind-key</i> above). If you specify one, the key binding will
+  only be unbound for the specified dialog. (example: unbind-key R)</div>
+<p class="Pp"><i>urls-source</i> (parameters: &lt;source&gt;; default value:
+    <i>&quot;local&quot;</i>)</p>
+<div class="Bd-indent">This configuration command sets the source where URLs
+  shall be retrieved from. By default, this is the <i>urls</i> file.
+  Alternatively, you can set it to <i>opml</i>, which enables Newsboat&#x2019;s
+  OPML online subscription mode, to <i>ttrss</i> which enables Newsboat&#x2019;s
+  Tiny Tiny RSS support, to <i>oldreader</i>, which enables Newsboat&#x2019;s
+  The Old Reader support, to <i>newsblur</i>, which enables NewsBlur support, to
+  <i>feedbin</i> for Feedbin support, to <i>feedhq</i> for FeedHQ support, to
+  <i>freshrss</i> for FreshRSS support, to <i>ocnews</i> for ownCloud News
+  support, to <i>inoreader</i> for Inoreader support, or to <i>miniflux</i> for
+  Miniflux support. Query feed specifications will be read from the local urls
+  file regardless of this setting. (example: urls-source
+  &quot;oldreader&quot;)</div>
+<p class="Pp"><i>urlview-title-format</i> (parameters: &lt;format&gt;; default
+    value: <i>&quot;%N %V - URLs&quot; (localized)</i>)</p>
+<div class="Bd-indent">Format of the title in URL view. See the FORMAT STRINGS
+  section of the Newsboat manual for details on available formats. (example:
+  urlview-title-format &quot;URLs&quot;)</div>
+<p class="Pp"><i>use-proxy</i> (parameters: [yes/no]; default value:
+  <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, then the configured proxy will be
+  used for downloading the RSS feeds. (example: use-proxy yes)</div>
+<p class="Pp"><i>user-agent</i> (parameters: &lt;string&gt;; default value:
+    <i>&quot;&quot;</i>)</p>
+<div class="Bd-indent">If set to a non-zero-length string, this value will be
+  used as HTTP User-Agent header for all HTTP requests. (example: user-agent
+  &quot;Lynx/2.8.5rel.1 libwww-FM/2.14&quot;)</div>
+<p class="Pp"><i>wrap-scroll</i> (parameters: [yes/no]; default value:
+    <i>no</i>)</p>
+<div class="Bd-indent">If set to <i>yes</i>, moving down while on the last item
+  in a list will wrap around to the top and vice versa. (example: wrap-scroll
+  yes)</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AVAILABLE_OPERATIONS"><a class="permalink" href="#AVAILABLE_OPERATIONS">AVAILABLE
+  OPERATIONS</a></h1>
+<p class="Pp"><i>open</i> (default key:
+    <i></i><span class="Li">ENTER</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open the currently selected feed or article.</div>
+<p class="Pp"><i>quit</i> (default key:
+    <i></i><span class="Li">Q</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Quit the program or return to the previous dialog
+  (depending on the context).</div>
+<p class="Pp"><i>hard-quit</i> (default key:
+    <i></i><span class="Li">Shift&#x00A0;+&#x00A0;Q</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Quit the program without confirmation.</div>
+<p class="Pp"><i>reload</i> (default key:
+    <i></i><span class="Li">R</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Reload the currently selected feed.</div>
+<p class="Pp"><i>reload-all</i> (default key:
+    <i></i><span class="Li">Shift&#x00A0;+&#x00A0;R</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Reload all feeds.</div>
+<p class="Pp"><i>mark-feed-read</i> (default key:
+    <i></i><span class="Li">Shift&#x00A0;+&#x00A0;A</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Mark all articles in the currently selected feed
+  read.</div>
+<p class="Pp"><i>mark-all-feeds-read</i> (default key:
+    <i></i><span class="Li">Shift&#x00A0;+&#x00A0;C</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Mark articles in all feeds read.</div>
+<p class="Pp"><i>mark-all-above-as-read</i> (default key: <i>n/a</i>)</p>
+<div class="Bd-indent">Mark all above as read.</div>
+<p class="Pp"><i>save</i> (default key:
+    <i></i><span class="Li">S</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Export the currently selected article to a plain text
+  file, word-wrapped according to the <i>text-width</i> setting.</div>
+<p class="Pp"><i>save-all</i> (default key: <i>n/a</i>)</p>
+<div class="Bd-indent">Export all articles from the currently selected feed to
+  plain text files, word-wrapped according to the <i>text-width</i>
+  setting.</div>
+<p class="Pp"><i>next-unread</i> (default key:
+    <i></i><span class="Li">N</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Jump to the next unread article.</div>
+<p class="Pp"><i>prev-unread</i> (default key:
+    <i></i><span class="Li">P</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Jump to the previous unread article.</div>
+<p class="Pp"><i>next</i> (default key:
+    <i></i><span class="Li">Shift&#x00A0;+&#x00A0;J</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Jump to next list entry.</div>
+<p class="Pp"><i>prev</i> (default key:
+    <i></i><span class="Li">Shift&#x00A0;+&#x00A0;K</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Jump to previous list entry.</div>
+<p class="Pp"><i>random-unread</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;K</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Jump to a random unread article.</div>
+<p class="Pp"><i>open-in-browser</i> (default key:
+    <i></i><span class="Li">O</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Use browser to open the URL associated with the current
+  article, feed, or entry in the URL view.</div>
+<p class="Pp"><i>open-in-browser-noninteractively</i> (default key:
+  <i>n/a</i>)</p>
+<div class="Bd-indent">Use browser to open the URL associated with the current
+  article, feed, or entry in the URL view. This operation works similar to
+  <i>open-in-browser</i>, but the output of the browser (stdout and stderr) is
+  not shown, and the browser doesn&#x2019;t receive keyboard input. You would
+  probably add <i>&amp;</i> at the end of the <i>browser</i> command to put it
+  into background, too.</div>
+<p class="Pp"><i>open-in-browser-and-mark-read</i> (default key:
+    <i></i><span class="Li">Shift&#x00A0;+&#x00A0;O</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Use browser to open the URL associated with the current
+  article, or entry in the URL view. When used in the article list, it will also
+  mark the article as read.</div>
+<p class="Pp"><i>open-all-unread-in-browser</i> (default key: <i>n/a</i>)</p>
+<div class="Bd-indent">Open all the unread URLs in the current feed.</div>
+<p class="Pp"><i>open-all-unread-in-browser-and-mark-read</i> (default key:
+    <i>n/a</i>)</p>
+<div class="Bd-indent">Open all the unread URLs in the current feed and mark
+  them as read.</div>
+<p class="Pp"><i>help</i> (default key:
+    <i></i><span class="Li">?</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Run the help screen.</div>
+<p class="Pp"><i>toggle-source-view</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;U</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Toggle between the HTML view and the source view in the
+  article view.</div>
+<p class="Pp"><i>toggle-article-read</i> (default key:
+    <i></i><span class="Li">Shift&#x00A0;+&#x00A0;N</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Toggle the read flag for the currently selected article,
+  and clear the delete flag if set.</div>
+<p class="Pp"><i>toggle-show-read-feeds</i> (default key:
+    <i></i><span class="Li">L</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Toggle whether read feeds should be shown in the feed
+  list.</div>
+<p class="Pp"><i>show-urls</i> (default key:
+    <i></i><span class="Li">U</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Show all URLs in the article in a list (similar to
+  urlview).</div>
+<p class="Pp"><i>clear-tag</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;T</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Clear current tag.</div>
+<p class="Pp"><i>set-tag</i> (default key:
+    <i></i><span class="Li">T</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Select tag.</div>
+<p class="Pp"><i>open-search</i> (default key:
+    <i></i><span class="Li">/</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open the search dialog. When a search is done in the
+  article list, then the search operation only applies to the articles of the
+  current feed, otherwise to all articles.</div>
+<p class="Pp"><i>goto-url</i> (default key:
+    <i></i><span class="Li">#</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open the URL dialog and then open a specified URL in the
+  browser.</div>
+<p class="Pp"><i>one</i> (default key:
+    <i></i><span class="Li">1</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open URL 1 in the browser.</div>
+<p class="Pp"><i>two</i> (default key:
+    <i></i><span class="Li">2</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open URL 2 in the browser.</div>
+<p class="Pp"><i>three</i> (default key:
+    <i></i><span class="Li">3</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open URL 3 in the browser.</div>
+<p class="Pp"><i>four</i> (default key:
+    <i></i><span class="Li">4</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open URL 4 in the browser.</div>
+<p class="Pp"><i>five</i> (default key:
+    <i></i><span class="Li">5</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open URL 5 in the browser.</div>
+<p class="Pp"><i>six</i> (default key:
+    <i></i><span class="Li">6</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open URL 6 in the browser.</div>
+<p class="Pp"><i>seven</i> (default key:
+    <i></i><span class="Li">7</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open URL 7 in the browser.</div>
+<p class="Pp"><i>eight</i> (default key:
+    <i></i><span class="Li">8</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open URL 8 in the browser.</div>
+<p class="Pp"><i>nine</i> (default key:
+    <i></i><span class="Li">9</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open URL 9 in the browser.</div>
+<p class="Pp"><i>zero</i> (default key:
+    <i></i><span class="Li">0</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open URL 10 in the browser.</div>
+<p class="Pp"><i>cmd-one</i> (default key:
+    <i></i><span class="Li">1</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Start cmdline with 1.</div>
+<p class="Pp"><i>cmd-two</i> (default key:
+    <i></i><span class="Li">2</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Start cmdline with 2.</div>
+<p class="Pp"><i>cmd-three</i> (default key:
+    <i></i><span class="Li">3</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Start cmdline with 3.</div>
+<p class="Pp"><i>cmd-four</i> (default key:
+    <i></i><span class="Li">4</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Start cmdline with 4.</div>
+<p class="Pp"><i>cmd-five</i> (default key:
+    <i></i><span class="Li">5</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Start cmdline with 5.</div>
+<p class="Pp"><i>cmd-six</i> (default key:
+    <i></i><span class="Li">6</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Start cmdline with 6.</div>
+<p class="Pp"><i>cmd-seven</i> (default key:
+    <i></i><span class="Li">7</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Start cmdline with 7.</div>
+<p class="Pp"><i>cmd-eight</i> (default key:
+    <i></i><span class="Li">8</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Start cmdline with 8.</div>
+<p class="Pp"><i>cmd-nine</i> (default key:
+    <i></i><span class="Li">9</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Start cmdline with 9.</div>
+<p class="Pp"><i>enqueue</i> (default key:
+    <i></i><span class="Li">E</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Add the podcast download URL of the current article (if
+  any is found) to the podcast download queue. See the PODCAST SUPPORT section
+  for more information.</div>
+<p class="Pp"><i>edit-urls</i> (default key:
+    <i></i><span class="Li">Shift&#x00A0;+&#x00A0;E</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Edit the list of subscribed URLs. Newsboat will start the
+  editor configured through the <i>VISUAL</i> environment variable (if unset,
+  <i>EDITOR</i> is used; fallback: <i>vi</i>). When editing is finished,
+  Newsboat will reload the URLs file.</div>
+<p class="Pp"><i>reload-urls</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;R</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Reload the URLs configuration file.</div>
+<p class="Pp"><i>redraw</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;L</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Redraw the screen.</div>
+<p class="Pp"><i>cmdline</i> (default key:
+    <i></i><span class="Li">:</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Open the command line.</div>
+<p class="Pp"><i>set-filter</i> (default key:
+    <i></i><span class="Li">Shift&#x00A0;+&#x00A0;F</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Set a filter.</div>
+<p class="Pp"><i>select-filter</i> (default key:
+    <i></i><span class="Li">F</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Select a predefined filter.</div>
+<p class="Pp"><i>clear-filter</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;F</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Clear currently set filter.</div>
+<p class="Pp"><i>bookmark</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;B</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Bookmark currently selected article or URL.</div>
+<p class="Pp"><i>edit-flags</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;E</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Edit the flags of the currently selected article.</div>
+<p class="Pp"><i>next-unread-feed</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;N</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Go to the next feed with unread articles. This only works
+  from the article list.</div>
+<p class="Pp"><i>prev-unread-feed</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;P</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Go to the previous feed with unread articles. This only
+  works from the article list.</div>
+<p class="Pp"><i>next-feed</i> (default key:
+    <i></i><span class="Li">J</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Go to the next feed. This only works from the article
+  list.</div>
+<p class="Pp"><i>prev-feed</i> (default key:
+    <i></i><span class="Li">K</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Go to the previous feed. This only works from the article
+  list.</div>
+<p class="Pp"><i>delete-article</i> (default key:
+    <i></i><span class="Li">Shift&#x00A0;+&#x00A0;D</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Delete the currently selected article.</div>
+<p class="Pp"><i>delete-all-articles</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;D</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Delete all articles in the articlelist. Note that the
+  articlelist might contain a subset of feed&#x2019;s articles (because of
+  filters or <i>show-read-articles no</i>), or it might contain a mix of
+  articles from different feeds (if you&#x2019;re viewing a query feed) &#x2014;
+  in either case, <i>delete-all-articles</i> affects just those articles, not
+  all articles of the respective feed(s).</div>
+<p class="Pp"><i>purge-deleted</i> (default key:
+    <i></i><span class="Li">$</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Purge all articles that are marked as deleted from the
+  article list.</div>
+<p class="Pp"><i>view-dialogs</i> (default key:
+    <i></i><span class="Li">V</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">View list of open dialogs.</div>
+<p class="Pp"><i>close-dialog</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;X</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Close currently selected dialog.</div>
+<p class="Pp"><i>next-dialog</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;V</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Go to next dialog.</div>
+<p class="Pp"><i>prev-dialog</i> (default key:
+    <i></i><span class="Li">Ctrl&#x00A0;+&#x00A0;G</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Go to previous dialog.</div>
+<p class="Pp"><i>pipe-to</i> (default key:
+    <i></i><span class="Li">|</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Pipe article to command. The text will be word-wrapped
+  according to the <i>text-width</i> setting.</div>
+<p class="Pp"><i>sort</i> (default key:
+    <i></i><span class="Li">G</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Sort feeds/articles by interactively choosing the sort
+  method.</div>
+<p class="Pp"><i>rev-sort</i> (default key:
+    <i></i><span class="Li">Shift&#x00A0;+&#x00A0;G</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Sort feeds/articles by interactively choosing the sort
+  method (reversed).</div>
+<p class="Pp"><i>up</i> (default key:
+    <i></i><span class="Li">UP</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Go up one item in the list.</div>
+<p class="Pp"><i>down</i> (default key:
+    <i></i><span class="Li">DOWN</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Go down one item in the list.</div>
+<p class="Pp"><i>pageup</i> (default key:
+    <i></i><span class="Li">PPAGE</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Go up one page in the list.</div>
+<p class="Pp"><i>pagedown</i> (default key:
+    <i></i><span class="Li">NPAGE</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Go down one page in the list.</div>
+<p class="Pp"><i>halfpageup</i> (default key: <i>n/a</i>)</p>
+<div class="Bd-indent">Go up half a page.</div>
+<p class="Pp"><i>halfpagedown</i> (default key: <i>n/a</i>)</p>
+<div class="Bd-indent">Go down half a page.</div>
+<p class="Pp"><i>home</i> (default key:
+    <i></i><span class="Li">HOME</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Go to the first item in the list.</div>
+<p class="Pp"><i>end</i> (default key:
+    <i></i><span class="Li">END</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Go to the last item in the list.</div>
+<p class="Pp"><i>macro-prefix</i> (default key:
+    <i></i><span class="Li">,</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Initiate macro execution. The next key press selects the
+  actual macro and runs it.</div>
+<p class="Pp"><i>switch-focus</i> (default key:
+    <i></i><span class="Li">TAB</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Switch focus between widgets. This is currently only
+  applicable to the <i>filebrowser</i> and <i>dirbrowser</i> contexts.</div>
+<p class="Pp"><i>goto-title</i> (default key: <i>n/a</i>)</p>
+<div class="Bd-indent">Go to item whose title contains the specified string
+  (case-insensitive).</div>
+<p class="Pp"><i>prevsearchresults</i> (default key:
+    <i></i><span class="Li">Z</span><i></i><span class="Li">)</span></p>
+<div class="Bd-indent">Return to previous search results (if any). This only
+  works from <i>searchresultslist</i>.</div>
+<p class="Pp"><i>article-feed</i> (default key: <i>n/a</i>)</p>
+<div class="Bd-indent">Go to the feed of the currently selected article.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FORMAT_STRINGS"><a class="permalink" href="#FORMAT_STRINGS">FORMAT
+  STRINGS</a></h1>
+<p class="Pp">Newsboat contains a powerful format string system to make it
+    possible for the user to configure the format of various aspects of the
+    application, such as the format of entries in the feed list or in the
+    article list.</p>
+<p class="Pp">Format strings are similar to those that are found in the
+    <i>printf</i> function in the C programming language. A format sequence
+    begins with the <i>%</i> character, followed by optional alignment
+    indication: positive numbers indicate that the text that is inserted for the
+    sequence shall be padded on the left to a total width that is specified by
+    the number, while negative number specify padding on the right. Followed by
+    the padding indication comes the actual sequence identifier, which is
+    usually a single letter. <i>%=[width][identifier]</i> centers the sequence,
+    where if w=0 the whole width of the window is used.</p>
+<p class="Pp">In addition, Newsboat provides other, more powerful sequences,
+    such as <i>%&gt;[char]</i>, which indicates that the text right to the
+    sequence will be aligned right on the screen, and characters between the
+    text on the left and the text on the right will be filled by <i>[char]</i>.
+    Another powerful format is the conditional sequence, <i>%?[char]?[format
+    1]&amp;[format 2]?</i>: if the text of the sequence identifier <i>[char]</i>
+    contains any non-whitespace characters, then <i>[format 1]</i> will be
+    evaluated and inserted, otherwise <i>[format 2]</i> will be evaluated and
+    inserted. The <i>&amp;</i> and <i>[format 2]</i> are optional, i.e. if the
+    identifier&#x2019;s text is empty, then an empty string will be
+  inserted.</p>
+<p class="Pp">The following tables show what sequence identifiers are available
+    for which format:</p>
+<p class="Pp"><b>Table 1. Available Identifiers for feedlist-format</b></p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td style="vertical-align: top;"><b>Identifier</b></td>
+    <td style="vertical-align: top;"><b>Meaning</b></td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">d</td>
+    <td style="vertical-align: top;">Feed description</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">i</td>
+    <td style="vertical-align: top;">Feed index</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">l</td>
+    <td style="vertical-align: top;">Feed link</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">L</td>
+    <td style="vertical-align: top;">Feed RSS URL</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">n</td>
+    <td style="vertical-align: top;">&quot;unread&quot; flag field</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">S</td>
+    <td style="vertical-align: top;">download status</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">t</td>
+    <td style="vertical-align: top;">Feed title</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">T</td>
+    <td style="vertical-align: top;">First tag of a feed in the URLs file</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">u</td>
+    <td style="vertical-align: top;">&quot;unread/total&quot; field</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">U</td>
+    <td style="vertical-align: top;">&quot;unread&quot; field</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">c</td>
+    <td style="vertical-align: top;">&quot;total&quot; field</td>
+  </tr>
+</table>
+<p class="Pp"></p>
+<p class="Pp">While a <i>reload-all</i> operation is running, the download
+    status indicates the
+  <br/>
+  download status of a feed, which can be &quot;to be downloaded&quot;
+    (indicated by &quot;_&quot;), &quot;currently downloading&quot; (indicated
+    by &quot;.&quot;), successfully downloaded (indicated by &quot; &quot;) and
+    &quot;download error&quot; (indicated by &quot;x&quot;).</p>
+<p class="Pp"><b>Table 2. Available Identifiers for articlelist-format</b></p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td style="vertical-align: top;"><b>Identifier</b></td>
+    <td style="vertical-align: top;"><b>Meaning</b></td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">a</td>
+    <td style="vertical-align: top;">Article author</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">D</td>
+    <td style="vertical-align: top;">Publication date. This can be tweaked
+      further with datetime-format</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">f</td>
+    <td style="vertical-align: top;">Two characters: 1) &quot;N&quot; if article
+      is unread, &quot;D&quot; if article is deleted, a space otherwise; 2)
+      &quot;!&quot; if article has flags, a space otherwise.</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">n</td>
+    <td style="vertical-align: top;">&quot;unread&quot; field</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">d</td>
+    <td style="vertical-align: top;">&quot;deleted&quot; field</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">F</td>
+    <td style="vertical-align: top;">Article flags</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">i</td>
+    <td style="vertical-align: top;">Article index</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">t</td>
+    <td style="vertical-align: top;">Article title</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">T</td>
+    <td style="vertical-align: top;">If the article list displays articles from
+      different feeds, then this identifier contains the title of the feed to
+      which the article belongs.</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">L</td>
+    <td style="vertical-align: top;">Article length</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">e</td>
+    <td style="vertical-align: top;">Article enclosure URL</td>
+  </tr>
+</table>
+<p class="Pp"></p>
+<p class="Pp"><b>Table 3. Available Identifiers for selecttag-format</b></p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td style="vertical-align: top;"><b>Identifier</b></td>
+    <td style="vertical-align: top;"><b>Meaning</b></td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">i</td>
+    <td style="vertical-align: top;">Line&#x2019;s index in the list</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">T</td>
+    <td style="vertical-align: top;">The tag this line corresponds to</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">f</td>
+    <td style="vertical-align: top;">Number of unread feeds under this tag</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">n</td>
+    <td style="vertical-align: top;">Number of unread articles in feeds tagged
+      with this tag</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">u</td>
+    <td style="vertical-align: top;">Number of feeds tagged with this tag</td>
+  </tr>
+</table>
+<p class="Pp"></p>
+<p class="Pp"><b>Table 4. Available Identifiers for notify-format</b></p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td style="vertical-align: top;"><b>Identifier</b></td>
+    <td style="vertical-align: top;"><b>Meaning</b></td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">n</td>
+    <td style="vertical-align: top;">Number of unread articles</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">f</td>
+    <td style="vertical-align: top;">Number of unread feeds</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">d</td>
+    <td style="vertical-align: top;">Number of new unread articles (i.e. that
+      were added through the last reload)</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">D</td>
+    <td style="vertical-align: top;">Number of new unread feeds (i.e. that were
+      added through the last reload)</td>
+  </tr>
+</table>
+<p class="Pp"></p>
+<p class="Pp"><b>Table 5. Available Identifiers for podlist-format</b></p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td style="vertical-align: top;"><b>Identifier</b></td>
+    <td style="vertical-align: top;"><b>Meaning</b></td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">i</td>
+    <td style="vertical-align: top;">Download index</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">d</td>
+    <td style="vertical-align: top;">Currently downloaded size in megabytes,
+      displays one digit of precision</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">t</td>
+    <td style="vertical-align: top;">Total download size in megabytes, displays
+      one digit of precision</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">p</td>
+    <td style="vertical-align: top;">Downloaded precentage, displays one digit
+      of precision</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">k</td>
+    <td style="vertical-align: top;">Download speed, displays two digit of
+      precision, always in KB/s (does not include the &quot;KB/s&quot;
+      text)</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">K</td>
+    <td style="vertical-align: top;">Download speed, displays two digit of
+      precision, human readable (automatically switches between KB/s, MB/s, and
+      GB/s)</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">S</td>
+    <td style="vertical-align: top;">Status of download, displays one of the
+      folowing; &quot;queued&quot;, &quot;downloading&quot;, &quot;ready&quot;,
+      &quot;canceled&quot;, &quot;deleted&quot;, &quot;missing&quot;,
+      &quot;played&quot;, &quot;finished&quot; or &quot;failed&quot;</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">u</td>
+    <td style="vertical-align: top;">Url of the download</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">F</td>
+    <td style="vertical-align: top;">Absolute filename of the download from the
+      root directory (e.g. ~/downloads/podcast.mp3 &#x2192;
+      /home/name/downloads/podcast.mp3)</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">b</td>
+    <td style="vertical-align: top;">Basename of the download (e.g.
+      /home/name/downloads/podcast.mp3 &#x2192; podcast.mp3)</td>
+  </tr>
+</table>
+<p class="Pp"></p>
+<p class="Pp">Examples:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>feedlist-format     &quot;%4i %n %11u %t&quot;
+articlelist-format  &quot;%4i %f %D   %?T?|%-17T|  ?%t&quot;
+notify-format       &quot;%d new articles (%n unread articles, %f unread feeds)&quot;
+podlist-format      &quot;%4i [%-5p %%] %-12S %F&quot;</pre>
+</div>
+<p class="Pp"><b>Table 6. Available Identifiers for download-path and
+    download-filename-format</b></p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td style="vertical-align: top;"><b>Identifier</b></td>
+    <td style="vertical-align: top;"><b>Meaning</b></td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">u</td>
+    <td style="vertical-align: top;">Filename part of the download URL. May be
+      empty. May include <i>a query string</i>
+      &lt;https://en.wikipedia.org/wiki/Query_string&gt;</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">n</td>
+    <td style="vertical-align: top;">Name of the podcast feed</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">N</td>
+    <td style="vertical-align: top;">Name of the podcast feed. Contains the
+      original feed&#x2019;s name, even when selected through a query feed</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">h</td>
+    <td style="vertical-align: top;">Name of the podcast feed&#x2019;s
+      hostname</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">t</td>
+    <td style="vertical-align: top;">Title of the podcast episode</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">e</td>
+    <td style="vertical-align: top;">Extension of the podcast episode</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">F</td>
+    <td style="vertical-align: top;">Publication date of the podcast episode
+      formatted as yyyy-mm-dd</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">m</td>
+    <td style="vertical-align: top;">Month when podcast episode was
+      published</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">b</td>
+    <td style="vertical-align: top;">Abbreviated month name when podcast episode
+      was published</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">d</td>
+    <td style="vertical-align: top;">Day when podcast episode was published</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">H</td>
+    <td style="vertical-align: top;">Hour when podcast episode was
+      published</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">M</td>
+    <td style="vertical-align: top;">Minute when podcast episode was
+      published</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">S</td>
+    <td style="vertical-align: top;">Second when podcast episode was
+      published</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">y</td>
+    <td style="vertical-align: top;">Year when podcast episode was published
+      formatted as yy</td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">Y</td>
+    <td style="vertical-align: top;">Year when podcast episode was published
+      formatted as yyyy</td>
+  </tr>
+</table>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="TAGGING"><a class="permalink" href="#TAGGING">TAGGING</a></h1>
+<p class="Pp">Newsboat comes with the possibility to categorize or
+    &quot;tag&quot;, as we call it,
+  <br/>
+  RSS feeds. Every RSS feed can be assigned 0 or more tags. Within Newsboat, you
+    can then select to only show RSS feeds that match a certain tag. That makes
+    it easy to categorize your feeds in a flexible and powerful way.</p>
+<p class="Pp">Usually, the <i>urls</i> file contains one RSS feed URL per line.
+    To assign a tag to an RSS feed, simply attach it as a single word, separated
+    by blanks such as space or tab. If the tag needs to contain spaces, you must
+    use quotes (<i>&quot;</i>) around the tag (see example below). An example
+    <i>urls</i> file may look like this:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>https://blog.fefe.de/rss.xml?html interesting conspiracy news &quot;cool stuff&quot;
+https://rss.orf.at/news.xml news orf
+https://www.heise.de/newsticker/heise.rdf news interesting</pre>
+</div>
+<p class="Pp">When you now start Newsboat with this configuration, you can press
+    <span class="Li">T</span> to select a tag. When you select the tag
+    &quot;news&quot;, you will see all three RSS feeds. Pressing
+    <span class="Li">T</span> again and e.g. selecting the
+    &quot;conspiracy&quot; tag, you will only see the <i></i>
+    &lt;https://blog.fefe.de/rss.xml?html&gt; RSS feed. Pressing
+    <span class="Li">Ctrl&#x00A0;+&#x00A0;T</span> clears the current tag, and
+    again shows all RSS feeds, regardless of their assigned tags.</p>
+<p class="Pp">A special type of tag are tags that start with the tilde character
+    (<i>~</i>). When such a tag is found, the feed title is set to the tag name
+    (excluding the <i>~</i> character). These type of tags are ignored when any
+    kind of &quot;first tag&quot; property is used. With this feature, you can
+    give feeds any title you want in your feed list:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>https://rss.orf.at/news.xml &quot;~ORF News&quot;</pre>
+</div>
+<p class="Pp">Another special type of tag are tags that start with the
+    exclamation mark (<i>!</i>). When such a tag is found, the feed is hidden
+    from the regular list of feeds and its content can only be found through a
+    query feed.</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>https://rss.orf.at/news.xml ! news
+http://feeds.bbci.co.uk/news/world/rss.xml ! news
+&quot;query:News from around the globe:tags # \&quot;news\&quot;&quot;</pre>
+</div>
+<p class="Pp">In this example, the first two feeds won&#x2019;t appear in the
+    feedlist, but their articles will still be accessible through the query feed
+    titled &quot;News from around the globe&quot;. The &quot;hidden&quot; tags
+    in this example don&#x2019;t even have names, because their only use is to
+    hide the feed that they&#x2019;re tagging.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SCRIPTS_AND_FILTERS"><a class="permalink" href="#SCRIPTS_AND_FILTERS">SCRIPTS
+  AND FILTERS</a></h1>
+<p class="Pp">Newsboat contains support for Snownews extensions. The RSS feed
+    readers Snownews and Liferea share a common way of extending the readers
+    with custom scripts. Two mechanisms, namely &quot;execurl&quot; and
+    &quot;filter&quot; type scripts, are available and supported by
+  Newsboat.</p>
+<p class="Pp">An &quot;execurl&quot; script can be any program that gets
+    executed and whose output is interpreted as RSS feed, while
+    &quot;filter&quot; scripts are fed with the content of a configured URL and
+    whose output is interpreted as RSS feed.</p>
+<p class="Pp">The configuration is simple and straight-forward. Just add to your
+    <i>urls</i> file configuration lines like the following ones:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>exec:~/bin/execurl-script
+filter:~/bin/filter-script:https://some.test/url</pre>
+</div>
+<p class="Pp">The first line shows how to add an execurl script to your
+    configuration: start the line with <i>exec:</i> and then immediately append
+    the path of the script that shall be executed. If this script requires
+    additional parameters, simply use quotes (see Using Double Quotes for
+    details):</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>&quot;exec:~/bin/execurl-script param1 param2&quot;</pre>
+</div>
+<p class="Pp">The second line shows how to add a filter script to your
+    configuration: start the line with <i>filter:</i>, then immediately append
+    the path of the script, then append a colon (<i>:</i>), and then append the
+    URL of the file that shall be fed to the script. Again, if the script
+    requires any parameters, simply quote the whole thing:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>&quot;filter:~/bin/filter-script param1 param2:https://url/foobar&quot;</pre>
+</div>
+<p class="Pp">In both cases, the tagging feature as described above is still
+    available:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>exec:~/bin/execurl-script tag1 tag2 &quot;quoted tag&quot;
+filter:~/bin/filter-script:https://some.test/url tag3 tag4 tag5</pre>
+</div>
+<p class="Pp">If you need to write your own extension, see <i>this</i>
+    &lt;https://web.archive.org/web/20090724045314/http://kiza.kcore.de/software/snownews/snowscripts/writing&gt;
+    short guide&quot; for an introduction. A collection of existing
+    <i>scripts</i>
+    &lt;https://sourceforge.net/p/snownews/code/ci/de3bd8b28191c4d4bc1be18275786613bcbc0c94/tree/docs/untested/&gt;
+    and <i>filters</i>
+    &lt;https://sourceforge.net/p/snownews/code/ci/9fb45e4cdf1cf9dea55b9af66c13a4c238809851/tree/docs/filters/&gt;
+    might help, too.</p>
+<p class="Pp">Newsboat comes with an example exec script which shows one way to
+    generate an RSS channel. It also includes a way to see which exact arguments
+    are passed to the script by Newsboat. This example can be found in the
+    <i>doc/examples</i> subdirectory.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="KILLFILES"><a class="permalink" href="#KILLFILES">KILLFILES</a></h1>
+<p class="Pp">Sometimes, a user is confronted with certain content they
+    don&#x2019;t want to read, e.g. on topics the user is not interested in or
+    articles written by certain people. In Usenet, such functionality within
+    software is traditionally called a &quot;killfile&quot;, i.e. based on the
+    content of this &quot;killfile&quot;, articles that match certain conditions
+    do not get displayed and are not presented to the user at all.</p>
+<p class="Pp">In Newsboat, such a &quot;killfile&quot; can be implemented on a
+    per-article basis via the configuration file. The most important
+    configuration command for this is <i>ignore-article</i>:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>ignore-article &quot;https://synflood.at/blog/index.php?/feeds/index.rss2&quot; &quot;title =~ \&quot;newsboat\&quot;&quot;
+ignore-article &quot;regex:https?://nitter.net/.*&quot; &quot;title =~ \&quot;^RT by\&quot;&quot;
+ignore-article &quot;*&quot; &quot;title =~ \&quot;Gentoo\&quot;&quot;</pre>
+</div>
+<p class="Pp">It takes two parameters. The first one is either:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;The URL of a feed.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;A pattern prefixed with <i>regex:</i>. The
+  pattern must be a <i>POSIX</i>
+  &lt;https://pubs.opengroup.org/onlinepubs/9699919799.2008edition/basedefs/V1_chap09.html&gt;
+  extended regular expression&quot; , which will be matched
+  case-insensitive.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;<i>&quot;*&quot;</i> to match any feed (asterisk
+  is <i>not</i> a pattern, glob or regex&#x2014;we simply reserve it to mean
+  &quot;all feeds&quot;).</div>
+<p class="Pp">The second argument is a filter expression for an article,
+    probably in double quotes to preserve spaces inside. If Newsboat hits an
+    article in the specified RSS feed that matches the specified filter
+    expression, then this article is ignored and never presented to the user.
+    The configuration itself can contain as many <i>ignore-article</i> commands
+    as desired.</p>
+<p class="Pp">You can also specify the way an article is ignored. There are two
+    ways available:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;During download: articles are ignored when a feed
+  is downloaded and parsed, and thus won&#x2019;t be written to the local
+  cache.</div>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;During display: articles are downloaded and
+  written to the local cache, but are ignored when a feed is displayed.</div>
+<p class="Pp">Both modes have their advantages and disadvantages: while the
+    download ignore mode saves some storage, you cannot simply &quot;undo&quot;
+    the ignore by removing it from the configuration file: if an ignored article
+    has already vanished from a feed, it won&#x2019;t reappear. On the other
+    hand, the display ignore mode requires some more space, but has the
+    advantage that an ignore can be &quot;undone&quot; by removing the
+    ignore-article configuration command from the configuration.</p>
+<p class="Pp">The default ignore mode is <i>&quot;download&quot;</i>. You can
+    set the <i>ignore-mode</i> in the configuration file:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>ignore-mode &quot;display&quot;</pre>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="PODCAST_SUPPORT"><a class="permalink" href="#PODCAST_SUPPORT">PODCAST
+  SUPPORT</a></h1>
+<p class="Pp">A podcast is a media file distributed over the internet using
+    syndication feeds such as RSS, for later playback on portable players or
+    computers. Newsboat supports downloading, saving and streaming podcasts,
+    though an external media player is needed for playback. This support differs
+    a bit from other podcast aggregators or &quot;podcatchers&quot; in how it is
+    done.</p>
+<p class="Pp">Podcast content is transported in RSS feeds via special tags
+    called &quot;enclosures&quot;. Newsboat recognizes these enclosures and
+    stores the relevant information for every podcast item it finds in an RSS
+    feed. Since version 2.0, it also recognizes and handles the Yahoo Media RSS
+    extensions.</p>
+<p class="Pp">Remote APIs don&#x2019;t always list those &quot;enclosures&quot;,
+    so podcasts might be missing from Newsboat. Such APIs are marked in the
+    relevant section of our docs. If a note is missing but you still
+    don&#x2019;t see enclosures in Newsboat, please file an issue and
+    we&#x2019;ll get to the bottom of it!</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COMMAND_LINE"><a class="permalink" href="#COMMAND_LINE">COMMAND
+  LINE</a></h1>
+<p class="Pp">Like other text-oriented software, Newsboat contains an internal
+    commandline to modify configuration variables ad hoc and to run own
+    commands. It provides a flexible access to the functionality of Newsboat
+    which is especially useful for advanced users.</p>
+<p class="Pp">To start the commandline, type <span class="Li">:</span>. You will
+    see a &quot;:&quot; prompt at the bottom of the screen, similar to tools
+    like vi(m) or mutt. You can now enter commands. Pressing the
+    <span class="Li">Enter</span> key executes the command (possibly giving
+    feedback to the user) and closes the commandline. You can cancel entering
+    commands by pressing the <span class="Li">Esc</span> key. The history of all
+    the commands that you enter will be saved to the <i>history.cmdline</i>
+    file, stored next to the <i>cache.db</i> file. The backlog is limited to 100
+    entries by default, but can be influenced by setting the
+    <i>history-limit</i> configuration variable. To disable history saving, set
+    the <i>history-limit</i> to <i>0</i>.</p>
+<p class="Pp">The commandline provides you with some help if you can&#x2019;t
+    remember the full names of commandline commands. By pressing the
+    <span class="Li">Tab</span> key, Newsboat will try to automatically complete
+    your command. If there is more than one possible completion, you can
+    subsequently press the <span class="Li">Tab</span> key to cycle through all
+    results. If no match is found, no suggestion will be inserted into the
+    commandline. For the <i>set</i> command, the completion also works for
+    configuration variable names.</p>
+<p class="Pp">In addition, some common key combination such as
+    <span class="Li">Ctrl&#x00A0;+&#x00A0;G</span> (to cancel input),
+    <span class="Li">Ctrl&#x00A0;+&#x00A0;K</span> (to delete text from the
+    cursor position to the end of line),
+    <span class="Li">Ctrl&#x00A0;+&#x00A0;U</span> (to clear the whole line) and
+    <span class="Li">Ctrl&#x00A0;+&#x00A0;W</span> (to delete the word before
+    the current cursor position) were added.</p>
+<p class="Pp">Please be aware that the input history of both the command line
+    and the search functions are saved to the filesystems, to the files
+    <i>history.cmdline</i> resp. <i>history.search</i> (stored next to the
+    <i>cache.db</i> file). By default, the last 100 entries are saved, but this
+    can be configured (configuration variable <i>history-limit</i>) and also
+    totally disabled (by setting said variable to <i>0</i>).</p>
+<p class="Pp">Currently, the following command line commands are available:</p>
+<p class="Pp"><i>quit</i></p>
+<div class="Bd-indent">Quit Newsboat</div>
+<p class="Pp"><i>q</i></p>
+<div class="Bd-indent">Alias for <i>quit</i></div>
+<p class="Pp"><i>save</i> &lt;filename&gt;</p>
+<div class="Bd-indent">Save current article to &lt;filename&gt;</div>
+<p class="Pp">
+  <br/>
+   <i>set</i> &lt;variable&gt;[=&lt;value&gt;|&amp;|!]</p>
+<div class="Bd-indent">Set (or get) configuration variable value. Specifying a
+  <i>!</i> after the name of a boolean configuration variable toggles their
+  values, a <i>&amp;</i> directly after the name of a configuration variable of
+  any type resets its value to the documented default value.</div>
+<p class="Pp"><i>tag</i> &lt;tagname&gt;</p>
+<div class="Bd-indent">Select a certain tag</div>
+<p class="Pp"><i>goto</i> &lt;case-insensitive substring&gt;</p>
+<div class="Bd-indent">Go to the next feed whose name contains the
+  case-insensitive substring.</div>
+<p class="Pp"><i>source</i> &lt;filename&gt; [...]</p>
+<div class="Bd-indent">Load the specified configuration files. This allows it to
+  load alternative configuration files or reload already loaded configuration
+  files on-the-fly from the filesystem.</div>
+<p class="Pp"><i>dumpconfig</i> &lt;filename&gt;</p>
+<div class="Bd-indent">Save current internal state of configuration to file, so
+  that it can be instantly reused as configuration file.</div>
+<p class="Pp"><i>&lt;number&gt;</i></p>
+<div class="Bd-indent">Jump to the &lt;number&gt;th entry in the current
+  dialog</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<p class="Pp">By default, Newsboat stores all the files in a traditional Unix
+    fashion, i.e. in a &quot;dotdir&quot; located at <i>~/.newsboat</i>.
+    However, it also supports a modern way, <i>XDG Base Directory
+    Specification</i>
+    &lt;https://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html&gt;,
+    which splits the files between the following locations:</p>
+<p class="Pp"></p>
+<div class="Bd-indent"> 1.<i>$XDG_CONFIG_HOME/newsboat/</i>
+  (<i>XDG_CONFIG_HOME</i> defaults to <i>~/.config</i>)</div>
+<p class="Pp"></p>
+<div class="Bd-indent"> 2.<i>$XDG_DATA_HOME/newsboat/</i> (<i>XDG_DATA_HOME</i>
+  defaults to <i>~/.local/share</i>)</div>
+<p class="Pp">If the <i>newsboat</i> directory exists under
+    <i>XDG_CONFIG_HOME</i>, then Newsboat will use XDG directories (creating the
+    data directory if necessary). Otherwise, Newsboat will default to
+    <i>~/.newsboat</i>.</p>
+<p class="Pp">If you&#x2019;re currently using <i>~/.newsboat/</i> but wish to
+    migrate to XDG directories, you should move the files as follows:</p>
+<p class="Pp"><i>config</i>, <i>urls</i></p>
+<div class="Bd-indent">to <i>$XDG_CONFIG_HOME/newsboat/</i></div>
+<p class="Pp"><i>cache.db</i>, <i>history.search</i>, <i>history.cmdline</i>,
+    <i>queue</i></p>
+<div class="Bd-indent">to <i>$XDG_DATA_HOME/newsboat/</i></div>
+<p class="Pp">Newsboat and Podboat also create &quot;lock files&quot;. These
+    prevent you from starting two instances of the same program, and thus from
+    corrupting your data. Newsboat and Podboat remove these files when you quit
+    the program, so there is no need to copy them anywhere&#x00A0;&#x2014; just
+    be aware of them in case you write scripts that work with <i>cache.db</i> or
+    <i>queue</i>. By default, lock files are located as follows:</p>
+<table class="tbl" border="1" style="border-style: solid;">
+  <tr>
+    <td style="vertical-align: top;"><b></b></td>
+    <td style="vertical-align: top;"><b>dotdir</b></td>
+    <td style="vertical-align: top;"><b>XDG</b></td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">Newsboat</td>
+    <td style="vertical-align: top;"><i>~/.newsboat/cache.db.lock</i></td>
+    <td style="vertical-align: top;"><i>$XDG_DATA_HOME/newsboat/cache.db.lock</i></td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top;">Podboat</td>
+    <td style="vertical-align: top;"><i>~/.newsboat/pb-lock.pid</i></td>
+    <td style="vertical-align: top;"><i>$XDG_DATA_HOME/newsboat/.lock</i></td>
+  </tr>
+</table>
+<p class="Pp"></p>
+<p class="Pp">Newsboat places the lock file next to the cache file, so if you
+    specify cache-file setting or pass <i>&#x2014;cache-file</i> command-line
+    argument, the path to the lock file will change too. Podboat&#x2019;s lock
+    can be placed elsewhere using <i>&#x2014;lock-file</i> command-line
+    argument.</p>
+<p class="Pp">dotfiles</p>
+<div class="Bd-indent"><i>~/.newsboat/config</i>
+<p class="Pp"><i>~/.newsboat/urls</i></p>
+</div>
+<p class="Pp">XDG</p>
+<div class="Bd-indent"><i>$XDG_CONFIG_HOME/newsboat/config</i>
+<p class="Pp"><i>$XDG_CONFIG_HOME/newsboat/urls</i></p>
+<p class="Pp">Note: if the <i>XDG_CONFIG_HOME</i> environment variable is not
+    set, Newsboat behaves as if it was set to <i>~/.config</i>.</p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENVIRONMENT"><a class="permalink" href="#ENVIRONMENT">ENVIRONMENT</a></h1>
+<p class="Pp"><i>BROWSER</i></p>
+<div class="Bd-indent">Tells Newsboat what browser to use if there is no
+  <i>browser</i> setting in the config file. If this variable doesn&#x2019;t
+  exist, a default of <i>lynx(1)</i> will be used.</div>
+<p class="Pp"><i>CURL_CA_BUNDLE</i></p>
+<div class="Bd-indent">Tells Newsboat to use the specified certificate file to
+  verify the peer. The file may contain multiple certificates. The
+  certificate(s) must be in PEM format.
+<p class="Pp">This option is useful if your libcurl is built without useful
+    certificate information, and you can&#x2019;t rebuild the library
+  yourself.</p>
+</div>
+<p class="Pp"><i>EDITOR</i></p>
+<div class="Bd-indent">Tells Newsboat what fallback editor to use when editing
+  the <i>urls</i> file via the <i>edit-urls</i> operation and no <i>VISUAL</i>
+  environment variable is set. If this variable doesn&#x2019;t exist either, a
+  default of <i>vi(1)</i> will be used.</div>
+<p class="Pp"><i>NO_PROXY</i></p>
+<div class="Bd-indent">Tells Newsboat to ignore <i>proxy</i> setting for certain
+  sites.
+<p class="Pp">This variable contains a comma-separated list of hostnames, domain
+    names, and IP addresses.</p>
+<p class="Pp">Domain names match subdomains, i.e. &quot;example.com&quot; also
+    matches &quot;foo.example.com&quot;. Domain names that start with a dot only
+    match subdomains, e.g. &quot;.example.com&quot; matches
+    &quot;bar.example.com&quot; but not &quot;example.com&quot; itself.</p>
+<p class="Pp">IPv6 addresses are written without square brackets, and <i>are
+    matched as</i> <i>strings</i>. Thus &quot;::1&quot; doesn&#x2019;t match
+    &quot;::0:1&quot; even though this is the same address.</p>
+</div>
+<p class="Pp"><i>PAGER</i></p>
+<div class="Bd-indent">Tells Newsboat what pager to use if the <i>pager</i>
+  setting in the config file is explicitly set to an empty string.</div>
+<p class="Pp"><i>TMPDIR</i></p>
+<div class="Bd-indent">Tells Newsboat to use the specified directory for storing
+  temporary files. If this variable doesn&#x2019;t exist, a default of
+  <i>/tmp</i> will be used.</div>
+<p class="Pp"><i>VISUAL</i></p>
+<div class="Bd-indent">Tells Newsboat what editor to use when editing the
+  <i>urls</i> file via the <i>edit-urls</i> operation. If this variable
+  doesn&#x2019;t exist, the <i>EDITOR</i> environment variable will be
+  used.</div>
+<p class="Pp"><i>XDG_CONFIG_HOME</i></p>
+<div class="Bd-indent">Tells Newsboat which base directory to use for the
+  configuration files. See also the section on files for more information.</div>
+<p class="Pp"><i>XDG_DATA_HOME</i></p>
+<div class="Bd-indent">Tells Newsboat which base directory to use for the data
+  files. See also the section on files for more information.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp">podboat(1)</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHOR"><a class="permalink" href="#AUTHOR">AUTHOR</a></h1>
+<p class="Pp">Alexander Batischev</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-04-17</td>
+    <td class="foot-os">&#x00A0;</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

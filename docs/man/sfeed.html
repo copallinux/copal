@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sfeed(1) · Copal Linux</title>
+<meta name="description" content="sfeed – RSS and Atom parser">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-sfeed">sfeed in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">sfeed 2.4-r0 — man1/sfeed.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">SFEED(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">SFEED(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><code class="Nm">sfeed</code> &#x2014; <span class="Nd">RSS and
+    Atom parser</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">sfeed</code></td>
+    <td>[<var class="Ar">baseurl</var>]</td>
+  </tr>
+</table>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><code class="Nm">sfeed</code> reads RSS or Atom feed data (XML)
+    from stdin. It writes the feed data in a TAB-separated format to stdout. If
+    the <var class="Ar">baseurl</var> argument is a valid absolute URL then the
+    relative links or enclosures will be made an absolute URL.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="TAB-SEPARATED_FORMAT_FIELDS"><a class="permalink" href="#TAB-SEPARATED_FORMAT_FIELDS">TAB-SEPARATED
+  FORMAT FIELDS</a></h1>
+<p class="Pp">The items are output per line in a TAB-separated format.</p>
+<p class="Pp">For the fields title, id and author each whitespace character is
+    replaced by a SPACE character. Control characters are removed.</p>
+<p class="Pp">The content field can contain newlines and these are escaped.
+    TABs, newlines and '\' are escaped with '\', so it becomes: '\t', '\n' and
+    '\\'. Other whitespace characters except spaces are removed. Control
+    characters are removed.</p>
+<p class="Pp">The order and content of the fields are:</p>
+<dl class="Bl-tag">
+  <dt>1. timestamp</dt>
+  <dd>UNIX timestamp in UTC+0, empty if missing or on a parse failure.</dd>
+  <dt>2. title</dt>
+  <dd>Title text, HTML code in titles is ignored and is treated as
+    plain-text.</dd>
+  <dt>3. link</dt>
+  <dd>Link</dd>
+  <dt>4. content</dt>
+  <dd>Content, can have plain-text or HTML code depending on the content-type
+      field.</dd>
+  <dt>5. content-type</dt>
+  <dd>&quot;html&quot; or &quot;plain&quot; if it has content.</dd>
+  <dt>6. id</dt>
+  <dd>RSS item GUID or Atom id.</dd>
+  <dt>7. author</dt>
+  <dd>Item, first author.</dd>
+  <dt>8. enclosure</dt>
+  <dd>Item, first enclosure.</dd>
+  <dt>9. category</dt>
+  <dd>Item, categories, multiple values are separated by the '|' character.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXIT_STATUS"><a class="permalink" href="#EXIT_STATUS">EXIT
+  STATUS</a></h1>
+<p class="Pp">The <code class="Nm">sfeed</code> utility exits&#x00A0;0 on
+    success, and&#x00A0;&gt;0 if an error occurs.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXAMPLES"><a class="permalink" href="#EXAMPLES">EXAMPLES</a></h1>
+<div class="Bd Bd-indent Li">
+<pre>curl -s 'https://codemadness.org/atom.xml' | sfeed</pre>
+</div>
+<p class="Pp">To convert the character set from a feed that is not UTF-8 encoded
+    the <span class="Xr">iconv(1)</span> tool can be used:</p>
+<div class="Bd Pp Bd-indent Li">
+<pre>curl -s 'https://codemadness.org/some_iso-8859-1_feed.xml' | \
+iconv -f iso-8859-1 -t utf-8 | \
+sfeed</pre>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXAMPLE_SETUP"><a class="permalink" href="#EXAMPLE_SETUP">EXAMPLE
+  SETUP</a></h1>
+<p class="Pp">1. Create a directory for the sfeedrc configuration and the
+  feeds:</p>
+<div class="Bd Pp Bd-indent Li">
+<pre>mkdir -p ~/.sfeed/feeds</pre>
+</div>
+<p class="Pp">2. Copy the example
+    <span class="Xr">sfeedrc(5)</span> configuration:</p>
+<div class="Bd Pp Bd-indent Li">
+<pre>cp sfeedrc.example ~/.sfeed/sfeedrc
+$EDITOR ~/.sfeed/sfeedrc</pre>
+</div>
+<p class="Pp">Or import existing OPML subscriptions using
+    <span class="Xr">sfeed_opml_import(1)</span>:</p>
+<div class="Bd Pp Bd-indent Li">
+<pre>sfeed_opml_import &lt; file.opml &gt; ~/.sfeed/sfeedrc</pre>
+</div>
+<p class="Pp">3. To update feeds and merge the new items with existing
+  items:</p>
+<div class="Bd Pp Bd-indent Li">
+<pre>sfeed_update</pre>
+</div>
+<p class="Pp">4. Format feeds to a plain-text list:</p>
+<div class="Bd Pp Bd-indent Li">
+<pre>sfeed_plain ~/.sfeed/feeds/*</pre>
+</div>
+<p class="Pp">Or format feeds to a curses interface:</p>
+<div class="Bd Pp Bd-indent Li">
+<pre>sfeed_curses ~/.sfeed/feeds/*</pre>
+</div>
+<p class="Pp">There are also other formatting programs included. The README file
+    has more examples.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><span class="Xr">sfeed_curses(1)</span>,
+    <span class="Xr">sfeed_opml_import(1)</span>,
+    <span class="Xr">sfeed_plain(1)</span>,
+    <span class="Xr">sfeed_update(1)</span>,
+    <a class="Xr" href="sfeed.html">sfeed(5)</a>,
+    <span class="Xr">sfeedrc(5)</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp"><span class="An">Hiltjo Posthuma</span>
+    &lt;<a class="Mt" href="mailto:hiltjo@codemadness.org">hiltjo@codemadness.org</a>&gt;</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CAVEATS"><a class="permalink" href="#CAVEATS">CAVEATS</a></h1>
+<p class="Pp">If a timezone for the timestamp field is not in the RFC 822 or RFC
+    3339 format it is not supported and the timezone is interpreted as
+  UTC+0.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">October 27, 2024</td>
+    <td class="foot-os">Linux 6.18.52-0-lts</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

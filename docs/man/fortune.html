@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fortune(6) · Copal Linux</title>
+<meta name="description" content="fortune – print a random, hopefully interesting, adage">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-fortune">fortune in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">fortune 0.1-r5 — man6/fortune.6.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">FORTUNE(6)</td>
+    <td class="head-vol">Games Manual</td>
+    <td class="head-rtitle">FORTUNE(6)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><code class="Nm">fortune</code> &#x2014; <span class="Nd">print a
+    random, hopefully interesting, adage</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">fortune</code></td>
+    <td>[<code class="Fl">-aefilosw</code>] [<code class="Fl">-m</code>
+      <var class="Ar">pattern</var>] [[<var class="Ar">N</var>%]
+      <var class="Ar">file</var><span class="No">/</span><var class="Ar">directory</var><span class="No">/</span><var class="Ar">all</var>]</td>
+  </tr>
+</table>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">When <code class="Nm">fortune</code> is run with no arguments it
+    prints out a random epigram. Epigrams are divided into several categories,
+    where each category is subdivided into those which are potentially offensive
+    and those which are not. The options are as follows:</p>
+<dl class="Bl-tag">
+  <dt id="a"><a class="permalink" href="#a"><code class="Fl">-a</code></a></dt>
+  <dd>Choose from all lists of maxims, both offensive and not. (See the
+      <code class="Fl">-o</code> option for more information on offensive
+      fortunes.)</dd>
+  <dt id="e"><a class="permalink" href="#e"><code class="Fl">-e</code></a></dt>
+  <dd>Consider all fortune files to be of equal size (see discussion below on
+      multiple files).</dd>
+  <dt id="f"><a class="permalink" href="#f"><code class="Fl">-f</code></a></dt>
+  <dd>Print out the list of files which would be searched, but don't print a
+      fortune.</dd>
+  <dt id="i"><a class="permalink" href="#i"><code class="Fl">-i</code></a></dt>
+  <dd>Ignore case for <code class="Fl">-m</code> patterns.</dd>
+  <dt id="l"><a class="permalink" href="#l"><code class="Fl">-l</code></a></dt>
+  <dd>Long dictums only.</dd>
+  <dt id="m"><a class="permalink" href="#m"><code class="Fl">-m</code></a>
+    <var class="Ar">pattern</var></dt>
+  <dd>Print out all fortunes which match the regular expression
+      <var class="Ar">pattern</var>. See
+      <span class="Xr">re_format(7)</span> for a description of
+      patterns.</dd>
+  <dt id="o"><a class="permalink" href="#o"><code class="Fl">-o</code></a></dt>
+  <dd>Choose only from potentially offensive aphorisms.
+    <div class="Bf Sy">Please, please, please request a potentially offensive
+      fortune if and only if you believe, deep down in your heart, that you are
+      willing to be offended. (And that if you are, you'll just quit using
+      <code class="Fl">-o</code> rather than give us grief about it,
+      okay?)</div>
+    <div class="Bd Pp Bd-indent">
+    <pre>... let us keep in mind the basic governing philosophy
+of The Brotherhood, as handsomely summarized in these words:
+we believe in healthy, hearty laughter -- at the expense of
+the whole human race, if needs be.  Needs be.
+		--H. Allen Smith, &quot;Rude Jokes&quot;</pre>
+    </div>
+  </dd>
+  <dt id="s"><a class="permalink" href="#s"><code class="Fl">-s</code></a></dt>
+  <dd>Short apothegms only.</dd>
+  <dt id="w"><a class="permalink" href="#w"><code class="Fl">-w</code></a></dt>
+  <dd>Wait before termination for an amount of time calculated from the number
+      of characters in the message. This is useful if it is executed as part of
+      the logout procedure to guarantee that the message can be read before the
+      screen is cleared.</dd>
+</dl>
+<p class="Pp" id="all">The user may specify alternate sayings. You can specify a
+    specific file, a directory which contains one or more files, or the special
+    word <a class="permalink" href="#all"><i class="Em">all</i></a>, which says
+    to use all the standard databases. Any of these may be preceded by a
+    percentage, which is a number <var class="Ar">N</var> between 0 and 100
+    inclusive, followed by a &#x2018;%&#x2019; character. If it is, there will
+    be an <var class="Ar">N</var> percent probability that an adage will be
+    picked from that file or directory. If the percentages do not sum to 100,
+    and there are specifications without percentages, the remaining percent will
+    apply to those files and/or directories, in which case the probability of
+    selecting from one of them will be based on their relative sizes.</p>
+<p class="Pp" id="not-funny">As an example, given two databases
+    <i class="Em">funny</i> and
+    <a class="permalink" href="#not-funny"><i class="Em">not-funny</i></a>, with
+    <i class="Em">funny</i> twice as big, saying</p>
+<div class="Bd Pp Bd-indent Li">
+<pre>$ fortune funny not-funny</pre>
+</div>
+<p class="Pp">will get you fortunes out of <i class="Em">funny</i> two-thirds of
+    the time. The command</p>
+<div class="Bd Pp Bd-indent Li">
+<pre>$ fortune 90% funny 10% not-funny</pre>
+</div>
+<p class="Pp">will pick out 90% of its fortunes from <i class="Em">funny</i>
+    (the &#x201C;10%&#x201D; is unnecessary, since 10% is all that's left). The
+    <code class="Fl">-e</code> option says to consider all files equal; thus</p>
+<div class="Bd Pp Bd-indent Li">
+<pre>$ fortune -e</pre>
+</div>
+<p class="Pp">is equivalent to</p>
+<div class="Bd Pp Bd-indent Li">
+<pre>$ fortune 50% funny 50% not-funny</pre>
+</div>
+<p class="Pp">Datafiles for <code class="Nm">fortune</code> are created by a
+    utility called <code class="Nm">strfile</code>. Although not installed by
+    default, the source code and a manual page for this utility can be found in
+    <span class="Pa">/usr/src/games/fortune/strfile/</span>, if it exists.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<dl class="Bl-tag Bl-compact">
+  <dt><span class="Pa">/usr/share/games/fortune/*</span></dt>
+  <dd>Fortune files.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><span class="Xr">random(6)</span>,
+    <span class="Xr">rot13(6)</span>,
+    <span class="Xr">re_format(7)</span></p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">February 6, 2015</td>
+    <td class="foot-os">Linux 6.18.52-0-lts</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

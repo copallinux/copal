@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rc-update(8) · Copal Linux</title>
+<meta name="description" content="rc-update – add and remove services to and from a runlevel">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-rc-update">rc-update in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">openrc 0.63.2-r0 — man8/rc-update.8.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">RC-UPDATE(8)</td>
+    <td class="head-vol">System Manager's Manual (smm)</td>
+    <td class="head-rtitle">RC-UPDATE(8)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><code class="Nm">rc-update</code> &#x2014; <span class="Nd">add
+    and remove services to and from a runlevel</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-update</code></td>
+    <td>[<code class="Fl">-s</code>, <code class="Fl">--stack</code>]
+      <code class="Ic">add</code> <var class="Ar">service</var>
+      [<var class="Ar">runlevel ...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-update</code></td>
+    <td>[<code class="Fl">-s</code>, <code class="Fl">--stack</code>]
+      [<code class="Fl">-a</code>, <code class="Fl">--all</code>]
+      <code class="Ic">delete</code> <var class="Ar">service</var>
+      [<var class="Ar">runlevel ...</var>]</td>
+  </tr>
+</table>
+<br/>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">rc-update</code></td>
+    <td>[<code class="Fl">-u</code>, <code class="Fl">--update</code>]
+      [<code class="Fl">-v</code>, <code class="Fl">--verbose</code>]
+      <code class="Ic">show</code> [<var class="Ar">runlevel ...</var>]</td>
+  </tr>
+</table>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">OpenRC uses named runlevels. Rather than editing some obscure file
+    or managing a directory of symlinks, <code class="Nm">rc-update</code>
+    exists to quickly add or delete services to and from different runlevels.
+    All services must reside in the <span class="Pa">/etc/init.d</span> or
+    <span class="Pa">/usr/local/etc/init.d</span> directories. They must also be
+    standard OpenRC scripts, meaning they must use openrc-run.</p>
+<dl class="Bl-tag">
+  <dt id="add"><a class="permalink" href="#add"><code class="Ic">add</code></a>
+    <var class="Ar">service</var></dt>
+  <dd>Add the <var class="Ar">service</var> to the
+      <var class="Ar">runlevel</var> or the current one if none given. Services
+      added to the boot runlevel must exist in
+      <span class="Pa">/etc/init.d</span>.</dd>
+  <dt id="delete"><a class="permalink" href="#delete"><code class="Ic">delete</code></a>
+    <var class="Ar">service</var></dt>
+  <dd>Delete the <var class="Ar">service</var> from the
+      <var class="Ar">runlevel</var> or the current one if none given.</dd>
+  <dt id="show"><a class="permalink" href="#show"><code class="Ic">show</code></a></dt>
+  <dd>Show all enabled services and the runlevels they belong to. If you specify
+      runlevels to show, then only those will be included in the output.</dd>
+  <dt id="v"><a class="permalink" href="#v"><code class="Fl">-v</code></a>,
+    <code class="Fl">--verbose</code></dt>
+  <dd>Show all services.</dd>
+  <dt id="u"><a class="permalink" href="#u"><code class="Fl">-u</code></a>,
+    <code class="Fl">--update</code></dt>
+  <dd>Forces an update of the dependency tree cache. This may be needed in the
+      event of clock skew (a file in /etc is newer than the system clock).</dd>
+</dl>
+<p class="Pp">If the <code class="Fl">-s</code>, <code class="Fl">--stack</code>
+    option is given then we either add or remove the runlevel from the runlevel.
+    This allows inheritance of runlevels.</p>
+<p class="Pp">If the <code class="Fl">-a,</code> <code class="Fl">--all</code>
+    option is given, we remove the service from all runlevels. This is useful,
+    for example, to clean up the dangling symlinks after a service is
+  removed.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><a class="Xr" href="openrc.html">openrc(8)</a>,
+    <span class="Xr">openrc-run(8)</span>,
+    <a class="Xr" href="rc-status.html">rc-status(8)</a></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp"><span class="An">Roy Marples &lt;roy@marples.name&gt;</span>
+  <br/>
+  <span class="An">The OpenRC Team &lt;openrc@gentoo.org&gt;</span></p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">January 13, 2014</td>
+    <td class="foot-os">OpenRC</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

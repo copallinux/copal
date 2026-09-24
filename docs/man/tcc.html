@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tcc(1) · Copal Linux</title>
+<meta name="description" content="tcc - Tiny C Compiler">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-tcc">tcc in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">tcc 0.9.27_git20250619-r1 — man1/tcc.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">TCC-DOC(1)</td>
+    <td class="head-vol">Tiny C Compiler</td>
+    <td class="head-rtitle">TCC-DOC(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<br/>
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">tcc - Tiny C Compiler</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">usage: tcc [options] [<i>infile1</i> <i>infile2</i>...]
+    [<b>-run</b> <i>infile</i> <i>args</i>...]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">TCC options are very much like gcc options. The main difference is
+    that TCC can also execute directly the resulting program and give it runtime
+    arguments.</p>
+<p class="Pp">Here are some examples to understand the logic:</p>
+<dl class="Bl-tag">
+  <dt>&quot;<b>tcc -run a.c</b>&quot;</dt>
+  <dd>Compile <i>a.c</i> and execute it directly</dd>
+  <dt>&quot;<b>tcc -run a.c arg1</b>&quot;</dt>
+  <dd>Compile a.c and execute it directly. arg1 is given as first argument to
+      the <span class="Li">main()</span> of a.c.</dd>
+  <dt>&quot;<b>tcc a.c -run b.c arg1</b>&quot;</dt>
+  <dd>Compile <i>a.c</i> and <i>b.c</i>, link them together and execute them.
+      arg1 is given as first argument to the <span class="Li">main()</span> of
+      the resulting program.</dd>
+  <dt>&quot;<b>tcc -o myprog a.c b.c</b>&quot;</dt>
+  <dd>Compile <i>a.c</i> and <i>b.c</i>, link them and generate the executable
+      <i>myprog</i>.</dd>
+  <dt>&quot;<b>tcc -o myprog a.o b.o</b>&quot;</dt>
+  <dd>link <i>a.o</i> and <i>b.o</i> together and generate the executable
+      <i>myprog</i>.</dd>
+  <dt>&quot;<b>tcc -c a.c</b>&quot;</dt>
+  <dd>Compile <i>a.c</i> and generate object file <i>a.o</i>.</dd>
+  <dt>&quot;<b>tcc -c asmfile.S</b>&quot;</dt>
+  <dd>Preprocess with C preprocess and assemble <i>asmfile.S</i> and generate
+      object file <i>asmfile.o</i>.</dd>
+  <dt>&quot;<b>tcc -c asmfile.s</b>&quot;</dt>
+  <dd>Assemble (but not preprocess) <i>asmfile.s</i> and generate object file
+      <i>asmfile.o</i>.</dd>
+  <dt>&quot;<b>tcc -r -o ab.o a.c b.c</b>&quot;</dt>
+  <dd>Compile <i>a.c</i> and <i>b.c</i>, link them together and generate the
+      object file <i>ab.o</i>.</dd>
+</dl>
+<p class="Pp">Scripting:</p>
+<p class="Pp">TCC can be invoked from <i>scripts</i>, just as shell scripts. You
+    just need to add <span class="Li">&quot;#!/usr/local/bin/tcc
+    -run&quot;</span> at the start of your C source:</p>
+<p class="Pp"></p>
+<pre>        #!/usr/local/bin/tcc -run
+        #include &lt;stdio.h&gt;
+        
+        int main() 
+        {
+            printf(&quot;Hello World\n&quot;);
+            return 0;
+        }
+</pre>
+<p class="Pp">TCC can read C source code from <i>standard input</i> when
+    <b>-</b> is used in place of <b>infile</b>. Example:</p>
+<p class="Pp"></p>
+<pre>        echo 'main(){puts(&quot;hello&quot;);}' | tcc -run -
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<dl class="Bl-tag">
+  <dt id="c"><a class="permalink" href="#c"><b>-c</b></a></dt>
+  <dd>Generate an object file.</dd>
+  <dt id="o"><a class="permalink" href="#o"><b>-o outfile</b></a></dt>
+  <dd>Put object file, executable, or dll into output file <i>outfile</i>.</dd>
+  <dt id="run"><a class="permalink" href="#run"><b>-run source
+    [args...]</b></a></dt>
+  <dd>Compile file <i>source</i> and run it with the command line arguments
+      <i>args</i>. In order to be able to give more than one argument to a
+      script, several TCC options can be given <i>after</i> the <b>-run</b>
+      option, separated by spaces:
+    <p class="Pp"></p>
+    <pre>        tcc &quot;-run -L/usr/X11R6/lib -lX11&quot; ex4.c
+    </pre>
+    <p class="Pp">In a script, it gives the following header:</p>
+    <p class="Pp"></p>
+    <pre>        #!/usr/local/bin/tcc -run -L/usr/X11R6/lib -lX11
+    </pre>
+  </dd>
+  <dt id="v"><a class="permalink" href="#v"><b>-v</b></a></dt>
+  <dd>Display TCC version.</dd>
+  <dt id="vv"><a class="permalink" href="#vv"><b>-vv</b></a></dt>
+  <dd>Show included files. As sole argument, print search dirs. -vvv shows tries
+      too.</dd>
+  <dt id="bench"><a class="permalink" href="#bench"><b>-bench</b></a></dt>
+  <dd>Display compilation statistics.</dd>
+</dl>
+<p class="Pp">Preprocessor options:</p>
+<dl class="Bl-tag">
+  <dt id="Idir"><a class="permalink" href="#Idir"><b>-Idir</b></a></dt>
+  <dd>Specify an additional include path. Include paths are searched in the
+      order they are specified.
+    <p class="Pp">System include paths are always searched after. The default
+        system include paths are: <i>/usr/local/include</i>, <i>/usr/include</i>
+        and <i>PREFIX/lib/tcc/include</i>. (<i>PREFIX</i> is usually <i>/usr</i>
+        or <i>/usr/local</i>).</p>
+  </dd>
+  <dt id="isystem"><a class="permalink" href="#isystem"><b>-isystem
+    dir</b></a></dt>
+  <dd>Specify a system include path to be added to the defaults.</dd>
+  <dt id="nostdinc"><a class="permalink" href="#nostdinc"><b>-nostdinc</b></a></dt>
+  <dd>Do not search the default system include paths; only search include paths
+      provided on the command line.</dd>
+  <dt id="include"><a class="permalink" href="#include"><b>-include
+    file</b></a></dt>
+  <dd>Include <b>file</b> above each input file.</dd>
+  <dt id="Dsym_=val_"><a class="permalink" href="#Dsym_=val_"><b>-Dsym[=val]</b></a></dt>
+  <dd>Define preprocessor symbol <b>sym</b> to val. If val is not present, its
+      value is <b>1</b>. Function-like macros can also be defined:
+      <b>-DF(a)=a+1</b></dd>
+  <dt id="Usym"><a class="permalink" href="#Usym"><b>-Usym</b></a></dt>
+  <dd>Undefine preprocessor symbol <b>sym</b>.</dd>
+  <dt id="E"><a class="permalink" href="#E"><b>-E</b></a></dt>
+  <dd>Preprocess only, to stdout or file (with -o).</dd>
+  <dt id="P"><a class="permalink" href="#P"><b>-P</b></a></dt>
+  <dd>Do not output <span class="Li">&quot;#line&quot;</span> directives.</dd>
+  <dt id="P1"><a class="permalink" href="#P1"><b>-P1</b></a></dt>
+  <dd>Output alternative <span class="Li">&quot;#line&quot;</span>
+    directives.</dd>
+  <dt id="dD,"><a class="permalink" href="#dD,"><b>-dD, -dM</b></a></dt>
+  <dd>Output <span class="Li">&quot;#define&quot;</span> directives.</dd>
+  <dt id="Wp,"><a class="permalink" href="#Wp,"><b>-Wp,-opt</b></a></dt>
+  <dd>Same as <b>-opt</b>.</dd>
+</dl>
+<p class="Pp">Compilation flags:</p>
+<p class="Pp">Note: each of the following options has a negative form beginning
+    with <b>-fno-</b>.</p>
+<dl class="Bl-tag">
+  <dt id="funsigned"><a class="permalink" href="#funsigned"><b>-funsigned-char</b></a></dt>
+  <dd>Let the <span class="Li">&quot;char&quot;</span> type be unsigned.</dd>
+  <dt id="fsigned"><a class="permalink" href="#fsigned"><b>-fsigned-char</b></a></dt>
+  <dd>Let the <span class="Li">&quot;char&quot;</span> type be signed.</dd>
+  <dt id="fno"><a class="permalink" href="#fno"><b>-fno-common</b></a></dt>
+  <dd>Do not generate common symbols for uninitialized data.</dd>
+  <dt id="fleading"><a class="permalink" href="#fleading"><b>-fleading-underscore</b></a></dt>
+  <dd>Add a leading underscore at the beginning of each C symbol.</dd>
+  <dt id="fms"><a class="permalink" href="#fms"><b>-fms-extensions</b></a></dt>
+  <dd>Allow a MS C compiler extensions to the language. Currently this assumes a
+      nested named structure declaration without an identifier behaves like an
+      unnamed one.</dd>
+  <dt id="fdollars"><a class="permalink" href="#fdollars"><b>-fdollars-in-identifiers</b></a></dt>
+  <dd>Allow dollar signs in identifiers</dd>
+  <dt id="freverse"><a class="permalink" href="#freverse"><b>-freverse-funcargs</b></a></dt>
+  <dd>Evaluate function arguments right to left.</dd>
+  <dt id="fgnu89"><a class="permalink" href="#fgnu89"><b>-fgnu89-inline</b></a></dt>
+  <dd><span class="Li">&quot;extern inline&quot;</span> is like
+      <span class="Li">&quot;static inline&quot;</span>.</dd>
+  <dt id="fasynchronous"><a class="permalink" href="#fasynchronous"><b>-fasynchronous-unwind-tables</b></a></dt>
+  <dd>Create eh_frame section [on]</dd>
+  <dt id="ftest"><a class="permalink" href="#ftest"><b>-ftest-coverage</b></a></dt>
+  <dd>Create code coverage code. After running the resulting code an
+      executable.tcov or sofile.tcov file is generated with code coverage.</dd>
+</dl>
+<p class="Pp">Warning options:</p>
+<dl class="Bl-tag">
+  <dt id="w"><a class="permalink" href="#w"><b>-w</b></a></dt>
+  <dd>Disable all warnings.</dd>
+</dl>
+<p class="Pp">Note: each of the following warning options has a negative form
+    beginning with <b>-Wno-</b>.</p>
+<dl class="Bl-tag">
+  <dt id="Wimplicit"><a class="permalink" href="#Wimplicit"><b>-Wimplicit-function-declaration</b></a></dt>
+  <dd>Warn about implicit function declaration (missing prototype).</dd>
+  <dt id="Wdiscarded"><a class="permalink" href="#Wdiscarded"><b>-Wdiscarded-qualifiers</b></a></dt>
+  <dd>Warn when const is dropped.</dd>
+  <dt id="Wunsupported"><a class="permalink" href="#Wunsupported"><b>-Wunsupported</b></a></dt>
+  <dd>Warn about unsupported GCC features that are ignored by TCC.</dd>
+  <dt id="Wwrite"><a class="permalink" href="#Wwrite"><b>-Wwrite-strings</b></a></dt>
+  <dd>Make string constants be of type <span class="Li">&quot;const char
+      *&quot;</span> instead of <span class="Li">&quot;char</span>
+      <span class="Li">*&quot;</span>.</dd>
+  <dt id="Werror"><a class="permalink" href="#Werror"><b>-Werror</b></a></dt>
+  <dd>Abort compilation if a warning is issued. Can be given an option to enable
+      the specified warning and turn it into an error, for example
+      <b>-Werror=unsupported</b>.</dd>
+  <dt id="Wall"><a class="permalink" href="#Wall"><b>-Wall</b></a></dt>
+  <dd>Activate some useful warnings (<b>-Wimplicit-function-declaration</b>,
+      <b>-Wdiscard-qualifiers</b>).</dd>
+</dl>
+<p class="Pp">Linker options:</p>
+<dl class="Bl-tag">
+  <dt id="Ldir"><a class="permalink" href="#Ldir"><b>-Ldir</b></a></dt>
+  <dd>Specify an additional static library path for the <b>-l</b> option. The
+      default library paths are <i>/usr/local/lib</i>, <i>/usr/lib</i> and
+      <i>/lib</i>.</dd>
+  <dt id="lxxx"><a class="permalink" href="#lxxx"><b>-lxxx</b></a></dt>
+  <dd>Link your program with dynamic library libxxx.so or static library
+      libxxx.a. The library is searched in the paths specified by the <b>-L</b>
+      option and <b>LIBRARY_PATH</b> variable.</dd>
+  <dt id="Bdir"><a class="permalink" href="#Bdir"><b>-Bdir</b></a></dt>
+  <dd>Set the path where the tcc internal libraries (and include files) can be
+      found (default is <i>PREFIX/lib/tcc</i>).</dd>
+  <dt id="shared"><a class="permalink" href="#shared"><b>-shared</b></a></dt>
+  <dd>Generate a shared library instead of an executable.</dd>
+  <dt id="soname"><a class="permalink" href="#soname"><b>-soname
+    name</b></a></dt>
+  <dd>set name for shared library to be used at runtime</dd>
+  <dt id="static"><a class="permalink" href="#static"><b>-static</b></a></dt>
+  <dd>Generate a statically linked executable (default is a shared linked
+      executable).</dd>
+  <dt id="rdynamic"><a class="permalink" href="#rdynamic"><b>-rdynamic</b></a></dt>
+  <dd>Export global symbols to the dynamic linker. It is useful when a library
+      opened with <span class="Li">dlopen()</span> needs to access executable
+      symbols.</dd>
+  <dt id="r"><a class="permalink" href="#r"><b>-r</b></a></dt>
+  <dd>Generate an object file combining all input files.</dd>
+  <dt id="nostdlib"><a class="permalink" href="#nostdlib"><b>-nostdlib</b></a></dt>
+  <dd>Don't implicitly link with libc, the C runtime files, and libtcc1.</dd>
+  <dt id="Wl,"><a class="permalink" href="#Wl,"><b>-Wl,-nostdlib</b></a></dt>
+  <dd>Don't search the default paths for libraries (<i>/usr/local/lib</i>,
+      <i>/usr/lib</i> and <i>/lib</i>). Only the paths specified with <b>-L</b>
+      and <b>LIBRARY_PATH</b> are searched.</dd>
+  <dt id="Wl,~2"><a class="permalink" href="#Wl,~2"><b>-Wl,-rpath=path</b></a></dt>
+  <dd>Put custom search path for dynamic libraries into executable.</dd>
+  <dt id="Wl,~3"><a class="permalink" href="#Wl,~3"><b>-Wl,-Ipath</b></a></dt>
+  <dd></dd>
+  <dt id="Wl,~4"><a class="permalink" href="#Wl,~4"><b>-Wl,--dynamic-linker=path</b></a></dt>
+  <dd>Set the ELF interpreter (dynamic linker). This defaults to the value of
+      the environment variable <b>LD_SO</b> if set, or a compiled-in
+    default.</dd>
+  <dt id="Wl,~5"><a class="permalink" href="#Wl,~5"><b>-Wl,--enable-new-dtags</b></a></dt>
+  <dd>When putting a custom search path for dynamic libraries into the
+      executable, create the new ELF dynamic tag DT_RUNPATH instead of the old
+      legacy DT_RPATH.</dd>
+  <dt id="Wl,~6"><a class="permalink" href="#Wl,~6"><b>-Wl,--oformat=fmt</b></a></dt>
+  <dd>Use <i>fmt</i> as output format. The supported output formats are:</dd>
+</dl>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt>&quot;elf32-i386&quot;</dt>
+  <dd>ELF output format (default)</dd>
+  <dt>&quot;binary&quot;</dt>
+  <dd>Binary image (only for executable output)</dd>
+  <dt>&quot;coff&quot;</dt>
+  <dd>COFF output format (only for executable output for TMS320C67xx
+    target)</dd>
+</dl>
+</div>
+<div class="Bd-indent"></div>
+<dl class="Bl-tag">
+  <dt id="Wl,~7"><a class="permalink" href="#Wl,~7"><b>-Wl,--export-all-symbols</b></a></dt>
+  <dd></dd>
+  <dt id="Wl,~8"><a class="permalink" href="#Wl,~8"><b>-Wl,--export-dynamic</b></a></dt>
+  <dd>Export global symbols to the dynamic linker. It is useful when a library
+      opened with <span class="Li">dlopen()</span> needs to access executable
+      symbols.</dd>
+  <dt id="Wl,~9"><a class="permalink" href="#Wl,~9"><b>-Wl,-subsystem=console/gui/wince/...</b></a></dt>
+  <dd>Set type for PE (Windows) executables.</dd>
+  <dt id="Wl,~10"><a class="permalink" href="#Wl,~10"><b>-Wl,-[Ttext=# |
+    section-alignment=# | file-alignment=# | image-base=# |
+    stack=#]</b></a></dt>
+  <dd>Modify executable layout.</dd>
+  <dt id="Wl,~11"><a class="permalink" href="#Wl,~11"><b>-Wl,-Bsymbolic</b></a></dt>
+  <dd>Set DT_SYMBOLIC tag.</dd>
+  <dt id="Wl,~12"><a class="permalink" href="#Wl,~12"><b>-Wl,-(no-)whole-archive</b></a></dt>
+  <dd>Turn on/off linking of all objects in archives.</dd>
+</dl>
+<p class="Pp">Debugger options:</p>
+<dl class="Bl-tag">
+  <dt id="g"><a class="permalink" href="#g"><b>-g</b></a></dt>
+  <dd>Generate run time stab debug information so that you get clear run time
+      error messages: <span class="Li">&quot; test.c:68: in function 'test5()':
+      dereferencing</span> <span class="Li">invalid pointer&quot;</span> instead
+      of the laconic <span class="Li">&quot;Segmentation</span>
+      <span class="Li">fault&quot;</span>.</dd>
+  <dt id="gdwarf_"><a class="permalink" href="#gdwarf_"><b>-gdwarf[-x]</b></a></dt>
+  <dd>Generate run time dwarf debug information instead of stab debug
+      information.</dd>
+  <dt id="b"><a class="permalink" href="#b"><b>-b</b></a></dt>
+  <dd>Generate additional support code to check memory allocations and
+      array/pointer bounds. <b>-g</b> is implied.</dd>
+  <dt id="bt_N_"><a class="permalink" href="#bt_N_"><b>-bt[N]</b></a></dt>
+  <dd>Display N callers in stack traces. This is useful with <b>-g</b> or
+      <b>-b</b>. When activated,
+      <span class="Li">&quot;__TCC_BACKTRACE__&quot;</span> is defined.
+    <p class="Pp">With executables, additional support for stack traces is
+        included. A function
+      <br/>
+       <span class="Li">&quot; int tcc_backtrace(const char *fmt, ...);
+        &quot;</span> is provided to trigger a stack trace with a message on
+        demand.</p>
+  </dd>
+</dl>
+<p class="Pp">Misc options:</p>
+<dl class="Bl-tag">
+  <dt id="std=version"><a class="permalink" href="#std=version"><b>-std=version</b></a></dt>
+  <dd>Define <span class="Li">&quot;__STDC_VERSION__&quot;</span>:
+      <span class="Li">201112</span> if <b>version</b> is c11 or gnu11;
+      <span class="Li">199901</span> otherwise.</dd>
+  <dt id="x_c_a_b_n_"><a class="permalink" href="#x_c_a_b_n_"><b>-x[c|a|b|n]</b></a></dt>
+  <dd>Specify content of next input file: respectively C, assembly, binary, or
+      none.</dd>
+  <dt id="O_n_"><a class="permalink" href="#O_n_"><b>-O[n]</b></a></dt>
+  <dd>Same as <b>-D__OPTIMIZE__</b> except for -O0.</dd>
+  <dt id="pthread"><a class="permalink" href="#pthread"><b>-pthread</b></a></dt>
+  <dd>Preprocess with <b>-D_REENTRANT</b>, link with <b>-lpthread</b>.</dd>
+  <dt id="M"><a class="permalink" href="#M"><b>-M</b></a></dt>
+  <dd>Just output makefile fragment with dependencies</dd>
+  <dt id="MM"><a class="permalink" href="#MM"><b>-MM</b></a></dt>
+  <dd>Like -M except mention only user header files, not system header
+    files.</dd>
+  <dt id="MD"><a class="permalink" href="#MD"><b>-MD</b></a></dt>
+  <dd>Generate makefile fragment with dependencies.</dd>
+  <dt id="MMD"><a class="permalink" href="#MMD"><b>-MMD</b></a></dt>
+  <dd>Like -MD except mention only user header files, not system header
+    files.</dd>
+  <dt id="MF"><a class="permalink" href="#MF"><b>-MF depfile</b></a></dt>
+  <dd>Use <i>depfile</i> as output for -MD.</dd>
+  <dt id="MP"><a class="permalink" href="#MP"><b>-MP</b></a></dt>
+  <dd>Mention all dependencies as targets too.</dd>
+  <dt id="print"><a class="permalink" href="#print"><b>-print-search-dirs</b></a></dt>
+  <dd>Print the configured installation directory and a list of library and
+      include directories tcc will search.</dd>
+  <dt id="dumpversion"><a class="permalink" href="#dumpversion"><b>-dumpversion</b></a></dt>
+  <dd>Print version.</dd>
+  <dt id="dt"><a class="permalink" href="#dt"><b>-dt</b></a></dt>
+  <dd>With <b>-run</b>/<b>-E</b>: auto-define 'test_...' macros</dd>
+</dl>
+<p class="Pp">Target specific options:</p>
+<dl class="Bl-tag">
+  <dt id="mms"><a class="permalink" href="#mms"><b>-mms-bitfields</b></a></dt>
+  <dd>Use an algorithm for bitfield alignment consistent with MSVC. Default is
+      gcc's algorithm.</dd>
+  <dt id="mfloat"><a class="permalink" href="#mfloat"><b>-mfloat-abi (ARM
+    only)</b></a></dt>
+  <dd>Select the float ABI. Possible values:
+      <span class="Li">&quot;softfp&quot;</span> and
+      <span class="Li">&quot;hard&quot;</span></dd>
+  <dt id="mno"><a class="permalink" href="#mno"><b>-mno-sse</b></a></dt>
+  <dd>Do not use sse registers on x86_64</dd>
+  <dt id="m32,"><a class="permalink" href="#m32,"><b>-m32, -m64</b></a></dt>
+  <dd>Pass command line to the i386/x86_64 cross compiler.</dd>
+</dl>
+<p class="Pp">Note: GCC options <b>-fx</b> and <b>-mx</b> are ignored.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENVIRONMENT"><a class="permalink" href="#ENVIRONMENT">ENVIRONMENT</a></h1>
+<p class="Pp">Environment variables that affect how tcc operates.</p>
+<dl class="Bl-tag">
+  <dt id="CPATH"><a class="permalink" href="#CPATH"><b>CPATH</b></a></dt>
+  <dd></dd>
+  <dt id="C_INCLUDE_PATH"><a class="permalink" href="#C_INCLUDE_PATH"><b>C_INCLUDE_PATH</b></a></dt>
+  <dd>A colon-separated list of directories searched for include files,
+      directories given with <b>-I</b> are searched first.</dd>
+  <dt id="LIBRARY_PATH"><a class="permalink" href="#LIBRARY_PATH"><b>LIBRARY_PATH</b></a></dt>
+  <dd>A colon-separated list of directories searched for libraries for the
+      <b>-l</b> option, directories given with <b>-L</b> are searched
+    first.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>cpp</b>(1), <b>gcc</b>(1)</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHOR"><a class="permalink" href="#AUTHOR">AUTHOR</a></h1>
+<p class="Pp">Fabrice Bellard</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-04-26</td>
+    <td class="foot-os">0.9.28rc</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

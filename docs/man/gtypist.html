@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gtypist(1) · Copal Linux</title>
+<meta name="description" content="Typist - a typing tutor with lessons for different keyboards and languages">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-gtypist">gtypist in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">gtypist 2.10.1-r1 — man1/gtypist.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">TYPIST(1)</td>
+    <td class="head-vol">User Commands</td>
+    <td class="head-rtitle">TYPIST(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">Typist - a typing tutor with lessons for different keyboards and
+    languages</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>gtypist</b> [<i>OPTION</i>]... [<i>SCRIPT</i>]...</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">GNU Typist is a typing tutor with several lessons for different
+    keyboards and languages. New lessons can be written by the user easily.</p>
+<dl class="Bl-tag">
+  <dt id="h"><a class="permalink" href="#h"><b>-h</b>, <b>--help</b></a></dt>
+  <dd>Print help and exit</dd>
+  <dt id="V"><a class="permalink" href="#V"><b>-V</b>, <b>--version</b></a></dt>
+  <dd>Print version and exit</dd>
+  <dt id="b"><a class="permalink" href="#b"><b>-b</b>,
+    <b>--personal-best</b></a></dt>
+  <dd>track personal best typing speeds (default=off)</dd>
+  <dt id="e"><a class="permalink" href="#e"><b>-e</b>,
+    <b>--max-error</b>=<i>FLOAT</i></a></dt>
+  <dd>default maximum error percentage; valid values are between 0.0 and 100.0
+      (default=`3.0')</dd>
+  <dt id="n"><a class="permalink" href="#n"><b>-n</b>, <b>--notimer</b></a></dt>
+  <dd>turn off WPM timer in drills (default=off)</dd>
+  <dt id="t"><a class="permalink" href="#t"><b>-t</b>,
+    <b>--term-cursor</b></a></dt>
+  <dd>use the terminal's hardware cursor (default=off)</dd>
+  <dt id="f"><a class="permalink" href="#f"><b>-f</b>,
+    <b>--curs-flash</b>=<i>P</i></a></dt>
+  <dd>cursor flash period P*.1 sec; valid values are between 0 and 512; this is
+      ignored if <b>-t</b> is specified (default=`10')</dd>
+  <dt id="c"><a class="permalink" href="#c"><b>-c</b>,
+    <b>--colours</b>=<i>F</i>,B</a></dt>
+  <dd>set (F)orground and (B)ackground colours, where available
+    (default=`7,0')</dd>
+  <dt id="s"><a class="permalink" href="#s"><b>-s</b>, <b>--silent</b></a></dt>
+  <dd>don't beep on errors (default=off)</dd>
+  <dt id="q"><a class="permalink" href="#q"><b>-q</b>, <b>--quiet</b></a></dt>
+  <dd>same as <b>--silent</b> (default=off)</dd>
+  <dt id="l"><a class="permalink" href="#l"><b>-l</b>,
+    <b>--start-label</b>=<i>LABEL</i></a></dt>
+  <dd>start the lesson at the given label</dd>
+  <dt id="w"><a class="permalink" href="#w"><b>-w</b>,
+    <b>--word-processor</b></a></dt>
+  <dd>try to mimic word processors (default=off)</dd>
+  <dt id="k"><a class="permalink" href="#k"><b>-k</b>, <b>--no-skip</b></a></dt>
+  <dd>forbid the user to skip exercises (default=off)</dd>
+  <dt id="i"><a class="permalink" href="#i"><b>-i</b>,
+    <b>--show-errors</b></a></dt>
+  <dd>highlight errors with reverse video (default=off)</dd>
+  <dt id="a"><a class="permalink" href="#a"><b>-a</b>,
+    <b>--sync-ahead</b></a></dt>
+  <dd>try to sync ahead (i.e. h_s if you type hs) (default=on)</dd>
+  <dt id="S"><a class="permalink" href="#S"><b>-S</b>,
+    <b>--always-sure</b></a></dt>
+  <dd>do not ask confirmation questions (default=off)</dd>
+  <dt id="banner"><a class="permalink" href="#banner"><b>--banner-colors</b>=<i>F</i>,B,P,V</a></dt>
+  <dd>set top banner colours: (F)oreground, (B)ackground, (P)ackage and
+      (V)ersion (default=`6,0,5,1')</dd>
+  <dt id="scoring"><a class="permalink" href="#scoring"><b>--scoring</b>=<i>MODE</i></a></dt>
+  <dd>set scoring mode; valid values are &quot;wpm&quot; (words per minute) and
+      &quot;cpm&quot; (characters per minute) (possible values=&quot;wpm&quot;,
+      &quot;cpm&quot;)</dd>
+  <dt id="no"><a class="permalink" href="#no"><b>--no-welcome-screen</b></a></dt>
+  <dd>don't show beginner tutorial message at start-up (default=off)</dd>
+</dl>
+<p class="Pp">If not supplied, script-file defaults to the 'gtypist.typ' that
+    came with this software. If you specify a script, the path $GTYPIST_PATH is
+    searched for script files.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXAMPLES"><a class="permalink" href="#EXAMPLES">EXAMPLES</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="To_run_the_default_lesson_in_english_'gtypist.typ':"><a class="permalink" href="#To_run_the_default_lesson_in_english_'gtypist.typ':">To
+  run the default lesson in english 'gtypist.typ':</a></h2>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>gtypist</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="To_run_the_lesson_in_spanish:"><a class="permalink" href="#To_run_the_lesson_in_spanish:">To
+  run the lesson in spanish:</a></h2>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>gtypist esp.typ</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="To_instruct_gtypist_to_look_for_lesson_'bar.typ'_in_a_non_standard_directory:"><a class="permalink" href="#To_instruct_gtypist_to_look_for_lesson_'bar.typ'_in_a_non_standard_directory:">To
+  instruct gtypist to look for lesson 'bar.typ' in a non standard
+  directory:</a></h2>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>GTYPIST_PATH=&quot;/home/foo&quot; gtypist bar.typ</dd>
+</dl>
+<p class="Pp">To run the lesson in the file '/tmp/test.typ', starting at label
+    'TEST1', using the terminal's cursor, and run silently:</p>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd>gtypist -t -q -l TEST1 /temp/test.typ</dd>
+</dl>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="REPORTING_BUGS"><a class="permalink" href="#REPORTING_BUGS">REPORTING
+  BUGS</a></h1>
+<p class="Pp">Report bugs to &lt;bug-gtypist@gnu.org&gt;.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COPYRIGHT"><a class="permalink" href="#COPYRIGHT">COPYRIGHT</a></h1>
+<p class="Pp">Copyright &#x00A9; 2021, 2022, 2023, 2024, 2025 Felix Natter,
+    Mihai G??tejescu Created by Simon Baldwin License GPLv3+: GNU GPL version 3
+    or later &lt;https://gnu.org/licenses/gpl.html&gt;
+  <br/>
+  This is free software: you are free to change and redistribute it. There is NO
+    WARRANTY, to the extent permitted by law.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp">The full documentation for <b>Typist</b> is maintained as a
+    Texinfo manual. If the <b>info</b> and <b>Typist</b> programs are properly
+    installed at your site, the command</p>
+<dl class="Bl-tag">
+  <dt></dt>
+  <dd><b>info Typist</b></dd>
+</dl>
+<p class="Pp">should give you access to the complete manual.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">February 2025</td>
+    <td class="foot-os">GNU Typist 2.10.1</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

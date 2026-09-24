@@ -3698,7 +3698,7 @@ man_core_commands() {
     echo "apk doas rc-service rc-update rc-status openrc lbu setup-alpine busybox mkinitfs
           sfdisk resize2fs zramctl flatpak git gcc clang make cmake ninja gdb valgrind nvim
           tmux ssh ssh-keygen rsync curl cargo go python3 pip hyprctl wpctl pactl
-          bluetoothctl iwctl nmcli dmesg logread lsblk ip"
+          bluetoothctl wpa_cli wpa_passphrase iw dmesg logread lsblk ip"
 }
 install_manuals() {
     say "The manual: man, apropos, and the pages for this machine's commands"
@@ -3710,10 +3710,13 @@ install_manuals() {
               command -v "$_c" 2>/dev/null
           done | grep '^/' | sort -u)
     [ -n "$_mp" ] || { note "no documented commands on this machine yet"; return 0; }
-    # Their packages, then the -doc of each that the index has and this
-    # machine lacks.
+    # Their packages, then the -doc of each one's ORIGIN -- the source
+    # package: ssh is openssh-client-default's, but its page is openssh-doc;
+    # lsblk is util-linux-misc's and its page util-linux-doc -- that the index
+    # has and this machine lacks.
     _mk=$(apk info -W $_mp 2>/dev/null \
-          | sed -n 's/.* is owned by \(.*\)-[^-]*-r[0-9]*$/\1-doc/p' | sort -u)
+          | sed -n 's/.* is owned by \(.*\)-[^-]*-r[0-9]*$/\1/p' | sort -u)
+    _mk=$(apk query --fields origin $_mk 2>/dev/null | sed -n 's/^Origin: \(.*\)/\1-doc/p' | sort -u)
     _mh=$(apk info -e $_mk 2>/dev/null)
     _mk=$(printf '%s\n' $_mk | grep -vxF "$(printf '%s\n' $_mh)" || true)
     [ -n "$_mk" ] || { note "every documented command has its page"; makewhatis 2>/dev/null || true; return 0; }
@@ -29945,7 +29948,9 @@ apk_install() {  # <names...>
 # (MAN_DOC_CAP_KB in copal-prep.sh, where install_manuals says why). Quiet,
 # and never a reason to fail the install.
 man_pages_for() {  # <apk names...>
-    _md=$(for _p in "$@"; do echo "${_p%@*}-doc"; done)
+    # The -doc of each package's origin (openssh-client -> openssh-doc).
+    _md=$(apk query --fields origin $(for _p in "$@"; do echo "${_p%@*}"; done) 2>/dev/null \
+          | sed -n 's/^Origin: \(.*\)/\1-doc/p' | sort -u)
     _mh=$(apk info -e $_md 2>/dev/null)
     _md=$(printf '%s\n' $_md | grep -vxF "$(printf '%s\n' $_mh)" || true)
     [ -n "$_md" ] || return 0

@@ -1,0 +1,7237 @@
+{
+ "generated": "2026-09-23",
+ "alpine": "3.24.1",
+ "arch": "aarch64",
+ "commands": [
+  {
+   "cmd": "7z",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Discs",
+   "label": "7-Zip (7z, and reads rar)",
+   "packages": "7zip",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "7zip",
+   "version": "26.01-r0",
+   "description": "File archiver with a high compression ratio",
+   "webpage": "https://7-zip.org/",
+   "source_package": "7zip",
+   "deps": [],
+   "synopsis": "Usage: 7zz <command> [<switches>...] <archive_name> [<file_names>...] [@listfile]\n<Commands>\n  a : Add files to archive",
+   "gallery": false
+  },
+  {
+   "cmd": "abcde",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Discs",
+   "label": "abcde (rip and encode)",
+   "packages": "abcde",
+   "mode": "h",
+   "gate": "!v7",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "abcde",
+   "version": "2.9.3-r5",
+   "description": "A command line CD encoder that reads your CD, downloads the track information from a CDDB provider, and rips your CD",
+   "webpage": "https://abcde.einval.com/",
+   "source_package": "abcde",
+   "deps": [
+    "bash",
+    "cd-discid",
+    "eyed3",
+    "perl-webservice-musicbrainz"
+   ],
+   "man": "man1/abcde.1.gz",
+   "man_name": "abcde - Grab an entire CD and compress it to Ogg/Vorbis, MP3, FLAC, Ogg/Speex, AAC, WavPack, Monkey's Audio (ape), MPP/MP+(Musepack), True Audio (tta), MP2 format and/or AIFF (Audio Interchange File Format).",
+   "synopsis": "abcde [options] [tracks]",
+   "gallery": false
+  },
+  {
+   "cmd": "abduco",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Terminals",
+   "label": "abduco (detach any program)",
+   "packages": "abduco",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "abduco",
+   "version": "0.6-r7",
+   "description": "Session management in a clean and simple way",
+   "webpage": "https://www.brain-dump.org/projects/abduco/",
+   "source_package": "abduco",
+   "deps": [],
+   "man": "man1/abduco.1.gz",
+   "man_name": "abduco - terminal session manager",
+   "synopsis": "abduco [-e detachkey] [-r] [-f] -c name command [args ...]\nabduco [-e detachkey] [-r] [-f] -n name command [args ...]\nabduco [-e detachkey] [-r] [-f] [-l] -A name command [args ...]\nabduco [-e detachkey] [-r] [-l] -a name",
+   "gallery": false
+  },
+  {
+   "cmd": "admesh",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Engineering",
+   "label": "admesh (check and repair STL)",
+   "packages": "admesh@testing",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "admesh",
+   "version": "0.98.5-r0",
+   "description": "A program for processing triangulated solid meshes",
+   "webpage": "https://github.com/admesh/admesh",
+   "source_package": "admesh",
+   "deps": [],
+   "man": "man1/admesh.1.gz",
+   "man_name": "ADMesh - a program for processing triangulated solid meshes",
+   "synopsis": "admesh [OPTION]... file",
+   "gallery": false
+  },
+  {
+   "cmd": "adventure",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "Colossal Cave Adventure",
+   "packages": "bsd-games",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "bsd-games",
+   "version": "3.3-r2",
+   "description": "traditional text mode games from BSD",
+   "webpage": "https://bsd-games.sourceforge.io/",
+   "source_package": "bsd-games",
+   "deps": [
+    "libncursesw"
+   ],
+   "man": "man6/adventure.6.gz",
+   "man_name": "adventure – an exploration game",
+   "synopsis": "",
+   "gallery": true
+  },
+  {
+   "cmd": "aerc",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Mail",
+   "label": "aerc (terminal)",
+   "packages": "aerc",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "aerc",
+   "version": "0.21.0-r9",
+   "description": "email client for your terminal",
+   "webpage": "https://aerc-mail.org",
+   "source_package": "aerc",
+   "deps": [
+    "less",
+    "ncurses",
+    "notmuch-libs"
+   ],
+   "man": "man1/aerc.1.gz",
+   "man_name": "aerc - a pretty good email client.",
+   "synopsis": "aerc [-h] [-v] [-a <name>] [-C <file>] [-A <file>] [-B <file>] [-I] [mailto:<...> |\nmbox:<file> | :<command...>]\n\nFor a guided tutorial, use :help tutorial from aerc, or man aerc-tutorial from your terminal.",
+   "gallery": true
+  },
+  {
+   "cmd": "aircrack-ng",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Security",
+   "label": "Aircrack-ng (wifi audit)",
+   "packages": "aircrack-ng",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "aircrack-ng",
+   "version": "1.7-r5",
+   "description": "Key cracker for the 802.11 WEP and WPA-PSK protocols",
+   "webpage": "http://www.aircrack-ng.org",
+   "source_package": "aircrack-ng",
+   "deps": [
+    "ethtool",
+    "wireless-tools",
+    "iw",
+    "sqlite",
+    "grep",
+    "libcrypto3",
+    "libnl3",
+    "libpcap",
+    "pcre",
+    "sqlite-libs",
+    "zlib"
+   ],
+   "man": "man1/aircrack-ng.1.gz",
+   "man_name": "aircrack-ng - a 802.11 WEP / WPA-PSK key cracker",
+   "synopsis": "aircrack-ng [options] <input file(s)>",
+   "gallery": false
+  },
+  {
+   "cmd": "alpine",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Mail",
+   "label": "Alpine (pine - terminal)",
+   "packages": "alpine",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "alpine",
+   "version": "2.26-r5",
+   "description": "Text-based email client, friendly for novices but powerful",
+   "webpage": "https://repo.or.cz/alpine.git",
+   "source_package": "alpine",
+   "deps": [
+    "libcrypto3",
+    "libldap",
+    "libncursesw",
+    "libssl3"
+   ],
+   "man": "man1/alpine.1.gz",
+   "man_name": "alpine - an Alternatively Licensed Program for Internet News and Email",
+   "synopsis": "",
+   "gallery": true
+  },
+  {
+   "cmd": "alsamixer",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Media",
+   "label": "Volume control",
+   "packages": "alsa-utils",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "alsa-utils",
+   "version": "1.2.15.2-r1",
+   "description": "Advanced Linux Sound Architecture (ALSA) utilities",
+   "webpage": "https://alsa-project.org/",
+   "source_package": "alsa-utils",
+   "deps": [
+    "dialog",
+    "alsa-ucm-conf",
+    "alsa-lib",
+    "fftw-single-libs",
+    "libformw",
+    "libmenuw",
+    "libncursesw",
+    "libpanelw"
+   ],
+   "man": "man1/alsamixer.1.gz",
+   "man_name": "alsamixer - soundcard mixer for ALSA soundcard driver, with ncurses interface",
+   "synopsis": "alsamixer [options]",
+   "gallery": true
+  },
+  {
+   "cmd": "amfora",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Smallweb",
+   "label": "Amfora (gemini browser)",
+   "packages": "amfora",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "amfora",
+   "version": "1.11.0-r10",
+   "description": "terminal browser for the Gemini protocol",
+   "webpage": "https://github.com/makeworld-the-better-one/amfora",
+   "source_package": "amfora",
+   "deps": [],
+   "gallery": true
+  },
+  {
+   "cmd": "angband",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "Angband (roguelike)",
+   "packages": "angband@testing",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "angband",
+   "version": "4.2.5-r0",
+   "description": "Roguelike computer role playing game",
+   "webpage": "https://rephial.org",
+   "source_package": "angband",
+   "deps": [
+    "sdl2",
+    "sdl2_image",
+    "sdl2_mixer",
+    "sdl2_ttf",
+    "libncursesw"
+   ],
+   "gallery": true
+  },
+  {
+   "cmd": "apk",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "apk-tools",
+   "version": "3.0.8-r0",
+   "description": "Alpine Package Keeper - package manager for alpine",
+   "webpage": "https://gitlab.alpinelinux.org/alpine/apk-tools",
+   "source_package": "apk-tools",
+   "deps": [
+    "libcrypto3",
+    "libapk",
+    "ca-certificates-bundle",
+    "zlib"
+   ],
+   "stage": null,
+   "man": "man8/apk.8.gz",
+   "man_name": "apk - Alpine Package Keeper",
+   "synopsis": "apk [<global options>...] command [<options>...] [<arguments>...]",
+   "gallery": false
+  },
+  {
+   "cmd": "arduino-cli",
+   "origins": [
+    "store"
+   ],
+   "section": "Programming",
+   "label": "Arduino CLI",
+   "packages": "arduino-cli@testing",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "arduino-cli",
+   "version": "1.5.1-r1",
+   "description": "Arduino command line tool",
+   "webpage": "https://github.com/arduino/arduino-cli",
+   "source_package": "arduino-cli",
+   "deps": [],
+   "gallery": false
+  },
+  {
+   "cmd": "asciiquarium",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "Asciiquarium",
+   "packages": "asciiquarium",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "asciiquarium",
+   "version": "1.1-r2",
+   "description": "An aquarium/sea animation in ASCII art",
+   "webpage": "https://robobunny.com/projects/asciiquarium/html/",
+   "source_package": "asciiquarium",
+   "deps": [
+    "perl",
+    "perl-term-animation"
+   ],
+   "gallery": true
+  },
+  {
+   "cmd": "ascitty",
+   "origins": [
+    "store"
+   ],
+   "section": "Code",
+   "label": "ASCITTY (raytraced ASCII city)",
+   "packages": "ascitty@clone",
+   "mode": "t",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": true,
+   "package": null,
+   "gallery": false
+  },
+  {
+   "cmd": "aspell",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Notes",
+   "label": "Aspell (spell checker)",
+   "packages": "aspell aspell-en",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "aspell",
+   "version": "0.60.8.2-r0",
+   "description": "A spell checker designed to eventually replace Ispell",
+   "webpage": "http://aspell.net/",
+   "source_package": "aspell",
+   "deps": [
+    "aspell-libs",
+    "libintl",
+    "libncursesw"
+   ],
+   "man": "man1/aspell.1.gz",
+   "man_name": "aspell - interactive spell checker",
+   "synopsis": "aspell [options] <command>",
+   "gallery": false
+  },
+  {
+   "cmd": "atc",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "Air Traffic Control",
+   "packages": "bsd-games",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "bsd-games",
+   "version": "3.3-r2",
+   "description": "traditional text mode games from BSD",
+   "webpage": "https://bsd-games.sourceforge.io/",
+   "source_package": "bsd-games",
+   "deps": [
+    "libncursesw"
+   ],
+   "man": "man6/atc.6.gz",
+   "man_name": "atc – air traffic controller game",
+   "synopsis": "atc [-u?lstp] [-gf game name] [-r random seed]",
+   "gallery": true
+  },
+  {
+   "cmd": "bear",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "Bear (make a compile_commands.json)",
+   "packages": "bear",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "bear",
+   "version": "4.1.5-r0",
+   "description": "Tool that generates a compilation database for clang tooling",
+   "webpage": "https://github.com/rizsotto/Bear",
+   "source_package": "bear",
+   "deps": [],
+   "man": "man1/bear.1.gz",
+   "man_name": "Bear - a tool to generate compilation database for Clang tooling.",
+   "synopsis": "bear [OPTIONS] [--] [BUILD_COMMAND...]\n\nbear intercept [OPTIONS] [--] BUILD_COMMAND...\n\nbear semantic [OPTIONS]",
+   "gallery": false
+  },
+  {
+   "cmd": "birdshot",
+   "origins": [
+    "store"
+   ],
+   "section": "Code",
+   "label": "birdshot (camera, command line)",
+   "packages": "birdshot@clone",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": true,
+   "package": null,
+   "synopsis": "usage: birdshot <command> [options]\ncapture\n  capture    [-n N] [-v]        COLLECT: full pipeline with quality gates",
+   "gallery": false
+  },
+  {
+   "cmd": "bluetoothctl",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "bluez",
+   "version": "5.86-r2",
+   "description": "Tools for the Bluetooth protocol stack",
+   "webpage": "https://www.bluez.org/",
+   "source_package": "bluez",
+   "deps": [
+    "dbus",
+    "dbus-libs",
+    "glib",
+    "json-c",
+    "readline",
+    "eudev-libs"
+   ],
+   "stage": 10,
+   "man": "man1/bluetoothctl.1.gz",
+   "man_name": "bluetoothctl - Bluetooth Control Command Line Tool",
+   "synopsis": "bluetoothctl [-a capability] [-e] [-m] [-t seconds] [-v] [-h]",
+   "gallery": false
+  },
+  {
+   "cmd": "bombadillo",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Smallweb",
+   "label": "Bombadillo (gopher + gemini + finger)",
+   "packages": "bombadillo",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "bombadillo",
+   "version": "2.4.0-r38",
+   "description": "Non-web (gopher, gemini, finger) browser for the terminal",
+   "webpage": "https://bombadillo.colorfield.space/",
+   "source_package": "bombadillo",
+   "deps": [],
+   "man": "man1/bombadillo.1.gz",
+   "man_name": "bombadillo - a non-web browser",
+   "synopsis": "bombadillo [options] [url]",
+   "gallery": true
+  },
+  {
+   "cmd": "brogue",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "Brogue (roguelike)",
+   "packages": "brogue",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "brogue",
+   "version": "1.15.1-r0",
+   "description": "Classic roguelike with streamlined game mechanics and tasteful visual design (community edition)",
+   "webpage": "https://sites.google.com/site/broguegame/",
+   "source_package": "brogue",
+   "deps": [
+    "sdl2",
+    "sdl2_image"
+   ],
+   "gallery": true
+  },
+  {
+   "cmd": "browsh",
+   "origins": [
+    "store"
+   ],
+   "section": "Browsers",
+   "label": "Browsh (the web in a terminal)",
+   "packages": "browsh@source",
+   "mode": "t",
+   "gate": "!v6",
+   "stage": 18,
+   "origin": "store",
+   "installed": true,
+   "built": "copal-store recipe, built from source",
+   "package": null,
+   "gallery": false
+  },
+  {
+   "cmd": "bsdtar",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Discs",
+   "label": "bsdtar (reads almost anything)",
+   "packages": "libarchive-tools",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "libarchive-tools",
+   "version": "3.8.7-r0",
+   "description": "libarchive tools bsdtar and bsdcpio",
+   "webpage": "https://libarchive.org/",
+   "source_package": "libarchive",
+   "deps": [
+    "acl-libs",
+    "libbz2",
+    "libcrypto3",
+    "libexpat",
+    "lz4-libs",
+    "xz-libs",
+    "zlib",
+    "zstd-libs"
+   ],
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "btop",
+   "origins": [
+    "store"
+   ],
+   "section": "System",
+   "label": "btop++",
+   "packages": "btop",
+   "mode": "t",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": true,
+   "package": "btop",
+   "version": "1.4.6-r0",
+   "description": "Resource monitor",
+   "webpage": "https://github.com/aristocratos/btop",
+   "source_package": "btop",
+   "deps": [],
+   "man": "man1/btop.1.gz",
+   "man_name": "btop - Resource monitor that shows usage and stats for processor, memory, disks, network, and processes.",
+   "synopsis": "btop [-c file] [-d] [-f filter] [-l] [-p id] [-t] [-u ms] [--force-utf] [--themes-dir dir]\n\nbtop [--default-config | {-h | --help} | {-V | --version}]",
+   "gallery": false
+  },
+  {
+   "cmd": "busybox",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "busybox",
+   "version": "1.37.0-r31",
+   "description": "Size optimized toolbox of many common UNIX utilities",
+   "webpage": "https://busybox.net/",
+   "source_package": "busybox",
+   "deps": [],
+   "stage": null,
+   "man": "man1/busybox.1.gz",
+   "man_name": "BusyBox - The Swiss Army Knife of Embedded Linux",
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "byobu",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Terminals",
+   "label": "Byobu (tmux with a status line set up)",
+   "packages": "byobu",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "byobu",
+   "version": "6.16-r0",
+   "description": "An enhancement of the GNU Screen",
+   "webpage": "https://byobu.org",
+   "source_package": "byobu",
+   "deps": [
+    "python3",
+    "tmux",
+    "py3-newt"
+   ],
+   "man": "man1/byobu.1.gz",
+   "man_name": "byobu - wrapper script for seeding a user's byobu configuration and launching a text based window manager (either screen or tmux)",
+   "synopsis": "byobu [options]\n\nbyobu-screen [screen options]\n\nbyobu-tmux [tmux options]\n\nOptions to byobu are simply passed through screen(1) or tmux(1).",
+   "gallery": true
+  },
+  {
+   "cmd": "cargo",
+   "origins": [
+    "core",
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Rust (compiler + cargo + std source)",
+   "packages": "rust cargo rust-src rustfmt",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "core",
+   "installed": true,
+   "package": "rustup",
+   "version": "1.29.0-r0",
+   "description": "Rust toolchain installer",
+   "webpage": "https://rustup.rs/",
+   "source_package": "rustup",
+   "deps": [
+    "libcrypto3",
+    "libcurl",
+    "libssl3",
+    "zstd-libs"
+   ],
+   "man": "man1/cargo.1.gz",
+   "man_name": "cargo — The Rust package manager",
+   "synopsis": "cargo [options] command [args]\ncargo [options] --version\ncargo [options] --list\ncargo [options] --help\ncargo [options] --explain code",
+   "gallery": false
+  },
+  {
+   "cmd": "cbonsai",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "cbonsai",
+   "packages": "cbonsai",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "cbonsai",
+   "version": "1.4.2-r0",
+   "description": "Grow bonsai trees in your terminal",
+   "webpage": "https://gitlab.com/jallbrit/cbonsai",
+   "source_package": "cbonsai",
+   "deps": [
+    "libncursesw",
+    "libpanelw"
+   ],
+   "man": "man6/cbonsai.6.gz",
+   "man_name": "cbonsai - grow bonsai trees in your terminal",
+   "synopsis": "cbonsai [OPTION]...",
+   "gallery": false
+  },
+  {
+   "cmd": "ccache",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "ccache (recompile faster)",
+   "packages": "ccache",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "ccache",
+   "version": "4.13.6-r0",
+   "description": "fast C/C++ compiler cache",
+   "webpage": "https://ccache.dev/",
+   "source_package": "ccache",
+   "deps": [
+    "hiredis",
+    "libxxhash",
+    "zstd-libs"
+   ],
+   "man": "man1/ccache.1.gz",
+   "man_name": "ccache - a fast C/C++ compiler cache",
+   "synopsis": "ccache [ccache options]\nccache [KEY=VALUE ...] compiler [compiler options]\ncompiler [compiler options]\n\nThe first form takes options described in COMMAND LINE OPTIONS below. The second form invokes\nthe compiler, optionally using configuration options as KEY=VALUE arguments. In the third\nform, ccache is masquerading as the compiler as described in RUN MODES.",
+   "gallery": false
+  },
+  {
+   "cmd": "cdparanoia",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Discs",
+   "label": "cdparanoia (CD ripper)",
+   "packages": "cdparanoia",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "cdparanoia",
+   "version": "10.2-r14",
+   "description": "An audio CD extraction application",
+   "webpage": "https://www.xiph.org/paranoia",
+   "source_package": "cdparanoia",
+   "deps": [
+    "cdparanoia-libs"
+   ],
+   "man": "man1/cdparanoia.1.gz",
+   "man_name": "cdparanoia 10.2 (Paranoia release III) - an audio CD reading utility which includes extra data verification features",
+   "synopsis": "cdparanoia [options] span [outfile]",
+   "gallery": false
+  },
+  {
+   "cmd": "cdrdao",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Discs",
+   "label": "cdrdao (audio CD burning)",
+   "packages": "cdrdao",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "cdrdao",
+   "version": "1.2.6-r0",
+   "description": "record audio/data CD-Rs in disk-at-once mode",
+   "webpage": "https://cdrdao.sourceforge.net/index.html",
+   "source_package": "cdrdao",
+   "deps": [],
+   "man": "man1/cdrdao.1.gz",
+   "man_name": "cdrdao - reads and writes CDs in disc-at-once mode",
+   "synopsis": "cdrdao\n{show-toc|toc-info|toc-size|read-toc|read-cd|read-cddb|show-data|read-test|disk-info|discid|msinfo|drive-info|unlock|scanbus|simulate|write|copy|blank}\n[--device device] [--source-device device] [--driver driver-id] [--source-driver driver-id]\n[--simulate] [--speed writing-speed] [--blank-mode mode] [--datafile file] [--read-raw]\n[--read-subchan [--no-mode2-mixed] mode] [--tao-source] [--tao-source-adjust link-blocks]\n[--fast-toc] [--buffers buffer-count] [--multi] [--overburn] [--eject] [--swap] [--session]\n[--force] [--reload] [--keepimage] [--on-the-fly] [--paranoia-mode mode] [--with-cddb]\n[--cddb-servers server-list] [--cddb-timeout timeout] [--cddb-directory directory] [--tmpdir\ndirectory] [--keep] [--save] [-n] [-v verbose-level] toc-file",
+   "gallery": false
+  },
+  {
+   "cmd": "cdw",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Discs",
+   "label": "cdw (CD/DVD burner - terminal)",
+   "packages": "cdw",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "cdw",
+   "version": "0.8.1-r7",
+   "description": "cdw is a front-end for cd recoding tools",
+   "webpage": "https://cdw.sourceforge.net/",
+   "source_package": "cdw",
+   "deps": [
+    "cdrkit",
+    "libburn",
+    "libcdio",
+    "libformw",
+    "libintl",
+    "libmenuw",
+    "libncursesw",
+    "libpanelw"
+   ],
+   "man": "man1/cdw.1.gz",
+   "man_name": "cdw - front-end for cdrecord, mkisofs, growisofs, mkudffs and other tools",
+   "synopsis": "cdw [--help] [--version] [--enable-dvd-rp-dl] [--escdelay=X]",
+   "gallery": true
+  },
+  {
+   "cmd": "cgdb",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "cgdb (GDB with a source window)",
+   "packages": "cgdb",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "cgdb",
+   "version": "0.8.0-r4",
+   "description": "The Curses Debugger",
+   "webpage": "https://cgdb.github.io/",
+   "source_package": "cgdb",
+   "deps": [
+    "gdb",
+    "libncursesw",
+    "readline"
+   ],
+   "gallery": true
+  },
+  {
+   "cmd": "cl65",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "cc65 (C and assembler for the 6502: Commodore, Atari, NES)",
+   "packages": "cc65",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": false,
+   "package": "cc65",
+   "version": "2.19-r0",
+   "description": "Compiler Suite for 6502 based processors",
+   "webpage": "https://cc65.github.io/",
+   "source_package": "cc65",
+   "deps": [],
+   "gallery": false
+  },
+  {
+   "cmd": "clagrange",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Smallweb",
+   "label": "Lagrange (gemini - terminal)",
+   "packages": "lagrange",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "lagrange",
+   "version": "1.21.1-r0",
+   "description": "Beautiful Gemini client",
+   "webpage": "https://gmi.skyjake.fi/lagrange",
+   "source_package": "lagrange",
+   "deps": [
+    "sdl2",
+    "libcrypto3",
+    "fribidi",
+    "harfbuzz",
+    "mpg123-libs",
+    "libncursesw",
+    "opusfile",
+    "pcre2",
+    "libssl3",
+    "libunistring",
+    "libwebpdecoder",
+    "zlib"
+   ],
+   "gallery": true
+  },
+  {
+   "cmd": "clamscan",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Security",
+   "label": "ClamAV (virus scanner)",
+   "packages": "clamav clamav-scanner clamav-db freshclam",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "clamav-scanner",
+   "version": "1.4.6-r0",
+   "description": "ClamAV command-line scanner and utils",
+   "webpage": "https://www.clamav.net/",
+   "source_package": "clamav",
+   "deps": [
+    "freshclam",
+    "clamav-libs",
+    "zlib"
+   ],
+   "man": "man1/clamscan.1.gz",
+   "man_name": "clamscan - scan files and directories for viruses",
+   "synopsis": "clamscan [options] [file/directory/-]",
+   "gallery": false
+  },
+  {
+   "cmd": "clang",
+   "origins": [
+    "core",
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Clang 22 (second C/C++ compiler)",
+   "packages": "clang22",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "core",
+   "installed": true,
+   "package": "clang22",
+   "version": "22.1.3-r2",
+   "description": "C language family front-end for LLVM",
+   "webpage": "https://llvm.org/",
+   "source_package": "clang22",
+   "deps": [
+    "clang22-headers",
+    "clang22-libs",
+    "fortify-headers",
+    "libgcc-static",
+    "libstdc++-dev",
+    "llvm22-linker-tools",
+    "musl-dev",
+    "llvm22-libs"
+   ],
+   "man": "man1/clang.1.gz",
+   "man_name": "clang - Alpine Clang 22.1.3-r2",
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "clangd",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "clangd + clang-format (C/C++ LSP)",
+   "packages": "clang22-extra-tools",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "clang22-extra-tools",
+   "version": "22.1.3-r2",
+   "description": "Extra tools built using Clang's tooling APIs",
+   "webpage": "https://llvm.org/",
+   "source_package": "clang22",
+   "deps": [
+    "clang22",
+    "llvm22-libs",
+    "clang22-libs"
+   ],
+   "synopsis": "USAGE: clangd [options]\nOPTIONS:",
+   "gallery": false
+  },
+  {
+   "cmd": "cmake",
+   "origins": [
+    "core",
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "CMake",
+   "packages": "cmake",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "core",
+   "installed": true,
+   "package": "cmake",
+   "version": "4.2.3-r0",
+   "description": "Cross-platform, open-source make system",
+   "webpage": "https://cmake.org/",
+   "source_package": "cmake",
+   "deps": [
+    "libarchive",
+    "libcrypto3",
+    "libexpat",
+    "rhash-libs",
+    "libssl3",
+    "libuv",
+    "zlib"
+   ],
+   "man": "man1/cmake.1.gz",
+   "man_name": "cmake - CMake Command-Line Reference",
+   "synopsis": "Generate a Project Buildsystem\n cmake [<options>] -B <path-to-build> [-S <path-to-source>]\n cmake [<options>] <path-to-source | path-to-existing-build>\n\nBuild a Project\n cmake --build <dir> [<options>] [-- <build-tool-options>]\n\nInstall a Project\n cmake --install <dir> [<options>]\n\nOpen a Project\n cmake --open <dir>\n\nRun a Script\n...",
+   "gallery": false
+  },
+  {
+   "cmd": "cmatrix",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "cmatrix",
+   "packages": "cmatrix",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "cmatrix",
+   "version": "2.0-r2",
+   "description": "Terminal based 'The Matrix' like implementation",
+   "webpage": "https://github.com/abishekvashok/cmatrix",
+   "source_package": "cmatrix",
+   "deps": [
+    "libncursesw"
+   ],
+   "man": "man1/cmatrix.1.gz",
+   "man_name": "CMatrix",
+   "synopsis": "cmatrix [-abBflohnsmVx] [-u update] [-C color]",
+   "gallery": true
+  },
+  {
+   "cmd": "cmus",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Media",
+   "label": "cmus (audio - terminal)",
+   "packages": "cmus",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "cmus",
+   "version": "2.12.0-r3",
+   "description": "feature-rich ncurses-based music player",
+   "webpage": "https://cmus.github.io/",
+   "source_package": "cmus",
+   "deps": [
+    "libflac",
+    "alsa-lib",
+    "ffmpeg-libavcodec",
+    "ffmpeg-libavformat",
+    "libelogind",
+    "faad2-libs",
+    "libmad",
+    "libncursesw",
+    "opusfile",
+    "libpulse",
+    "ffmpeg-libswresample",
+    "libvorbis",
+    "wavpack-libs"
+   ],
+   "man": "man1/cmus.1.gz",
+   "man_name": "cmus - C* Music Player",
+   "synopsis": "cmus [options]",
+   "gallery": true
+  },
+  {
+   "cmd": "composer",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "PHP 8.3 + Composer + Xdebug",
+   "packages": "php83 php83-phar php83-openssl php83-pecl-xdebug composer",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "composer",
+   "version": "2.10.2-r0",
+   "description": "Dependency manager for PHP",
+   "webpage": "https://getcomposer.org/",
+   "source_package": "composer",
+   "deps": [
+    "php85",
+    "php85-phar",
+    "php85-curl",
+    "php85-iconv",
+    "php85-mbstring",
+    "php85-openssl",
+    "php85-zip",
+    "p7zip"
+   ],
+   "synopsis": "Usage:\n  list [options] [--] [<namespace>]\nArguments:",
+   "gallery": false
+  },
+  {
+   "cmd": "copal",
+   "origins": [
+    "copal"
+   ],
+   "stage": 3,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-apps",
+   "origins": [
+    "copal"
+   ],
+   "stage": 18,
+   "mode": "h",
+   "origin": "copal",
+   "installed": false,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-audio-start",
+   "origins": [
+    "copal"
+   ],
+   "stage": 10,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-autologin",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-bar",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-build",
+   "origins": [
+    "copal"
+   ],
+   "stage": 7,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-camera",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-center",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-clip",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-code",
+   "origins": [
+    "copal"
+   ],
+   "stage": 7,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-config",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-debug",
+   "origins": [
+    "copal"
+   ],
+   "stage": 0,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-desk",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-desktop",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-fleet",
+   "origins": [
+    "copal"
+   ],
+   "stage": 16,
+   "mode": "h",
+   "origin": "copal",
+   "installed": false,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-fleet-agent",
+   "origins": [
+    "copal"
+   ],
+   "stage": 16,
+   "mode": "h",
+   "origin": "copal",
+   "installed": false,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-fleet-exec",
+   "origins": [
+    "copal"
+   ],
+   "stage": 16,
+   "mode": "h",
+   "origin": "copal",
+   "installed": false,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-fonts",
+   "origins": [
+    "copal"
+   ],
+   "stage": 12,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-gpu",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-gui",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-guide",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-halt",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-install",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-launcher",
+   "origins": [
+    "copal"
+   ],
+   "stage": 17,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-logflush",
+   "origins": [
+    "copal"
+   ],
+   "stage": 15,
+   "mode": "h",
+   "origin": "copal",
+   "installed": false,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-logs",
+   "origins": [
+    "copal"
+   ],
+   "stage": 0,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-menu",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-morse",
+   "origins": [
+    "copal"
+   ],
+   "stage": 7,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-notify",
+   "origins": [
+    "copal"
+   ],
+   "stage": 16,
+   "mode": "h",
+   "origin": "copal",
+   "installed": false,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-remote",
+   "origins": [
+    "copal"
+   ],
+   "stage": 16,
+   "mode": "h",
+   "origin": "copal",
+   "installed": false,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-session",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-shot",
+   "origins": [
+    "copal"
+   ],
+   "stage": 17,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-splash",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-ssh",
+   "origins": [
+    "copal"
+   ],
+   "stage": 6,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-startx",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-store",
+   "origins": [
+    "copal"
+   ],
+   "stage": 18,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-terminal-theme",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-theme",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-times",
+   "origins": [
+    "copal"
+   ],
+   "stage": 0,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-tm",
+   "origins": [
+    "store"
+   ],
+   "section": "Code",
+   "label": "copal-tm (task manager)",
+   "packages": "copal-tm@clone",
+   "mode": "t",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": true,
+   "package": null,
+   "gallery": false
+  },
+  {
+   "cmd": "copal-wallpaper",
+   "origins": [
+    "copal"
+   ],
+   "stage": 17,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "copal-widgets",
+   "origins": [
+    "copal"
+   ],
+   "stage": 4,
+   "mode": "h",
+   "origin": "copal",
+   "installed": true,
+   "package": "copal",
+   "gallery": false
+  },
+  {
+   "cmd": "cppcheck",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "cppcheck (static analysis)",
+   "packages": "cppcheck",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "cppcheck",
+   "version": "2.21.0-r0",
+   "description": "Static analysis tool for C/C++ code",
+   "webpage": "https://cppcheck.sourceforge.io/",
+   "source_package": "cppcheck",
+   "deps": [
+    "pcre",
+    "tinyxml2"
+   ],
+   "man": "man1/cppcheck.1.gz",
+   "man_name": "cppcheck - Tool for static C/C++ code analysis",
+   "synopsis": "cppcheck [--check-config] [--check-library] [-D<id>] [-U<id>] [--disable=<id>]\n         [--enable=<id>] [--error-exitcode=<n>] [--errorlist] [--exitcode-suppress=<spec>]\n         [--exitcode-suppressions=<file>] [--file-list=<file>] [--filesdir] [--force]\n         [--fsigned-char] [--funsigned-char] [--help] [-I<dir>] [--includes-file=<file>]\n         [--config-exclude=<dir>] [--config-excludes-file=<file>] [--include=<file>]\n         [-i<dir>] [--inconclusive] [--inline-suppr] [-j<jobs>] [-l<load>]\n         [--language=<language>] [--library=<cfg>] [--max-configs=<limit>]\n         [--max-ctu-depth=<limit>] [--platform=<type>] [--quiet] [--relative-paths=<paths>]\n         [--report-progress] [--report-type=<type>] [--rule=<rule>] [--rule-file=<file>]\n         [--showtime=<mode>] [--std=<id>] [--suppress=<spec>] [--suppressions-list=<file>]\n         [--suppress-xml=<.xml file>] [--template='<text>'] [--verbose] [--version] [--xml]\n         [--xml-version=<version>]] [file or path] ...",
+   "gallery": false
+  },
+  {
+   "cmd": "croc",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Sharing",
+   "label": "croc (send a file to anyone, one command)",
+   "packages": "croc",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "croc",
+   "version": "10.2.2-r11",
+   "description": "Easily and securely send things from one computer to another",
+   "webpage": "https://github.com/schollz/croc",
+   "source_package": "croc",
+   "deps": [],
+   "synopsis": "USAGE:\n   croc [GLOBAL OPTIONS] [COMMAND] [COMMAND OPTIONS] [filename(s) or folder]\n   USAGE EXAMPLES:",
+   "gallery": false
+  },
+  {
+   "cmd": "crystal",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Crystal",
+   "packages": "crystal",
+   "mode": "h",
+   "gate": "64",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "crystal",
+   "version": "1.20.3-r0",
+   "description": "The Crystal Programming Language",
+   "webpage": "https://crystal-lang.org/",
+   "source_package": "crystal",
+   "deps": [
+    "gc-dev",
+    "gcc",
+    "gmp-dev",
+    "libatomic_ops",
+    "musl-dev",
+    "pcre2-dev",
+    "llvm22-libs",
+    "libffi",
+    "gc",
+    "pcre2"
+   ],
+   "man": "man1/crystal.1.gz",
+   "man_name": "crystal - compiler for the Crystal language",
+   "synopsis": "crystal command [switches] programfile — [arguments]",
+   "gallery": false
+  },
+  {
+   "cmd": "csi",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "CHICKEN (Scheme to C)",
+   "packages": "chicken",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "chicken",
+   "version": "5.4.0-r0",
+   "description": "R5RS and R7RS compatible scheme compiler and interpreter",
+   "webpage": "https://call-cc.org/",
+   "source_package": "chicken",
+   "deps": [
+    "gcc",
+    "libc-dev",
+    "chicken-dev",
+    "chicken-libs"
+   ],
+   "man": "man1/csi.1.gz",
+   "man_name": "csi – The CHICKEN Scheme interpreter",
+   "synopsis": "csi [OPTION ...] [FILENAME ...]",
+   "gallery": true
+  },
+  {
+   "cmd": "ctags",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "ctags (jump to any definition)",
+   "packages": "ctags",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "ctags",
+   "version": "6.2.1-r0",
+   "description": "Generator of tags for all types of C/C++ languages",
+   "webpage": "https://ctags.io/",
+   "source_package": "ctags",
+   "deps": [
+    "jansson",
+    "yaml"
+   ],
+   "man": "man1/ctags.1.gz",
+   "man_name": "ctags - Generate tag files for source code",
+   "synopsis": "ctags [<options>] [<source_file(s)>]\netags [<options>] [<source_file(s)>]",
+   "gallery": false
+  },
+  {
+   "cmd": "curl",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "curl",
+   "version": "8.22.0-r0",
+   "description": "URL retrieval utility and library",
+   "webpage": "https://curl.se/",
+   "source_package": "curl",
+   "deps": [
+    "libcurl",
+    "zlib"
+   ],
+   "stage": 0,
+   "man": "man1/curl.1.gz",
+   "man_name": "curl - transfer a URL",
+   "synopsis": "curl [options / URLs]",
+   "gallery": false
+  },
+  {
+   "cmd": "darkhttpd",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Sharing",
+   "label": "darkhttpd (serve a folder over HTTP)",
+   "packages": "darkhttpd",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "darkhttpd",
+   "version": "1.17-r0",
+   "description": "A simple, single-threaded, static content webserver",
+   "webpage": "https://unix4lyfe.org/darkhttpd/",
+   "source_package": "darkhttpd",
+   "deps": [],
+   "synopsis": "usage:\t/usr/bin/darkhttpd /path/to/wwwroot [flags]\nflags:\t--port number (default: 8080, or 80 if running as root)\n\t\tSpecifies which port to listen on for connections.",
+   "gallery": false
+  },
+  {
+   "cmd": "delta",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "System",
+   "label": "delta (better git diffs)",
+   "packages": "delta",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "delta",
+   "version": "0.19.2-r0",
+   "description": "Syntax-highlighting pager for git and diff output",
+   "webpage": "https://dandavison.github.io/delta/",
+   "source_package": "delta",
+   "deps": [
+    "libgit2",
+    "oniguruma"
+   ],
+   "synopsis": "Usage: delta [OPTIONS] [MINUS_FILE] [PLUS_FILE]\nArguments:\n  [MINUS_FILE]",
+   "gallery": false
+  },
+  {
+   "cmd": "direwolf",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Radio",
+   "label": "Direwolf (packet radio / APRS TNC)",
+   "packages": "direwolf",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "direwolf",
+   "version": "1.8.1-r1",
+   "description": "Software soundcard AX.25 packet modem/TNC and APRS encoder/decoder",
+   "webpage": "https://github.com/wb2osz/direwolf",
+   "source_package": "direwolf",
+   "deps": [
+    "alsa-lib",
+    "avahi-libs",
+    "libgpiod",
+    "gpsd",
+    "hamlib",
+    "eudev-libs"
+   ],
+   "man": "man1/direwolf.1.gz",
+   "man_name": "direwolf - Soundcard TNC for packet radio.",
+   "synopsis": "direwolf [ options ] [ - | udp:9999 ]\n\nThe first audio channel can be streamed thru stdin or a UDP port.  This is typically used\nwith an SDR receiver.",
+   "gallery": false
+  },
+  {
+   "cmd": "dlv",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Delve (Go debugger - breakpoints)",
+   "packages": "delve",
+   "mode": "h",
+   "gate": "64",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "delve",
+   "version": "1.26.2-r2",
+   "description": "Debugger for the Go programming language",
+   "webpage": "https://github.com/go-delve/delve",
+   "source_package": "delve",
+   "deps": [],
+   "synopsis": "Usage:\n  dlv [command]\nAvailable Commands:",
+   "gallery": false
+  },
+  {
+   "cmd": "dmesg",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "dmesg",
+   "version": "2.42.3-r1",
+   "description": "dmesg tool from util-linux",
+   "webpage": "https://git.kernel.org/cgit/utils/util-linux/util-linux.git",
+   "source_package": "util-linux",
+   "deps": [
+    "libncursesw"
+   ],
+   "stage": 5,
+   "gallery": false
+  },
+  {
+   "cmd": "doas",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "doas",
+   "version": "6.8.2-r8",
+   "description": "OpenBSD's temporary privilege escalation tool",
+   "webpage": "https://github.com/Duncaen/OpenDoas",
+   "source_package": "doas",
+   "deps": [],
+   "stage": 4,
+   "man": "man1/doas.1.gz",
+   "man_name": "doas – execute commands as another user",
+   "synopsis": "doas [-Lns] [-C config] [-u user] command [args]",
+   "gallery": false
+  },
+  {
+   "cmd": "dot",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Design",
+   "label": "Graphviz (graph diagrams from text)",
+   "packages": "graphviz",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "graphviz",
+   "version": "12.2.1-r3",
+   "description": "Graph Visualization Tools",
+   "webpage": "https://www.graphviz.org/",
+   "source_package": "graphviz",
+   "deps": [
+    "font-cantarell",
+    "libx11",
+    "cairo",
+    "graphviz-libs",
+    "libexpat",
+    "libgd",
+    "glib",
+    "pango",
+    "libwebp",
+    "zlib"
+   ],
+   "man": "man1/dot.1.gz",
+   "man_name": "dot - filter for drawing directed graphs neato - filter for drawing undirected graphs twopi - filter for radial layouts of graphs circo - filter for circular layout of graphs fdp - filter for drawing undirected graphs sfdp - filter for drawing large undirected graphs patchwork - filter for squarified tree maps osage - filter for array-based layouts",
+   "synopsis": "dot [options] [files]\nneato [options] [files]\ntwopi [options] [files]\ncirco [options] [files]\nfdp [options] [files]\nsfdp [options] [files]\npatchwork [options] [files]\nosage [options] [files]",
+   "gallery": false
+  },
+  {
+   "cmd": "dotnet",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": ".NET 9 SDK",
+   "packages": "dotnet9-sdk",
+   "mode": "h",
+   "gate": "!v6,!x32",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "dotnet-host",
+   "version": "10.0.12-r0",
+   "description": "A generic driver for the .NET Core Command Line Interface",
+   "webpage": "https://dotnet.microsoft.com",
+   "source_package": "dotnet10-runtime",
+   "deps": [],
+   "synopsis": "Usage: dotnet [runtime-options] [path-to-application] [arguments]\nExecute a .NET application.",
+   "gallery": false
+  },
+  {
+   "cmd": "doxygen",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "Doxygen (documentation from source)",
+   "packages": "doxygen",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "doxygen",
+   "version": "1.17.0-r0",
+   "description": "Documentation system for C++, C, Java, IDL and PHP",
+   "webpage": "https://www.doxygen.nl/",
+   "source_package": "doxygen",
+   "deps": [],
+   "man": "man1/doxygen.1.gz",
+   "man_name": "Doxygen - documentation system for various programming languages",
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "dpkg",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Discs",
+   "label": "dpkg (open Debian packages)",
+   "packages": "dpkg",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "dpkg",
+   "version": "1.23.7-r0",
+   "description": "Debian Package Manager",
+   "webpage": "https://wiki.debian.org/Teams/Dpkg",
+   "source_package": "dpkg",
+   "deps": [
+    "tar",
+    "xz",
+    "libbz2",
+    "libmd",
+    "zlib"
+   ],
+   "man": "man1/dpkg.1.gz",
+   "man_name": "dpkg - package manager for Debian",
+   "synopsis": "dpkg [option...] command",
+   "gallery": false
+  },
+  {
+   "cmd": "dtach",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Terminals",
+   "label": "dtach (detach, smallest of all)",
+   "packages": "dtach",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "dtach",
+   "version": "0.9-r7",
+   "description": "A program that emulates the detach feature of screen",
+   "webpage": "https://dtach.sourceforge.net/",
+   "source_package": "dtach",
+   "deps": [],
+   "man": "man1/dtach.1.gz",
+   "man_name": "dtach - simple program that emulates the detach feature of screen.",
+   "synopsis": "dtach -a <socket> <options>\ndtach -A <socket> <options> <command...>\ndtach -c <socket> <options> <command...>\ndtach -n <socket> <options> <command...>\ndtach -N <socket> <options> <command...>\ndtach -p <socket>",
+   "gallery": false
+  },
+  {
+   "cmd": "dump1090",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Radio",
+   "label": "dump1090 (track aircraft, ADS-B)",
+   "packages": "dump1090",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "dump1090",
+   "version": "11.0-r0",
+   "description": "Simple Mode S decoder for RTLSDR devices",
+   "webpage": "https://github.com/flightaware/dump1090",
+   "source_package": "dump1090",
+   "deps": [
+    "bladerf-libs",
+    "libncursesw",
+    "librtlsdr"
+   ],
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "dvtm",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Terminals",
+   "label": "dvtm (tiling in a terminal)",
+   "packages": "dvtm",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "dvtm",
+   "version": "0.15_git20210309-r3",
+   "description": "Dynamic virtual terminal manager",
+   "webpage": "https://www.brain-dump.org/projects/dvtm/",
+   "source_package": "dvtm",
+   "deps": [
+    "ncurses-terminfo",
+    "libncursesw"
+   ],
+   "man": "man1/dvtm.1.gz",
+   "man_name": "dvtm – dynamic virtual terminal manager",
+   "synopsis": "dvtm [-v] [-M] [-m modifier] [-d delay] [-h lines] [-t title] [-s status-fifo] [-c cmd-fifo]\n     [command ...]",
+   "gallery": true
+  },
+  {
+   "cmd": "elinks",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Internet",
+   "label": "ELinks (text web + gopher)",
+   "packages": "elinks",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "elinks",
+   "version": "0.19.1-r0",
+   "description": "Advanced and well-established feature-rich text mode web browser",
+   "webpage": "https://github.com/rkd77/elinks",
+   "source_package": "elinks",
+   "deps": [
+    "libcrypto3",
+    "libcurl",
+    "libexpat",
+    "gpm-libs",
+    "libidn2",
+    "libintl",
+    "libssl3",
+    "zlib"
+   ],
+   "man": "man1/elinks.1.gz",
+   "man_name": "elinks - lynx-like alternative character mode WWW browser",
+   "synopsis": "elinks [OPTION]... [URL]...",
+   "gallery": true
+  },
+  {
+   "cmd": "elixir",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Elixir",
+   "packages": "elixir",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "elixir",
+   "version": "1.19.6-r0",
+   "description": "Elixir is a dynamic, functional language designed for building scalable and maintainable applications",
+   "webpage": "https://elixir-lang.org/",
+   "source_package": "elixir",
+   "deps": [
+    "erlang",
+    "erlang-dev"
+   ],
+   "man": "man1/elixir.1.gz",
+   "man_name": "elixir – The Elixir script runner",
+   "synopsis": "elixir [OPTIONS] file ...",
+   "gallery": true
+  },
+  {
+   "cmd": "fail2ban-client",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Security",
+   "label": "fail2ban (ban brute-force attempts)",
+   "packages": "fail2ban",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "fail2ban",
+   "version": "1.1.0-r3",
+   "description": "Scans log files for login failures then updates iptables to reject originating ip address",
+   "webpage": "https://www.fail2ban.org/",
+   "source_package": "fail2ban",
+   "deps": [
+    "python3",
+    "iptables",
+    "logrotate"
+   ],
+   "man": "man1/fail2ban-client.1.gz",
+   "man_name": "fail2ban-client - configure and control the server",
+   "synopsis": "fail2ban-client [OPTIONS] <COMMAND>",
+   "gallery": false
+  },
+  {
+   "cmd": "fastfetch",
+   "origins": [
+    "store"
+   ],
+   "section": "System",
+   "label": "Fastfetch",
+   "packages": "fastfetch",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "fastfetch",
+   "version": "2.64.2-r0",
+   "description": "Maintained, feature-rich and performance oriented, neofetch-like system information tool",
+   "webpage": "https://github.com/fastfetch-cli/fastfetch",
+   "source_package": "fastfetch",
+   "deps": [
+    "hwdata-pci"
+   ],
+   "man": "man1/fastfetch.1.gz",
+   "man_name": "fastfetch - A fast and feature-rich system information tool similar to neofetch",
+   "synopsis": "fastfetch [OPTIONS...]",
+   "gallery": false
+  },
+  {
+   "cmd": "fdupes",
+   "origins": [
+    "store"
+   ],
+   "section": "Files",
+   "label": "fdupes (find duplicates)",
+   "packages": "fdupes",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "fdupes",
+   "version": "2.4.0-r0",
+   "description": "identifying or deleting duplicate files residing within specified directories",
+   "webpage": "https://github.com/adrianlopezroche/fdupes",
+   "source_package": "fdupes",
+   "deps": [
+    "libncursesw",
+    "libpcre2-32",
+    "sqlite-libs"
+   ],
+   "man": "man1/fdupes.1.gz",
+   "man_name": "fdupes - finds duplicate files in a given set of directories",
+   "synopsis": "fdupes [ options ] DIRECTORY ...",
+   "gallery": false
+  },
+  {
+   "cmd": "fftw-wisdom",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Instruments",
+   "label": "FFTW + kissfft (FFT libraries)",
+   "packages": "fftw kissfft",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "fftw",
+   "version": "3.3.11-r0",
+   "description": "Discrete Fourier transform (DFT) library",
+   "webpage": "http://www.fftw.org/",
+   "source_package": "fftw",
+   "deps": [
+    "fftw-double-libs",
+    "fftw-single-libs",
+    "fftw-long-double-libs"
+   ],
+   "man": "man1/fftw-wisdom.1.gz",
+   "man_name": "fftw-wisdom - create wisdom (pre-optimized FFTs)",
+   "synopsis": "fftw-wisdom [OPTION]... [SIZE]...",
+   "gallery": false
+  },
+  {
+   "cmd": "figlet",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "figlet (big text)",
+   "packages": "figlet",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "figlet",
+   "version": "2.2.5-r3",
+   "description": "Program for making large letters out of ordinary text",
+   "webpage": "http://www.figlet.org/",
+   "source_package": "figlet",
+   "deps": [],
+   "man": "man6/figlet.6.gz",
+   "man_name": "FIGlet - display large characters made up of ordinary screen characters",
+   "synopsis": "figlet [ -cklnoprstvxDELNRSWX ] [ -d fontdirectory ]\n       [ -f fontfile ] [ -m layoutmode ]\n       [ -w outputwidth ] [ -C controlfile ]\n       [ -I infocode ] [ message ]",
+   "gallery": false
+  },
+  {
+   "cmd": "flatpak",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "flatpak",
+   "version": "1.16.6-r2",
+   "description": "Application deployment framework for desktop apps",
+   "webpage": "https://flatpak.org/",
+   "source_package": "flatpak",
+   "deps": [
+    "bubblewrap",
+    "desktop-file-utils",
+    "fuse3",
+    "gtk-update-icon-cache",
+    "shared-mime-info",
+    "xdg-dbus-proxy",
+    "libxau",
+    "appstream",
+    "libarchive",
+    "libcurl",
+    "dconf",
+    "fuse3-libs",
+    "gdk-pixbuf",
+    "glib",
+    "gpgme",
+    "libintl",
+    "json-glib",
+    "ostree",
+    "polkit-elogind-libs",
+    "libseccomp",
+    "libxml2",
+    "zstd-libs"
+   ],
+   "stage": 12,
+   "man": "man1/flatpak.1.gz",
+   "man_name": "flatpak - Build, install and run applications and runtimes",
+   "synopsis": "flatpak [OPTION...] {COMMAND}",
+   "gallery": false
+  },
+  {
+   "cmd": "fluidsynth",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Audio",
+   "label": "FluidSynth + GM soundfont (MIDI)",
+   "packages": "fluidsynth soundfont-timgm",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "fluidsynth",
+   "version": "2.5.4-r0",
+   "description": "A real-time software synthesizer based on the SoundFont 2 specifications",
+   "webpage": "https://www.fluidsynth.org/",
+   "source_package": "fluidsynth",
+   "deps": [
+    "fluidsynth-libs",
+    "glib",
+    "pipewire-libs"
+   ],
+   "man": "man1/fluidsynth.1.gz",
+   "man_name": "FluidSynth - a SoundFont synthesizer",
+   "synopsis": "fluidsynth [options] [ SoundFonts ] [ midifiles ]",
+   "gallery": false
+  },
+  {
+   "cmd": "fortune",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "fortune",
+   "packages": "fortune",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "fortune",
+   "version": "0.1-r5",
+   "description": "Fortune cookie program ported from OpenBSD",
+   "webpage": "https://git.sr.ht/~ahills/fortune",
+   "source_package": "fortune",
+   "deps": [
+    "libbsd"
+   ],
+   "man": "man6/fortune.6.gz",
+   "man_name": "fortune – print a random, hopefully interesting, adage",
+   "synopsis": "fortune [-aefilosw] [-m pattern] [[N%] file/directory/all]",
+   "gallery": false
+  },
+  {
+   "cmd": "fpc",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Free Pascal",
+   "packages": "fpc@testing",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "fpc",
+   "version": "3.2.2-r4",
+   "description": "Free Pascal Compiler",
+   "webpage": "http://freepascal.org",
+   "source_package": "fpc",
+   "deps": [],
+   "man": "man1/fpc.1.gz",
+   "man_name": "fpc - Free Pascal Compiler (FPC) binary",
+   "synopsis": "fpc [options] [sourcefile]",
+   "gallery": false
+  },
+  {
+   "cmd": "frotz",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "Frotz (interactive fiction)",
+   "packages": "frotz",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "frotz",
+   "version": "2.55-r0",
+   "description": "Portable Z-Machine Interpreter",
+   "webpage": "https://davidgriffith.gitlab.io/frotz/",
+   "source_package": "frotz",
+   "deps": [
+    "libao",
+    "libmodplug",
+    "libncursesw",
+    "libsamplerate",
+    "libsndfile"
+   ],
+   "man": "man6/frotz.6.gz",
+   "man_name": "frotz - interpreter for Infocom and other Z-Machine games",
+   "synopsis": "frotz [options] file [blorb_file]\n\nAt least one file must be specified on the command line.  This can be either a plain Z-code\nfile or a Blorb file.  A Z-code file is a compiled executable for the Z-Machine.  A Blorb\nfile contains audio, graphics, and other things in addition to the game wrapped up into a\nsingle file.  It can also optionally contain the Z-Machine executable.  If a plain Z-code\nfile is supplied, then Frotz will check for a Blorb file with the same base name but an\nextension of .blb, .blorb, or .zblorb and load it if found.\n\nIf the file supplied on the command line is a Blorb file, then Frotz will check to see if a\nZ-code file is contained within.  If not found, then Frotz will complain and exit.\n\nAn alternatively-named Blorb file can be supplied as the optional second parameter to the\ncommand line invocation.\n...",
+   "gallery": false
+  },
+  {
+   "cmd": "gcc",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "gcc",
+   "version": "15.2.0-r5",
+   "description": "The GNU Compiler Collection",
+   "webpage": "https://gcc.gnu.org",
+   "source_package": "gcc",
+   "deps": [
+    "binutils",
+    "libgcc-static",
+    "libgomp",
+    "libatomic",
+    "gmp",
+    "isl25",
+    "mpc1",
+    "mpfr4",
+    "zlib"
+   ],
+   "stage": 9,
+   "man": "man1/gcc.1.gz",
+   "man_name": "gcc - GNU project C and C++ compiler",
+   "synopsis": "gcc [-c|-S|-E] [-std=standard]\n    [-g] [-pg] [-Olevel]\n    [-Wwarn...] [-Wpedantic]\n    [-Idir...] [-Ldir...]\n    [-Dmacro[=defn]...] [-Umacro]\n    [-foption...] [-mmachine-option...]\n    [-o outfile] [@file] infile...\n\nOnly the most useful options are listed here; see below for the remainder.  g++ accepts\nmostly the same options as gcc.",
+   "gallery": false
+  },
+  {
+   "cmd": "gdb",
+   "origins": [
+    "core",
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "GDB (the debugger everything uses)",
+   "packages": "gdb",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "core",
+   "installed": true,
+   "package": "gdb",
+   "version": "16.3-r4",
+   "description": "The GNU Debugger",
+   "webpage": "https://www.gnu.org/software/gdb/",
+   "source_package": "gdb",
+   "deps": [
+    "musl-dbg",
+    "libdebuginfod",
+    "libexpat",
+    "gmp",
+    "xz-libs",
+    "mpfr4",
+    "libncursesw",
+    "python3",
+    "readline",
+    "zlib",
+    "zstd-libs"
+   ],
+   "man": "man1/gdb.1.gz",
+   "man_name": "gdb - The GNU Debugger",
+   "synopsis": "gdb [OPTIONS] [prog|prog procID|prog core]",
+   "gallery": true
+  },
+  {
+   "cmd": "gemget",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Smallweb",
+   "label": "gemget (gemini downloader)",
+   "packages": "gemget",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "gemget",
+   "version": "1.9.0-r27",
+   "description": "command line downloader for the Gemini protocol",
+   "webpage": "https://github.com/makeworld-the-better-one/gemget",
+   "source_package": "gemget",
+   "deps": [],
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "gfortran",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Fortran (gfortran)",
+   "packages": "gfortran",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "gfortran",
+   "version": "15.2.0-r5",
+   "description": "GNU Fortran Compiler",
+   "webpage": "https://gcc.gnu.org",
+   "source_package": "gcc",
+   "deps": [
+    "gcc",
+    "libgfortran",
+    "gmp",
+    "isl25",
+    "mpc1",
+    "mpfr4",
+    "zlib"
+   ],
+   "man": "man1/gfortran.1.gz",
+   "man_name": "gfortran - GNU Fortran compiler",
+   "synopsis": "gfortran [-c|-S|-E]\n         [-g] [-pg] [-Olevel]\n         [-Wwarn...] [-pedantic]\n         [-Idir...] [-Ldir...]\n         [-Dmacro[=defn]...] [-Umacro]\n         [-foption...]\n         [-mmachine-option...]\n         [-o outfile] infile...\n\nOnly the most useful options are listed here; see below for the remainder.",
+   "gallery": false
+  },
+  {
+   "cmd": "gh",
+   "origins": [
+    "store"
+   ],
+   "section": "Programming",
+   "label": "GitHub CLI",
+   "packages": "github-cli",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "github-cli",
+   "version": "2.97.0-r1",
+   "description": "CLI for dealing with GitHub",
+   "webpage": "https://cli.github.com",
+   "source_package": "github-cli",
+   "deps": [
+    "git"
+   ],
+   "man": "man1/gh.1.gz",
+   "man_name": "gh - GitHub CLI",
+   "synopsis": "gh <command> <subcommand> [flags]",
+   "gallery": false
+  },
+  {
+   "cmd": "ghc",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Haskell (GHC + cabal)",
+   "packages": "ghc cabal",
+   "mode": "h",
+   "gate": "64",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "ghc",
+   "version": "9.10.3-r2",
+   "description": "The Glasgow Haskell Compiler",
+   "webpage": "https://haskell.org/ghc",
+   "source_package": "ghc",
+   "deps": [
+    "gmp-dev",
+    "libffi-dev",
+    "perl",
+    "gcc",
+    "llvm15",
+    "clang16",
+    "libffi",
+    "gmp",
+    "libncursesw"
+   ],
+   "synopsis": "Usage:\n    ghc-9.10.3 [command-line-options-and-input-files]",
+   "gallery": false
+  },
+  {
+   "cmd": "git",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "git",
+   "version": "2.54.0-r0",
+   "description": "Distributed version control system",
+   "webpage": "https://www.git-scm.com/",
+   "source_package": "git",
+   "deps": [
+    "libcurl",
+    "libexpat",
+    "pcre2",
+    "zlib"
+   ],
+   "stage": 7,
+   "man": "man1/git.1.gz",
+   "man_name": "git - the stupid content tracker",
+   "synopsis": "git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n    [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n    [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n    [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n    [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n    <command> [<args>]",
+   "gallery": false
+  },
+  {
+   "cmd": "gitui",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "System",
+   "label": "gitui (git TUI)",
+   "packages": "gitui",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "gitui",
+   "version": "0.28.1-r0",
+   "description": "Blazing fast terminal client for git",
+   "webpage": "https://github.com/extrawurst/gitui",
+   "source_package": "gitui",
+   "deps": [
+    "libgit2",
+    "oniguruma",
+    "libssh2",
+    "libssl3"
+   ],
+   "gallery": true
+  },
+  {
+   "cmd": "gmni",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Smallweb",
+   "label": "gmni (fetch one gemini page)",
+   "packages": "gmni",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "gmni",
+   "version": "1.0-r3",
+   "description": "Gemini client",
+   "webpage": "https://git.sr.ht/~sircmpwn/gmni",
+   "source_package": "gmni",
+   "deps": [
+    "bearssl-libs"
+   ],
+   "man": "man1/gmni.1.gz",
+   "man_name": "gmni - Gemini client",
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "gmnisrv",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Smallweb",
+   "label": "gmnisrv (serve gemini)",
+   "packages": "gmnisrv",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "gmnisrv",
+   "version": "1.0-r3",
+   "description": "simple Gemini protocol server",
+   "webpage": "gemini://drewdevault.com/gmnisrv.gmi",
+   "source_package": "gmnisrv",
+   "deps": [
+    "mailcap",
+    "libcrypto3",
+    "libssl3"
+   ],
+   "man": "man1/gmnisrv.1.gz",
+   "man_name": "gmnisrv - serve clients over the gemini protocol",
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "gmnlm",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Smallweb",
+   "label": "gmnlm (gemini line mode)",
+   "packages": "gmni",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "gmni",
+   "version": "1.0-r3",
+   "description": "Gemini client",
+   "webpage": "https://git.sr.ht/~sircmpwn/gmni",
+   "source_package": "gmni",
+   "deps": [
+    "bearssl-libs"
+   ],
+   "man": "man1/gmnlm.1.gz",
+   "man_name": "gmnlm - Gemini line-mode browser",
+   "synopsis": "",
+   "gallery": true
+  },
+  {
+   "cmd": "gnuplot",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Science",
+   "label": "Gnuplot (plotting)",
+   "packages": "gnuplot",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "gnuplot",
+   "version": "6.0.4-r2",
+   "description": "Utility for plotting graphs",
+   "webpage": "https://gnuplot.sourceforge.net/",
+   "source_package": "gnuplot",
+   "deps": [
+    "libx11",
+    "cairo",
+    "libcerf",
+    "libgd",
+    "glib",
+    "pango",
+    "readline",
+    "libwebp",
+    "libwebpmux"
+   ],
+   "man": "man1/gnuplot.1.gz",
+   "man_name": "gnuplot - an interactive plotting program",
+   "synopsis": "gnuplot [X11 options] [options] [file ...]",
+   "gallery": false
+  },
+  {
+   "cmd": "go",
+   "origins": [
+    "core",
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Go (compiler + gopls language server)",
+   "packages": "go gopls",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "core",
+   "installed": true,
+   "package": "go",
+   "version": "1.26.8-r0",
+   "description": "Go programming language compiler",
+   "webpage": "https://go.dev/",
+   "source_package": "go",
+   "deps": [
+    "binutils",
+    "gcc",
+    "musl-dev"
+   ],
+   "man": "man1/go.1.gz",
+   "man_name": "go - build, test, install Go programs",
+   "synopsis": "go command [arguments]",
+   "gallery": false
+  },
+  {
+   "cmd": "gp",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Science",
+   "label": "PARI/GP (number theory)",
+   "packages": "pari",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "pari",
+   "version": "2.17.3-r1",
+   "description": "Computer algebra system designed for fast computations in number theory",
+   "webpage": "https://pari.math.u-bordeaux.fr/",
+   "source_package": "pari",
+   "deps": [
+    "pari-libs",
+    "readline"
+   ],
+   "man": "man1/gp.1.gz",
+   "man_name": "gp - The PARI calculator",
+   "synopsis": "gp [-s stacksize] [-p primelimit] [--emacs] [-f|--fast] [-q|--quiet] [-D|--default key=val]\n[--help] [--test] [--texmacs] [--version] [--version-short] [ file1 file2 ...]",
+   "gallery": true
+  },
+  {
+   "cmd": "gtypist",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Learn",
+   "label": "GNU Typist (touch typing course)",
+   "packages": "gtypist@testing",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "gtypist",
+   "version": "2.10.1-r1",
+   "description": "Universal typing tutor",
+   "webpage": "https://www.gnu.org/software/gtypist/gtypist.html",
+   "source_package": "gtypist",
+   "deps": [
+    "ncurses",
+    "perl",
+    "libintl",
+    "libncursesw"
+   ],
+   "man": "man1/gtypist.1.gz",
+   "man_name": "Typist - a typing tutor with lessons for different keyboards and languages",
+   "synopsis": "gtypist [OPTION]... [SCRIPT]...",
+   "gallery": true
+  },
+  {
+   "cmd": "guile",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Guile (Scheme)",
+   "packages": "guile",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "guile",
+   "version": "3.0.9-r2",
+   "description": "portable, embeddable Scheme implementation written in C",
+   "webpage": "https://www.gnu.org/software/guile/",
+   "source_package": "guile",
+   "deps": [
+    "guile-libs"
+   ],
+   "man": "man1/guile.1.gz",
+   "man_name": "guile - The GNU Project Extension Language",
+   "synopsis": "guile [-L DIRECTORY] [-l FILE] [-e FUNCTION] [\\] [-c EXPR] [-s SCRIPT] [--] [SCRIPT\n[ARGs for SCRIPT]]\n\nOnly the most useful options are listed here; see below for the remainder.",
+   "gallery": true
+  },
+  {
+   "cmd": "hackrf_info",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Radio",
+   "label": "HackRF tools",
+   "packages": "hackrf",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "hackrf",
+   "version": "2026.01.3-r1",
+   "description": "Driver for HackRF, allowing general purpose software defined radio",
+   "webpage": "https://github.com/greatscottgadgets/hackrf",
+   "source_package": "hackrf",
+   "deps": [
+    "fftw-single-libs",
+    "hackrf-libs"
+   ],
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "hangman",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "Hangman",
+   "packages": "bsd-games words-en",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "bsd-games",
+   "version": "3.3-r2",
+   "description": "traditional text mode games from BSD",
+   "webpage": "https://bsd-games.sourceforge.io/",
+   "source_package": "bsd-games",
+   "deps": [
+    "libncursesw"
+   ],
+   "man": "man6/hangman.6.gz",
+   "man_name": "hangman – computer version of the game hangman",
+   "synopsis": "hangman [-d wordlist] [-m minlen]",
+   "gallery": true
+  },
+  {
+   "cmd": "hlint",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "hlint (Haskell linter)",
+   "packages": "hlint",
+   "mode": "h",
+   "gate": "64",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "hlint",
+   "version": "3.10-r0",
+   "description": "Linter for Haskell source code",
+   "webpage": "https://github.com/ndmitchell/hlint",
+   "source_package": "hlint",
+   "deps": [
+    "libffi",
+    "gmp"
+   ],
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "htop",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "System",
+   "label": "htop (process viewer)",
+   "packages": "htop",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "htop",
+   "version": "3.5.3-r0",
+   "description": "Interactive process viewer",
+   "webpage": "https://htop.dev/",
+   "source_package": "htop",
+   "deps": [
+    "lsof",
+    "libncursesw"
+   ],
+   "man": "man1/htop.1.gz",
+   "man_name": "htop, pcp-htop - interactive process viewer",
+   "synopsis": "htop [-dCFhpustvH]\npcp-htop [-dCFhpustvH] [--host/-h host]",
+   "gallery": true
+  },
+  {
+   "cmd": "httrack",
+   "origins": [
+    "store"
+   ],
+   "section": "Transfer",
+   "label": "HTTrack (website copier)",
+   "packages": "httrack@testing",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "httrack",
+   "version": "3.49.21-r0",
+   "description": "Website Copier - Free Software Offline Browser",
+   "webpage": "http://www.httrack.com/",
+   "source_package": "httrack",
+   "deps": [
+    "httrack-doc",
+    "pkgconfig",
+    "libcrypto3",
+    "libssl3",
+    "zlib"
+   ],
+   "man": "man1/httrack.1.gz",
+   "man_name": "httrack - offline browser : copy websites to a local directory",
+   "synopsis": "httrack [ url ]... [ -filter ]... [ +filter ]...  [ -O, --path ] [ -w, --mirror ] [ -W,\n--mirror-wizard ] [ -g, --get-files ] [ -i, --continue ] [ -Y, --mirrorlinks ] [ -P, --proxy\n] [ -%f, --httpproxy-ftp[=0] ] [ -%b, --bind ] [ -rN, --depth[=N] ] [ -%eN, --ext-depth[=N] ]\n[ -mN, --max-files[=N] ] [ -MN, --max-size[=N] ] [ -EN, --max-time[=N] ] [ -AN,\n--max-rate[=N] ] [ -%cN, --connection-per-second[=N] ] [ -%G, --pause ] [ -GN,\n--max-pause[=N] ] [ -cN, --sockets[=N] ] [ -TN, --timeout[=N] ] [ -RN, --retries[=N] ] [ -JN,\n--min-rate[=N] ] [ -HN, --host-control[=N] ] [ -%P, --extended-parsing[=0] ] [ -n, --near ] [\n-t, --test ] [ -%L, --list ] [ -%S, --urllist ] [ -%m, --sitemap ] [ -NN, --structure[=N] ] [\n-%N, --delayed-type-check[=N] ] [ -%D, --cached-delayed-type-check[=0] ] [ -%M,\n--mime-html[=0] ] [ -%Z, --single-file[=0] ] [ -LN, --long-names[=N] ] [ -KN,\n--keep-links[=N] ] [ -x, --replace-external ] [ -%x, --disable-passwords[=0] ] [ -%q,\n--include-query-string[=0] ] [ -%g, --strip-query ] [ -%C, --host-alias ] [ -o,\n--generate-errors[=N] ] [ -X, --purge-old[=0] ] [ -%p, --preserve ] [ -%T,\n--utf8-conversion[=0] ] [ -bN, --cookies[=N] ] [ -%K, --cookies-file ] [ -%Y, --why ] [ -u,\n...",
+   "gallery": false
+  },
+  {
+   "cmd": "hugo",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Notes",
+   "label": "Hugo (static site / wiki)",
+   "packages": "hugo",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "hugo",
+   "version": "0.160.1-r2",
+   "description": "Fast and flexible static site generator written in Go",
+   "webpage": "https://gohugo.io/",
+   "source_package": "hugo",
+   "deps": [],
+   "man": "man1/hugo.1.gz",
+   "man_name": "hugo - Build your project",
+   "synopsis": "hugo [flags]",
+   "gallery": false
+  },
+  {
+   "cmd": "hunspell",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Notes",
+   "label": "Hunspell (spell checker)",
+   "packages": "hunspell hunspell-en-us",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "hunspell",
+   "version": "1.7.3-r0",
+   "description": "Spell checker and morphological analyzer library and program",
+   "webpage": "https://hunspell.github.io/",
+   "source_package": "hunspell",
+   "deps": [
+    "libhunspell",
+    "libintl",
+    "libncursesw",
+    "readline"
+   ],
+   "man": "man1/hunspell.1.gz",
+   "man_name": "hunspell - spell checker, stemmer and morphological analyzer",
+   "synopsis": "hunspell [-1aDGHhLlmnOrstvwX] [--check-url] [--check-apostrophe] [-d dict[,dict2,...]]\n[--help] [-i enc] [-p dict] [-vv] [--version]\n[text/OpenDocument/TeX/LaTeX/HTML/SGML/XML/nroff/troff file(s)]",
+   "gallery": false
+  },
+  {
+   "cmd": "hx",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Editors",
+   "label": "Helix (terminal - modal, batteries in)",
+   "packages": "helix",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "helix",
+   "version": "25.07.1-r3",
+   "description": "A post-modern modal text editor",
+   "webpage": "https://helix-editor.com/",
+   "source_package": "helix",
+   "deps": [],
+   "gallery": true
+  },
+  {
+   "cmd": "hyprctl",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "hyprland",
+   "version": "0.54.3-r0",
+   "description": "Independent, highly customizable, dynamic tiling Wayland compositor that doesn't sacrifice on its looks.",
+   "webpage": "https://hypr.land",
+   "source_package": "hyprland",
+   "deps": [
+    "mesa-egl",
+    "mesa-gles",
+    "libxcursor",
+    "aquamarine",
+    "cairo",
+    "libdrm",
+    "mesa-gbm",
+    "glib",
+    "hyprcursor",
+    "hyprgraphics",
+    "hyprlang",
+    "hyprutils",
+    "hyprwire",
+    "libinput-libs",
+    "muparser",
+    "pango",
+    "pixman",
+    "re2",
+    "udis86-git",
+    "libuuid",
+    "wayland-libs-server",
+    "libxcb",
+    "xcb-util-errors",
+    "xcb-util-wm",
+    "libxkbcommon"
+   ],
+   "stage": 17,
+   "man": "man1/hyprctl.1.gz",
+   "man_name": "hyprctl - Utility for controlling parts of Hyprland from a CLI or a script",
+   "synopsis": "hyprctl [(opt)flags] [command] [(opt)args]",
+   "gallery": false
+  },
+  {
+   "cmd": "ip",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "busybox",
+   "version": "1.37.0-r31",
+   "description": "Size optimized toolbox of many common UNIX utilities",
+   "webpage": "https://busybox.net/",
+   "source_package": "busybox",
+   "deps": [],
+   "stage": null,
+   "man": "man7/ip.7.gz",
+   "man_name": "ip - Linux IPv4 protocol implementation",
+   "synopsis": "#include <sys/socket.h>\n#include <netinet/in.h>\n#include <netinet/ip.h>  /* superset of previous */\n\ntcp_socket = socket(AF_INET, SOCK_STREAM, 0);\nudp_socket = socket(AF_INET, SOCK_DGRAM, 0);\nraw_socket = socket(AF_INET, SOCK_RAW, protocol);",
+   "gallery": false
+  },
+  {
+   "cmd": "irssi",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Mail",
+   "label": "irssi (IRC)",
+   "packages": "irssi",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "irssi",
+   "version": "1.4.5-r7",
+   "description": "Modular textUI IRC client with IPv6 support",
+   "webpage": "https://irssi.org/",
+   "source_package": "irssi",
+   "deps": [
+    "libcrypto3",
+    "glib",
+    "libncursesw",
+    "libssl3",
+    "utf8proc"
+   ],
+   "man": "man1/irssi.1.gz",
+   "man_name": "Irssi - a modular IRC client for UNIX",
+   "synopsis": "irssi [--config=PATH] [--home=PATH] [-dv!?] [-c server] [-p port] [-n nickname] [-w password]\n[-h hostname]",
+   "gallery": true
+  },
+  {
+   "cmd": "iw",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "iw",
+   "version": "6.17-r0",
+   "description": "nl80211 based CLI configuration utility for wireless devices",
+   "webpage": "https://wireless.docs.kernel.org/en/latest/en/users/documentation/iw.html",
+   "source_package": "iw",
+   "deps": [
+    "libnl3"
+   ],
+   "stage": 10,
+   "gallery": false
+  },
+  {
+   "cmd": "java",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "OpenJDK 21 (Java)",
+   "packages": "openjdk21",
+   "mode": "h",
+   "gate": "64",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "openjdk21-jre-headless",
+   "version": "21.0.12_p8-r0",
+   "description": "Oracle OpenJDK 21 (JRE headless)",
+   "webpage": "https://github.com/openjdk/jdk21u",
+   "source_package": "openjdk21",
+   "deps": [
+    "java-common",
+    "java-cacerts",
+    "zlib"
+   ],
+   "synopsis": "Usage: java [options] <mainclass> [args...]\n           (to execute a class)\n   or  java [options] -jar <jarfile> [args...]\n           (to execute a jar file)",
+   "gallery": false
+  },
+  {
+   "cmd": "jdupes",
+   "origins": [
+    "store"
+   ],
+   "section": "Files",
+   "label": "jdupes (faster fdupes)",
+   "packages": "jdupes@testing",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "jdupes",
+   "version": "1.31.1-r0",
+   "description": "identifying and taking actions upon duplicate files",
+   "webpage": "https://codeberg.org/jbruchon/jdupes",
+   "source_package": "jdupes",
+   "deps": [
+    "libjodycode",
+    "libxxhash"
+   ],
+   "man": "man1/jdupes.1.gz",
+   "man_name": "jdupes - finds and performs actions upon duplicate files",
+   "synopsis": "jdupes [ options ] DIRECTORIES ...",
+   "gallery": false
+  },
+  {
+   "cmd": "john",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Security",
+   "label": "John the Ripper (password audit)",
+   "packages": "john",
+   "mode": "h",
+   "gate": "!x32",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "john",
+   "version": "1.9.0-r8",
+   "description": "John the Ripper password cracker",
+   "webpage": "https://www.openwall.com/john",
+   "source_package": "john",
+   "deps": [
+    "nss",
+    "opencl",
+    "libcrypto3",
+    "gmp",
+    "libgomp",
+    "libpcap",
+    "zlib"
+   ],
+   "synopsis": "Usage: john [OPTIONS] [PASSWORD-FILES]\n--single[=SECTION[,..]]    \"single crack\" mode, using default or named rules\n--single=:rule[,..]        same, using \"immediate\" rule(s)\n--wordlist[=FILE] --stdin  wordlist mode, read words from FILE or stdin",
+   "gallery": false
+  },
+  {
+   "cmd": "just",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "just (a saner make, for tasks)",
+   "packages": "just",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "just",
+   "version": "1.48.1-r0",
+   "description": "Just a command runner",
+   "webpage": "https://github.com/casey/just",
+   "source_package": "just",
+   "deps": [],
+   "man": "man1/just.1.gz",
+   "man_name": "just - 🤖 Just a command runner - https://github.com/casey/just",
+   "synopsis": "just [--alias-style] [--allow-missing] [--ceiling] [--check] [--chooser] [--clear-shell-args]\n[--color] [--command-color] [--cygpath] [--dotenv-filename] [-E|--dotenv-path] [-n|--dry-run]\n[--dump-format] [--explain] [-g|--global-justfile] [--group] [--highlight] [-f|--justfile]\n[--list-heading] [--list-prefix] [--list-submodules] [--no-aliases] [--no-deps] [--no-dotenv]\n[--no-highlight] [--one] [-q|--quiet] [--set] [--shell] [--shell-arg] [--shell-command]\n[--changelog] [--choose] [-c|--command] [--completions] [--dump] [-e|--edit] [--evaluate]\n[--fmt] [--groups] [--init] [--json] [-l|--list] [--man] [-s|--show] [--summary] [--usage]\n[--variables] [--tempdir] [--timestamp] [--timestamp-format] [-u|--unsorted] [--unstable]\n[-v|--verbose]... [-d|--working-directory] [--yes] [-h|--help] [-V|--version] [ARGUMENTS]",
+   "gallery": false
+  },
+  {
+   "cmd": "klondike",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "Klondike (cards)",
+   "packages": "bsd-games",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "bsd-games",
+   "version": "3.3-r2",
+   "description": "traditional text mode games from BSD",
+   "webpage": "https://bsd-games.sourceforge.io/",
+   "source_package": "bsd-games",
+   "deps": [
+    "libncursesw"
+   ],
+   "man": "man6/klondike.6.gz",
+   "man_name": "klondike – Klondike solitaire card game",
+   "synopsis": "",
+   "gallery": true
+  },
+  {
+   "cmd": "lazygit",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "System",
+   "label": "lazygit (git TUI)",
+   "packages": "lazygit",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "lazygit",
+   "version": "0.48.0-r13",
+   "description": "Simple terminal UI for git commands",
+   "webpage": "https://github.com/jesseduffield/lazygit",
+   "source_package": "lazygit",
+   "deps": [
+    "git"
+   ],
+   "gallery": true
+  },
+  {
+   "cmd": "lbu",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "alpine-conf",
+   "version": "3.22.0-r0",
+   "description": "Alpine configuration management scripts",
+   "webpage": "https://gitlab.alpinelinux.org/alpine/alpine-conf",
+   "source_package": "alpine-conf",
+   "deps": [
+    "openrc"
+   ],
+   "stage": null,
+   "man": "man8/lbu.8.gz",
+   "man_name": "lbu - manage local backups for diskless Alpine Linux systems",
+   "synopsis": "lbu SUBCOMMAND [OPTIONS] [ARGS]",
+   "gallery": false
+  },
+  {
+   "cmd": "lftp",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Internet",
+   "label": "lftp (FTP - terminal)",
+   "packages": "lftp",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "lftp",
+   "version": "4.9.3-r0",
+   "description": "Sophisticated ftp/http client",
+   "webpage": "https://lftp.yar.ru",
+   "source_package": "lftp",
+   "deps": [
+    "libcrypto3",
+    "libncursesw",
+    "readline",
+    "libssl3",
+    "zlib"
+   ],
+   "man": "man1/lftp.1.gz",
+   "man_name": "lftp - Sophisticated file transfer program",
+   "synopsis": "",
+   "gallery": true
+  },
+  {
+   "cmd": "links",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Internet",
+   "label": "Links (text/graphics web)",
+   "packages": "links",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "links",
+   "version": "2.30-r1",
+   "description": "Web browser running in both graphics and text mode",
+   "webpage": "http://links.twibright.com/",
+   "source_package": "links",
+   "deps": [
+    "libbz2",
+    "libcrypto3",
+    "libevent",
+    "libssl3",
+    "zlib",
+    "zstd-libs"
+   ],
+   "man": "man1/links.1.gz",
+   "man_name": "links - lynx-like alternative character mode WWW browser",
+   "synopsis": "links [options] URL",
+   "gallery": true
+  },
+  {
+   "cmd": "lldb",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "LLDB (the Clang debugger)",
+   "packages": "lldb",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "lldb",
+   "version": "22.1.3-r0",
+   "description": "Next generation, high-performance debugger",
+   "webpage": "https://llvm.org/",
+   "source_package": "lldb",
+   "deps": [
+    "musl-dbg",
+    "llvm22-libs",
+    "clang22-libs",
+    "libcurl",
+    "libedit",
+    "xz-libs",
+    "libncursesw",
+    "libpanelw",
+    "python3",
+    "libxml2",
+    "zlib"
+   ],
+   "man": "man1/lldb.1.gz",
+   "man_name": "lldb - LLDB Documentation",
+   "synopsis": "lldb [options] executable",
+   "gallery": true
+  },
+  {
+   "cmd": "logread",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "busybox",
+   "version": "1.37.0-r31",
+   "description": "Size optimized toolbox of many common UNIX utilities",
+   "webpage": "https://busybox.net/",
+   "source_package": "busybox",
+   "deps": [],
+   "stage": null,
+   "applet": true,
+   "man": "man1/busybox.1.gz",
+   "man_name": "BusyBox - The Swiss Army Knife of Embedded Linux",
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "lsblk",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "lsblk",
+   "version": "2.42.3-r1",
+   "description": "Block device list tool from util-linux",
+   "webpage": "https://git.kernel.org/cgit/utils/util-linux/util-linux.git",
+   "source_package": "util-linux",
+   "deps": [
+    "libblkid",
+    "libmount",
+    "libncursesw",
+    "libsmartcols"
+   ],
+   "stage": 5,
+   "gallery": false
+  },
+  {
+   "cmd": "ltrace",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "ltrace (trace library calls)",
+   "packages": "ltrace",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "ltrace",
+   "version": "0.7.3-r6",
+   "description": "Tracks runtime library calls in dynamically linked programs",
+   "webpage": "https://www.ltrace.org/",
+   "source_package": "ltrace",
+   "deps": [
+    "libelf"
+   ],
+   "man": "man1/ltrace.1.gz",
+   "man_name": "ltrace - A library call tracer",
+   "synopsis": "ltrace [-e filter|-L] [-l|--library=library_pattern] [-x filter] [-S] [-b|--no-signals] [-i]\n[-w|--where=nr] [-r|-t|-tt|-ttt] [-T] [-F filename] [-A maxelts] [-s strsize] [-C|--demangle]\n[-a|--align column] [-n|--indent nr] [-o|--output filename] [-D|--debug mask] [-u username]\n[-f] [-p pid] [[--] command [arg ...]]\n\nltrace -c [-e filter|-L] [-l|--library=library_pattern] [-x filter] [-S] [-o|--output\nfilename] [-f] [-p pid] [[--] command [arg ...]]\n\nltrace -V|--version\n\nltrace -h|--help",
+   "gallery": false
+  },
+  {
+   "cmd": "lua-language-server",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "Lua language server",
+   "packages": "lua-language-server",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "lua-language-server",
+   "version": "3.16.1-r1",
+   "description": "Language Server for Lua",
+   "webpage": "https://github.com/LuaLS/lua-language-server",
+   "source_package": "lua-language-server",
+   "deps": [],
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "lua5.4",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Lua 5.4 + LuaJIT",
+   "packages": "lua5.4 luajit",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "lua5.4",
+   "version": "5.4.8-r0",
+   "description": "Powerful light-weight programming language",
+   "webpage": "https://www.lua.org/",
+   "source_package": "lua5.4",
+   "deps": [
+    "lua5.4-libs",
+    "readline"
+   ],
+   "man": "man1/lua5.4.1.gz",
+   "man_name": "lua - Lua interpreter",
+   "synopsis": "lua [ options ] [ script [ args ] ]",
+   "gallery": true
+  },
+  {
+   "cmd": "lynis",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Security",
+   "label": "Lynis (system hardening audit)",
+   "packages": "lynis@testing",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "lynis",
+   "version": "3.1.6-r0",
+   "description": "Security and system auditing tool",
+   "webpage": "https://cisofy.com/lynis/",
+   "source_package": "lynis",
+   "deps": [
+    "bash"
+   ],
+   "man": "man8/lynis.8.gz",
+   "man_name": "Lynis - System and security auditing tool",
+   "synopsis": "lynis [scan mode] [other options]",
+   "gallery": false
+  },
+  {
+   "cmd": "lynx",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Internet",
+   "label": "Lynx (text web + gopher)",
+   "packages": "lynx",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "lynx",
+   "version": "2.9.3-r0",
+   "description": "Cross-platform text-based browser",
+   "webpage": "https://lynx.invisible-island.net/",
+   "source_package": "lynx",
+   "deps": [
+    "libbz2",
+    "libcrypto3",
+    "libintl",
+    "libncursesw",
+    "libssl3",
+    "zlib"
+   ],
+   "man": "man1/lynx.1.gz",
+   "man_name": "lynx - a general purpose distributed information browser for the World Wide Web",
+   "synopsis": "lynx [options] [optional paths or URLs]\n\nlynx [options] [path or URL] -get_data\ndata\n--\n\nlynx [options] [path or URL] -post_data\ndata\n--\n\nUse “lynx -help” to display a complete list of current options.",
+   "gallery": true
+  },
+  {
+   "cmd": "mail",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Mail",
+   "label": "mailx (send mail from a script)",
+   "packages": "mailx",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "mailx",
+   "version": "8.1.2_git20220412-r1",
+   "description": "commandline utility for sending email",
+   "webpage": "http://www.opengroup.org/onlinepubs/007908799/xcu/mailx.html",
+   "source_package": "mailx",
+   "deps": [
+    "libbsd",
+    "liblockfile"
+   ],
+   "man": "man1/mail.1.gz",
+   "man_name": "mail, mailx, Mail – send and receive mail",
+   "synopsis": "mail [-dEIinv] [-a header] [-b bcc-addr] [-c cc-addr] [-r from-addr] [-s subject] [--]\n     to-addr ...\nmail [-dEIiNnv] -f [file]\nmail [-dEIiNnv] [-u user]",
+   "gallery": false
+  },
+  {
+   "cmd": "make",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "make",
+   "version": "4.4.1-r4",
+   "description": "GNU make utility to maintain groups of programs",
+   "webpage": "https://www.gnu.org/software/make",
+   "source_package": "make",
+   "deps": [],
+   "stage": 7,
+   "man": "man1/make.1.gz",
+   "man_name": "make - GNU Make utility to maintain groups of programs",
+   "synopsis": "make [OPTION]... [TARGET]...",
+   "gallery": false
+  },
+  {
+   "cmd": "maxima",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Science",
+   "label": "Maxima (computer algebra, solves systems)",
+   "packages": "maxima@testing",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "maxima",
+   "version": "5.48.1-r9",
+   "description": "Sophisticated computer algebra system",
+   "webpage": "http://maxima.sourceforge.net",
+   "source_package": "maxima",
+   "deps": [
+    "texinfo",
+    "shared-mime-info",
+    "ecl"
+   ],
+   "man": "man1/maxima.1.gz",
+   "man_name": "Maxima - Common Lisp version of MACSYMA symbolic mathematics package released under the GNU Public License rmaxima - A version of Maxima that supports command autocompletion Xmaxima - A graphical version of Maxima",
+   "synopsis": "maxima [options]\n\nrmaxima [options]\n\nxmaxima [options]",
+   "gallery": true
+  },
+  {
+   "cmd": "mc",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Files",
+   "label": "Midnight Commander",
+   "packages": "mc",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "mc",
+   "version": "4.8.33-r3",
+   "description": "Filemanager/shell that emulates Norton Commander",
+   "webpage": "https://midnight-commander.org",
+   "source_package": "mc",
+   "deps": [
+    "e2fsprogs-libs",
+    "glib",
+    "gpm-libs",
+    "libintl",
+    "slang",
+    "libssh2"
+   ],
+   "man": "man1/mc.1.gz",
+   "man_name": "mc - Visual shell for Unix-like systems.",
+   "synopsis": "mc [-abcCdfhPstuUVx] [-l log] [dir1 [dir2]] [-e [file] ...] [-v file]",
+   "gallery": true
+  },
+  {
+   "cmd": "mdbook",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Notes",
+   "label": "mdBook (write a book as Markdown)",
+   "packages": "mdbook",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "mdbook",
+   "version": "0.5.3-r0",
+   "description": "mdBook is a utility to create modern online books from Markdown files",
+   "webpage": "https://rust-lang.github.io/mdBook/",
+   "source_package": "mdbook",
+   "deps": [],
+   "synopsis": "Usage: mdbook [COMMAND]\nCommands:\n  init         Creates the boilerplate structure and files for a new book",
+   "gallery": false
+  },
+  {
+   "cmd": "mednafen",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Retro",
+   "label": "Mednafen (many consoles)",
+   "packages": "mednafen",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "mednafen",
+   "version": "1.32.1-r1",
+   "description": "A command-line multi-system emulator",
+   "webpage": "https://mednafen.github.io/",
+   "source_package": "mednafen",
+   "deps": [
+    "libflac",
+    "sdl2",
+    "alsa-lib",
+    "zlib"
+   ],
+   "synopsis": "Usage: /usr/bin/mednafen [OPTION]... [FILE]\nOptions:",
+   "gallery": false
+  },
+  {
+   "cmd": "meson",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "Meson + Ninja",
+   "packages": "meson ninja-build",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "meson",
+   "version": "1.11.1-r0",
+   "description": "Fast and user friendly build system",
+   "webpage": "https://mesonbuild.com",
+   "source_package": "meson",
+   "deps": [
+    "samurai",
+    "python3"
+   ],
+   "man": "man1/meson.1.gz",
+   "man_name": "meson - a high productivity build system",
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "micro",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Editors",
+   "label": "micro (terminal - modeless)",
+   "packages": "micro",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "micro",
+   "version": "2.0.15-r6",
+   "description": "Modern and intuitive terminal-based text editor",
+   "webpage": "https://micro-editor.github.io/",
+   "source_package": "micro",
+   "deps": [],
+   "man": "man1/micro.1.gz",
+   "man_name": "micro - A modern and intuitive terminal-based text editor",
+   "synopsis": "micro [OPTION]... [FILE]... [+LINE[:COL]] [+/REGEX]\nmicro [OPTION]... [FILE[:LINE[:COL]]]...  (only if the `parsecursor` option is enabled)",
+   "gallery": true
+  },
+  {
+   "cmd": "mkinitfs",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "mkinitfs",
+   "version": "3.14.1-r0",
+   "description": "Tool to generate initramfs images for Alpine",
+   "webpage": "https://gitlab.alpinelinux.org/alpine/mkinitfs",
+   "source_package": "mkinitfs",
+   "deps": [
+    "apk-tools",
+    "busybox-binsh",
+    "kmod",
+    "lddtree",
+    "mdev-conf",
+    "libblkid",
+    "cryptsetup-libs",
+    "kmod-libs"
+   ],
+   "stage": null,
+   "man": "man1/mkinitfs.1.gz",
+   "man_name": "mkinitfs - Generate an initramfs",
+   "synopsis": "mkinitfs [OPTIONS] [KERNELVERSION]",
+   "gallery": false
+  },
+  {
+   "cmd": "mksquashfs",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Discs",
+   "label": "SquashFS tools",
+   "packages": "squashfs-tools",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "squashfs-tools",
+   "version": "4.7.5-r0",
+   "description": "Tools for squashfs, a highly compressed read-only filesystem for Linux",
+   "webpage": "https://github.com/plougher/squashfs-tools",
+   "source_package": "squashfs-tools",
+   "deps": [
+    "lz4-libs",
+    "xz-libs",
+    "lzo",
+    "zlib",
+    "zstd-libs"
+   ],
+   "man": "man1/mksquashfs.1.gz",
+   "man_name": "mksquashfs - tool to create and append to squashfs filesystems",
+   "synopsis": "mksquashfs source1 source2 ...  FILESYSTEM [OPTIONS] [-e list of exclude dirs/files]",
+   "gallery": false
+  },
+  {
+   "cmd": "moon-buggy",
+   "origins": [
+    "store"
+   ],
+   "section": "Games",
+   "label": "Moon Buggy (terminal)",
+   "packages": "moon-buggy@testing",
+   "mode": "t",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "moon-buggy",
+   "version": "1.0.51-r1",
+   "description": "Simple character graphics game where you drive some kind of car across the moon's surface",
+   "webpage": "https://www.seehuhn.de/pages/moon-buggy.html",
+   "source_package": "moon-buggy",
+   "deps": [
+    "libncursesw"
+   ],
+   "man": "man6/moon-buggy.6.gz",
+   "man_name": "moon-buggy - drive some car across the moon",
+   "synopsis": "moon-buggy [-hnsV] [--help] [--no-title] [--show-scores] [--version]",
+   "gallery": false
+  },
+  {
+   "cmd": "mutt",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Mail",
+   "label": "Mutt (terminal)",
+   "packages": "mutt",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "mutt",
+   "version": "2.3.2-r0",
+   "description": "Small and very powerful text-mode email client",
+   "webpage": "http://www.mutt.org",
+   "source_package": "mutt",
+   "deps": [
+    "libcrypto3",
+    "gdbm",
+    "libgpg-error",
+    "gpgme",
+    "libgsasl",
+    "libidn2",
+    "libintl",
+    "libncursesw",
+    "libssl3"
+   ],
+   "man": "man1/mutt.1.gz",
+   "man_name": "mutt - The Mutt Mail User Agent",
+   "synopsis": "mutt  [-nRyzZ] [-e command] [-F rcfile] [-m type] [-f mailbox]\n\nmutt  [-Enx] [-e command] [-F rcfile] [-H draft] [-i include]\n      [-b bcc-addr] [-c cc-addr] [-s subject]\n      [-a file ... --] to-addr ...\n\nmutt  [-nx] [-e command] [-F rcfile] [-b bcc-addr] [-c cc-addr]\n      [-s subject] [-a file ... --] to-addr ... < message\n\nmutt  [-n] [-e command] [-F rcfile] -p\n\nmutt  [-n] [-e command] [-F rcfile] -A alias\n\nmutt  [-n] [-e command] [-F rcfile] -Q variable\n...",
+   "gallery": true
+  },
+  {
+   "cmd": "nano",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Editors",
+   "label": "nano (terminal - simplest)",
+   "packages": "nano",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "nano",
+   "version": "9.2-r0",
+   "description": "Enhanced clone of the Pico text editor",
+   "webpage": "https://www.nano-editor.org/",
+   "source_package": "nano",
+   "deps": [
+    "libncursesw"
+   ],
+   "man": "man1/nano.1.gz",
+   "man_name": "nano - Nano's ANOther text editor, inspired by Pico",
+   "synopsis": "nano [options] [[+line[,column]] file]...\n\nnano [options] [[+[crCR]{/|?}string] file]...",
+   "gallery": true
+  },
+  {
+   "cmd": "ncmpcpp",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Media",
+   "label": "MPD + ncmpcpp (daemon + client)",
+   "packages": "mpd mpc ncmpcpp",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "ncmpcpp",
+   "version": "0.10.1-r4",
+   "description": "Ncurses based MPD client inspired by ncmpc",
+   "webpage": "http://rybczak.net/ncmpcpp",
+   "source_package": "ncmpcpp",
+   "deps": [
+    "boost1.84-filesystem",
+    "boost1.84-locale",
+    "boost1.84-program_options",
+    "boost1.84-thread",
+    "libcurl",
+    "fftw-double-libs",
+    "icu-libs",
+    "libmpdclient",
+    "libncursesw",
+    "readline",
+    "libtag"
+   ],
+   "man": "man1/ncmpcpp.1.gz",
+   "man_name": "ncmpcpp - An ncurses Music Player Daemon (MPD) client.",
+   "synopsis": "ncmpcpp [options]",
+   "gallery": true
+  },
+  {
+   "cmd": "neofetch",
+   "origins": [
+    "store"
+   ],
+   "section": "System",
+   "label": "Neofetch",
+   "packages": "neofetch@testing",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "neofetch",
+   "version": "7.1.0-r3",
+   "description": "(Archived) CLI system information tool written in Bash that supports displaying images",
+   "webpage": "https://github.com/dylanaraps/neofetch",
+   "source_package": "neofetch",
+   "deps": [
+    "bash"
+   ],
+   "man": "man1/neofetch.1.gz",
+   "man_name": "Neofetch - A fast, highly customizable system info script",
+   "synopsis": "neofetch func_name --option \"value\" --option \"value\"",
+   "gallery": false
+  },
+  {
+   "cmd": "nethack",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "NetHack (roguelike)",
+   "packages": "nethack",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "nethack",
+   "version": "3.6.7-r2",
+   "description": "A single player dungeon exploration game",
+   "webpage": "https://www.nethack.org/",
+   "source_package": "nethack",
+   "deps": [
+    "libncursesw"
+   ],
+   "man": "man6/nethack.6.gz",
+   "man_name": "nethack - Exploring The Mazes of Menace",
+   "synopsis": "nethack [ -d directory ] [ -n ] [ -p profession ] [ -r race ] [ -[DX] ] [ -u playername ] [\n-dec ] [ -ibm ] [ --showpaths ] [ --version[:paste] ]\n\nnethack [ -d directory ] -s [ -v ] [ -p profession ] [ -r race ] [ playernames ]",
+   "gallery": true
+  },
+  {
+   "cmd": "newsboat",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "News",
+   "label": "Newsboat (RSS/Atom - terminal)",
+   "packages": "newsboat",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "newsboat",
+   "version": "2.43-r0",
+   "description": "RSS/Atom feed reader for text terminals",
+   "webpage": "https://newsboat.org/",
+   "source_package": "newsboat",
+   "deps": [
+    "libcurl",
+    "libintl",
+    "json-c",
+    "libncursesw",
+    "sqlite-libs",
+    "stfl",
+    "libxml2"
+   ],
+   "man": "man1/newsboat.1.gz",
+   "man_name": "newsboat - an RSS/Atom feed reader for text terminals",
+   "synopsis": "newsboat [-r] [-e] [-i opmlfile] [-u urlfile] [-c cachefile] [-C configfile] [-X] [-o] [-x\ncommand...] [-h]",
+   "gallery": true
+  },
+  {
+   "cmd": "newsraft",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "News",
+   "label": "Newsraft (RSS - terminal, fast)",
+   "packages": "newsraft",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "newsraft",
+   "version": "0.37-r0",
+   "description": "Feed reader with text-based user interface",
+   "webpage": "https://codeberg.org/newsraft/newsraft",
+   "source_package": "newsraft",
+   "deps": [
+    "libcurl",
+    "libexpat",
+    "gumbo-parser",
+    "sqlite-libs"
+   ],
+   "man": "man1/newsraft.1.gz",
+   "man_name": "newsraft - feed reader for terminal",
+   "synopsis": "newsraft [-f FILE1] [-c FILE2] [-d FILE3] [-l FILE4] [-e ACTION] [-v] [-h]",
+   "gallery": true
+  },
+  {
+   "cmd": "ngspice",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Engineering",
+   "label": "ngspice (circuit simulation)",
+   "packages": "ngspice",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "ngspice",
+   "version": "46-r0",
+   "description": "open source spice simulator for electric and electronic circuits",
+   "webpage": "https://ngspice.sourceforge.net/",
+   "source_package": "ngspice",
+   "deps": [
+    "python3",
+    "libx11",
+    "libxaw",
+    "libxt",
+    "libgomp",
+    "libncursesw",
+    "readline"
+   ],
+   "man": "man1/ngspice.1.gz",
+   "man_name": "ngspice - circuit simulator derived from SPICE3f5",
+   "synopsis": "ngspice [options] [file ...]",
+   "gallery": false
+  },
+  {
+   "cmd": "nim",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Nim",
+   "packages": "nim",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "nim",
+   "version": "2.2.0-r0",
+   "description": "A systems and applications programming language",
+   "webpage": "https://nim-lang.org/",
+   "source_package": "nim",
+   "deps": [
+    "libucontext-dev"
+   ],
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "ninja",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "samurai",
+   "version": "1.2-r8",
+   "description": "ninja-compatible build tool written in C",
+   "webpage": "https://github.com/michaelforney/samurai",
+   "source_package": "samurai",
+   "deps": [],
+   "stage": null,
+   "gallery": false
+  },
+  {
+   "cmd": "nmap",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Security",
+   "label": "nmap (port scanner)",
+   "packages": "nmap",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "nmap",
+   "version": "7.99-r0",
+   "description": "network exploration tool and security/port scanner",
+   "webpage": "https://nmap.org",
+   "source_package": "nmap",
+   "deps": [
+    "libcrypto3",
+    "lua5.4-libs",
+    "libpcap",
+    "libssh2",
+    "libssl3",
+    "zlib"
+   ],
+   "man": "man1/nmap.1.gz",
+   "man_name": "nmap - Network exploration tool and security / port scanner",
+   "synopsis": "nmap [Scan Type...] [Options] {target specification}",
+   "gallery": false
+  },
+  {
+   "cmd": "nnn",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Files",
+   "label": "nnn (terminal file manager)",
+   "packages": "nnn",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "nnn",
+   "version": "5.2-r0",
+   "description": "The unorthodox terminal file manager",
+   "webpage": "https://github.com/jarun/nnn",
+   "source_package": "nnn",
+   "deps": [
+    "libncursesw",
+    "readline"
+   ],
+   "man": "man1/nnn.1.gz",
+   "man_name": "nnn – The unorthodox terminal file manager.",
+   "synopsis": "nnn [-aAcCdDeEfgHJKnQrRSuUVxz0h] [-b key] [-F val] [-l val] [-p file] [-P key] [-s name]\n    [-t secs] [-T key] [PATH]",
+   "gallery": true
+  },
+  {
+   "cmd": "node",
+   "origins": [
+    "store"
+   ],
+   "section": "Programming",
+   "label": "Node.js",
+   "packages": "nodejs npm",
+   "mode": "t",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": true,
+   "package": "nodejs",
+   "version": "24.18.1-r0",
+   "description": "JavaScript runtime built on V8 engine - LTS version",
+   "webpage": "https://nodejs.org/",
+   "source_package": "nodejs",
+   "deps": [
+    "ca-certificates",
+    "ada-libs",
+    "brotli-libs",
+    "c-ares",
+    "libcrypto3",
+    "icu-libs",
+    "nghttp2-libs",
+    "simdjson",
+    "simdutf",
+    "sqlite-libs",
+    "libssl3",
+    "zlib",
+    "zstd-libs"
+   ],
+   "man": "man1/node.1.gz",
+   "man_name": "node – server-side JavaScript runtime",
+   "synopsis": "node [options] [v8-options] [-e string | script.js | -] [--] [arguments ...]\nnode inspect [-e string | script.js | - | <host>:<port>] ...\nnode [--v8-options]",
+   "gallery": false
+  },
+  {
+   "cmd": "nvim",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "neovim",
+   "version": "0.12.2-r0",
+   "description": "Vim-fork focused on extensibility and agility",
+   "webpage": "https://neovim.io/",
+   "source_package": "neovim",
+   "deps": [
+    "lua5.1-lpeg",
+    "tree-sitter-c",
+    "tree-sitter-lua",
+    "tree-sitter-markdown",
+    "tree-sitter-vim",
+    "tree-sitter-vimdoc",
+    "tree-sitter-query",
+    "libintl",
+    "luajit",
+    "libluv",
+    "tree-sitter",
+    "unibilium",
+    "utf8proc",
+    "libuv"
+   ],
+   "stage": null,
+   "man": "man1/nvim.1.gz",
+   "man_name": "nvim – edit text",
+   "synopsis": "nvim [options] [file ...]\nnvim [options] -\nnvim [options] -t tag\nnvim [options] -q [errorfile]",
+   "gallery": false
+  },
+  {
+   "cmd": "ocaml",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "OCaml",
+   "packages": "ocaml",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "ocaml",
+   "version": "4.14.3-r0",
+   "description": "Main implementation of the Caml programming language",
+   "webpage": "https://ocaml.org/",
+   "source_package": "ocaml",
+   "deps": [
+    "ocaml-runtime",
+    "gcc"
+   ],
+   "man": "man1/ocaml.1.gz",
+   "man_name": "ocaml - The OCaml interactive toplevel",
+   "synopsis": "ocaml [ options ] [ object-files ] [ script-file ]",
+   "gallery": true
+  },
+  {
+   "cmd": "octave",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Science",
+   "label": "Octave (MATLAB-compatible maths)",
+   "packages": "octave",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "octave",
+   "version": "11.1.0-r0",
+   "description": "High-level language for numerical computations",
+   "webpage": "https://octave.org/",
+   "source_package": "octave",
+   "deps": [
+    "qt6-qtbase-sqlite",
+    "openblas",
+    "mesa-gl",
+    "glu",
+    "graphicsmagick-c++",
+    "graphicsmagick",
+    "qt6-qtbase",
+    "qt6-qt5compat",
+    "qt6-qtbase-x11",
+    "qt6-qttools-libs",
+    "libx11",
+    "suitesparse",
+    "arpack",
+    "libbz2",
+    "libcurl",
+    "fftw-double-libs",
+    "fftw-single-libs",
+    "libfltk",
+    "libfltk_gl",
+    "fontconfig",
+    "freetype",
+    "libgfortran",
+    "glpk",
+    "libgomp",
+    "hdf5",
+    "pcre2",
+    "portaudio",
+    "qhull",
+    "qrupdate",
+    "qscintilla",
+    "readline",
+    "libsndfile",
+    "wayland-libs-client",
+    "zlib"
+   ],
+   "man": "man1/octave.1.gz",
+   "man_name": "octave - A high-level interactive programming language for numerical computations.",
+   "synopsis": "octave [options]... [file]",
+   "gallery": true
+  },
+  {
+   "cmd": "oh-my-posh",
+   "origins": [
+    "store"
+   ],
+   "section": "Appearance",
+   "label": "Oh My Posh (prompt themes)",
+   "packages": "ohmyposh@source",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": true,
+   "built": "copal-store recipe, built from source",
+   "package": null,
+   "synopsis": "Usage:\n  oh-my-posh [flags]\n  oh-my-posh [command]",
+   "gallery": false
+  },
+  {
+   "cmd": "ollama",
+   "origins": [
+    "store"
+   ],
+   "section": "Tools",
+   "label": "Ollama (local AI models)",
+   "packages": "ollama",
+   "mode": "h",
+   "gate": "64",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "ollama",
+   "version": "0.17.7-r1",
+   "description": "Download and run large language models locally (CPU)",
+   "webpage": "https://github.com/ollama/ollama",
+   "source_package": "ollama",
+   "deps": [],
+   "gallery": false
+  },
+  {
+   "cmd": "onionshare-cli",
+   "origins": [
+    "store"
+   ],
+   "section": "Transfer",
+   "label": "OnionShare (share over Tor)",
+   "packages": "onionshare@testing",
+   "mode": "h",
+   "gate": "!v6",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "onionshare",
+   "version": "2.6.4-r0",
+   "description": "Share a file over Tor Hidden Services anonymously and securely",
+   "webpage": "https://github.com/onionshare/onionshare",
+   "source_package": "onionshare",
+   "deps": [
+    "hicolor-icon-theme",
+    "py3-colorama",
+    "py3-flask-compress",
+    "py3-flask-httpauth",
+    "py3-flask-socketio",
+    "py3-gevent-websocket",
+    "py3-psutil",
+    "py3-pycryptodome",
+    "py3-pynacl",
+    "py3-pysocks",
+    "py3-qrcode",
+    "py3-requests",
+    "py3-stem",
+    "py3-unidecode",
+    "py3-waitress",
+    "tor",
+    "python3"
+   ],
+   "gallery": false
+  },
+  {
+   "cmd": "openmpt123",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Audio",
+   "label": "openmpt123 (play tracker modules)",
+   "packages": "openmpt123",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "openmpt123",
+   "version": "0.8.9-r0",
+   "description": "Command-line module file player",
+   "webpage": "https://lib.openmpt.org/libopenmpt/",
+   "source_package": "libopenmpt",
+   "deps": [
+    "libflac",
+    "libopenmpt",
+    "portaudio",
+    "libpulse",
+    "libsndfile"
+   ],
+   "man": "man1/openmpt123.1.gz",
+   "man_name": "openmpt123 - command line module music player based on libopenmpt",
+   "synopsis": "openmpt123 [options] [--] file1 [file2] ...",
+   "gallery": false
+  },
+  {
+   "cmd": "openrc",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "openrc",
+   "version": "0.63.2-r0",
+   "description": "OpenRC manages the services, startup and shutdown of a host",
+   "webpage": "https://github.com/OpenRC/openrc",
+   "source_package": "openrc",
+   "deps": [
+    "ifupdown-any",
+    "openrc-user",
+    "libcap2"
+   ],
+   "stage": null,
+   "man": "man8/openrc.8.gz",
+   "man_name": "openrc – stops and starts services for the specified runlevel",
+   "synopsis": "openrc [-n, --no-stop] [-o, --override] [runlevel]",
+   "gallery": false
+  },
+  {
+   "cmd": "orrery",
+   "origins": [
+    "store"
+   ],
+   "section": "Code",
+   "label": "orrery (the fleet's console)",
+   "packages": "orrery@clone",
+   "mode": "t",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": true,
+   "package": null,
+   "gallery": false
+  },
+  {
+   "cmd": "pactl",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "pulseaudio-utils",
+   "version": "17.0-r7",
+   "description": "Pulseaudio utilities",
+   "webpage": "https://www.freedesktop.org/wiki/Software/PulseAudio/",
+   "source_package": "pulseaudio",
+   "deps": [
+    "libintl",
+    "libpulse",
+    "libsndfile",
+    "libxcb"
+   ],
+   "stage": null,
+   "gallery": false
+  },
+  {
+   "cmd": "pdflatex",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Science",
+   "label": "TeX Live (full LaTeX)",
+   "packages": "texlive-full",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "texlive",
+   "version": "2026.0-r0",
+   "description": "Comprehensive TeX document production system",
+   "webpage": "https://tug.org/texlive/",
+   "source_package": "texlive",
+   "deps": [
+    "ghostscript",
+    "perl",
+    "texmf-dist",
+    "texmf-dist-latex",
+    "libx11",
+    "cairo",
+    "gmp",
+    "icu-libs",
+    "mpfr4",
+    "pixman",
+    "libpng",
+    "libsynctex",
+    "zlib"
+   ],
+   "man": "man1/pdflatex.1.gz",
+   "man_name": "",
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "pdftotext",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Documents",
+   "label": "PDF tools (poppler)",
+   "packages": "poppler-utils",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "poppler-utils",
+   "version": "25.12.0-r1",
+   "description": "Poppler's xpdf-workalike command line utilities",
+   "webpage": "https://poppler.freedesktop.org/",
+   "source_package": "poppler",
+   "deps": [
+    "cairo",
+    "freetype",
+    "libintl",
+    "lcms2",
+    "poppler"
+   ],
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "perl",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Perl",
+   "packages": "perl",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "perl",
+   "version": "5.42.2-r0",
+   "description": "Larry Wall's Practical Extraction and Report Language",
+   "webpage": "https://www.perl.org/",
+   "source_package": "perl",
+   "deps": [
+    "libbz2",
+    "zlib"
+   ],
+   "man": "man1/perl.1.gz",
+   "man_name": "perl - The Perl 5 language interpreter",
+   "synopsis": "perl [ -sTtuUWX ]\n        [ -hv ] [ -V[:configvar] ]\n        [ -cw ] [ -d[t][:debugger] ] [ -D[number/list] ]\n        [ -pna ] [ -Fpattern ] [ -l[octal] ] [ -0[octal/hexadecimal] ]\n        [ -Idir ] [ -m[-]module ] [ -M[-]'module...' ] [ -f ]\n        [ -C [number/list] ]\n        [ -S ]\n        [ -x[dir] ]\n        [ -i[extension] ]\n        [ [-e|-E] 'command' ] [ -- ] [ programfile ] [ argument ]...\n\nFor more information on these options, you can run \"perldoc perlrun\".",
+   "gallery": false
+  },
+  {
+   "cmd": "pip",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "py3-pip",
+   "version": "26.1.2-r0",
+   "description": "Tool for installing and managing Python packages",
+   "webpage": "https://pip.pypa.io",
+   "source_package": "py3-pip",
+   "deps": [
+    "python3"
+   ],
+   "stage": 7,
+   "man": "man1/pip.1.gz",
+   "man_name": "pip - package manager for Python packages",
+   "synopsis": "pip <command> [options]",
+   "gallery": false
+  },
+  {
+   "cmd": "pipe-viewer",
+   "origins": [
+    "store"
+   ],
+   "section": "Multimedia",
+   "label": "YouTube Player (pipe-viewer)",
+   "packages": "pipe-viewer",
+   "mode": "t",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "pipe-viewer",
+   "version": "0.5.3-r0",
+   "description": "Lightweight YouTube client that does not require an YouTube API key",
+   "webpage": "https://github.com/trizen/pipe-viewer",
+   "source_package": "pipe-viewer",
+   "deps": [
+    "perl-data-dump",
+    "perl-json",
+    "perl-libwww",
+    "perl-lwp-protocol-https",
+    "perl-term-readline-gnu",
+    "perl-unicode-linebreak"
+   ],
+   "man": "man1/pipe-viewer.1.gz",
+   "man_name": "pipe-viewer - YouTube from command line. pipe-viewer --help pipe-viewer --tricks pipe-viewer --examples pipe-viewer --stdin-help",
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "plantuml",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Design",
+   "label": "PlantUML (UML from text)",
+   "packages": "plantuml",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "plantuml",
+   "version": "1.2025.10-r0",
+   "description": "Draw UML diagrams, using a simple and human readable text description",
+   "webpage": "https://plantuml.com/",
+   "source_package": "plantuml",
+   "deps": [
+    "graphviz",
+    "gtk+2.0",
+    "java-common",
+    "java-jre"
+   ],
+   "synopsis": "Usage:\n  java -jar plantuml.jar [options] [file|dir]...\n  java -jar plantuml.jar [options] --gui",
+   "gallery": false
+  },
+  {
+   "cmd": "profanity",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Mail",
+   "label": "Profanity (XMPP)",
+   "packages": "profanity",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "profanity",
+   "version": "0.18.1-r0",
+   "description": "Ncurses based XMPP client",
+   "webpage": "https://github.com/profanity-im/profanity",
+   "source_package": "profanity",
+   "deps": [
+    "libcurl",
+    "libgcrypt",
+    "glib",
+    "libncursesw",
+    "libotr",
+    "readline",
+    "libsignal-protocol-c",
+    "sqlite-libs",
+    "libstrophe"
+   ],
+   "man": "man1/profanity.1.gz",
+   "man_name": "Profanity - a simple console based XMPP chat client.",
+   "synopsis": "profanity [-vh] [-l level] [-a account]",
+   "gallery": true
+  },
+  {
+   "cmd": "pwndbg",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "pwndbg (GDB for reverse engineering)",
+   "packages": "pwndbg",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "pwndbg",
+   "version": "2026.02.18-r1",
+   "description": "Exploit Development and Reverse Engineering with GDB & LLDB Made Easy",
+   "webpage": "https://pwndbg.re/stable/",
+   "source_package": "pwndbg",
+   "deps": [
+    "python3",
+    "py3-capstone",
+    "py3-cparser",
+    "py3-elftools",
+    "py3-hatchling",
+    "py3-psutil",
+    "py3-pygments",
+    "py3-requests",
+    "py3-rich",
+    "py3-sortedcontainers",
+    "py3-tabulate",
+    "py3-typing-extensions",
+    "py3-unicorn",
+    "pwntools"
+   ],
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "pwsh",
+   "origins": [
+    "store"
+   ],
+   "section": "Terminals",
+   "label": "Microsoft PowerShell",
+   "packages": "powershell",
+   "mode": "t",
+   "gate": "!v6,!x32",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "powershell",
+   "version": "7.6.1-r0",
+   "description": "A cross-platform automation and configuration tool/framework",
+   "webpage": "https://github.com/PowerShell/PowerShell",
+   "source_package": "powershell",
+   "deps": [
+    "dotnet10-runtime",
+    "libpsl-native"
+   ],
+   "gallery": false
+  },
+  {
+   "cmd": "pylsp",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "Python language server",
+   "packages": "py3-lsp-server",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "py3-lsp-server",
+   "version": "1.14.0-r1",
+   "description": "python implementation of the language server protocol, fork of python-language-server",
+   "webpage": "https://github.com/python-lsp/python-lsp-server",
+   "source_package": "py3-lsp-server",
+   "deps": [
+    "py3-docstring-to-markdown",
+    "py3-jedi",
+    "py3-lsp-jsonrpc",
+    "py3-pluggy",
+    "py3-setuptools",
+    "py3-ujson",
+    "py3-whatthepatch",
+    "py3-yapf",
+    "python3"
+   ],
+   "synopsis": "usage: pylsp [-h] [--tcp] [--ws] [--host HOST] [--port PORT]\n             [--check-parent-process] [--log-config LOG_CONFIG |\n             --log-file LOG_FILE] [-v] [-V]",
+   "gallery": false
+  },
+  {
+   "cmd": "python3",
+   "origins": [
+    "core",
+    "catalogue"
+   ],
+   "section": "Science",
+   "label": "SymPy (symbolic maths in Python)",
+   "packages": "py3-sympy python3",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "core",
+   "installed": true,
+   "package": "python3",
+   "version": "3.14.7-r1",
+   "description": "High-level scripting language",
+   "webpage": "https://www.python.org/",
+   "source_package": "python3",
+   "deps": [
+    "libssl3",
+    "libexpat",
+    "libbz2",
+    "libcrypto3",
+    "libffi",
+    "gdbm",
+    "xz-libs",
+    "mpdecimal",
+    "libncursesw",
+    "libpanelw",
+    "readline",
+    "sqlite-libs",
+    "zlib"
+   ],
+   "man": "man1/python3.1.gz",
+   "man_name": "python - an interpreted, interactive, object-oriented programming language",
+   "synopsis": "python [ -B ] [ -b ] [ -d ] [ -E ] [ -h ] [ -i ] [ -I ]\n       [ -m module-name ] [ -q ] [ -R ] [ -O ] [ -OO ] [ -P ] [ -s ] [ -S ] [ -u ]\n       [ -v ] [ -V ] [ -W argument ] [ -x ] [ -X option ] [ -?  ]\n       [ --check-hash-based-pycs default | always | never ]\n       [ --help ] [ --help-env ] [ --help-xoptions ] [ --help-all ]\n       [ -c command | script | - ] [ arguments ]",
+   "gallery": false
+  },
+  {
+   "cmd": "qemu-system-x86_64",
+   "origins": [
+    "store"
+   ],
+   "section": "Emulation",
+   "label": "QEMU (PC emulator)",
+   "packages": "qemu-system-x86_64 qemu-ui-gtk",
+   "mode": "h",
+   "gate": "64",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "qemu-system-x86_64",
+   "version": "11.0.3-r0",
+   "description": "Qemu system x86_64 emulator",
+   "webpage": "https://qemu.org/",
+   "source_package": "qemu",
+   "deps": [
+    "qemu",
+    "qemu-edk2-i386-vars",
+    "libaio",
+    "libbpf",
+    "capstone",
+    "libdw",
+    "libfdt",
+    "glib",
+    "gnutls",
+    "libjpeg-turbo",
+    "lzo",
+    "numactl",
+    "pixman",
+    "libpng",
+    "libsasl",
+    "libseccomp",
+    "libslirp",
+    "snappy",
+    "liburing",
+    "vde2-libs",
+    "xen-libs",
+    "zlib",
+    "zstd-libs"
+   ],
+   "gallery": false
+  },
+  {
+   "cmd": "qpdf",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Documents",
+   "label": "qpdf (split/merge/repair PDF)",
+   "packages": "qpdf",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "qpdf",
+   "version": "12.3.2-r0",
+   "description": "Command-line tools and library for transforming PDF files",
+   "webpage": "https://github.com/qpdf/qpdf",
+   "source_package": "qpdf",
+   "deps": [
+    "qpdf-libs"
+   ],
+   "man": "man1/qpdf.1.gz",
+   "man_name": "qpdf - PDF transformation software",
+   "synopsis": "qpdf [ options ] infilename [ outfilename ]",
+   "gallery": false
+  },
+  {
+   "cmd": "R",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Science",
+   "label": "R (statistics)",
+   "packages": "R",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "R",
+   "version": "4.6.0-r0",
+   "description": "Language and environment for statistical computing",
+   "webpage": "https://www.R-project.org/",
+   "source_package": "R",
+   "deps": [
+    "R-mathlib",
+    "tzdata",
+    "openblas",
+    "libx11",
+    "libxmu",
+    "libxt",
+    "libbz2",
+    "cairo",
+    "libcurl",
+    "libdeflate",
+    "glib",
+    "libgomp",
+    "icu-libs",
+    "libjpeg-turbo",
+    "xz-libs",
+    "pango",
+    "pcre2",
+    "libpng",
+    "readline",
+    "tcl",
+    "tiff",
+    "tk",
+    "zlib",
+    "zstd-libs"
+   ],
+   "man": "man1/R.1.gz",
+   "man_name": "R - a language for data analysis and graphics",
+   "synopsis": "R [options] [< infile] [> outfile]\nR CMD command [arguments]",
+   "gallery": true
+  },
+  {
+   "cmd": "racket",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Racket",
+   "packages": "racket",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "racket",
+   "version": "9.2-r0",
+   "description": "Racket CS - general purpose programming language in the Lisp-Scheme family",
+   "webpage": "https://racket-lang.org/",
+   "source_package": "racket",
+   "deps": [
+    "ca-certificates",
+    "libcrypto3",
+    "libssl3",
+    "lz4-libs",
+    "libncursesw",
+    "zlib"
+   ],
+   "man": "man1/racket.1.gz",
+   "man_name": "racket - core Racket implementation",
+   "synopsis": "racket [ option ...  ] [ argument ...  ]",
+   "gallery": true
+  },
+  {
+   "cmd": "radbeeper",
+   "origins": [
+    "store"
+   ],
+   "section": "Code",
+   "label": "radbeeper (Geiger counter, terminal)",
+   "packages": "radbeeper@clone",
+   "mode": "t",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": true,
+   "package": null,
+   "gallery": false
+  },
+  {
+   "cmd": "ranger",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Files",
+   "label": "ranger (terminal file manager)",
+   "packages": "ranger",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "ranger",
+   "version": "1.9.4-r1",
+   "description": "VIM-inspired filemanager for the console",
+   "webpage": "https://ranger.github.io/",
+   "source_package": "ranger",
+   "deps": [
+    "python3"
+   ],
+   "man": "man1/ranger.1.gz",
+   "man_name": "",
+   "synopsis": "ranger [--version] [--help] [--debug] [--clean] [--cachedir=directory] [--confdir=directory]\n[--datadir=directory] [--copy-config=which] [--choosefile=target] [--choosefiles=target]\n[--choosedir=target] [--selectfile=filepath] [--show-only-dirs] [--list-unused-keys]\n[--list-tagged-files=tag] [--profile] [--cmd=command] [path ...]",
+   "gallery": true
+  },
+  {
+   "cmd": "rc-service",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "openrc",
+   "version": "0.63.2-r0",
+   "description": "OpenRC manages the services, startup and shutdown of a host",
+   "webpage": "https://github.com/OpenRC/openrc",
+   "source_package": "openrc",
+   "deps": [
+    "ifupdown-any",
+    "openrc-user",
+    "libcap2"
+   ],
+   "stage": null,
+   "man": "man8/rc-service.8.gz",
+   "man_name": "rc-service – locate and run an OpenRC service with the given arguments",
+   "synopsis": "rc-service [-c, --ifcrashed] service cmd [...]\nrc-service -d, --debug service cmd [...]\nrc-service -D, --nodeps service cmd [...]\nrc-service [-i, --ifexists] service cmd [...]\nrc-service [-I, --ifinactive] service cmd [...]\nrc-service [-N, --ifnotstarted] service cmd [...]\nrc-service [-s, --ifstarted] service cmd [...]\nrc-service [-S, --ifstopped] service cmd [...]\nrc-service -e, --exists service\nrc-service -Z, --dry-run service cmd [...]\nrc-service -l, --list\nrc-service -r, --resolve service",
+   "gallery": false
+  },
+  {
+   "cmd": "rc-status",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "openrc",
+   "version": "0.63.2-r0",
+   "description": "OpenRC manages the services, startup and shutdown of a host",
+   "webpage": "https://github.com/OpenRC/openrc",
+   "source_package": "openrc",
+   "deps": [
+    "ifupdown-any",
+    "openrc-user",
+    "libcap2"
+   ],
+   "stage": null,
+   "man": "man8/rc-status.8.gz",
+   "man_name": "rc-status – show status info about runlevels",
+   "synopsis": "rc-status [-C] [-f ini] [-i state] [runlevel]\nrc-status [-C] [-f ini] [-a | -m | -S | -s | -u]\nrc-status [-C] [-c | -l | -r]",
+   "gallery": false
+  },
+  {
+   "cmd": "rc-update",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "openrc",
+   "version": "0.63.2-r0",
+   "description": "OpenRC manages the services, startup and shutdown of a host",
+   "webpage": "https://github.com/OpenRC/openrc",
+   "source_package": "openrc",
+   "deps": [
+    "ifupdown-any",
+    "openrc-user",
+    "libcap2"
+   ],
+   "stage": null,
+   "man": "man8/rc-update.8.gz",
+   "man_name": "rc-update – add and remove services to and from a runlevel",
+   "synopsis": "rc-update [-s, --stack] add service [runlevel ...]\nrc-update [-s, --stack] [-a, --all] delete service [runlevel ...]\nrc-update [-u, --update] [-v, --verbose] show [runlevel ...]",
+   "gallery": false
+  },
+  {
+   "cmd": "rdfind",
+   "origins": [
+    "store"
+   ],
+   "section": "Files",
+   "label": "rdfind (duplicates across folders)",
+   "packages": "rdfind",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "rdfind",
+   "version": "1.8.0-r0",
+   "description": "Redundant data find - a program that finds duplicate files",
+   "webpage": "https://rdfind.pauldreik.se",
+   "source_package": "rdfind",
+   "deps": [
+    "nettle",
+    "libxxhash"
+   ],
+   "man": "man1/rdfind.1.gz",
+   "man_name": "rdfind - finds duplicate files",
+   "synopsis": "rdfind [ options ] directory1 | file1 [ directory2 | file2 ] ...",
+   "gallery": false
+  },
+  {
+   "cmd": "redshift",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Control",
+   "label": "Night colour (redshift)",
+   "packages": "redshift",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "redshift",
+   "version": "1.12-r7",
+   "description": "Adjusts the color temperature of your screen according to your surroundings",
+   "webpage": "http://jonls.dk/redshift/",
+   "source_package": "redshift",
+   "deps": [
+    "python3",
+    "libx11",
+    "libxxf86vm",
+    "libdrm",
+    "glib",
+    "libxcb"
+   ],
+   "man": "man1/redshift.1.gz",
+   "man_name": "redshift - set color temperature of display according to time of day",
+   "synopsis": "redshift [-l LAT:LON | -l PROVIDER:OPTIONS] [-t DAY:NIGHT] [OPTIONS...]",
+   "gallery": false
+  },
+  {
+   "cmd": "resize2fs",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "e2fsprogs-extra",
+   "version": "1.47.4-r0",
+   "description": "Ext2/3/4 filesystem extra utilities",
+   "webpage": "https://e2fsprogs.sourceforge.net/",
+   "source_package": "e2fsprogs",
+   "deps": [
+    "e2fsprogs",
+    "libblkid",
+    "libcom_err",
+    "e2fsprogs-libs",
+    "libuuid"
+   ],
+   "stage": 8,
+   "gallery": false
+  },
+  {
+   "cmd": "retawq",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Internet",
+   "label": "retawq (tiny text browser)",
+   "packages": "retawq",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "retawq",
+   "version": "0.2.6c-r9",
+   "description": "retawq is an interactive, multi-threaded network client for text terminals",
+   "webpage": "https://retawq.sourceforge.net/",
+   "source_package": "retawq",
+   "deps": [
+    "libcrypto3",
+    "libncursesw",
+    "libssl3"
+   ],
+   "man": "man1/retawq.1.gz",
+   "man_name": "retawq - a multi-threaded web browser for text terminals",
+   "synopsis": "",
+   "gallery": true
+  },
+  {
+   "cmd": "retro",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "RetroForth (the Forth family)",
+   "packages": "retroforth",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "retroforth",
+   "version": "2025.08-r0",
+   "description": "clean, elegant, and pragmatic dialect of Forth",
+   "webpage": "https://retroforth.org",
+   "source_package": "retroforth",
+   "deps": [],
+   "man": "man1/retro.1.gz",
+   "man_name": "",
+   "synopsis": "retro [-h] [-i] [-v] [-t filename] [-f filename] [-p filename] [-u filename] [-r filename]\n      [filename script-args]",
+   "gallery": true
+  },
+  {
+   "cmd": "rigctl",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Radio",
+   "label": "Hamlib (control a transceiver)",
+   "packages": "hamlib",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "hamlib",
+   "version": "4.7.1-r0",
+   "description": "Library to control radio transceivers and receivers",
+   "webpage": "https://hamlib.github.io/",
+   "source_package": "hamlib",
+   "deps": [
+    "libusb"
+   ],
+   "man": "man1/rigctl.1.gz",
+   "man_name": "rigctl - control radio transceivers and receivers",
+   "synopsis": "rigctl [-hiIlLnouV] [-m id] [-r device] [-p device] [-d device] [-P type] [-D type] [-s baud]\n       [-c id] [-t char] [-C parm=val] -Y [-v[-Z]] [command|-]",
+   "gallery": false
+  },
+  {
+   "cmd": "robots",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "Robots",
+   "packages": "bsd-games",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "bsd-games",
+   "version": "3.3-r2",
+   "description": "traditional text mode games from BSD",
+   "webpage": "https://bsd-games.sourceforge.io/",
+   "source_package": "bsd-games",
+   "deps": [
+    "libncursesw"
+   ],
+   "man": "man6/robots.6.gz",
+   "man_name": "robots – fight off villainous robots",
+   "synopsis": "",
+   "gallery": true
+  },
+  {
+   "cmd": "rpm",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Discs",
+   "label": "rpm (open Red Hat packages)",
+   "packages": "rpm",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "rpm",
+   "version": "4.19.1.1-r5",
+   "description": "Redhat Package Management utilities (RPM)",
+   "webpage": "https://rpm.org/",
+   "source_package": "rpm",
+   "deps": [
+    "rpm-scripts",
+    "acl-libs",
+    "libarchive",
+    "libbz2",
+    "libcap2",
+    "libcrypto3",
+    "libdw",
+    "libelf",
+    "libgomp",
+    "libintl",
+    "lua5.4-libs",
+    "xz-libs",
+    "libmagic",
+    "popt",
+    "readline",
+    "sqlite-libs",
+    "zlib",
+    "zstd-libs"
+   ],
+   "man": "man8/rpm.8.gz",
+   "man_name": "rpm - RPM Package Manager",
+   "synopsis": "QUERYING AND VERIFYING PACKAGES:\n    rpm {-q|--query} [select-options] [query-options]\n\n    rpm --querytags\n\n    rpm {-V|--verify} [select-options] [verify-options]\n\nINSTALLING, UPGRADING, AND REMOVING PACKAGES:\n    rpm {-i|--install} [install-options] PACKAGE_FILE ...\n\n    rpm {-U|--upgrade} [install-options] PACKAGE_FILE ...\n\n    rpm {-F|--freshen} [install-options] PACKAGE_FILE ...\n\n...",
+   "gallery": false
+  },
+  {
+   "cmd": "rsync",
+   "origins": [
+    "core",
+    "catalogue"
+   ],
+   "section": "Sharing",
+   "label": "rsync (copy and mirror)",
+   "packages": "rsync",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "core",
+   "installed": true,
+   "package": "rsync",
+   "version": "3.5.0-r0",
+   "description": "A file transfer program to keep remote files in sync",
+   "webpage": "https://rsync.samba.org/",
+   "source_package": "rsync",
+   "deps": [
+    "acl-libs",
+    "lz4-libs",
+    "popt",
+    "libxxhash",
+    "zlib",
+    "zstd-libs"
+   ],
+   "man": "man1/rsync.1.gz",
+   "man_name": "rsync - a fast, versatile, local/remote file-copying tool",
+   "synopsis": "Local:\n    rsync [OPTION...] SRC... [DEST]\n\nAccess via remote shell:\n    Pull:\n        rsync [OPTION...] [USER@]HOST:SRC... [DEST]\n    Push:\n        rsync [OPTION...] SRC... [USER@]HOST:DEST\n\nAccess via rsync daemon:\n    Pull:\n        rsync [OPTION...] [USER@]HOST::SRC... [DEST]\n        rsync [OPTION...] rsync://[USER@]HOST[:PORT]/SRC... [DEST]\n    Push:\n...",
+   "gallery": false
+  },
+  {
+   "cmd": "rtl_power_fftw",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Radio",
+   "label": "rtl_power FFT sweep (wide spectrum scan)",
+   "packages": "rtl-power-fftw@testing",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "rtl-power-fftw",
+   "version": "20200601-r4",
+   "description": "A program that obtains a power spectrum from RTL devices using FFTW",
+   "webpage": "https://github.com/AD-Vega/rtl-power-fftw",
+   "source_package": "rtl-power-fftw",
+   "deps": [
+    "fftw-single-libs",
+    "librtlsdr"
+   ],
+   "man": "man1/rtl_power_fftw.1.gz",
+   "man_name": "rtl_power_fftw - obtain a power spectrum from RTL2832U devices",
+   "synopsis": "rtl_power_fftw [OPTION ...]",
+   "gallery": false
+  },
+  {
+   "cmd": "rtl_test",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Radio",
+   "label": "rtl-sdr tools (the RTL2832U dongle)",
+   "packages": "rtl-sdr",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "rtl-sdr",
+   "version": "2.0.2-r1",
+   "description": "Software defined radio receiver for Realtek RTL2832U (tools)",
+   "webpage": "https://osmocom.org/projects/sdr/wiki/rtl-sdr",
+   "source_package": "librtlsdr",
+   "deps": [
+    "librtlsdr"
+   ],
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "ruby",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Ruby",
+   "packages": "ruby",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "ruby",
+   "version": "3.4.9-r0",
+   "description": "An object-oriented language for quick and easy programming",
+   "webpage": "https://www.ruby-lang.org/",
+   "source_package": "ruby",
+   "deps": [
+    "ca-certificates",
+    "gmp",
+    "ruby-libs",
+    "libucontext",
+    "zlib"
+   ],
+   "man": "man1/ruby.1.gz",
+   "man_name": "ruby - Interpreted object-oriented scripting language",
+   "synopsis": "ruby [--copyright] [--version] [-SUacdlnpswvy] [-0[octal]] [-C directory] [-E\nexternal[:internal]] [-F[pattern]] [-I directory] [-K[c]] [-T[level]] [-W[level]] [-e\ncommand] [-i[extension]] [-r library] [-x[directory]] [--{enable|disable}-FEATURE]\n[--dump=target] [--verbose] [--crash-report=template] [--] [program_file] [argument ...]",
+   "gallery": true
+  },
+  {
+   "cmd": "rust-analyzer",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "rust-analyzer (Rust language server)",
+   "packages": "rust-analyzer",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "rustup",
+   "version": "1.29.0-r0",
+   "description": "Rust toolchain installer",
+   "webpage": "https://rustup.rs/",
+   "source_package": "rustup",
+   "deps": [
+    "libcrypto3",
+    "libcurl",
+    "libssl3",
+    "zstd-libs"
+   ],
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "sbcl",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "SBCL (Common Lisp)",
+   "packages": "sbcl",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "sbcl",
+   "version": "2.6.5-r0",
+   "description": "Steel Bank Common Lisp",
+   "webpage": "https://www.sbcl.org/",
+   "source_package": "sbcl",
+   "deps": [
+    "zstd-libs"
+   ],
+   "man": "man1/sbcl.1.gz",
+   "man_name": "SBCL -- Steel Bank Common Lisp",
+   "synopsis": "",
+   "gallery": true
+  },
+  {
+   "cmd": "sc-im",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Documents",
+   "label": "sc-im (spreadsheet - terminal)",
+   "packages": "sc-im",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "sc-im",
+   "version": "0.8.5-r1",
+   "description": "ncurses spreadsheet program based on SC",
+   "webpage": "https://github.com/andmarti1424/sc-im",
+   "source_package": "sc-im",
+   "deps": [
+    "libncursesw",
+    "libxml2",
+    "libzip"
+   ],
+   "man": "man1/sc-im.1.gz",
+   "man_name": "sc-im - A curses based, vim-like spreadsheet calculator",
+   "synopsis": "sc-im [OPTION]... [FILE]",
+   "gallery": true
+  },
+  {
+   "cmd": "scrcpy",
+   "origins": [
+    "store"
+   ],
+   "section": "Tools",
+   "label": "scrcpy (Android screen)",
+   "packages": "scrcpy",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "scrcpy",
+   "version": "4.0-r0",
+   "description": "Display and control your Android device",
+   "webpage": "https://github.com/Genymobile/scrcpy",
+   "source_package": "scrcpy",
+   "deps": [
+    "android-tools",
+    "sdl3",
+    "ffmpeg-libavcodec",
+    "ffmpeg-libavdevice",
+    "ffmpeg-libavformat",
+    "ffmpeg-libavutil",
+    "ffmpeg-libswresample",
+    "libusb"
+   ],
+   "man": "man1/scrcpy.1.gz",
+   "man_name": "scrcpy - Display and control your Android device",
+   "synopsis": "scrcpy [options]",
+   "gallery": false
+  },
+  {
+   "cmd": "screen",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Terminals",
+   "label": "GNU screen (multiplexer - the classic)",
+   "packages": "screen",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "screen",
+   "version": "5.0.2-r0",
+   "description": "Window manager that multiplexes a physical terminal",
+   "webpage": "https://www.gnu.org/software/screen/",
+   "source_package": "screen",
+   "deps": [
+    "libncursesw",
+    "linux-pam"
+   ],
+   "man": "man1/screen.1.gz",
+   "man_name": "screen - screen manager with VT100/ANSI terminal emulation",
+   "synopsis": "screen [ -options ] [ cmd [ args ] ]\nscreen -r [[pid.]tty[.host]]\nscreen -r sessionowner/[[pid.]tty[.host]]",
+   "gallery": true
+  },
+  {
+   "cmd": "scrot",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Tools",
+   "label": "Screenshot to file",
+   "packages": "scrot",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "scrot",
+   "version": "2.0.0-r0",
+   "description": "Simple command-line screenshot utility for X",
+   "webpage": "https://github.com/resurrecting-open-source-projects/scrot",
+   "source_package": "scrot",
+   "deps": [
+    "imlib2",
+    "libx11",
+    "libxcomposite",
+    "libxfixes",
+    "libxrandr"
+   ],
+   "man": "man1/scrot.1.gz",
+   "man_name": "scrot - command line screen capture utility",
+   "synopsis": "scrot [-bcfhimopuvz] [-a X,Y,W,H] [-C NAME] [-D DISPLAY] [-d SEC] [-e CMD]\n      [-k OPT] [-l STYLE] [-M NUM] [-n OPTS] [-q NUM] [-s OPTS] [-t % | WxH]\n      [-w NUM] [[-F] FILE]",
+   "gallery": false
+  },
+  {
+   "cmd": "setup-alpine",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "alpine-conf",
+   "version": "3.22.0-r0",
+   "description": "Alpine configuration management scripts",
+   "webpage": "https://gitlab.alpinelinux.org/alpine/alpine-conf",
+   "source_package": "alpine-conf",
+   "deps": [
+    "openrc"
+   ],
+   "stage": null,
+   "man": "man8/setup-alpine.8.gz",
+   "man_name": "setup-alpine - Alpine Linux installation and configuration script",
+   "synopsis": "setup-alpine [-ahq] [-c FILE | -f FILE]",
+   "gallery": false
+  },
+  {
+   "cmd": "sfdisk",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "sfdisk",
+   "version": "2.42.3-r1",
+   "description": "Partition table manipulator from util-linux",
+   "webpage": "https://git.kernel.org/cgit/utils/util-linux/util-linux.git",
+   "source_package": "util-linux",
+   "deps": [
+    "libfdisk",
+    "libncursesw",
+    "libsmartcols"
+   ],
+   "stage": 8,
+   "gallery": false
+  },
+  {
+   "cmd": "sfeed",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "News",
+   "label": "sfeed (RSS to plain files)",
+   "packages": "sfeed",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "sfeed",
+   "version": "2.4-r0",
+   "description": "RSS and Atom feed fetcher",
+   "webpage": "https://www.codemadness.org/sfeed.html",
+   "source_package": "sfeed",
+   "deps": [
+    "libncursesw"
+   ],
+   "man": "man1/sfeed.1.gz",
+   "man_name": "sfeed – RSS and Atom parser",
+   "synopsis": "sfeed [baseurl]",
+   "gallery": false
+  },
+  {
+   "cmd": "sha224sum",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "System",
+   "label": "GNU coreutils (md5sum, sha224sum)",
+   "packages": "coreutils",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "coreutils",
+   "version": "9.11-r0",
+   "description": "The basic file, shell and text manipulation utilities",
+   "webpage": "https://www.gnu.org/software/coreutils/",
+   "source_package": "coreutils",
+   "deps": [
+    "coreutils-env",
+    "coreutils-fmt",
+    "coreutils-sha512sum",
+    "acl-libs",
+    "libattr",
+    "libcrypto3",
+    "utmps-libs"
+   ],
+   "man": "man1/sha224sum.1.gz",
+   "man_name": "sha224sum - sha224sum",
+   "synopsis": "sha224sum [OPTIONS] [FILE]...",
+   "gallery": false
+  },
+  {
+   "cmd": "shellcheck",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "shellcheck (lint bash and sh)",
+   "packages": "shellcheck",
+   "mode": "h",
+   "gate": "64",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "shellcheck",
+   "version": "0.11.0-r1",
+   "description": "a static analysis tool for shell scripts",
+   "webpage": "https://github.com/koalaman/shellcheck",
+   "source_package": "shellcheck",
+   "deps": [
+    "libffi",
+    "gmp"
+   ],
+   "man": "man1/shellcheck.1.gz",
+   "man_name": "shellcheck - Shell script analysis tool",
+   "synopsis": "shellcheck [OPTIONS...]  FILES...",
+   "gallery": false
+  },
+  {
+   "cmd": "shfmt",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "shfmt (format shell scripts)",
+   "packages": "shfmt",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "shfmt",
+   "version": "3.13.1-r2",
+   "description": "A shell parser, formatter, and interpreter (sh/bash/mksh)",
+   "webpage": "https://mvdan.cc/sh",
+   "source_package": "shfmt",
+   "deps": [],
+   "man": "man1/shfmt.1.gz",
+   "man_name": "shfmt - Format shell programs",
+   "synopsis": "shfmt [flags] [path...]",
+   "gallery": false
+  },
+  {
+   "cmd": "sigrok-cli",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Instruments",
+   "label": "sigrok-cli (capture without a GUI)",
+   "packages": "sigrok-cli@testing",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "sigrok-cli",
+   "version": "0.7.2-r0",
+   "description": "A command-line frontend for sigrok",
+   "webpage": "https://sigrok.org/wiki/Sigrok-cli",
+   "source_package": "sigrok-cli",
+   "deps": [
+    "glib",
+    "libsigrok",
+    "libsigrokdecode"
+   ],
+   "man": "man1/sigrok-cli.1.gz",
+   "man_name": "sigrok-cli - Command-line client for the sigrok software",
+   "synopsis": "sigrok-cli [OPTIONS] [COMMAND]",
+   "gallery": false
+  },
+  {
+   "cmd": "Singular",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Science",
+   "label": "Singular (polynomial algebra)",
+   "packages": "singular",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "singular",
+   "version": "4.4.1_p5-r0",
+   "description": "Computer algebra system for polynomial computations",
+   "webpage": "https://www.singular.uni-kl.de/",
+   "source_package": "singular",
+   "deps": [
+    "python3",
+    "cddlib",
+    "flint",
+    "gmp"
+   ],
+   "man": "man1/Singular.1.gz",
+   "man_name": "Singular - manual page for Singular for version 4.x.x",
+   "synopsis": "Singular [options] [file1 [file2 ...]]\n\nESingular [options] [file1 [file2 ...]]\n\nTSingular [options] [file1 [file2 ...]]",
+   "gallery": true
+  },
+  {
+   "cmd": "sl",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "sl",
+   "packages": "sl",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "sl",
+   "version": "5.02-r1",
+   "description": "Cure your bad habit of mistyping",
+   "webpage": "https://github.com/mtoyoda/sl",
+   "source_package": "sl",
+   "deps": [
+    "libncursesw"
+   ],
+   "man": "man1/sl.1.gz",
+   "man_name": "sl - cure your bad habit of mistyping",
+   "synopsis": "sl [ -alFc ]",
+   "gallery": false
+  },
+  {
+   "cmd": "smbd",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Sharing",
+   "label": "Samba (Windows/macOS file shares)",
+   "packages": "samba samba-server",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "samba-server",
+   "version": "4.23.8-r0",
+   "description": "Samba server",
+   "webpage": "https://www.samba.org/",
+   "source_package": "samba",
+   "deps": [
+    "samba-client-libs",
+    "samba-common",
+    "samba-common-server-libs",
+    "samba-libs",
+    "samba-util-libs",
+    "libauth-samba",
+    "libwbclient",
+    "acl",
+    "cups-libs",
+    "dbus-libs",
+    "gnutls",
+    "jansson",
+    "libldap",
+    "popt",
+    "talloc",
+    "tdb-libs",
+    "tevent",
+    "liburing"
+   ],
+   "man": "man8/smbd.8.gz",
+   "man_name": "smbd - server to provide SMB/CIFS services to clients",
+   "synopsis": "smbd [-D|--daemon] [-i|--interactive] [-F|--foreground] [--no-process-group]\n [-b|--build-options] [-p <port number(s)>] [-P <profiling level>] [-d <debug level>]\n [--debug-stdout] [--configfile=<configuration file>] [--option=<name>=<value>]\n [-l|--log-basename <log directory>] [--leak-report] [--leak-report-full] [-V|--version]",
+   "gallery": false
+  },
+  {
+   "cmd": "snake",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "Snake",
+   "packages": "bsd-games",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "bsd-games",
+   "version": "3.3-r2",
+   "description": "traditional text mode games from BSD",
+   "webpage": "https://bsd-games.sourceforge.io/",
+   "source_package": "bsd-games",
+   "deps": [
+    "libncursesw"
+   ],
+   "man": "man6/snake.6.gz",
+   "man_name": "snake – display chase game",
+   "synopsis": "snake [width height] [-s]",
+   "gallery": true
+  },
+  {
+   "cmd": "solvespace-cli",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Engineering",
+   "label": "OpenSCAD-style CAD via SolveSpace CLI",
+   "packages": "solvespace",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "solvespace",
+   "version": "3.2-r0",
+   "description": "A parametric 3D CAD program",
+   "webpage": "https://solvespace.com",
+   "source_package": "solvespace",
+   "deps": [
+    "mesa-gl",
+    "atkmm2.28",
+    "cairo",
+    "fontconfig",
+    "freetype",
+    "gtk+3.0",
+    "gtkmm3",
+    "glib",
+    "glibmm2.66",
+    "json-c",
+    "pangomm2.46",
+    "libpng",
+    "libsigc++",
+    "zlib"
+   ],
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "speedtest-cli",
+   "origins": [
+    "store"
+   ],
+   "section": "Internet",
+   "label": "SpeedTest-CLI",
+   "packages": "speedtest-cli",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "speedtest-cli",
+   "version": "2.1.3-r8",
+   "description": "Command line interface for testing internet bandwidth using speedtest.net",
+   "webpage": "https://github.com/sivel/speedtest-cli",
+   "source_package": "speedtest-cli",
+   "deps": [
+    "python3"
+   ],
+   "gallery": false
+  },
+  {
+   "cmd": "ssh",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "openssh-client-default",
+   "version": "10.3_p1-r1",
+   "description": "OpenBSD's SSH client",
+   "webpage": "https://www.openssh.com/portable.html",
+   "source_package": "openssh",
+   "deps": [
+    "openssh-keygen",
+    "openssh-client-common",
+    "!openssh-client-krb5",
+    "libcrypto3",
+    "zlib"
+   ],
+   "stage": null,
+   "gallery": false
+  },
+  {
+   "cmd": "ssh-keygen",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "openssh-keygen",
+   "version": "10.3_p1-r1",
+   "description": "ssh helper program for generating keys",
+   "webpage": "https://www.openssh.com/portable.html",
+   "source_package": "openssh",
+   "deps": [
+    "libcrypto3"
+   ],
+   "stage": null,
+   "gallery": false
+  },
+  {
+   "cmd": "sshfs",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Sharing",
+   "label": "sshfs (mount a remote folder)",
+   "packages": "sshfs",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "sshfs",
+   "version": "3.7.6-r0",
+   "description": "FUSE client based on the SSH File Transfer Protocol",
+   "webpage": "https://github.com/libfuse/sshfs",
+   "source_package": "sshfs",
+   "deps": [
+    "openssh-client",
+    "fuse3",
+    "fuse3-libs",
+    "glib"
+   ],
+   "man": "man1/sshfs.1.gz",
+   "man_name": "SSHFS - filesystem client based on SSH",
+   "synopsis": "To mount a filesystem:\n\n   sshfs [user@]host:[dir] mountpoint [options]\n\nIf host is a numeric IPv6 address, it needs to be enclosed in square brackets.\n\nTo unmount it:\n\n   fusermount3 -u mountpoint   # Linux\n   umount mountpoint           # OS X, FreeBSD",
+   "gallery": false
+  },
+  {
+   "cmd": "sstr",
+   "origins": [
+    "store"
+   ],
+   "section": "Code",
+   "label": "sstr (record and replay streams)",
+   "packages": "staticstream@clone",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": true,
+   "package": null,
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "sstr-workspace",
+   "origins": [
+    "store"
+   ],
+   "section": "Code",
+   "label": "sstr-workspace (stream archive)",
+   "packages": "staticstream@clone",
+   "mode": "t",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": true,
+   "package": null,
+   "gallery": false
+  },
+  {
+   "cmd": "starship",
+   "origins": [
+    "store"
+   ],
+   "section": "Appearance",
+   "label": "Starship (shell prompt)",
+   "packages": "starship",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "starship",
+   "version": "1.24.2-r0",
+   "description": "Minimal, blazing-fast and infinitely customizable prompt for any shell",
+   "webpage": "https://starship.rs",
+   "source_package": "starship",
+   "deps": [
+    "dbus-libs"
+   ],
+   "gallery": false
+  },
+  {
+   "cmd": "strace",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "strace (trace system calls)",
+   "packages": "strace",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "strace",
+   "version": "6.19-r1",
+   "description": "Diagnostic, debugging and instructional userspace tracer",
+   "webpage": "https://strace.io",
+   "source_package": "strace",
+   "deps": [
+    "libdw"
+   ],
+   "man": "man1/strace.1.gz",
+   "man_name": "strace - trace system calls and signals",
+   "synopsis": "strace [-ACdffhikkqqrtttTvVwxxyyYzZ] [-a column] [-b execve] [-e expr]... [-I n] [-o file]\n       [-O overhead] [-p pid]... [-P path]... [-s strsize] [-S sortby] [-U columns]\n       [-X format] [--seccomp-bpf] [--stack-trace-frame-limit=limit] [--syscall-limit=limit]\n       [--tips[=format]] { -p pid | [-DDD] [-E var[=val]]... [-u username] command [args] }\n\nstrace -c [-dfwzZ] [-b execve] [-e expr]... [-I n] [-O overhead] [-p pid]... [-P path]...\n       [-S sortby] [-U columns] [--seccomp-bpf] [--syscall-limit=limit] [--tips[=format]] {\n       -p pid | [-DDD] [-E var[=val]]... [-u username] command [args] }\n\nstrace --tips[=format]",
+   "gallery": false
+  },
+  {
+   "cmd": "suricata",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Security",
+   "label": "Suricata (intrusion detection)",
+   "packages": "suricata",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "suricata",
+   "version": "8.0.7-r0",
+   "description": "High performance Network IDS, IPS and Network Security Monitoring engine",
+   "webpage": "https://suricata.io/",
+   "source_package": "suricata",
+   "deps": [
+    "python3",
+    "py3-yaml",
+    "libbpf",
+    "libcap-ng",
+    "hiredis",
+    "vectorscan",
+    "jansson",
+    "lz4-libs",
+    "libmagic",
+    "libmaxminddb-libs",
+    "libnet",
+    "libnetfilter_log",
+    "libnetfilter_queue",
+    "libnfnetlink",
+    "libpcap",
+    "pcre2",
+    "yaml",
+    "zlib"
+   ],
+   "man": "man1/suricata.1.gz",
+   "man_name": "suricata - Suricata",
+   "synopsis": "suricata [OPTIONS] [BPF FILTER]",
+   "gallery": false
+  },
+  {
+   "cmd": "syncthing",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Sharing",
+   "label": "Syncthing (sync folders between machines)",
+   "packages": "syncthing",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "syncthing",
+   "version": "2.1.0-r1",
+   "description": "Open Source Continuous File Synchronization",
+   "webpage": "https://syncthing.net/",
+   "source_package": "syncthing",
+   "deps": [
+    "sqlite-libs"
+   ],
+   "man": "man1/syncthing.1.gz",
+   "man_name": "syncthing - Syncthing",
+   "synopsis": "syncthing [serve]\n          [--home=<dir> | --config=<dir> --data=<dir>]\n          [--allow-newer-config] [--audit] [--auditfile=<file|-|-->]\n          [--db-maintenance-interval=<interval>]\n          [--db-delete-retention-interval=<interval>]\n          [--gui-address=<address>] [--gui-apikey=<key>]\n          [--log-level=<level>] [--log-file=<filename>]\n          [--log-max-old-files=<num>] [--log-max-size=<num>]\n          [--log-format-timestamp=<format>] [--no-log-format-level-string]\n          [--log-format-level-syslog]\n          [--no-browser] [--no-console]\n          [--no-port-probing] [--no-restart] [--no-upgrade]\n          [--paused] [--unpaused]\n          [--version] [--help] [--debug-*]\n...",
+   "gallery": false
+  },
+  {
+   "cmd": "tcc",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Tiny C Compiler (compiles in a blink)",
+   "packages": "tcc",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "tcc",
+   "version": "0.9.27_git20250619-r1",
+   "description": "Tiny C Compiler",
+   "webpage": "https://repo.or.cz/w/tinycc.git",
+   "source_package": "tcc",
+   "deps": [
+    "tcc-libs"
+   ],
+   "man": "man1/tcc.1.gz",
+   "man_name": "tcc - Tiny C Compiler",
+   "synopsis": "usage: tcc [options] [infile1 infile2...] [-run infile args...]",
+   "gallery": false
+  },
+  {
+   "cmd": "tcpdump",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Security",
+   "label": "tcpdump (packet capture)",
+   "packages": "tcpdump",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "tcpdump",
+   "version": "4.99.6-r1",
+   "description": "Command-line packet analyzer",
+   "webpage": "https://www.tcpdump.org/",
+   "source_package": "tcpdump",
+   "deps": [
+    "libcrypto3",
+    "libpcap"
+   ],
+   "man": "man1/tcpdump.1.gz",
+   "man_name": "tcpdump - dump traffic on a network",
+   "synopsis": "tcpdump [ -AbdDefghHIJKlLnNOpqStuUvxX# ] [ -B buffer_size ]\n        [ -c count ] [ --count ] [ -C file_size ]\n        [ -E spi@ipaddr algo:secret,...  ]\n        [ -F file ] [ -G rotate_seconds ] [ -i interface ]\n        [ --immediate-mode ] [ -j tstamp_type ] [ -m module ]\n        [ -M secret ] [ --number ] [ --print ] [ -Q in|out|inout ]\n        [ -r file ] [ -s snaplen ] [ -T type ] [ --version ] [ -V file ] [ -w file ] [ -W\nfilecount ]\n        [ -y datalinktype ] [ -z postrotate-command ] [ -Z user ]\n        [ --time-stamp-precision=tstamp_precision ] [ --micro ] [ --nano ]\n        [ expression ]",
+   "gallery": false
+  },
+  {
+   "cmd": "termshark",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Security",
+   "label": "Termshark (Wireshark-like TUI)",
+   "packages": "termshark",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "termshark",
+   "version": "2.4.0-r37",
+   "description": "terminal UI for tshark, inspired by Wireshark",
+   "webpage": "https://termshark.io",
+   "source_package": "termshark",
+   "deps": [
+    "tshark"
+   ],
+   "gallery": true
+  },
+  {
+   "cmd": "tesseract",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Graphics",
+   "label": "Tesseract (OCR)",
+   "packages": "tesseract-ocr",
+   "mode": "h",
+   "gate": "!v6,!x32",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "tesseract-ocr",
+   "version": "5.5.2-r0",
+   "description": "open source OCR engine",
+   "webpage": "https://github.com/tesseract-ocr/tesseract/releases",
+   "source_package": "tesseract-ocr",
+   "deps": [
+    "cairo",
+    "fontconfig",
+    "glib",
+    "libgomp",
+    "harfbuzz",
+    "icu-libs",
+    "leptonica",
+    "pango"
+   ],
+   "synopsis": "Usage:\n  /usr/bin/tesseract --help | --help-extra | --version\n  /usr/bin/tesseract --list-langs\n  /usr/bin/tesseract imagename outputbase [options...] [configfile...]",
+   "gallery": false
+  },
+  {
+   "cmd": "ticker",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "News",
+   "label": "Ticker (stock prices - terminal)",
+   "packages": "ticker@testing",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "ticker",
+   "version": "5.3.0-r0",
+   "description": "Terminal stock watcher and stock position tracker",
+   "webpage": "https://github.com/achannarasappa/ticker",
+   "source_package": "ticker",
+   "deps": [],
+   "gallery": true
+  },
+  {
+   "cmd": "tig",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "System",
+   "label": "tig (git history TUI)",
+   "packages": "tig",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "tig",
+   "version": "2.6.1-r0",
+   "description": "Text-mode interface for the git revision control system",
+   "webpage": "https://jonas.github.io/tig/",
+   "source_package": "tig",
+   "deps": [
+    "git",
+    "libncursesw",
+    "pcre2"
+   ],
+   "man": "man1/tig.1.gz",
+   "man_name": "tig - text-mode interface for Git",
+   "synopsis": "tig        [options] [revisions] [--] [paths]\ntig log    [options] [revisions] [--] [paths]\ntig show   [options] [revisions] [--] [paths]\ntig reflog [options] [revisions]\ntig blame  [options] [rev] [--] path\ntig grep   [options] [pattern]\ntig refs   [options]\ntig stash  [options]\ntig status\ntig <      [Git command output]",
+   "gallery": true
+  },
+  {
+   "cmd": "tldr",
+   "origins": [
+    "store"
+   ],
+   "section": "Tools",
+   "label": "tldr (tealdeer)",
+   "packages": "tealdeer@testing",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "tealdeer",
+   "version": "1.8.0-r0",
+   "description": "Very fast implementation of tldr in Rust",
+   "webpage": "https://tealdeer-rs.github.io/tealdeer/",
+   "source_package": "tealdeer",
+   "deps": [
+    "libcrypto3",
+    "libssl3"
+   ],
+   "gallery": false
+  },
+  {
+   "cmd": "tmux",
+   "origins": [
+    "core",
+    "catalogue"
+   ],
+   "section": "Tools",
+   "label": "tmux (terminal multiplexer)",
+   "packages": "tmux",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "core",
+   "installed": true,
+   "package": "tmux",
+   "version": "3.7c-r0",
+   "description": "Tool to control multiple terminals from a single terminal",
+   "webpage": "https://tmux.github.io",
+   "source_package": "tmux",
+   "deps": [
+    "libevent",
+    "libncursesw"
+   ],
+   "man": "man1/tmux.1.gz",
+   "man_name": "tmux – terminal multiplexer",
+   "synopsis": "tmux [-2CDhlNuVv] [-c shell-command] [-f file] [-L socket-name] [-S socket-path] [-T features]\n     [command [flags]]",
+   "gallery": true
+  },
+  {
+   "cmd": "tshark",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Security",
+   "label": "tshark (packet capture - terminal)",
+   "packages": "tshark",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "tshark",
+   "version": "4.6.6-r0",
+   "description": "Network protocol analyzer (Console version)",
+   "webpage": "https://www.wireshark.org/",
+   "source_package": "wireshark",
+   "deps": [
+    "glib",
+    "libnl3",
+    "libpcap",
+    "wireshark-common"
+   ],
+   "synopsis": "Usage: tshark [options] ...\nCapture interface:\n  -i <interface>, --interface <interface>",
+   "gallery": false
+  },
+  {
+   "cmd": "ttysolitaire",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "TTY Solitaire",
+   "packages": "tty-solitaire",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "tty-solitaire",
+   "version": "1.4.1-r0",
+   "description": "ncurses-based klondike solitaire game",
+   "webpage": "https://github.com/mpereira/tty-solitaire",
+   "source_package": "tty-solitaire",
+   "deps": [
+    "libncursesw"
+   ],
+   "gallery": true
+  },
+  {
+   "cmd": "udiskie",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Control",
+   "label": "Auto-mount removable media",
+   "packages": "udiskie",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "udiskie",
+   "version": "2.6.1-r1",
+   "description": "udisks2 frontend that allows managing removable media from userspace",
+   "webpage": "https://github.com/coldfix/udiskie",
+   "source_package": "udiskie",
+   "deps": [
+    "py3-docopt",
+    "py3-keyutils",
+    "py3-gobject3",
+    "py3-yaml",
+    "python3",
+    "udisks2"
+   ],
+   "man": "man8/udiskie.8.gz",
+   "man_name": "udiskie - automounter for removable media",
+   "synopsis": "udiskie [OPTIONS]\n\nudiskie-mount [OPTIONS] (-a | DEVICE...)\n\nudiskie-umount [OPTIONS] (-a | PATH...)",
+   "gallery": false
+  },
+  {
+   "cmd": "ufw",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Security",
+   "label": "ufw (simple firewall)",
+   "packages": "ufw",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "ufw",
+   "version": "0.36.2-r4",
+   "description": "Uncomplicated CLI tool managing a netfilter firewall",
+   "webpage": "https://launchpad.net/ufw",
+   "source_package": "ufw",
+   "deps": [
+    "iptables",
+    "python3"
+   ],
+   "man": "man8/ufw.8.gz",
+   "man_name": "ufw - program for managing a netfilter firewall",
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "unarj",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Discs",
+   "label": "unarj (.arj archives)",
+   "packages": "unarj",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "unarj",
+   "version": "2.65-r2",
+   "description": "Extracting, testing and  viewing the contents of archives created with the ARJ archiver",
+   "webpage": "http://www.arjsoftware.com",
+   "source_package": "unarj",
+   "deps": [],
+   "synopsis": "",
+   "gallery": false
+  },
+  {
+   "cmd": "unison",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Sharing",
+   "label": "Unison (two-way sync)",
+   "packages": "unison",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "unison",
+   "version": "2.54.0-r0",
+   "description": "Efficient file-synchronization tool",
+   "webpage": "https://www.cis.upenn.edu/~bcpierce/unison/",
+   "source_package": "unison",
+   "deps": [],
+   "man": "man1/unison.1.gz",
+   "man_name": "unison – a multi-platform bi-directional file synchronization tool",
+   "synopsis": "unison [options]\nunison root1 root2 [options]\nunison profilename [options]",
+   "gallery": false
+  },
+  {
+   "cmd": "valgrind",
+   "origins": [
+    "core",
+    "catalogue"
+   ],
+   "section": "Devtools",
+   "label": "Valgrind (memory errors and leaks)",
+   "packages": "valgrind",
+   "mode": "h",
+   "gate": "!v6",
+   "stage": 12,
+   "origin": "core",
+   "installed": true,
+   "package": "valgrind",
+   "version": "3.25.1-r2",
+   "description": "Tool to help find memory-management problems in programs",
+   "webpage": "https://valgrind.org/",
+   "source_package": "valgrind",
+   "deps": [],
+   "man": "man1/valgrind.1.gz",
+   "man_name": "valgrind - a suite of tools for debugging and profiling programs",
+   "synopsis": "valgrind [valgrind-options] [your-program] [your-program-options]",
+   "gallery": false
+  },
+  {
+   "cmd": "vim",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Notes",
+   "label": "Vim + spell check",
+   "packages": "vim hunspell hunspell-en-us",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "vim",
+   "version": "9.2.1091-r0",
+   "description": "Improved vi-style text editor",
+   "webpage": "https://www.vim.org/",
+   "source_package": "vim",
+   "deps": [
+    "vim-common",
+    "xxd",
+    "libncursesw"
+   ],
+   "man": "man1/vim.1.gz",
+   "man_name": "vim - Vi IMproved, a programmer's text editor",
+   "synopsis": "vim [options] [file ..]\nvim [options] -\nvim [options] -t tag\nvim [options] -q [errorfile]\n\nex\nview\ngvim gview evim eview\nrvim rview rgvim rgview",
+   "gallery": true
+  },
+  {
+   "cmd": "vis",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Editors",
+   "label": "vis (terminal - vi keys)",
+   "packages": "vis",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "vis",
+   "version": "0.9-r0",
+   "description": "Modern, legacy free, simple yet efficient vim-like editor",
+   "webpage": "https://github.com/martanne/vis",
+   "source_package": "vis",
+   "deps": [
+    "!outils-vis",
+    "lua5.3-lpeg",
+    "acl-libs",
+    "lua5.3-libs",
+    "libncursesw",
+    "libtermkey"
+   ],
+   "man": "man1/vis.1.gz",
+   "man_name": "vis – a highly efficient text editor",
+   "synopsis": "vis [-v] [+command] [--] [files ...]",
+   "gallery": true
+  },
+  {
+   "cmd": "w3m",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Internet",
+   "label": "w3m (text web)",
+   "packages": "w3m",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "w3m",
+   "version": "0.5.6-r0",
+   "description": "text-based web & gopher browser, as well as pager",
+   "webpage": "https://sr.ht/~rkta/w3m/",
+   "source_package": "w3m",
+   "deps": [
+    "libcrypto3",
+    "gc",
+    "libncursesw",
+    "libssl3",
+    "zlib"
+   ],
+   "man": "man1/w3m.1.gz",
+   "man_name": "w3m - a text based web browser and pager",
+   "synopsis": "w3m [OPTION]... [ file | URL ]...",
+   "gallery": true
+  },
+  {
+   "cmd": "waydroid",
+   "origins": [
+    "store"
+   ],
+   "section": "Emulation",
+   "label": "Waydroid (Android)",
+   "packages": "waydroid",
+   "mode": "h",
+   "gate": "!v6",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "waydroid",
+   "version": "1.6.2-r0",
+   "description": "A container-based approach to boot a full Android system on a regular Linux system",
+   "webpage": "https://github.com/waydroid/waydroid",
+   "source_package": "waydroid",
+   "deps": [
+    "dnsmasq",
+    "gbinder-python",
+    "iptables",
+    "kmod",
+    "lxc",
+    "py3-dbus",
+    "py3-gobject3",
+    "py3-pyclip",
+    "python3"
+   ],
+   "gallery": false
+  },
+  {
+   "cmd": "weechat",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Mail",
+   "label": "WeeChat (IRC)",
+   "packages": "weechat",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "weechat",
+   "version": "4.9.2-r0",
+   "description": "Fast, light, extensible ncurses-based chat client",
+   "webpage": "https://weechat.org",
+   "source_package": "weechat",
+   "deps": [
+    "cjson",
+    "libcurl",
+    "libgcrypt",
+    "gnutls",
+    "libintl",
+    "libncursesw",
+    "zlib",
+    "zstd-libs"
+   ],
+   "man": "man1/weechat.1.gz",
+   "man_name": "weechat - the extensible chat client",
+   "synopsis": "weechat [-a|--no-connect] [-d|--dir <path>] [-t|--temp-dir] [-p|--no-plugin] [-P|--plugins <plugins>] [-r|--run-command <command>] [-s|--no-script] [--upgrade] [debug-option...] [plugin:option...]\nweechat [-c|--colors]\nweechat [-h|--help]\nweechat [-l|--license]\nweechat [-v|--version]",
+   "gallery": true
+  },
+  {
+   "cmd": "wpa_cli",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "wpa_supplicant",
+   "version": "2.11-r4",
+   "description": "utility providing key negotiation for WPA wireless networks",
+   "webpage": "https://w1.fi/wpa_supplicant/",
+   "source_package": "wpa_supplicant",
+   "deps": [
+    "libcrypto3",
+    "dbus-libs",
+    "libnl3",
+    "pcsc-lite-libs",
+    "libssl3"
+   ],
+   "stage": 10,
+   "gallery": false
+  },
+  {
+   "cmd": "wpa_passphrase",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "wpa_supplicant",
+   "version": "2.11-r4",
+   "description": "utility providing key negotiation for WPA wireless networks",
+   "webpage": "https://w1.fi/wpa_supplicant/",
+   "source_package": "wpa_supplicant",
+   "deps": [
+    "libcrypto3",
+    "dbus-libs",
+    "libnl3",
+    "pcsc-lite-libs",
+    "libssl3"
+   ],
+   "stage": 10,
+   "gallery": false
+  },
+  {
+   "cmd": "wpctl",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "wireplumber",
+   "version": "0.5.15-r0",
+   "description": "Session / policy manager implementation for PipeWire",
+   "webpage": "https://pipewire.org/",
+   "source_package": "wireplumber",
+   "deps": [
+    "glib",
+    "libintl",
+    "lua5.4-libs",
+    "pipewire-libs",
+    "wireplumber-libs"
+   ],
+   "stage": 10,
+   "gallery": false
+  },
+  {
+   "cmd": "x11vnc",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Tools",
+   "label": "x11vnc (share this screen)",
+   "packages": "x11vnc",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "x11vnc",
+   "version": "0.9.17-r1",
+   "description": "VNC server for real X displays",
+   "webpage": "https://github.com/LibVNC/x11vnc",
+   "source_package": "x11vnc",
+   "deps": [
+    "libx11",
+    "libxdamage",
+    "libxext",
+    "libxfixes",
+    "libxi",
+    "libxinerama",
+    "libxrandr",
+    "libxtst",
+    "avahi-libs",
+    "libcrypto3",
+    "libssl3",
+    "libvncserver"
+   ],
+   "man": "man1/x11vnc.1.gz",
+   "man_name": "x11vnc - allow VNC connections to real X11 displays version: 0.9.17, lastmod: 2025-04-11",
+   "synopsis": "x11vnc [OPTION]...",
+   "gallery": true
+  },
+  {
+   "cmd": "xmp",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Audio",
+   "label": "xmp (play tracker modules)",
+   "packages": "xmp@testing",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "xmp",
+   "version": "4.2.0-r0",
+   "description": "Command-line mod player using libxmp",
+   "webpage": "https://github.com/libxmp/xmp-cli",
+   "source_package": "xmp",
+   "deps": [
+    "alsa-lib",
+    "libpulse",
+    "libxmp"
+   ],
+   "man": "man1/xmp.1.gz",
+   "man_name": "xmp - Extended Module Player",
+   "synopsis": "xmp [-a, --amplify factor] [-A, --amiga] [-b, --bits bits] [-C, --show-comments] [-c,\n--stdout] [-D device-specific parameters] [-d, --driver driver] [-e, --player-mode mode] [-F,\n--nofilter] [-f, --frequency rate] [--fix-sample-loop] [-h, --help] [-I, --instrument-path]\n[-i, --interpolation type] [--load-only] [-L, --list-formats] [-l, --loop] [--loop-all] [-M,\n--mute channel-list] [-m, --mono] [--mixer_voices num] [-N, --null] [--nocmd] [-o,\n--output-file filename] [-P, --pan num] [-p, --default-pan num] [--probe-only] [-q, --quiet]\n[-R, --random] [-S, --solo channel-list] [-s, --start pos] [-t, --time time] [-u, --unsigned]\n[--vblank] [-V, --version] [-v, --verbose] [-Z, --all-sequences] [-z, --sequence num] modules",
+   "gallery": false
+  },
+  {
+   "cmd": "xmrig",
+   "origins": [
+    "store"
+   ],
+   "section": "Crypto",
+   "label": "XMRig",
+   "packages": "xmrig",
+   "mode": "h",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": false,
+   "package": "xmrig",
+   "version": "6.26.0-r0",
+   "description": "XMRig is a high performance Monero (XMR) miner",
+   "webpage": "https://xmrig.com/",
+   "source_package": "xmrig",
+   "deps": [
+    "libcrypto3",
+    "hwloc",
+    "libssl3",
+    "libuv"
+   ],
+   "gallery": false
+  },
+  {
+   "cmd": "xorriso",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Discs",
+   "label": "xorriso (make and burn ISOs)",
+   "packages": "xorriso",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": false,
+   "package": "xorriso",
+   "version": "1.5.8-r0",
+   "description": "ISO-9660 and Rock Ridge image manipulation tool",
+   "webpage": "https://dev.lovelyhq.com/libburnia/libisoburn",
+   "source_package": "libisoburn",
+   "deps": [
+    "libisoburn"
+   ],
+   "gallery": false
+  },
+  {
+   "cmd": "ytq",
+   "origins": [
+    "store"
+   ],
+   "section": "Code",
+   "label": "ytq (download queue)",
+   "packages": "staticstream@clone",
+   "mode": "t",
+   "gate": "*",
+   "stage": 18,
+   "origin": "store",
+   "installed": true,
+   "package": null,
+   "gallery": true
+  },
+  {
+   "cmd": "zangband",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Games",
+   "label": "ZAngband (roguelike)",
+   "packages": "zangband",
+   "mode": "t",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "zangband",
+   "version": "2.7.5.1-r2",
+   "description": "Roguelike computer role playing game based on Angband",
+   "webpage": "https://sourceforge.net/projects/zangband/",
+   "source_package": "zangband",
+   "deps": [
+    "ncurses",
+    "libncursesw"
+   ],
+   "gallery": true
+  },
+  {
+   "cmd": "zellij",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Terminals",
+   "label": "Zellij (multiplexer, discoverable keys)",
+   "packages": "zellij",
+   "mode": "t",
+   "gate": "64",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "zellij",
+   "version": "0.42.2-r0",
+   "description": "Terminal multiplexer",
+   "webpage": "https://zellij.dev/",
+   "source_package": "zellij",
+   "deps": [
+    "libcrypto3",
+    "libssl3"
+   ],
+   "man": "man1/zellij.1.gz",
+   "man_name": "zellij - run zellij",
+   "synopsis": "",
+   "gallery": true
+  },
+  {
+   "cmd": "zig",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Languages",
+   "label": "Zig",
+   "packages": "zig",
+   "mode": "h",
+   "gate": "64",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "zig",
+   "version": "0.16.0-r1",
+   "description": "General-purpose programming language designed for robustness, optimality, and maintainability",
+   "webpage": "https://ziglang.org/",
+   "source_package": "zig",
+   "deps": [
+    "llvm21-libs",
+    "clang21-libs",
+    "lld21-libs"
+   ],
+   "synopsis": "Usage: zig [command] [options]\nCommands:",
+   "gallery": false
+  },
+  {
+   "cmd": "zip",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Discs",
+   "label": "zip and unzip",
+   "packages": "zip unzip",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "zip",
+   "version": "3.0-r13",
+   "description": "Creates PKZIP-compatible .zip files",
+   "webpage": "http://www.info-zip.org/pub/infozip/Zip.html",
+   "source_package": "zip",
+   "deps": [
+    "unzip"
+   ],
+   "man": "man1/zip.1.gz",
+   "man_name": "zip - package and compress (archive) files",
+   "synopsis": "zip [-aABcdDeEfFghjklLmoqrRSTuvVwXyz!@$] [--longoption ...] [-b path] [-n suffixes] [-t date]\n[-tt date] [zipfile [file ...]] [-xi list]\n\nzipcloak (see separate man page)\n\nzipnote (see separate man page)\n\nzipsplit (see separate man page)\n\nNote:  Command line processing in zip has been changed to support long options and handle all\noptions and arguments more consistently.  Some old command lines that depend on command line\ninconsistencies may no longer work.",
+   "gallery": false
+  },
+  {
+   "cmd": "zola",
+   "origins": [
+    "catalogue"
+   ],
+   "section": "Notes",
+   "label": "Zola (static site / wiki)",
+   "packages": "zola",
+   "mode": "h",
+   "gate": "*",
+   "stage": 12,
+   "origin": "catalogue",
+   "installed": true,
+   "package": "zola",
+   "version": "0.22.1-r0",
+   "description": "Opionated static site generator",
+   "webpage": "https://github.com/getzola/zola",
+   "source_package": "zola",
+   "deps": [
+    "oniguruma"
+   ],
+   "synopsis": "Usage: zola [OPTIONS] <COMMAND>\nCommands:\n  init        Create a new Zola project",
+   "gallery": false
+  },
+  {
+   "cmd": "zramctl",
+   "origins": [
+    "core"
+   ],
+   "origin": "core",
+   "installed": true,
+   "package": "util-linux-misc",
+   "version": "2.42.3-r1",
+   "description": "Misc binaries for util-linux",
+   "webpage": "https://git.kernel.org/cgit/utils/util-linux/util-linux.git",
+   "source_package": "util-linux",
+   "deps": [
+    "setarch",
+    "libblkid",
+    "libfdisk",
+    "libmount",
+    "libncursesw",
+    "libsmartcols",
+    "utmps-libs",
+    "libuuid",
+    "zlib"
+   ],
+   "stage": 5,
+   "gallery": false
+  }
+ ]
+}

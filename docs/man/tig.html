@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tig(1) · Copal Linux</title>
+<meta name="description" content="tig - text-mode interface for Git">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-tig">tig in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">tig 2.6.1-r0 — man1/tig.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">TIG(1)</td>
+    <td class="head-vol">Tig Manual</td>
+    <td class="head-rtitle">TIG(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">tig - text-mode interface for Git</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<pre>tig        [options] [revisions] [--] [paths]
+tig log    [options] [revisions] [--] [paths]
+tig show   [options] [revisions] [--] [paths]
+tig reflog [options] [revisions]
+tig blame  [options] [rev] [--] path
+tig grep   [options] [pattern]
+tig refs   [options]
+tig stash  [options]
+tig status
+tig &lt;      [Git command output]</pre>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Tig is an ncurses-based text-mode interface for git(1). It
+    functions mainly as a Git repository browser, but can also assist in staging
+    changes for commit at chunk level and act as a pager for output from various
+    Git commands.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp">Command line options recognized by Tig include all valid
+    git-log(1) and git-diff(1) options, as well as the following subcommands and
+    Tig-specific options. The first command line parameter not starting with
+    &quot;-&quot; is interpreted as being either a revision specification or a
+    path and will end the option parsing. All additional options will be passed
+    to the underlying Git command.</p>
+<p class="Pp">Note that this means that any arguments to options should be
+    specified together. For example, run tig -Sfoo instead of tig -S foo, and
+    tig --grep=foo instead of tig --grep foo, otherwise foo will be interpreted
+    as a revision rather than an argument.</p>
+<p class="Pp">show</p>
+<div class="Bd-indent">Open diff view using the given git-show(1) options.</div>
+<p class="Pp">blame</p>
+<div class="Bd-indent">Show given file annotated by commits. Takes zero or more
+  git-blame(1) options. Optionally limited from given revision.</div>
+<p class="Pp">status</p>
+<div class="Bd-indent">Start up in status view.</div>
+<p class="Pp">log</p>
+<div class="Bd-indent">Start up in log view, displaying git-log(1) output.</div>
+<p class="Pp">reflog</p>
+<div class="Bd-indent">Start up in reflog view.</div>
+<p class="Pp">refs</p>
+<div class="Bd-indent">Start up in refs view. All refs are displayed unless
+  limited by using one of the <i>--branches</i>, <i>--remotes</i>, or
+  <i>--tags</i> parameters.</div>
+<p class="Pp">stash</p>
+<div class="Bd-indent">Start up in stash view.</div>
+<p class="Pp">grep</p>
+<div class="Bd-indent">Open the grep view. Supports the same options as
+  git-grep(1).</div>
+<p class="Pp">+&lt;number&gt;</p>
+<div class="Bd-indent">Show the first view with line &lt;number&gt; visible and
+  selected.</div>
+<p class="Pp">-v, --version</p>
+<div class="Bd-indent">Show version and exit.</div>
+<p class="Pp">-h, --help</p>
+<div class="Bd-indent">Show help message and exit.</div>
+<p class="Pp">-C &lt;path&gt;</p>
+<div class="Bd-indent">Run as if Tig was started in &lt;path&gt; instead of the
+  current working directory.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="PAGER_MODE"><a class="permalink" href="#PAGER_MODE">PAGER
+  MODE</a></h1>
+<p class="Pp">Tig enters pager mode when input is provided via stdin and
+    supports the following subcommands and options:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;When the <i>show</i> subcommand is specified and
+  the <i>--stdin</i> option is given, stdin is assumed to be a list of commit
+  IDs and will be forwarded to the diff view&#x2019;s underlying git-show(1)
+  command. For example:</div>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ git rev-list --author=vivien HEAD | tig show --stdin</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;When <i>--stdin</i> is given, stdin is assumed to
+  be a list of commit IDs and will be forwarded to the main view&#x2019;s
+  underlying git-log(1) command. For example:</div>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig --no-walk --stdin &lt; cherry-picks.txt</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<div class="Bd-indent">&#x2022;When <i>--pretty=raw</i> is given, stdin is
+  assumed to be a &quot;pretty=raw&quot; formatted output similar to that of
+  git-log(1). For example:</div>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ git reflog --pretty=raw | tig --pretty=raw</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp">When no subcommands nor options are given, the pager view will be
+    used for displaying the Git command input given on stdin. The pager view
+    assumes the input is either from git-log(1) or git-diff(1) and will
+    highlight it similar to the log and diff views. For example:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ git log -Schange -p --raw | tig</pre>
+</div>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXAMPLES"><a class="permalink" href="#EXAMPLES">EXAMPLES</a></h1>
+<p class="Pp">Display the list of commits for the current branch:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp">Display commits from one or more branches:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig test master</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp">Pretend as if all the refs in refs/ are listed on the command
+    line:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig --all</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp">Display differences between two branches:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig test..master</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp">Display changes for sub-module versions:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig --submodule</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp">Display changes for a single file:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig -- README</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp">Display contents of the README file in a specific revision:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig show tig-0.8:README</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp">Display revisions between two dates for a specific file:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig --after=&quot;2004-01-01&quot; --before=&quot;2006-05-16&quot; -- README</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp">Blame file with copy detection enabled:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig blame -C README</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp">Display the list of stashes:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig stash</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp">Grep all files for lines containing DEFINE_ENUM:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig grep -p DEFINE_ENUM</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp">Show references (branches, remotes and tags):</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig refs</pre>
+</div>
+<p class="Pp"></p>
+<p class="Pp">Use word diff in the diff view:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>$ tig --word-diff=plain</pre>
+</div>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENVIRONMENT_VARIABLES"><a class="permalink" href="#ENVIRONMENT_VARIABLES">ENVIRONMENT
+  VARIABLES</a></h1>
+<p class="Pp">In addition to environment variables used by Git (e.g. GIT_DIR),
+    Tig defines the ones below. The command related environment variables have
+    access to the internal state of Tig via replacement variables, such as
+    %(commit) and %(blob). See <b>tigrc</b>(5) for a full list.</p>
+<p class="Pp">TIGRC_USER</p>
+<div class="Bd-indent">Path of the user configuration file (defaults to ~/.tigrc
+  or $XDG_CONFIG_HOME/tig/config).</div>
+<p class="Pp">TIGRC_SYSTEM</p>
+<div class="Bd-indent">Path of the system wide configuration file (defaults to
+  {sysconfdir}/tigrc). Define to empty string to use built-in
+  configuration.</div>
+<p class="Pp">TIG_LS_REMOTE</p>
+<div class="Bd-indent">Command for retrieving all repository references. The
+  command should output data in the same format as git-ls-remote(1).</div>
+<p class="Pp">TIG_DIFF_OPTS</p>
+<div class="Bd-indent">The diff options to use in the diff view. The diff view
+  uses git-show(1) for formatting and always passes --patch-with-stat. You may
+  also set the diff-options setting in the configuration file.</div>
+<p class="Pp">TIG_TRACE</p>
+<div class="Bd-indent">Path for trace file where information about Git commands
+  are logged.</div>
+<p class="Pp">TIG_SCRIPT</p>
+<div class="Bd-indent">Path to script that should be executed automatically on
+  startup. If this environment variable is defined to the empty string, the
+  script is read from stdin. The script is interpreted line-by-line and can
+  contain prompt commands and key mappings. Note that the <i>&lt;</i> character
+  must be encoded as <i>&lt;LT&gt;</i> within the script.
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>E.g. TIG_SCRIPT=&lt;(echo :set main-view-commit-title-graph = no) tig</pre>
+</div>
+</div>
+<p class="Pp">TIG_NO_DISPLAY</p>
+<div class="Bd-indent">Open Tig without rendering anything to the terminal. This
+  force Ncurses to write to /dev/null. The main use is for automated testing of
+  Tig.</div>
+<p class="Pp">TIG_EDITOR</p>
+<div class="Bd-indent">The editor command to use when visiting files. This
+  environment variable overrides (in order of precedence) <i>$GIT_EDITOR</i>,
+  <i>core.editor</i> configuration, <i>$VISUAL</i> and <i>$EDITOR</i>, so it
+  allows to use a different editor from the one Git uses. The value is meant to
+  be interpreted by the shell when it is used.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<p class="Pp"><i>$XDG_CONFIG_HOME/tig/config</i>, <i>~/.config/tig/config</i>,
+    <i>~/.tigrc</i></p>
+<div class="Bd-indent">The Tig user configuration file is loaded in the
+  following way. If $XDG_CONFIG_HOME is set, read user configuration from
+  $XDG_CONFIG_HOME/tig/config. If $XDG_CONFIG_HOME is empty or undefined, read
+  user configuration from ~/.config/tig/config if it exists and fall back to
+  ~/.tigrc if it does not exist. See <b>tigrc</b>(5) for examples.</div>
+<p class="Pp"><i>/etc/tigrc</i></p>
+<div class="Bd-indent">System wide configuration file.</div>
+<p class="Pp"><i>$GIT_DIR/config</i>, <i>~/.gitconfig</i>,
+  <i>/etc/gitconfig</i></p>
+<div class="Bd-indent">Git configuration files. Read on start-up with the help
+  of git-config(1).</div>
+<p class="Pp"><i>$XDG_DATA_HOME/tig/history</i>,
+    <i>~/.local/share/tig/history</i>, <i>~/.tig_history</i></p>
+<div class="Bd-indent">When compiled with readline support, Tig writes a
+  persistent command and search history. The location of the history file is
+  determined in the following way. If $XDG_DATA_HOME is set and $XDG_DATA_HOME/
+  exists, create $XDG_DATA_HOME/tig/ if needed and store history to
+  $XDG_DATA_HOME/tig/history. If $XDG_DATA_HOME is empty or undefined, store
+  history to ~/.local/share/tig/history if the directory ~/.local/share/tig/
+  exists, and fall back to ~/.tig_history if it does not exist.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="BUGS"><a class="permalink" href="#BUGS">BUGS</a></h1>
+<p class="Pp">Please visit Tig&#x2019;s <b>home page</b>[1] for information
+    about new releases and how to report bugs or feature request.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COPYRIGHT"><a class="permalink" href="#COPYRIGHT">COPYRIGHT</a></h1>
+<p class="Pp">Copyright (c) 2006-2026 Jonas Fonseca
+    &lt;<b>jonas.fonseca@gmail.com</b>[2]&gt;</p>
+<p class="Pp">This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or (at your
+    option) any later version.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>tigrc</b>(5), <b>tigmanual</b>(7), git(7)</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="NOTES"><a class="permalink" href="#NOTES">NOTES</a></h1>
+<dl class="Bl-tag">
+  <dt> 1.</dt>
+  <dd>home page</dd>
+</dl>
+<div class="Bd-indent">https://github.com/jonas/tig</div>
+<dl class="Bl-tag">
+  <dt> 2.</dt>
+  <dd>jonas.fonseca@gmail.com</dd>
+</dl>
+<div class="Bd-indent">mailto:jonas.fonseca@gmail.com</div>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-06-13</td>
+    <td class="foot-os">Tig 2.6.1</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bluetoothctl(1) · Copal Linux</title>
+<meta name="description" content="bluetoothctl - Bluetooth Control Command Line Tool">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-bluetoothctl">bluetoothctl in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">bluez 5.86-r2 — man1/bluetoothctl.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">BLUETOOTHCTL(1)</td>
+    <td class="head-vol">Linux System Administration</td>
+    <td class="head-rtitle">BLUETOOTHCTL(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">bluetoothctl - Bluetooth Control Command Line Tool</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>bluetoothctl</b> [<b>-a</b> <i>capability</i>] [<b>-e</b>]
+    [<b>-m</b>] [<b>-t</b> <i>seconds</i>] [<b>-v</b>] [<b>-h</b>]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>bluetoothctl(1)</b> interactive bluetooth control tool. The
+    tool works with Bluetooth Classic (BR/EDR) and Bluetooth Low Energy (LE)
+    controllers.</p>
+<p class="Pp">The tool is menu driven but can be automated from the command
+    line. Examples are given in the automation section.</p>
+<p class="Pp">This tool communicates with the BlueZ daemon via D-Bus, primarily
+    using the <b>org.bluez.Adapter(5)</b> and <b>org.bluez.Device(5)</b>
+    interfaces. Each command documents which D-Bus interface and method/property
+    it uses.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="a"><a class="permalink" href="#a"><b>-a</b><i>&#x00A0;capability,<b></b></i><b><b>&#x00A0;--agent</b></b><i><b>&#x00A0;capability</b></i></a></dt>
+  <dd>Register agent handler: &lt;capability&gt;</dd>
+  <dt id="e"><a class="permalink" href="#e"><b>-e<b>,</b><b>
+    --endpoints</b></b></a></dt>
+  <dd>Register Media endpoints</dd>
+  <dt id="m"><a class="permalink" href="#m"><b>-m<b>,</b><b>
+    --monitor</b></b></a></dt>
+  <dd>Enable monitor output</dd>
+  <dt id="t"><a class="permalink" href="#t"><b>-t</b><i>&#x00A0;seconds,<b></b></i><b><b>&#x00A0;--timeout</b></b><i><b>&#x00A0;seconds</b></i></a></dt>
+  <dd>Timeout in seconds for non-interactive mode</dd>
+  <dt id="v"><a class="permalink" href="#v"><b>-v<b>,</b><b>
+    --version</b></b></a></dt>
+  <dd>Display version</dd>
+  <dt id="h"><a class="permalink" href="#h"><b>-h<b>,</b><b>
+    --help</b></b></a></dt>
+  <dd>Display help</dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COMMANDS"><a class="permalink" href="#COMMANDS">COMMANDS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="list"><a class="permalink" href="#list">list</a></h2>
+<p class="Pp">List available controllers.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage"><a class="permalink" href="#Usage"><b>Usage</b></a></dt>
+  <dd><b>&gt; list</b></dd>
+  <dt id="Example"><a class="permalink" href="#Example"><b>Example Display all
+    Bluetooth controllers available on the system</b></a></dt>
+  <dd>
+    <pre><b>&gt; list</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="show"><a class="permalink" href="#show">show</a></h2>
+<p class="Pp">Controller information.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~2"><a class="permalink" href="#Usage~2"><b>Usage</b></a></dt>
+  <dd><b>&gt; show [ctrl]</b></dd>
+  <dt id="Uses"><a class="permalink" href="#Uses"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Adapter(5)</b> properties</dd>
+  <dt><b>[ctrl]</b></dt>
+  <dd>Bluetooth controller address</dd>
+  <dt id="Example~2"><a class="permalink" href="#Example~2"><b>Example Display
+    information for currently selected controller</b></a></dt>
+  <dd>
+    <pre><b>&gt; show</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~3"><a class="permalink" href="#Example~3"><b>Example Show
+    information for controller 00:11:22:33:44:55</b></a></dt>
+  <dd>
+    <pre><b>&gt; show 00:11:22:33:44:55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="select"><a class="permalink" href="#select">select</a></h2>
+<p class="Pp">Select default controller.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~3"><a class="permalink" href="#Usage~3"><b>Usage</b></a></dt>
+  <dd><b>&gt; select &lt;ctrl&gt;</b></dd>
+  <dt><b>&lt;ctrl&gt;</b></dt>
+  <dd>Bluetooth controller address</dd>
+  <dt id="Example~4"><a class="permalink" href="#Example~4"><b>Example Select
+    controller 00:11:22:33:44:55</b></a></dt>
+  <dd>
+    <pre><b>&gt; select 00:11:22:33:44:55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="devices"><a class="permalink" href="#devices">devices</a></h2>
+<p class="Pp">List available devices, with an optional property as the
+  filter.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~4"><a class="permalink" href="#Usage~4"><b>Usage</b></a></dt>
+  <dd><b>&gt; devices [Paired/Bonded/Trusted/Connected]</b></dd>
+  <dt><b>[Paired/Bonded/Trusted/Connected]</b></dt>
+  <dd>Filter to show only devices with specific property (optional)</dd>
+  <dt id="Example~5"><a class="permalink" href="#Example~5"><b>Example List all
+    discovered devices</b></a></dt>
+  <dd>
+    <pre><b>&gt; devices</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~6"><a class="permalink" href="#Example~6"><b>Example List only
+    paired devices</b></a></dt>
+  <dd>
+    <pre><b>&gt; devices Paired</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~7"><a class="permalink" href="#Example~7"><b>Example List only
+    bonded devices</b></a></dt>
+  <dd>
+    <pre><b>&gt; devices Bonded</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~8"><a class="permalink" href="#Example~8"><b>Example List only
+    trusted devices</b></a></dt>
+  <dd>
+    <pre><b>&gt; devices Trusted</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~9"><a class="permalink" href="#Example~9"><b>Example List only
+    currently connected devices</b></a></dt>
+  <dd>
+    <pre><b>&gt; devices Connected</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="system"><a class="permalink" href="#system">system-alias</a></h2>
+<p class="Pp">Set controller alias.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~5"><a class="permalink" href="#Usage~5"><b>Usage</b></a></dt>
+  <dd><b>&gt; system-alias &lt;name&gt;</b></dd>
+  <dt id="Uses~2"><a class="permalink" href="#Uses~2"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Adapter(5)</b> property <b>Alias</b></dd>
+  <dt><b>&lt;name&gt;</b></dt>
+  <dd>New alias name for the Bluetooth controller (required)</dd>
+  <dt id="Example~10"><a class="permalink" href="#Example~10"><b>Example Set
+    controller alias with spaces (note quotes)</b></a></dt>
+  <dd>
+    <pre><b>&gt; system-alias &quot;My Desktop Bluetooth&quot;</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~11"><a class="permalink" href="#Example~11"><b>Example Set
+    controller alias without spaces</b></a></dt>
+  <dd>
+    <pre><b>&gt; system-alias MyLaptop</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~12"><a class="permalink" href="#Example~12"><b>Example Set
+    controller alias with hyphens</b></a></dt>
+  <dd>
+    <pre><b>&gt; system-alias &quot;Home-Office-PC&quot;</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="reset"><a class="permalink" href="#reset">reset-alias</a></h2>
+<p class="Pp">Reset controller alias.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~6"><a class="permalink" href="#Usage~6"><b>Usage</b></a></dt>
+  <dd><b>&gt; reset-alias</b></dd>
+  <dt id="Uses~3"><a class="permalink" href="#Uses~3"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Adapter(5)</b> property <b>Alias</b></dd>
+  <dt id="Example~13"><a class="permalink" href="#Example~13"><b>Example Reset
+    controller alias to default (usually the hostname)</b></a></dt>
+  <dd>
+    <pre><b>&gt; reset-alias</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="power"><a class="permalink" href="#power">power</a></h2>
+<p class="Pp">Set controller power.</p>
+<p class="Pp">When the controller is powered off, the USB port the controller is
+    attached to is put into a suspend state.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~7"><a class="permalink" href="#Usage~7"><b>Usage</b></a></dt>
+  <dd><b>&gt; power &lt;on/off&gt;</b></dd>
+  <dt id="Uses~4"><a class="permalink" href="#Uses~4"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Adapter(5)</b> property <b>Powered</b></dd>
+  <dt><b>&lt;on/off&gt;</b></dt>
+  <dd>Power state - &quot;on&quot; to enable or &quot;off&quot; to disable the
+      controller (required)</dd>
+  <dt id="Example~14"><a class="permalink" href="#Example~14"><b>Example Turn on
+    the Bluetooth controller</b></a></dt>
+  <dd>
+    <pre><b>&gt; power on</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~15"><a class="permalink" href="#Example~15"><b>Example Turn
+    off the Bluetooth controller</b></a></dt>
+  <dd>
+    <pre><b>&gt; power off</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="advertise"><a class="permalink" href="#advertise">advertise</a></h2>
+<p class="Pp">Enable/disable advertising with given type.</p>
+<p class="Pp">When the controller advertises an LE device (peripheral) it will
+    generate a random address for its own privacy if the controller is capable
+    of it, it will use its public address if it does not support the feature
+    (address of the device).</p>
+<p class="Pp">A device can advertise if it initiated the connection to another
+    advertising device.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~8"><a class="permalink" href="#Usage~8"><b>Usage</b></a></dt>
+  <dd><b>&gt; advertise &lt;on/off/type&gt;</b></dd>
+  <dt id="Uses~5"><a class="permalink" href="#Uses~5"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.LEAdvertisingManager(5)</b> method
+      <b>RegisterAdvertisement</b></dd>
+  <dt><b>&lt;on/off/type&gt;</b></dt>
+  <dd>Advertising mode - &quot;on&quot;, &quot;off&quot;,
+      &quot;peripheral&quot;, or &quot;broadcast&quot; (required)</dd>
+  <dt id="Example~16"><a class="permalink" href="#Example~16"><b>Example Enable
+    basic LE advertising</b></a></dt>
+  <dd>
+    <pre><b>&gt; advertise on</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~17"><a class="permalink" href="#Example~17"><b>Example Disable
+    LE advertising</b></a></dt>
+  <dd>
+    <pre><b>&gt; advertise off</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~18"><a class="permalink" href="#Example~18"><b>Example
+    Advertise as peripheral device</b></a></dt>
+  <dd>
+    <pre><b>&gt; advertise peripheral</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~19"><a class="permalink" href="#Example~19"><b>Example
+    Advertise as broadcast source</b></a></dt>
+  <dd>
+    <pre><b>&gt; advertise broadcast</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="set"><a class="permalink" href="#set">set-alias</a></h2>
+<p class="Pp">Set device alias.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~9"><a class="permalink" href="#Usage~9"><b>Usage</b></a></dt>
+  <dd><b>&gt; set-alias &lt;alias&gt;</b></dd>
+  <dt id="Uses~6"><a class="permalink" href="#Uses~6"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Device(5)</b> property <b>Alias</b></dd>
+  <dt><b>&lt;alias&gt;</b></dt>
+  <dd>New alias name for the device (required)</dd>
+  <dt id="Example~20"><a class="permalink" href="#Example~20"><b>Example Set
+    device alias with spaces (note quotes)</b></a></dt>
+  <dd>
+    <pre><b>&gt; set-alias &quot;My Headphones&quot;</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~21"><a class="permalink" href="#Example~21"><b>Example Set
+    device alias without spaces</b></a></dt>
+  <dd>
+    <pre><b>&gt; set-alias MyMouse</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~22"><a class="permalink" href="#Example~22"><b>Example Set
+    device alias with hyphens</b></a></dt>
+  <dd>
+    <pre><b>&gt; set-alias &quot;Kitchen-Speaker&quot;</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="scan"><a class="permalink" href="#scan">scan</a></h2>
+<p class="Pp">Scan for devices.</p>
+<p class="Pp">For LE, scanning is an important requirement before connecting or
+    pairing.</p>
+<p class="Pp">The purpose of scanning is to find devices that are advertising
+    with their discoverable flag set (either limited or general). Once you have
+    found the address then you can connect or pair.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~10"><a class="permalink" href="#Usage~10"><b>Usage</b></a></dt>
+  <dd><b>&gt; scan &lt;on/off/bredr/le&gt;</b></dd>
+  <dt id="Uses~7"><a class="permalink" href="#Uses~7"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Adapter(5)</b> methods <b>StartDiscovery</b>,
+      <b>StopDiscovery</b></dd>
+  <dt><b>&lt;on/off/bredr/le&gt;</b></dt>
+  <dd>Scan mode - &quot;on&quot;, &quot;off&quot;, &quot;bredr&quot; for
+      Classic, or &quot;le&quot; for Low Energy (required)</dd>
+  <dt id="Example~23"><a class="permalink" href="#Example~23"><b>Example Start
+    scanning for all device types (LE + Classic)</b></a></dt>
+  <dd>
+    <pre><b>&gt; scan on</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~24"><a class="permalink" href="#Example~24"><b>Example Stop
+    scanning</b></a></dt>
+  <dd>
+    <pre><b>&gt; scan off</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~25"><a class="permalink" href="#Example~25"><b>Example Scan
+    for Low Energy devices only</b></a></dt>
+  <dd>
+    <pre><b>&gt; scan le</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~26"><a class="permalink" href="#Example~26"><b>Example Scan
+    for BR/EDR (Classic) devices only</b></a></dt>
+  <dd>
+    <pre><b>&gt; scan bredr</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="pair"><a class="permalink" href="#pair">pair</a></h2>
+<p class="Pp">Pair with device.</p>
+<p class="Pp">This will pair with a device and then trust and connect to it. If
+    the device is already paired this will first remove the pairing.</p>
+<p class="Pp">The command can either be used while the controller is in the
+    connected or not connected state.</p>
+<p class="Pp">If the controller is already connected then the pair command can
+    be used without an arguments. If the controller is not connected, the pair
+    command can be given the address of a device with an active scan report and
+    it will initiate the connection before pairing.</p>
+<p class="Pp">Before pairing the agent must be selected to choose the
+    authentication mechanism.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~11"><a class="permalink" href="#Usage~11"><b>Usage</b></a></dt>
+  <dd><b>&gt; pair [dev]</b></dd>
+  <dt id="Uses~8"><a class="permalink" href="#Uses~8"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Device(5)</b> method <b>Pair</b></dd>
+  <dt><b>[dev]</b></dt>
+  <dd>Device MAC address (XX:XX:XX:XX:XX:XX) (optional, uses current device if
+      omitted)</dd>
+  <dt id="Example~27"><a class="permalink" href="#Example~27"><b>Example Pair
+    with device using MAC address</b></a></dt>
+  <dd>
+    <pre><b>&gt; pair 00:11:22:33:44:55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~28"><a class="permalink" href="#Example~28"><b>Example Pair
+    with another device</b></a></dt>
+  <dd>
+    <pre><b>&gt; pair AA:BB:CC:DD:EE:FF</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~29"><a class="permalink" href="#Example~29"><b>Example Pair
+    using device object path</b></a></dt>
+  <dd>
+    <pre><b>&gt; pair /org/bluez/hci0/dev_00_11_22_33_44_55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="pairable"><a class="permalink" href="#pairable">pairable</a></h2>
+<p class="Pp">Set controller pairable mode.</p>
+<p class="Pp">This enables/disables pairing. If pairing is disabled then the
+    controller will not accept any pairing requests.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~12"><a class="permalink" href="#Usage~12"><b>Usage</b></a></dt>
+  <dd><b>&gt; pairable &lt;on/off&gt;</b></dd>
+  <dt id="Uses~9"><a class="permalink" href="#Uses~9"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Adapter(5)</b> property <b>Pairable</b></dd>
+  <dt><b>&lt;on/off&gt;</b></dt>
+  <dd>Pairable mode - &quot;on&quot; to accept or &quot;off&quot; to reject
+      pairing requests (required)</dd>
+  <dt id="Example~30"><a class="permalink" href="#Example~30"><b>Example Enable
+    pairing (accept pairing requests)</b></a></dt>
+  <dd>
+    <pre><b>&gt; pairable on</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~31"><a class="permalink" href="#Example~31"><b>Example Disable
+    pairing (reject pairing requests)</b></a></dt>
+  <dd>
+    <pre><b>&gt; pairable off</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="discoverable"><a class="permalink" href="#discoverable">discoverable</a></h2>
+<p class="Pp">Set discoverable mode.</p>
+<p class="Pp">This enables/disables discoverable mode. If discoverable is
+    disabled then the controller will not respond to any scan requests.</p>
+<p class="Pp">In LE if discoverable if off the controller will just passively
+    scan and not make scan requests to advertising devices. If on it will make
+    the advertising requests.</p>
+<p class="Pp">It will use a random address if supported by the controller. The
+    length of time &quot;discoverable on&quot; is valid is determined by
+    discoverable-timeout command.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~13"><a class="permalink" href="#Usage~13"><b>Usage</b></a></dt>
+  <dd><b>&gt; discoverable &lt;on/off&gt;</b></dd>
+  <dt id="Uses~10"><a class="permalink" href="#Uses~10"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Adapter(5)</b> property <b>Discoverable</b></dd>
+  <dt><b>&lt;on/off&gt;</b></dt>
+  <dd>Discoverable mode - &quot;on&quot; to be discoverable or &quot;off&quot;
+      to be non-discoverable (required)</dd>
+  <dt id="Example~32"><a class="permalink" href="#Example~32"><b>Example Make
+    controller discoverable to other devices</b></a></dt>
+  <dd>
+    <pre><b>&gt; discoverable on</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~33"><a class="permalink" href="#Example~33"><b>Example Make
+    controller non-discoverable</b></a></dt>
+  <dd>
+    <pre><b>&gt; discoverable off</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss">discoverable-timeout</h2>
+<p class="Pp">Set discoverable timeout.</p>
+<p class="Pp">The time in seconds that &quot;discoverable on&quot; is valid.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~14"><a class="permalink" href="#Usage~14"><b>Usage</b></a></dt>
+  <dd><b>&gt; discoverable-timeout [value]</b></dd>
+  <dt id="Uses~11"><a class="permalink" href="#Uses~11"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Adapter(5)</b> property <b>DiscoverableTimeout</b></dd>
+  <dt><b>[value]</b></dt>
+  <dd>Timeout duration in seconds for discoverable mode (0 for unlimited,
+      optional)</dd>
+  <dt id="Example~34"><a class="permalink" href="#Example~34"><b>Example Show
+    current discoverable timeout value</b></a></dt>
+  <dd>
+    <pre><b>&gt; discoverable-timeout</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~35"><a class="permalink" href="#Example~35"><b>Example Set
+    discoverable timeout to 30 seconds</b></a></dt>
+  <dd>
+    <pre><b>&gt; discoverable-timeout 30</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~36"><a class="permalink" href="#Example~36"><b>Example Set
+    discoverable timeout to 2 minutes</b></a></dt>
+  <dd>
+    <pre><b>&gt; discoverable-timeout 120</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~37"><a class="permalink" href="#Example~37"><b>Example Set
+    discoverable timeout to 5 minutes</b></a></dt>
+  <dd>
+    <pre><b>&gt; discoverable-timeout 300</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~38"><a class="permalink" href="#Example~38"><b>Example Set
+    unlimited discoverable timeout</b></a></dt>
+  <dd>
+    <pre><b>&gt; discoverable-timeout 0</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="agent"><a class="permalink" href="#agent">agent</a></h2>
+<p class="Pp">Enable/disable agent with given capability.</p>
+<p class="Pp">This chooses the local authentication mechanism of the controller.
+    It is needed for pairing and allows you to choose the IO capabilities of the
+    controller.</p>
+<p class="Pp">The valid agent capabilities are: DisplayOnly, DisplayYesNo,
+    KeyboardDisplay, KeyboardOnly, NoInputNoOutput.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~15"><a class="permalink" href="#Usage~15"><b>Usage</b></a></dt>
+  <dd><b>&gt; agent &lt;on/off/auto/capability&gt;</b></dd>
+  <dt id="Uses~12"><a class="permalink" href="#Uses~12"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.AgentManager(5)</b> method <b>RegisterAgent</b></dd>
+  <dt><b>&lt;on/off/auto/capability&gt;</b></dt>
+  <dd>Agent mode - &quot;on&quot;, &quot;off&quot;, &quot;auto&quot;, or
+      capability type (DisplayOnly, DisplayYesNo, KeyboardDisplay, KeyboardOnly,
+      NoInputNoOutput) (required)</dd>
+  <dt id="Example~39"><a class="permalink" href="#Example~39"><b>Example Enable
+    agent with default capability</b></a></dt>
+  <dd>
+    <pre><b>&gt; agent on</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~40"><a class="permalink" href="#Example~40"><b>Example Disable
+    agent</b></a></dt>
+  <dd>
+    <pre><b>&gt; agent off</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~41"><a class="permalink" href="#Example~41"><b>Example Enable
+    agent that can only display pairing codes</b></a></dt>
+  <dd>
+    <pre><b>&gt; agent DisplayOnly</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~42"><a class="permalink" href="#Example~42"><b>Example Enable
+    agent that can display codes and accept/reject</b></a></dt>
+  <dd>
+    <pre><b>&gt; agent DisplayYesNo</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~43"><a class="permalink" href="#Example~43"><b>Example Enable
+    agent that can display and input pairing codes</b></a></dt>
+  <dd>
+    <pre><b>&gt; agent KeyboardDisplay</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~44"><a class="permalink" href="#Example~44"><b>Example Enable
+    agent that can only input pairing codes</b></a></dt>
+  <dd>
+    <pre><b>&gt; agent KeyboardOnly</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~45"><a class="permalink" href="#Example~45"><b>Example Enable
+    agent with no input/output (JustWorks)</b></a></dt>
+  <dd>
+    <pre><b>&gt; agent NoInputNoOutput</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="default"><a class="permalink" href="#default">default-agent</a></h2>
+<p class="Pp">Set current agent as the default one.</p>
+<p class="Pp">After selecting the agent this will make it the default agent.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~16"><a class="permalink" href="#Usage~16"><b>Usage</b></a></dt>
+  <dd><b>&gt; default-agent</b></dd>
+  <dt id="Uses~13"><a class="permalink" href="#Uses~13"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.AgentManager(5)</b> method <b>RequestDefaultAgent</b></dd>
+  <dt id="Example~46"><a class="permalink" href="#Example~46"><b>Example Set the
+    current agent as default</b></a></dt>
+  <dd>
+    <pre><b>&gt; default-agent</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="trust"><a class="permalink" href="#trust">trust</a></h2>
+<p class="Pp">Trust device.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~17"><a class="permalink" href="#Usage~17"><b>Usage</b></a></dt>
+  <dd><b>&gt; trust [dev]</b></dd>
+  <dt id="Uses~14"><a class="permalink" href="#Uses~14"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Device(5)</b> property <b>Trusted</b></dd>
+  <dt><b>[dev]</b></dt>
+  <dd>Device MAC address (XX:XX:XX:XX:XX:XX) or object path (optional, uses
+      current device if omitted)</dd>
+  <dt id="Example~47"><a class="permalink" href="#Example~47"><b>Example Trust
+    device using MAC address</b></a></dt>
+  <dd>
+    <pre><b>&gt; trust 00:11:22:33:44:55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~48"><a class="permalink" href="#Example~48"><b>Example Trust
+    another device</b></a></dt>
+  <dd>
+    <pre><b>&gt; trust AA:BB:CC:DD:EE:FF</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~49"><a class="permalink" href="#Example~49"><b>Example Trust
+    device using object path</b></a></dt>
+  <dd>
+    <pre><b>&gt; trust /org/bluez/hci0/dev_00_11_22_33_44_55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="untrust"><a class="permalink" href="#untrust">untrust</a></h2>
+<p class="Pp">Untrust device.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~18"><a class="permalink" href="#Usage~18"><b>Usage</b></a></dt>
+  <dd><b>&gt; untrust [dev]</b></dd>
+  <dt id="Uses~15"><a class="permalink" href="#Uses~15"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Device(5)</b> property <b>Trusted</b></dd>
+  <dt><b>[dev]</b></dt>
+  <dd>Device MAC address (XX:XX:XX:XX:XX:XX) or object path (optional, uses
+      current device if omitted)</dd>
+  <dt id="Example~50"><a class="permalink" href="#Example~50"><b>Example Remove
+    trust from device using MAC address</b></a></dt>
+  <dd>
+    <pre><b>&gt; untrust 00:11:22:33:44:55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~51"><a class="permalink" href="#Example~51"><b>Example Remove
+    trust from another device</b></a></dt>
+  <dd>
+    <pre><b>&gt; untrust AA:BB:CC:DD:EE:FF</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~52"><a class="permalink" href="#Example~52"><b>Example Remove
+    trust using object path</b></a></dt>
+  <dd>
+    <pre><b>&gt; untrust /org/bluez/hci0/dev_00_11_22_33_44_55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="block"><a class="permalink" href="#block">block</a></h2>
+<p class="Pp">Block device.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~19"><a class="permalink" href="#Usage~19"><b>Usage</b></a></dt>
+  <dd><b>&gt; block [dev]</b></dd>
+  <dt id="Uses~16"><a class="permalink" href="#Uses~16"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Device(5)</b> property <b>Blocked</b></dd>
+  <dt><b>[dev]</b></dt>
+  <dd>Device MAC address (XX:XX:XX:XX:XX:XX) or object path (optional, uses
+      current device if omitted)</dd>
+  <dt id="Example~53"><a class="permalink" href="#Example~53"><b>Example Block
+    device using MAC address</b></a></dt>
+  <dd>
+    <pre><b>&gt; block 00:11:22:33:44:55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~54"><a class="permalink" href="#Example~54"><b>Example Block
+    another device</b></a></dt>
+  <dd>
+    <pre><b>&gt; block AA:BB:CC:DD:EE:FF</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~55"><a class="permalink" href="#Example~55"><b>Example Block
+    device using object path</b></a></dt>
+  <dd>
+    <pre><b>&gt; block /org/bluez/hci0/dev_00_11_22_33_44_55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="unblock"><a class="permalink" href="#unblock">unblock</a></h2>
+<p class="Pp">Unblock device</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~20"><a class="permalink" href="#Usage~20"><b>Usage</b></a></dt>
+  <dd><b>&gt; unblock [dev]</b></dd>
+  <dt id="Uses~17"><a class="permalink" href="#Uses~17"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Device(5)</b> property <b>Blocked</b></dd>
+  <dt><b>[dev]</b></dt>
+  <dd>Device MAC address (XX:XX:XX:XX:XX:XX) or object path (optional, uses
+      current device if omitted)</dd>
+  <dt id="Example~56"><a class="permalink" href="#Example~56"><b>Example Unblock
+    device using MAC address</b></a></dt>
+  <dd>
+    <pre><b>&gt; unblock 00:11:22:33:44:55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~57"><a class="permalink" href="#Example~57"><b>Example Unblock
+    another device</b></a></dt>
+  <dd>
+    <pre><b>&gt; unblock AA:BB:CC:DD:EE:FF</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~58"><a class="permalink" href="#Example~58"><b>Example Unblock
+    device using object path</b></a></dt>
+  <dd>
+    <pre><b>&gt; unblock /org/bluez/hci0/dev_00_11_22_33_44_55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="remove"><a class="permalink" href="#remove">remove</a></h2>
+<p class="Pp">Remove device.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~21"><a class="permalink" href="#Usage~21"><b>Usage</b></a></dt>
+  <dd><b>&gt; remove &lt;dev&gt;</b></dd>
+  <dt id="Uses~18"><a class="permalink" href="#Uses~18"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Adapter(5)</b> method <b>RemoveDevice</b></dd>
+  <dt><b>&lt;dev&gt;</b></dt>
+  <dd>Device MAC address (XX:XX:XX:XX:XX:XX) or object path (required)</dd>
+  <dt id="Example~59"><a class="permalink" href="#Example~59"><b>Example Remove
+    device using MAC address</b></a></dt>
+  <dd>
+    <pre><b>&gt; remove 00:11:22:33:44:55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~60"><a class="permalink" href="#Example~60"><b>Example Remove
+    another device</b></a></dt>
+  <dd>
+    <pre><b>&gt; remove AA:BB:CC:DD:EE:FF</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~61"><a class="permalink" href="#Example~61"><b>Example Remove
+    device using object path</b></a></dt>
+  <dd>
+    <pre><b>&gt; remove /org/bluez/hci0/dev_00_11_22_33_44_55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="connect"><a class="permalink" href="#connect">connect</a></h2>
+<p class="Pp">Connect device.</p>
+<p class="Pp">This will initiate a connection to a device.</p>
+<p class="Pp">By default this commands tries to connect all the profiles the
+    remote device supports and have been flagged as auto-connectable. In case
+    when the UUID of the remote service is given only that service will be
+    connected. The UUID can be either a short form (16-bit UUID) or a long form
+    (128-bit UUID). There are also some special values for well-known profiles
+    like &quot;a2dp-sink&quot;, &quot;a2dp-source&quot;, &quot;hfp-hf&quot;,
+    &quot;hfp-ag&quot;, &quot;ftp&quot; or &quot;spp&quot;.</p>
+<p class="Pp">To connect with an LE device the controller must have an active
+    scan report of the device it wants to connect to.</p>
+<p class="Pp">If no advertising report is received before the timeout a
+    le-connection-abort-by-local error will be issued. In that case either try
+    again to connect assuming the device is advertising.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~22"><a class="permalink" href="#Usage~22"><b>Usage</b></a></dt>
+  <dd><b>&gt; connect &lt;dev&gt; [uuid]</b></dd>
+  <dt id="Uses~19"><a class="permalink" href="#Uses~19"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Device(5)</b> methods <b>Connect</b>,
+    <b>ConnectProfile</b></dd>
+  <dt><b>&lt;dev&gt;</b></dt>
+  <dd>Device MAC address (XX:XX:XX:XX:XX:XX) or object path (required)</dd>
+  <dt><b>[uuid]</b></dt>
+  <dd>Specific service UUID to connect to (16-bit, 128-bit UUID, or profile name
+      like &quot;a2dp-sink&quot;, &quot;hfp-hf&quot;, etc.) (optional)</dd>
+  <dt id="Example~62"><a class="permalink" href="#Example~62"><b>Example Connect
+    to device (all supported profiles)</b></a></dt>
+  <dd>
+    <pre><b>&gt; connect 1C:48:F9:9D:81:5C</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~63"><a class="permalink" href="#Example~63"><b>Example Connect
+    to HSP Headset profile</b></a></dt>
+  <dd>
+    <pre><b>&gt; connect 1C:48:F9:9D:81:5C hsp-hs</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~64"><a class="permalink" href="#Example~64"><b>Example Connect
+    to A2DP Sink profile</b></a></dt>
+  <dd>
+    <pre><b>&gt; connect 1C:48:F9:9D:81:5C a2dp-sink</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~65"><a class="permalink" href="#Example~65"><b>Example Connect
+    to A2DP Source profile</b></a></dt>
+  <dd>
+    <pre><b>&gt; connect 1C:48:F9:9D:81:5C a2dp-source</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~66"><a class="permalink" href="#Example~66"><b>Example Connect
+    to HFP Hands-Free profile</b></a></dt>
+  <dd>
+    <pre><b>&gt; connect 1C:48:F9:9D:81:5C hfp-hf</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~67"><a class="permalink" href="#Example~67"><b>Example Connect
+    to HFP Audio Gateway profile</b></a></dt>
+  <dd>
+    <pre><b>&gt; connect 1C:48:F9:9D:81:5C hfp-ag</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~68"><a class="permalink" href="#Example~68"><b>Example Connect
+    to File Transfer Profile</b></a></dt>
+  <dd>
+    <pre><b>&gt; connect 1C:48:F9:9D:81:5C ftp</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~69"><a class="permalink" href="#Example~69"><b>Example Connect
+    to Serial Port Profile</b></a></dt>
+  <dd>
+    <pre><b>&gt; connect 1C:48:F9:9D:81:5C spp</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~70"><a class="permalink" href="#Example~70"><b>Example Connect
+    using full 128-bit UUID (HSP)</b></a></dt>
+  <dd>
+    <pre><b>&gt; connect 1C:48:F9:9D:81:5C 00001108-0000-1000-8000-00805f9b34fb</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~71"><a class="permalink" href="#Example~71"><b>Example Connect
+    using short 16-bit UUID (HSP)</b></a></dt>
+  <dd>
+    <pre><b>&gt; connect 1C:48:F9:9D:81:5C 0x1108</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~72"><a class="permalink" href="#Example~72"><b>Example Connect
+    to A2DP profile using short UUID</b></a></dt>
+  <dd>
+    <pre><b>&gt; connect 1C:48:F9:9D:81:5C 0x110E</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="disconnect"><a class="permalink" href="#disconnect">disconnect</a></h2>
+<p class="Pp">Disconnect device.</p>
+<p class="Pp">By default this commands disconnects all profiles and then
+    terminates the connection. In case when the UUID of the remote service is
+    given only that service will be disconnected.</p>
+<p class="Pp">For LE when disconnecting from an active connection the device
+    address is not needed.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~23"><a class="permalink" href="#Usage~23"><b>Usage</b></a></dt>
+  <dd><b>&gt; disconnect [dev] [uuid]</b></dd>
+  <dt id="Uses~20"><a class="permalink" href="#Uses~20"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Device(5)</b> methods <b>Disconnect</b>,
+      <b>DisconnectProfile</b></dd>
+  <dt><b>[dev]</b></dt>
+  <dd>Device MAC address (XX:XX:XX:XX:XX:XX) or object path (optional, uses
+      current device if omitted)</dd>
+  <dt><b>[uuid]</b></dt>
+  <dd>Specific service UUID to disconnect from (16-bit, 128-bit UUID, or profile
+      name) (optional)</dd>
+  <dt id="Example~73"><a class="permalink" href="#Example~73"><b>Example
+    Disconnect all profiles and terminate connection</b></a></dt>
+  <dd>
+    <pre><b>&gt; disconnect 1C:48:F9:9D:81:5C</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~74"><a class="permalink" href="#Example~74"><b>Example
+    Disconnect only A2DP Sink profile</b></a></dt>
+  <dd>
+    <pre><b>&gt; disconnect 1C:48:F9:9D:81:5C a2dp-sink</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~75"><a class="permalink" href="#Example~75"><b>Example
+    Disconnect only HFP Hands-Free profile</b></a></dt>
+  <dd>
+    <pre><b>&gt; disconnect 1C:48:F9:9D:81:5C hfp-hf</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~76"><a class="permalink" href="#Example~76"><b>Example
+    Disconnect only Serial Port Profile</b></a></dt>
+  <dd>
+    <pre><b>&gt; disconnect 1C:48:F9:9D:81:5C spp</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~77"><a class="permalink" href="#Example~77"><b>Example
+    Disconnect A2DP profile using short UUID</b></a></dt>
+  <dd>
+    <pre><b>&gt; disconnect 1C:48:F9:9D:81:5C 0x110E</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~78"><a class="permalink" href="#Example~78"><b>Example
+    Disconnect HSP profile using full UUID</b></a></dt>
+  <dd>
+    <pre><b>&gt; disconnect 1C:48:F9:9D:81:5C 00001108-0000-1000-8000-00805f9b34fb</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="info"><a class="permalink" href="#info">info</a></h2>
+<p class="Pp">Device information.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~24"><a class="permalink" href="#Usage~24"><b>Usage</b></a></dt>
+  <dd><b>&gt; info [dev/set]</b></dd>
+  <dt id="Uses~21"><a class="permalink" href="#Uses~21"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Device(5)</b> properties</dd>
+  <dt><b>[dev/set]</b></dt>
+  <dd>Device MAC address (XX:XX:XX:XX:XX:XX), object path, or DeviceSet
+      (optional, uses current device if omitted)</dd>
+  <dt id="Example~79"><a class="permalink" href="#Example~79"><b>Example Show
+    detailed information for device</b></a></dt>
+  <dd>
+    <pre><b>&gt; info 1C:48:F9:9D:81:5C</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~80"><a class="permalink" href="#Example~80"><b>Example Show
+    information for another device</b></a></dt>
+  <dd>
+    <pre><b>&gt; info 00:11:22:33:44:55</b></pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~81"><a class="permalink" href="#Example~81"><b>Example Show
+    device info using object path</b></a></dt>
+  <dd>
+    <pre><b>&gt; info /org/bluez/hci0/dev_1C_48_F9_9D_81_5C</b></pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="bearer"><a class="permalink" href="#bearer">bearer</a></h2>
+<p class="Pp">Get/Set preferred bearer.</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Usage~25"><a class="permalink" href="#Usage~25"><b>Usage</b></a></dt>
+  <dd><b>&gt; bearer &lt;dev&gt; [last-seen/bredr/le]</b></dd>
+  <dt id="Uses~22"><a class="permalink" href="#Uses~22"><b>Uses</b></a></dt>
+  <dd><b>org.bluez.Device(5)</b> property <b>PreferredBearer</b></dd>
+  <dt><b>&lt;dev&gt;</b></dt>
+  <dd>Device MAC address (XX:XX:XX:XX:XX:XX) or object path (required)</dd>
+  <dt><b>[last-seen/bredr/le]</b></dt>
+  <dd>Preferred bearer type - &quot;last-seen&quot;, &quot;bredr&quot; for
+      Classic, or &quot;le&quot; for Low Energy (optional)</dd>
+  <dt id="Example~82"><a class="permalink" href="#Example~82"><b>Example get
+    preferred bearer</b></a></dt>
+  <dd>
+    <pre>&gt; bearer &lt;addr&gt;
+<br/>
+PreferredBearer: last-seen
+<br/>
+    </pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~83"><a class="permalink" href="#Example~83"><b>Example set
+    preferred bearer to LE</b></a></dt>
+  <dd>
+    <pre>&gt; bearer &lt;addr&gt; le
+[CHG] Device &lt;addr&gt; PreferredBearer: le
+Changing le succeeded</pre>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="Example~84"><a class="permalink" href="#Example~84"><b>Example set
+    preferred bearer to BREDR</b></a></dt>
+  <dd>
+    <pre>&gt; bearer &lt;addr&gt; bredr
+[CHG] Device &lt;addr&gt; PreferredBearer: bredr
+Changing bredr succeeded</pre>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</div>
+<br/>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ADVERTISE_SUBMENU"><a class="permalink" href="#ADVERTISE_SUBMENU">ADVERTISE
+  SUBMENU</a></h1>
+<p class="Pp">See <b>bluetoothctl-advertise(1)</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="MONITOR_SUBMENU"><a class="permalink" href="#MONITOR_SUBMENU">MONITOR
+  SUBMENU</a></h1>
+<p class="Pp">See <b>bluetoothctl-monitor(1)</b></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SCAN_SUBMENU"><a class="permalink" href="#SCAN_SUBMENU">SCAN
+  SUBMENU</a></h1>
+<p class="Pp">See <b>bluetoothctl-scan(1)</b></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="GATT_SUBMENU"><a class="permalink" href="#GATT_SUBMENU">GATT
+  SUBMENU</a></h1>
+<p class="Pp">See <b>bluetoothctl-gatt(1)</b></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ADMIN_SUBMENU"><a class="permalink" href="#ADMIN_SUBMENU">ADMIN
+  SUBMENU</a></h1>
+<p class="Pp">See <b>bluetoothctl-admin(1)</b></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="PLAYER_SUBMENU"><a class="permalink" href="#PLAYER_SUBMENU">PLAYER
+  SUBMENU</a></h1>
+<p class="Pp">See <b>bluetoothctl-player(1)</b></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENDPOINT_SUBMENU"><a class="permalink" href="#ENDPOINT_SUBMENU">ENDPOINT
+  SUBMENU</a></h1>
+<p class="Pp">See <b>bluetoothctl-endpoint(1)</b></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="TRANSPORT_SUBMENU"><a class="permalink" href="#TRANSPORT_SUBMENU">TRANSPORT
+  SUBMENU</a></h1>
+<p class="Pp">See <b>bluetoothctl-transport(1)</b></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="MANAGEMENT_SUBMENU"><a class="permalink" href="#MANAGEMENT_SUBMENU">MANAGEMENT
+  SUBMENU</a></h1>
+<p class="Pp">See <b>bluetoothctl-mgmt(1)</b></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ASSISTANT_SUBMENU"><a class="permalink" href="#ASSISTANT_SUBMENU">ASSISTANT
+  SUBMENU</a></h1>
+<p class="Pp">See <b>bluetoothctl-assistant(1)</b></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="LE_SUBMENU"><a class="permalink" href="#LE_SUBMENU">LE
+  SUBMENU</a></h1>
+<p class="Pp">See <b>bluetoothctl-le(1)</b></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="BREDR_SUBMENU"><a class="permalink" href="#BREDR_SUBMENU">BREDR
+  SUBMENU</a></h1>
+<p class="Pp">See <b>bluetoothctl-bredr(1)</b></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTOMATION"><a class="permalink" href="#AUTOMATION">AUTOMATION</a></h1>
+<p class="Pp">Two common ways to automate the tool are to use Here Docs or the
+    program expect. Using Here Docs to show information about the Bluetooth
+    controller.</p>
+<div class="Bd-indent">
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>bluetoothctl &lt;&lt;EOF
+list
+show
+EOF
+</pre>
+</div>
+<br/>
+</div>
+<br/>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="RESOURCES"><a class="permalink" href="#RESOURCES">RESOURCES</a></h1>
+<br/>
+<p class="Pp"> &lt;http://www.bluez.org&gt;</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="REPORTING_BUGS"><a class="permalink" href="#REPORTING_BUGS">REPORTING
+  BUGS</a></h1>
+<br/>
+<p class="Pp"> &lt;linux-bluetooth@vger.kernel.org&gt;</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COPYRIGHT"><a class="permalink" href="#COPYRIGHT">COPYRIGHT</a></h1>
+<p class="Pp">Free use of this software is granted under the terms of the GNU
+    Lesser General Public Licenses (LGPL).</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">March 2024</td>
+    <td class="foot-os">BlueZ</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

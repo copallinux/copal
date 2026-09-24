@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zellij(1) · Copal Linux</title>
+<meta name="description" content="zellij - run zellij">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-zellij">zellij in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">zellij 0.42.2-r0 — man1/zellij.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">MANPAGE(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">MANPAGE(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<p class="Pp"></p>
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><b>zellij</b> - run zellij</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Zellij is a workspace aimed at developers, ops-oriented people and
+    anyone who loves the terminal. At its core, it is a terminal multiplexer
+    (similar to tmux and screen), but this is merely its infrastructure
+  layer.</p>
+<p class="Pp">Zellij includes a layout system, and a plugin system allowing one
+    to create plugins in any language that compiles to WebAssembly.</p>
+<p class="Pp">To list currently running sessions run: `<span class="Li">zellij
+    list-sessions</span>` To attach to a currently running session run:
+    `<span class="Li">zellij attach [session-name]</span>`</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp">Run `<span class="Li">zellij --help</span>` to see available flags
+    and subcommamds.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CONFIGURATION"><a class="permalink" href="#CONFIGURATION">CONFIGURATION</a></h1>
+<p class="Pp">Zellij looks for configuration file in the following order:</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>the file provided with <i>--config</i></dd>
+  <dt>2.</dt>
+  <dd>under the path provided in <i>ZELLIJ_CONFIG_FILE</i> environment
+    variable</dd>
+  <dt>3.</dt>
+  <dd>the default location (see FILES section)</dd>
+  <dt>4.</dt>
+  <dd>the system location</dd>
+</dl>
+</div>
+<p class="Pp">Run `<span class="Li">zellij setup --check</span>` in order to see
+    possible issues with the configuration.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="LAYOUTS"><a class="permalink" href="#LAYOUTS">LAYOUTS</a></h1>
+<p class="Pp">Layouts are yaml files which Zellij can load on startup when
+    <i>--layout</i> flag is provided. By default Zellij will load a layout
+    called `<span class="Li">default.yaml</span>`, but this can be changed by
+    using the `<span class="Li">default_layout: [LAYOUT_NAME]</span>`
+    configuration option.</p>
+<p class="Pp">For example a file like this:</p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>---
+direction: Vertical
+parts:
+<br/>
+    - direction: Horizontal
+<br/>
+      split_size:
+<br/>
+        Percent: 50
+<br/>
+      parts:
+<br/>
+        - direction: Vertical
+<br/>
+          split_size:
+<br/>
+            Percent: 50
+<br/>
+        - direction: Vertical
+<br/>
+          split_size:
+<br/>
+            Percent: 50
+<br/>
+    - direction: Horizontal
+<br/>
+      split_size:
+<br/>
+        Percent: 50</pre>
+</div>
+<p class="Pp">will tell Zellij to create this layout:</p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>+-----+-----+|     |     |+-----+     ||     |     |+-----+-----+</pre>
+</div>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="CREATING_LAYOUTS"><a class="permalink" href="#CREATING_LAYOUTS">CREATING
+  LAYOUTS</a></h2>
+<p class="Pp">A layout file is a nested tree structure. Each node describes
+    either a pane (leaf), or a space in which its parts (children) will be
+    created.</p>
+<p class="Pp">Each node has following fields:</p>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li><b>direction: &lt;Horizontal / Vertical&gt;</b> - node's children will be
+      created by a split in given direction.</li>
+  <li><b>split_size:</b> - this indicates either a percentage of the node's
+      parent's space or a fixed size of columns/rows from its parent's
+    space.</li>
+</ul>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li><b>Percent: &lt;1-100&gt;</b></li>
+  <li><b>Fixed: &lt;lines_number/columns_number&gt;</b></li>
+</ul>
+</div>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>plugin: /path/to/plugin.wasm</b> - optional path to a compiled Zellij
+      plugin. If indicated loads a plugin into the created space. For more
+      information see PLUGINS section.</dd>
+</dl>
+</div>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="KEYBINDINGS"><a class="permalink" href="#KEYBINDINGS">KEYBINDINGS</a></h1>
+<p class="Pp">Zellij comes with a default set of keybindings which aims to fit
+    as many users as possible but that behaviour can be overridden or modified
+    in user configuration files. The information about bindings is available in
+    the <i>keybinds</i> section of configuration. For example, to introduce a
+    keybinding that will create a new tab and go to tab 1 after pressing 'c' one
+    can write:</p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>keybinds:
+<br/>
+    normal:
+<br/>
+        - action: [ NewTab, GoToTab: 1,]
+<br/>
+          key: [ Char: 'c',]</pre>
+</div>
+<p class="Pp">where &quot;normal&quot; stands for a mode name (see MODES
+    section), &quot;action&quot; part specifies the actions to be executed by
+    Zellij (see ACTIONS section) and &quot;key&quot; is used to list keys or key
+    combinations bound to given actions (see KEYS).</p>
+<p class="Pp">The default keybinds can be unbound either for a specific mode, or
+    for every mode. It supports either a list of
+    `<span class="Li">keybinds</span>`, or a bool indicating that every keybind
+    should be unbound:</p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>keybinds:
+<br/>
+    unbind: true</pre>
+</div>
+<p class="Pp">Will unbind every default binding.</p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>keybinds:
+<br/>
+    unbind: [ Ctrl: 'p']</pre>
+</div>
+<p class="Pp">Will unbind every default `<span class="Li">^P</span>` binding for
+    each mode.</p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>keybinds:
+<br/>
+    normal:
+<br/>
+        - unbind: true</pre>
+</div>
+<p class="Pp">Will unbind every default keybind for the
+    `<span class="Li">normal</span>` mode.</p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>keybinds:
+<br/>
+    normal:
+<br/>
+        - unbind: [ Alt: 'n', Ctrl: 'g']</pre>
+</div>
+<p class="Pp">Will unbind every default keybind for `<span class="Li">n</span>`
+    and `<span class="Li">^g</span>` for the `<span class="Li">normal</span>`
+    mode.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="ACTIONS"><a class="permalink" href="#ACTIONS">ACTIONS</a></h2>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li><b>Quit</b> - quits Zellij</li>
+  <li><b>SwitchToMode: &lt;InputMode&gt;</b> - switches to the specified input
+      mode. See MODES section for possible values.</li>
+  <li><b>Resize: &lt;Direction&gt;</b> - resizes focused pane in the specified
+      direction (one of: Left, Right, Up, Down).</li>
+  <li><b>FocusNextPane</b> - switches focus to the next pane to the right or
+      below if on screen edge.</li>
+  <li><b>FocusPreviousPane</b> - switches focus to the next pane to the left or
+      above if on screen edge.</li>
+  <li><b>SwitchFocus</b> - left for legacy support. Switches focus to a pane
+      with the next ID.</li>
+  <li><b>MoveFocus: &lt;Direction&gt;</b> - moves focus in the specified
+      direction (Left, Right, Up, Down).</li>
+  <li><b>Clear</b> - clears current screen.</li>
+  <li><b>DumpScreen: &lt;File&gt;</b> - dumps the screen in the specified
+    file.</li>
+  <li><b>DumpLayout: &lt;File&gt;</b> - dumps the screen in the specified or
+      default file.</li>
+  <li><b>EditScrollback</b> - replaces the current pane with the scrollback
+      buffer.</li>
+  <li><b>ScrollUp</b> - scrolls up 1 line in the focused pane.</li>
+  <li><b>ScrollDown</b> - scrolls down 1 line in the focused pane.</li>
+  <li><b>PageScrollUp</b> - scrolls up 1 page in the focused pane.</li>
+  <li><b>PageScrollDown</b> - scrolls down 1 page in the focused pane.</li>
+  <li><b>ToggleFocusFullscreen</b> - toggles between fullscreen focus pane and
+      normal layout.</li>
+  <li><b>NewPane: &lt;Direction&gt;</b> - opens a new pane in the specified
+      direction (Left, Right, Up, Down) relative to focus.</li>
+  <li><b>CloseFocus</b> - closes focused pane.</li>
+  <li><b>NewTab</b> - creates a new tab.</li>
+  <li><b>GoToNextTab</b> - goes to the next tab.</li>
+  <li><b>GoToPreviousTab</b> - goes to previous tab.</li>
+  <li><b>CloseTab</b> - closes current tab.</li>
+  <li><b>GoToTab: &lt;Index&gt;</b> - goes to the tab with the specified index
+      number.</li>
+  <li><b>Detach</b> - detach session and exit.</li>
+  <li><b>ToggleActiveSyncTab</b> - toggle between sending text commands to all
+      panes on the current tab and normal mode.</li>
+  <li><b>UndoRenameTab</b> - undoes the changed tab name and reverts to the
+      previous name.</li>
+  <li><b>UndoRenamePane</b> - undoes the changed pane name and reverts to the
+      previous name.</li>
+</ul>
+</div>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="KEYS"><a class="permalink" href="#KEYS">KEYS</a></h2>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li><b>Char: &lt;character&gt;</b> - a single character with no modifier.</li>
+  <li><b>Alt: &lt;character&gt;</b> - a single character with
+      `<span class="Li">Alt</span>` key as modifier.</li>
+  <li><b>Ctrl: &lt;character&gt;</b> - a single character with
+      `<span class="Li">Ctrl</span>` key as modifier.</li>
+  <li><b>F: &lt;1-12&gt;</b> - one of `<span class="Li">F</span>` keys (usually
+      at the top of the keyboard).</li>
+  <li><b>Backspace</b></li>
+  <li><b>Left / Right / Up / Down</b> - arrow keys on the keyboard.</li>
+  <li><b>Home</b></li>
+  <li><b>End</b></li>
+  <li><b>PageUp / PageDown</b></li>
+  <li><b>BackTab</b> - a backward Tab key.</li>
+  <li><b>Delete</b></li>
+  <li><b>Insert</b></li>
+  <li><b>Esc</b></li>
+</ul>
+</div>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="MODES"><a class="permalink" href="#MODES">MODES</a></h2>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li><b>normal</b> - the default startup mode of Zellij. Provides the ability
+      to switch to different modes, as well as some quick navigation
+    shortcuts.</li>
+  <li><b>locked</b> - disables all keybindings except the one that would switch
+      the mode to normal (<i>ctrl-g</i> by default). Useful when Zellij's
+      keybindings conflict with those of a chosen terminal app.</li>
+  <li><b>tmux</b> - provides convenience keybindings emulating simple tmux
+      behaviour</li>
+  <li><b>pane</b> - includes instructions that manipulate the panes (adding new
+      panes, moving, closing).</li>
+  <li><b>tab</b> - includes instructions that manipulate the tabs (adding new
+      tabs, moving, closing).</li>
+  <li><b>resize</b> - allows resizing of the focused pane.</li>
+  <li><b>scroll</b> - allows scrolling within the focused pane.</li>
+  <li><b>renametab</b> - is a &quot;hidden&quot; mode that can be passed to
+      <i>SwitchToMode</i> action. It will trigger renaming of a tab.</li>
+  <li><b>renamepane</b> - is a &quot;hidden&quot; mode that can be passed to
+      <i>SwitchToMode</i> action. It will trigger renaming of a pane.</li>
+  <li><b>session</b> - allows detaching from a session.</li>
+</ul>
+</div>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Theme"><a class="permalink" href="#Theme">Theme</a></h1>
+<p class="Pp">A color theme can be defined either in truecolor, 256 or hex color
+    format. Truecolor:</p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>fg: [0, 0, 0]</pre>
+</div>
+<p class="Pp">256:</p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>fg: 0</pre>
+</div>
+<p class="Pp">Hex color:</p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>fg: &quot;#000000&quot;
+bg: &quot;#000&quot;</pre>
+</div>
+<p class="Pp">The color theme can be specified in the following way:</p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>themes:
+<br/>
+  default:
+<br/>
+    fg: [0,0,0]
+<br/>
+    bg: [0,0,0]
+<br/>
+    black: [0,0,0]
+<br/>
+    red: [0,0,0]
+<br/>
+    green: [0,0,0]
+<br/>
+    yellow: [0,0,0]
+<br/>
+    blue: [0,0,0]
+<br/>
+    magenta: [0,0,0]
+<br/>
+    cyan: [0,0,0]
+<br/>
+    white: [0,0,0]
+<br/>
+    orange: [0,0,0]</pre>
+</div>
+<p class="Pp">If the theme is called `<span class="Li">default</span>`, then
+    zellij will pick it on startup. To specify a different theme, run zellij
+    with:</p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<pre>zellij options --theme [NAME]</pre>
+</div>
+<p class="Pp">or put the name in the configuration file with
+    `<span class="Li">theme: [NAME]</span>`.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="PLUGINS"><a class="permalink" href="#PLUGINS">PLUGINS</a></h1>
+<p class="Pp">Zellij has a plugin system based on WebAssembly. Any language that
+    can run on WASI can be used to develop a plugin. To load a plugin include it
+    in a layout file. Zellij comes with default plugins included:
+    <i>status-bar</i>, <i>strider</i>, <i>tab-bar</i>.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<p class="Pp">Default user configuration directory location:</p>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li>Linux: <i>$XDG_HOME/zellij /home/alice/.config/zellij</i></li>
+  <li>macOS: <i>/Users/Alice/Library/Application
+      Support/com.Zellij-Contributors.zellij</i></li>
+</ul>
+</div>
+<p class="Pp">Default user layout directory location:</p>
+<div class="Bd-indent">
+<ul class="Bl-bullet">
+  <li>Subdirectory called `<span class="Li">layouts</span>` inside of the
+      configuration directory.</li>
+  <li>Linux: _$XDG_HOME/zellij/layouts /home/alice/.config/zellij/layouts</li>
+  <li>macOS: <i>/Users/Alice/Library/Application/layouts
+      Support/com.Zellij-Contributors.zellij/layouts</i></li>
+</ul>
+</div>
+<p class="Pp">Default plugin directory location:</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Linux: _$XDG_DATA_HOME/zellij/plugins
+    /home/alice/.local/share/plugins</dd>
+</dl>
+</div>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENVIRONMENT"><a class="permalink" href="#ENVIRONMENT">ENVIRONMENT</a></h1>
+<p class="Pp">ZELLIJ_CONFIG_FILE Path of Zellij config to load.
+    ZELLIJ_CONFIG_DIR Path of the Zellij config directory.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="NOTES"><a class="permalink" href="#NOTES">NOTES</a></h1>
+<p class="Pp">The manpage is meant to provide concise offline reference. For
+    more detailed instructions please visit:</p>
+<p class="Pp">https://zellij.dev/documentation</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date"></td>
+    <td class="foot-os"></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

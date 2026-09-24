@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lbu(8) · Copal Linux</title>
+<meta name="description" content="lbu - manage local backups for diskless Alpine Linux systems">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-lbu">lbu in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">alpine-conf 3.22.0-r0 — man8/lbu.8.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">LBU(8)</td>
+    <td class="head-vol">System Manager's Manual</td>
+    <td class="head-rtitle">LBU(8)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><b>lbu</b> - manage local backups for diskless Alpine Linux
+    systems</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>lbu</b> <i>SUBCOMMAND</i> [<i>OPTIONS</i>] [<i>ARGS</i>]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>lbu</b> manages Alpine local backup overlays. It tracks files
+    to include or exclude, creates apkovl archives, commits them to removable
+    media or a backup directory, and compares or reverts saved overlays.</p>
+<p class="Pp">The default file set is provided by the apk backup audit.
+    Additional include and exclude entries are stored in the lbu protected paths
+    file. Included entries use a leading &quot;+&quot;. Excluded entries use a
+    leading &quot;-&quot;.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SUBCOMMANDS"><a class="permalink" href="#SUBCOMMANDS">SUBCOMMANDS</a></h1>
+<p class="Pp"><b>include</b>, <b>inc</b>, <b>add</b> [-rv] <i>FILE</i>...</p>
+<div class="Bd-indent">Add files to the include list. Leading &quot;/&quot;
+  characters are stripped before entries are stored.</div>
+<p class="Pp"><b>include</b>, <b>inc</b>, <b>add</b> [-v] <b>-l</b></p>
+<div class="Bd-indent">List files in the include list.</div>
+<p class="Pp"><b>exclude</b>, <b>ex</b>, <b>delete</b> [-rv] <i>FILE</i>...</p>
+<div class="Bd-indent">Add files to the exclude list. If a file is present in
+  the include list, it is removed from there.</div>
+<p class="Pp"><b>exclude</b>, <b>ex</b>, <b>delete</b> [-v] <b>-l</b></p>
+<div class="Bd-indent">List files in the exclude list.</div>
+<p class="Pp"><b>list</b>, <b>ls</b></p>
+<div class="Bd-indent">List files that would be written to an apkovl
+  archive.</div>
+<p class="Pp"><b>package</b>, <b>pkg</b> [-v] [<i>DIR</i> | <i>FILE</i>]</p>
+<div class="Bd-indent">Create an apkovl archive. If <i>DIR</i> is specified, the
+  archive is written there using the default apkovl filename. If <i>FILE</i> is
+  specified and is not a directory, that filename is used. With no argument, the
+  archive is written to the current directory.</div>
+<p class="Pp"><b>commit</b>, <b>ci</b> [-denv] [-p <i>PASSWORD</i>]
+    [<i>MEDIA</i>]</p>
+<div class="Bd-indent">Create an apkovl archive and save it to writable media or
+  <b>$LBU_BACKUPDIR</b>. If <i>MEDIA</i> is not specified, <b>LBU_BACKUPDIR</b>
+  or <b>LBU_MEDIA</b> is used. If <b>LBU_BACKUPDIR</b> is set, no media is
+  mounted.</div>
+<p class="Pp"><b>list-backup</b>, <b>lb</b> [<i>MEDIA</i>]</p>
+<div class="Bd-indent">List timestamped backup archives from <i>MEDIA</i> or
+  <b>$LBU_BACKUPDIR</b>.</div>
+<p class="Pp"><b>revert</b> <i>REVISION</i> [<i>MEDIA</i>]</p>
+<div class="Bd-indent">Replace the current apkovl archive with <i>REVISION</i>.
+  The current archive is backed up before the revision is moved into
+  place.</div>
+<p class="Pp"><b>status</b>, <b>stat</b>, <b>st</b> [-av]</p>
+<div class="Bd-indent">Show changes compared with the last committed apkovl.
+  Output is prefixed with &quot;A&quot; for added files, &quot;D&quot; for
+  deleted files, and &quot;U&quot; for updated files.</div>
+<p class="Pp"><b>diff</b> [<i>MEDIA</i>]</p>
+<div class="Bd-indent">Run a recursive diff between the last committed apkovl
+  and the current file set.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp"><b>-a</b></p>
+<div class="Bd-indent">For <b>status</b>, compare all backup-tracked files
+  instead of comparing with the last committed apkovl.</div>
+<p class="Pp"><b>-d</b></p>
+<div class="Bd-indent">For <b>commit</b>, remove old apkovl files before writing
+  the new archive.</div>
+<p class="Pp"><b>-e</b></p>
+<div class="Bd-indent">Enable encryption. If no cipher is configured,
+  <b>DEFAULT_CIPHER</b> is used.</div>
+<p class="Pp"><b>-h</b></p>
+<div class="Bd-indent">Display help for the selected subcommand.</div>
+<p class="Pp"><b>-l</b></p>
+<div class="Bd-indent">For <b>include</b> or <b>exclude</b>, list entries
+  instead of changing them.</div>
+<p class="Pp"><b>-n</b></p>
+<div class="Bd-indent">For <b>commit</b>, perform a dry run and show what would
+  be committed.</div>
+<p class="Pp"><b>-p</b> <i>PASSWORD</i></p>
+<div class="Bd-indent">Use <i>PASSWORD</i> for encryption.</div>
+<p class="Pp"><b>-q</b></p>
+<div class="Bd-indent">Quiet mode.</div>
+<p class="Pp"><b>-r</b></p>
+<div class="Bd-indent">For <b>include</b> or <b>exclude</b>, remove files from
+  the selected list.</div>
+<p class="Pp"><b>-v</b></p>
+<div class="Bd-indent">Verbose mode.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CONFIGURATION"><a class="permalink" href="#CONFIGURATION">CONFIGURATION</a></h1>
+<p class="Pp">Configuration is read from <i>/etc/lbu/lbu.conf</i>.</p>
+<p class="Pp"><b>DEFAULT_CIPHER</b></p>
+<div class="Bd-indent">Cipher used when <b>-e</b> enables encryption. The
+  default is aes-256-cbc.</div>
+<p class="Pp"><b>ENCRYPTION</b></p>
+<div class="Bd-indent">Encrypt archives with this cipher by default.</div>
+<p class="Pp"><b>PASSWORD</b></p>
+<div class="Bd-indent">Password used for encryption and decryption.</div>
+<p class="Pp"><b>LBU_MEDIA</b></p>
+<div class="Bd-indent">Default media name for commands that need backup media.
+  Common values are <b>usb</b> and <b>floppy</b>.</div>
+<p class="Pp"><b>LBU_BACKUPDIR</b></p>
+<div class="Bd-indent">Directory where apkovl archives are stored. When set,
+  <b>lbu</b> does not mount backup media.</div>
+<p class="Pp"><b>BACKUP_LIMIT</b></p>
+<div class="Bd-indent">Number of timestamped previous apkovl archives to keep
+  after <b>commit</b>.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="HOOKS"><a class="permalink" href="#HOOKS">HOOKS</a></h1>
+<p class="Pp">Executable scripts in <i>/etc/lbu/pre-package.d</i> are run before
+    package creation. Executable scripts in <i>/etc/lbu/post-package.d</i> are
+    run after package creation.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXAMPLES"><a class="permalink" href="#EXAMPLES">EXAMPLES</a></h1>
+<p class="Pp">Add files to the include list:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>lbu include /root/.ssh</pre>
+</div>
+<p class="Pp">Exclude a file from backups:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>lbu exclude /etc/motd</pre>
+</div>
+<p class="Pp">Create an apkovl archive in the current directory:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>lbu package</pre>
+</div>
+<p class="Pp">Commit to the configured backup directory or media:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>lbu commit</pre>
+</div>
+<p class="Pp">Commit to USB media and remove old apkovl files first:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>lbu commit -d usb</pre>
+</div>
+<p class="Pp">Show changes compared with the last commit:</p>
+<p class="Pp"></p>
+<div class="Bd-indent">
+<pre>lbu status</pre>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXIT_STATUS"><a class="permalink" href="#EXIT_STATUS">EXIT
+  STATUS</a></h1>
+<p class="Pp">0</p>
+<div class="Bd-indent">Success.</div>
+<p class="Pp">non-zero</p>
+<div class="Bd-indent">An error occurred.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<p class="Pp"><i>/etc/lbu/lbu.conf</i></p>
+<div class="Bd-indent">Configuration file.</div>
+<p class="Pp"><i>/etc/lbu/pre-package.d</i></p>
+<div class="Bd-indent">Directory for scripts run before package creation.</div>
+<p class="Pp"><i>/etc/lbu/post-package.d</i></p>
+<div class="Bd-indent">Directory for scripts run after package creation.</div>
+<p class="Pp"><i>/etc/apk/protected_paths.d/lbu.list</i></p>
+<div class="Bd-indent">Include and exclude list maintained by <b>lbu</b>.</div>
+<p class="Pp"><i>/media/MEDIA/HOSTNAME.apkovl.tar.gz</i></p>
+<div class="Bd-indent">Default archive path when committing to media.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>apk</b>(8), <b>setup-alpine</b>(8), <b>setup-disk</b>(8),
+    <b>setup-lbu</b>(8)</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp">Natanael Copa &lt;<i>ncopa@alpinelinux.org</i>&gt; and others</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-06-09</td>
+    <td class="foot-os">Alpine Linux</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

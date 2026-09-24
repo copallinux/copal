@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gmni(1) · Copal Linux</title>
+<meta name="description" content="gmni - Gemini client">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-gmni">gmni in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">gmni 1.0-r3 — man1/gmni.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">gmni(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">gmni(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">gmni - Gemini client</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNPOSIS"><a class="permalink" href="#SYNPOSIS">SYNPOSIS</a></h1>
+<p class="Pp"><b>gmni</b> [-46lLiIN] [-j <i>mode</i>] [-E <i>path</i>] [-d
+    <i>input</i>] [-D <i>path</i>] <i>gemini://...</i></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>gmni</b> executes a gemini request and, if successful, prints
+    the response body to stdout.</p>
+<p class="Pp">If an error is returned, information is printed to stderr and the
+    process exits with a non-zero exit status equal to the response status. If a
+    response is returned which is neither successful or an error, the response
+    status and meta text are printed to stderr.</p>
+<p class="Pp">If the server requests user input, a prompt is shown and a second
+    request is performed with the user's input supplied to the server.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp"><b>-4</b></p>
+<div class="Bd-indent">Force the connection to use IPv4.</div>
+<p class="Pp"><b>-6</b></p>
+<div class="Bd-indent">Force the connection to use IPv6.</div>
+<p class="Pp"><b>-d</b> <i>input</i></p>
+<div class="Bd-indent">If the server requests user input, a second request is
+  performed with the given input string as the user input.</div>
+<p class="Pp"><b>-D</b> <i>path</i></p>
+<div class="Bd-indent">If the server requests user input, <i>path</i> is opened
+  and read, and a second request is performed with the contents of <i>path</i>
+  as the user input.</div>
+<p class="Pp"><b>-E</b> <i>path</i>:<i>key</i></p>
+<div class="Bd-indent">Sets the path to the client certificate and private key
+  file to use, both PEM encoded.</div>
+<p class="Pp"><b>-l</b></p>
+<div class="Bd-indent">For <b>text/*</b> responses, <b>gmni</b> normally adds a
+  line feed if stdout is a TTY and the response body does not include one. This
+  flag suppresses this behavior.</div>
+<p class="Pp"><b>-L</b></p>
+<div class="Bd-indent">Follow redirects.</div>
+<p class="Pp"><b>-j</b> <i>mode</i></p>
+<div class="Bd-indent">Sets the TOFU (trust on first use) configuration, which
+  controls if the client shall trust new certificates. <i>mode</i> can be one of
+  <b>always</b>, <b>once</b>, or <b>fail</b>.</div>
+<p class="Pp"><b>-i</b></p>
+<div class="Bd-indent">Print the response status and meta text to stdout.</div>
+<p class="Pp"><b>-I</b></p>
+<div class="Bd-indent">Print the response status and meta text to stdout, and
+  suppress the printing of the response body to stdout.</div>
+<p class="Pp"><b>-N</b></p>
+<div class="Bd-indent">Suppress the input prompt if the server requests an
+  input, and instead print a diagnostic message and exit with a zero
+  (successful) status code.</div>
+<p class="Pp"><b>-o</b> <i>path</i></p>
+<div class="Bd-indent">Write output to <i>path</i>. If <i>path</i> ends with a
+  '/', the basename of the URL will be appended. If <i>path</i> is the empty
+  string, &quot;./&quot; will be presumed.</div>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2024-10-12</td>
+    <td class="foot-os"></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

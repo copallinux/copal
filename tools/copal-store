@@ -378,7 +378,9 @@ apk_install() {  # <names...>
 # (MAN_DOC_CAP_KB in copal-prep.sh, where install_manuals says why). Quiet,
 # and never a reason to fail the install.
 man_pages_for() {  # <apk names...>
-    _md=$(for _p in "$@"; do echo "${_p%@*}-doc"; done)
+    # The -doc of each package's origin (openssh-client -> openssh-doc).
+    _md=$(apk query --fields origin $(for _p in "$@"; do echo "${_p%@*}"; done) 2>/dev/null \
+          | sed -n 's/^Origin: \(.*\)/\1-doc/p' | sort -u)
     _mh=$(apk info -e $_md 2>/dev/null)
     _md=$(printf '%s\n' $_md | grep -vxF "$(printf '%s\n' $_mh)" || true)
     [ -n "$_md" ] || return 0

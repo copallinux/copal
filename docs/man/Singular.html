@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Singular(1) · Copal Linux</title>
+<meta name="description" content="Singular - manual page for Singular for version 4.x.x">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-Singular">Singular in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">singular 4.4.1_p5-r0 — man1/Singular.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">SINGULAR(1)</td>
+    <td class="head-vol">User Commands</td>
+    <td class="head-rtitle">SINGULAR(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">Singular - manual page for Singular for version 4.x.x</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Singular_--_a_Computer_Algebra_System_(CAS)_for_polynomial_computations."><a class="permalink" href="#Singular_--_a_Computer_Algebra_System_(CAS)_for_polynomial_computations.">Singular
+  -- a Computer Algebra System (CAS) for polynomial computations.</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ESingular:_starts-up_Singular_within_emacs."><a class="permalink" href="#ESingular:_starts-up_Singular_within_emacs.">ESingular:
+  starts-up Singular within emacs.</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="TSingular:_starts-up_Singular_within_a_new_terminal"><a class="permalink" href="#TSingular:_starts-up_Singular_within_a_new_terminal">TSingular:
+  starts-up Singular within a new terminal</a></h2>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>Singular [options] [file1 [file2 ...]]</b></p>
+<p class="Pp"><b>ESingular [options] [file1 [file2 ...]]</b></p>
+<p class="Pp"><b>TSingular [options] [file1 [file2 ...]]</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<dl class="Bl-tag">
+  <dt id="b"><a class="permalink" href="#b"><b>-b</b> <b>--batch</b></a></dt>
+  <dd>Run in batch mode (requires <b>--link</b>/--MPhost/--MPport)</dd>
+  <dt id="c"><a class="permalink" href="#c"><b>-c</b>
+    <b>--execute</b>=<i>STRING</i></a></dt>
+  <dd>Execute STRING on start-up</dd>
+  <dt id="d"><a class="permalink" href="#d"><b>-d</b> <b>--sdb</b></a></dt>
+  <dd>Enable source code debugger (experimental)</dd>
+  <dt id="e"><a class="permalink" href="#e"><b>-e</b>
+    <b>--echo</b>[=<i>VAL</i>]</a></dt>
+  <dd>Set value of variable `echo' to (integer) VAL</dd>
+  <dt id="h"><a class="permalink" href="#h"><b>-h</b> <b>--help</b></a></dt>
+  <dd>Print help message and exit</dd>
+  <dt id="p"><a class="permalink" href="#p"><b>-p</b> <b>--profile</b></a></dt>
+  <dd>Collect profiling data in smon.out</dd>
+  <dt id="q"><a class="permalink" href="#q"><b>-q</b> <b>--quiet</b></a></dt>
+  <dd>Do not print start-up banner and lib load messages</dd>
+  <dt id="r"><a class="permalink" href="#r"><b>-r</b>
+    <b>--random</b>=<i>SEED</i></a></dt>
+  <dd>Seed random generator with (integer) SEED</dd>
+  <dt id="t"><a class="permalink" href="#t"><b>-t</b> <b>--no-tty</b></a></dt>
+  <dd>Do not redefine the terminal characteristics</dd>
+  <dt id="u"><a class="permalink" href="#u"><b>-u</b>
+    <b>--user-option</b>=<i>STRING</i></a></dt>
+  <dd>Return STRING on `system(&quot;--user-option&quot;)'</dd>
+  <dt id="v"><a class="permalink" href="#v"><b>-v</b> <b>--version</b></a></dt>
+  <dd>Print extended version and configuration info</dd>
+  <dt id="allow"><a class="permalink" href="#allow"><b>--allow-net</b></a></dt>
+  <dd>Allow one to fetch (html) help pages from the net</dd>
+  <dt id="browser"><a class="permalink" href="#browser"><b>--browser</b>=<i>BROWSER</i></a></dt>
+  <dd>Display help in BROWSER (see help.cnf)</dd>
+  <dt id="cntrlc"><a class="permalink" href="#cntrlc"><b>--cntrlc</b>[=<i>CHAR</i>]</a></dt>
+  <dd>Automatic answer for CTRL-C prompt</dd>
+  <dt id="emacs"><a class="permalink" href="#emacs"><b>--emacs</b></a></dt>
+  <dd>Set defaults for running within emacs</dd>
+  <dt id="log"><a class="permalink" href="#log"><b>--log</b>=<i>LOGFILE</i></a></dt>
+  <dd>Log all input to LOGFILE.*</dd>
+  <dt id="no"><a class="permalink" href="#no"><b>--no-stdlib</b></a></dt>
+  <dd>Do not load `standard.lib' on start-up</dd>
+  <dt id="no~2"><a class="permalink" href="#no~2"><b>--no-rc</b></a></dt>
+  <dd>Do not execute `.singularrc' file(s) on start-up</dd>
+  <dt id="no~3"><a class="permalink" href="#no~3"><b>--no-warn</b></a></dt>
+  <dd>Do not display warning messages</dd>
+  <dt id="no~4"><a class="permalink" href="#no~4"><b>--no-out</b></a></dt>
+  <dd>Suppress all output</dd>
+  <dt id="no~5"><a class="permalink" href="#no~5"><b>--no-shell</b></a></dt>
+  <dd>Restricted mode: prohibit shell escape commands and links</dd>
+  <dt id="min"><a class="permalink" href="#min"><b>--min-time</b>=<i>SECS</i></a></dt>
+  <dd>Do not display times smaller than SECS (in seconds)</dd>
+  <dt id="cpus="><a class="permalink" href="#cpus="><b>--cpus=</b>#CPUs</a></dt>
+  <dd>maximal number of CPUs to use</dd>
+  <dt id="threads="><a class="permalink" href="#threads="><b>--threads=</b>#threads</a></dt>
+  <dd>maximal number of CPUs to use for threads</dd>
+</dl>
+<p class="Pp HP"><b>--flint-threads=</b>#flintthreads maximal number of threads
+    to use in flint library</p>
+<dl class="Bl-tag">
+  <dt id="MPport"><a class="permalink" href="#MPport"><b>--MPport</b>=<i>PORT</i></a></dt>
+  <dd>Use PORT number for connections</dd>
+  <dt id="MPhost"><a class="permalink" href="#MPhost"><b>--MPhost</b>=<i>HOST</i></a></dt>
+  <dd>Use HOST for connections</dd>
+  <dt id="link"><a class="permalink" href="#link"><b>--link</b>=<i>LINK</i></a></dt>
+  <dd>Use LINK for connections</dd>
+  <dt id="ticks"><a class="permalink" href="#ticks"><b>--ticks-per-sec</b>=<i>TICKS</i></a></dt>
+  <dd>Sets unit of timer to TICKS per second</dd>
+  <dt id="dump"><a class="permalink" href="#dump"><b>--dump-versiontuple</b></a></dt>
+  <dd>Display the version-tuple and exit</dd>
+</dl>
+<p class="Pp">For more information, type `help;' from within Singular or visit
+    https://www.singular.uni-kl.de or consult the Singular manual (available as
+    on-line info or html manual).</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp">The full documentation for <b>Singular</b> is maintained as a
+    Texinfo manual.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2022</td>
+    <td class="foot-os">Singular</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

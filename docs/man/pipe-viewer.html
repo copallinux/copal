@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pipe-viewer(1) · Copal Linux</title>
+<meta name="description" content="pipe-viewer - YouTube from command line. pipe-viewer --help pipe-viewer --tricks pipe-viewer --examples pipe-viewer --stdin-help">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-pipe-viewer">pipe-viewer in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">pipe-viewer 0.5.3-r0 — man1/pipe-viewer.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">PIPE-VIEWER(1)</td>
+    <td class="head-vol">User Contributed Perl Documentation</td>
+    <td class="head-rtitle">PIPE-VIEWER(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<br/>
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">pipe-viewer - YouTube from command line.</p>
+<p class="Pp"></p>
+<pre>     pipe-viewer --help
+     pipe-viewer --tricks
+     pipe-viewer --examples
+     pipe-viewer --stdin-help
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CONFIGURATION_OPTIONS"><a class="permalink" href="#CONFIGURATION_OPTIONS">CONFIGURATION
+  OPTIONS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="api_host"><a class="permalink" href="#api_host">api_host</a></h2>
+<p class="Pp">Hostname of an invidious instance. When set to
+    <span class="Li">&quot;auto&quot;</span>, a random invidious instance is
+    selected on-demand.</p>
+<p class="Pp">List of public invidious instances:</p>
+<p class="Pp"></p>
+<pre>    https://api.invidious.io/
+</pre>
+<p class="Pp">Tor instances are also supported if the
+    <span class="Li">&quot;socks5://127.0.0.1:9050&quot;</span> Tor proxy is
+    available and the Perl module LWP::Protocol::socks is installed.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="auto_captions"><a class="permalink" href="#auto_captions">auto_captions</a></h2>
+<p class="Pp">When set to <span class="Li">1</span>, auto-generated captions
+    will be retrieved. By default, auto-generated captions are ignored.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="audio_quality"><a class="permalink" href="#audio_quality">audio_quality</a></h2>
+<p class="Pp">The preferred quality for the audio-track:</p>
+<p class="Pp"></p>
+<pre>    best        # best audio quality available (&lt;=192kbps)
+    medium      # medium audio quality (&lt;=128kbps)
+    low         # low audio quality (&lt;=50kbps)
+</pre>
+<p class="Pp">The option can also be set to a numeric value N in order to select
+    an audio-track with &lt;= Nkbps.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="autoplay_mode"><a class="permalink" href="#autoplay_mode">autoplay_mode</a></h2>
+<p class="Pp">Enable autoplay mode, which will continuously play related
+  videos.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="bypass_age_gate_native"><a class="permalink" href="#bypass_age_gate_native">bypass_age_gate_native</a></h2>
+<p class="Pp">Bypass age-restricted videos, using our internal method.</p>
+<p class="Pp">However, these streaming URLs are heavily throttled by
+  YouTube.</p>
+<p class="Pp">When this option is disabled, a fallback method will be used
+    instead
+    (<span class="Li">&quot;yt-dlp&quot;</span>/<span class="Li">&quot;youtube-dl&quot;</span>
+    or invidious instances).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="bypass_age_gate_with_proxy"><a class="permalink" href="#bypass_age_gate_with_proxy">bypass_age_gate_with_proxy</a></h2>
+<p class="Pp">Bypass age-restricted videos using an YouTube Account Proxy.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="cache_dir"><a class="permalink" href="#cache_dir">cache_dir</a></h2>
+<p class="Pp">Cache directory where to save temporary files.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="colors"><a class="permalink" href="#colors">colors</a></h2>
+<p class="Pp">Use colors for text.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="comments_order"><a class="permalink" href="#comments_order">comments_order</a></h2>
+<p class="Pp">The sorting order for comments. Valid values: &quot;top&quot;,
+    &quot;new&quot;.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="confirm"><a class="permalink" href="#confirm">confirm</a></h2>
+<p class="Pp">Display a confirmation message after each video played.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="convert_cmd"><a class="permalink" href="#convert_cmd">convert_cmd</a></h2>
+<p class="Pp">Command to convert videos.</p>
+<p class="Pp">Default value:</p>
+<p class="Pp"></p>
+<pre>    &quot;ffmpeg -i *IN* *OUT*&quot;
+</pre>
+<p class="Pp"><b>*IN*</b> gets replaced with the input file.</p>
+<p class="Pp"><b>*OUT*</b> gets replaced with the output file.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="convert_to"><a class="permalink" href="#convert_to">convert_to</a></h2>
+<p class="Pp">Format to convert each downloaded video into. (e.g.:
+    <span class="Li">&quot;mp3&quot;</span>).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="cookie_file"><a class="permalink" href="#cookie_file">cookie_file</a></h2>
+<p class="Pp">Load cookies from a file. Useful to overcome the &quot;429: Too
+    Many Requests&quot; issue.</p>
+<p class="Pp">The file must be a <span class="Li">&quot;# Netscape HTTP Cookie
+    File&quot;</span>. Same format as
+    <span class="Li">&quot;youtube-dl&quot;</span> requires.</p>
+<p class="Pp">See also:</p>
+<p class="Pp"></p>
+<pre>    https://github.com/ytdl-org/youtube-dl#how-do-i-pass-cookies-to-youtube-dl
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="copy_caption"><a class="permalink" href="#copy_caption">copy_caption</a></h2>
+<p class="Pp">When downloading a video, copy the closed-caption (if any) into
+    the same folder with the video.</p>
+<p class="Pp">If <span class="Li">&quot;merge_into_mkv&quot;</span> and
+    <span class="Li">&quot;merge_with_captions&quot;</span> are both enabled,
+    there is no need to enable this option.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="custom_layout_format"><a class="permalink" href="#custom_layout_format">custom_layout_format</a></h2>
+<p class="Pp">An array of hash values specifying a custom layout for video
+    results.</p>
+<p class="Pp"></p>
+<pre>    align       # &quot;left&quot; or &quot;right&quot;
+    color       # any color name supported by Term::ANSIColor
+    text        # the actual text
+    width       # width allocated for the text
+</pre>
+<p class="Pp">The value for <span class="Li">&quot;width&quot;</span> can be
+    either a number of characters (e.g.: 20) or can be a percentage of the
+    terminal width (e.g.: &quot;15%&quot;).</p>
+<p class="Pp">The special tokens for <span class="Li">&quot;text&quot;</span>
+    are listed in:</p>
+<p class="Pp"></p>
+<pre>    pipe-viewer --tricks
+</pre>
+<p class="Pp">For better formatting, it's highly recommended to install
+    Unicode::GCString or Text::CharWidth.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="custom_channel_layout_format"><a class="permalink" href="#custom_channel_layout_format">custom_channel_layout_format</a></h2>
+<p class="Pp">An array of hash values specifying a custom layout for channel
+    results.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="custom_playlist_layout_format"><a class="permalink" href="#custom_playlist_layout_format">custom_playlist_layout_format</a></h2>
+<p class="Pp">An array of hash values specifying a custom layout for playlist
+    results.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="dash"><a class="permalink" href="#dash">dash</a></h2>
+<p class="Pp">Include or exclude streams in &quot;Dynamic Adaptive Streaming
+    over HTTP&quot; (DASH) format.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="date"><a class="permalink" href="#date">date</a></h2>
+<p class="Pp">Search for videos uploaded within a specific amount of time.</p>
+<p class="Pp">Valid values: &quot;anytime&quot;, &quot;hour&quot;,
+    &quot;today&quot;, &quot;week&quot;, &quot;month&quot;,
+  &quot;year&quot;.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="debug"><a class="permalink" href="#debug">debug</a></h2>
+<p class="Pp">Enable debug/verbose mode, which will print some extra
+    information.</p>
+<p class="Pp">Valid values: 0, 1, 2, 3.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="downloads_dir"><a class="permalink" href="#downloads_dir">downloads_dir</a></h2>
+<p class="Pp">Directory where to download files and where to save converted
+    files.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="download_and_play"><a class="permalink" href="#download_and_play">download_and_play</a></h2>
+<p class="Pp">Play downloaded videos.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="download_with_wget"><a class="permalink" href="#download_with_wget">download_with_wget</a></h2>
+<p class="Pp">Download videos with <span class="Li">&quot;wget&quot;</span>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="download_with_ytdl"><a class="permalink" href="#download_with_ytdl">download_with_ytdl</a></h2>
+<p class="Pp">Download videos with `yt-dlp` or `youtube-dl`.</p>
+<p class="Pp">By enabling this option and setting the value of
+    <span class="Li">&quot;ytdl_cmd&quot;</span> to
+    <span class="Li">&quot;yt-dlp&quot;</span>, download speed will be greatly
+    improved.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="env_proxy"><a class="permalink" href="#env_proxy">env_proxy</a></h2>
+<p class="Pp">Load proxy settings from <span class="Li">*_proxy</span>
+    environment variables (if any).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="fat32safe"><a class="permalink" href="#fat32safe">fat32safe</a></h2>
+<p class="Pp">When downloading a video, make the filename compatible with the
+    FAT32 filesystem.</p>
+<p class="Pp">Additionally, if Text::Unidecode is available, then Unicode
+    characters are converted to ASCII equivalents.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="features"><a class="permalink" href="#features">features</a></h2>
+<p class="Pp">A list of video features, return only videos with the specified
+    features:</p>
+<p class="Pp"></p>
+<pre>    live               # Live stream
+    4k                 # 4K resolution
+    hd                 # HD resolution (&gt;=720p)
+    subtitles          # Video has subtitles/closed-captions
+    creative_commons   # Creative Commons license
+    360                # 360&#x00B0; field of view
+    vr180              # Stereoscopic widh a 180&#x00B0; field of view
+    3d                 # 3D
+    hdr                # High dynamic range
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ffmpeg_cmd"><a class="permalink" href="#ffmpeg_cmd">ffmpeg_cmd</a></h2>
+<p class="Pp">Path to the <span class="Li">&quot;ffmpeg&quot;</span>
+  program.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="force_fallback"><a class="permalink" href="#force_fallback">force_fallback</a></h2>
+<p class="Pp">Force the extraction of the streaming URLs to always use the
+    fallback method (youtube-dl / invidious).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="fullscreen"><a class="permalink" href="#fullscreen">fullscreen</a></h2>
+<p class="Pp">Play videos in fullscreen mode.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="get_captions"><a class="permalink" href="#get_captions">get_captions</a></h2>
+<p class="Pp">Download closed-captions for videos (if any).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="get_term_width"><a class="permalink" href="#get_term_width">get_term_width</a></h2>
+<p class="Pp">Read the terminal width (`stty size`).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="hfr"><a class="permalink" href="#hfr">hfr</a></h2>
+<p class="Pp">Prefer or ignore High Frame Rate (HFR) video streams.</p>
+<p class="Pp">Try to disable this option if the videos are lagging or dropping
+    frames.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="highlight_color"><a class="permalink" href="#highlight_color">highlight_color</a></h2>
+<p class="Pp">Highlight color used to highlight watched videos.</p>
+<p class="Pp">Any color name supported by Term::ANSIColor can be used.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="highlight_watched"><a class="permalink" href="#highlight_watched">highlight_watched</a></h2>
+<p class="Pp">Highlight watched videos.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="history"><a class="permalink" href="#history">history</a></h2>
+<p class="Pp">Enable or disable support for input history.</p>
+<p class="Pp">Requires Term::ReadLine::Gnu.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="history_file"><a class="permalink" href="#history_file">history_file</a></h2>
+<p class="Pp">File where to save the input history.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="history_limit"><a class="permalink" href="#history_limit">history_limit</a></h2>
+<p class="Pp">Maximum number of entries in the history file.</p>
+<p class="Pp">When the limit is reached, the oldest half of the history file
+    will be deleted.</p>
+<p class="Pp">For no limit, set the value to <span class="Li">-1</span>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="http_proxy"><a class="permalink" href="#http_proxy">http_proxy</a></h2>
+<p class="Pp">Set HTTP(S)/SOCKS proxy, using the format:</p>
+<p class="Pp"></p>
+<pre>    'proto://domain.tld:port/'
+</pre>
+<p class="Pp">If authentication is required, use:</p>
+<p class="Pp"></p>
+<pre>    'proto://user:pass@domain.tld:port/'
+</pre>
+<p class="Pp">For example, to use Tor, install LWP::Protocol::socks and set this
+    value to:</p>
+<p class="Pp"></p>
+<pre>    &quot;socks://127.0.0.1:9050&quot;
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ignore_av1"><a class="permalink" href="#ignore_av1">ignore_av1</a></h2>
+<p class="Pp">Ignore videos in AV1 format.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ignored_projections"><a class="permalink" href="#ignored_projections">ignored_projections</a></h2>
+<p class="Pp">An array of video projections to ignore.</p>
+<p class="Pp">For example, to prefer rectangular projections of 360&#x00B0;
+    videos, use:</p>
+<p class="Pp"></p>
+<pre>    ignored_projections =&gt; [&quot;mesh&quot;, &quot;equirectangular&quot;],
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="interactive"><a class="permalink" href="#interactive">interactive</a></h2>
+<p class="Pp">Interactive mode, prompting for user-input.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="keep_original_video"><a class="permalink" href="#keep_original_video">keep_original_video</a></h2>
+<p class="Pp">Keep the original video after conversion. When set to
+    <span class="Li">0</span>, the original video will be deleted.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="local_playlist_limit"><a class="permalink" href="#local_playlist_limit">local_playlist_limit</a></h2>
+<p class="Pp">When set to a positive value, will restrict the size of the local
+    playlists to this many entries. When this limit has been reached, older
+    entries will be discarded from the playlist.</p>
+<p class="Pp">A reasonable value would be between 500 and 1000.</p>
+<p class="Pp">For no limit, set the value to <span class="Li">-1</span>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="maxResults"><a class="permalink" href="#maxResults">maxResults</a></h2>
+<p class="Pp">How many results to display per page.</p>
+<p class="Pp">Currently, this is not implemented.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="merge_into_mkv"><a class="permalink" href="#merge_into_mkv">merge_into_mkv</a></h2>
+<p class="Pp">When downloading split videos, merge the audio+video files into an
+    MKV container.</p>
+<p class="Pp">Requires <span class="Li">&quot;ffmpeg&quot;</span>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="merge_into_mkv_args"><a class="permalink" href="#merge_into_mkv_args">merge_into_mkv_args</a></h2>
+<p class="Pp">Arguments for <span class="Li">&quot;ffmpeg&quot;</span> how to
+    merge the files.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="merge_with_captions"><a class="permalink" href="#merge_with_captions">merge_with_captions</a></h2>
+<p class="Pp">Include closed-captions inside the MKV container (if any).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="order"><a class="permalink" href="#order">order</a></h2>
+<p class="Pp">Search order for videos.</p>
+<p class="Pp">Valid values: &quot;relevance&quot;, &quot;rating&quot;,
+    &quot;upload_date&quot;, &quot;view_count&quot;.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="page"><a class="permalink" href="#page">page</a></h2>
+<p class="Pp">Page number of results.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="prefer_av1"><a class="permalink" href="#prefer_av1">prefer_av1</a></h2>
+<p class="Pp">Prefer videos in AV1 format. (experimental)</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="prefer_mp4"><a class="permalink" href="#prefer_mp4">prefer_mp4</a></h2>
+<p class="Pp">Prefer videos in MP4 (AVC) format.</p>
+<p class="Pp">Try to enable this option if the videos are lagging or dropping
+    frames.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="prefer_m4a"><a class="permalink" href="#prefer_m4a">prefer_m4a</a></h2>
+<p class="Pp">Prefer audio streams in M4A (AAC) format.</p>
+<p class="Pp">By default, the OPUS format for audio is preferred.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="prefer_invidious"><a class="permalink" href="#prefer_invidious">prefer_invidious</a></h2>
+<p class="Pp">Prefer invidious instances over parsing the YouTube website
+    directly.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="region"><a class="permalink" href="#region">region</a></h2>
+<p class="Pp">ISO 3166 country code (default: &quot;US&quot;).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="remove_played_file"><a class="permalink" href="#remove_played_file">remove_played_file</a></h2>
+<p class="Pp">When <span class="Li">&quot;download_and_play&quot;</span> is
+    enabled, remove the file after playing it.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="resolution"><a class="permalink" href="#resolution">resolution</a></h2>
+<p class="Pp">Preferred resolution for videos.</p>
+<p class="Pp">Valid values: best, 2160p, 1440p, 1080p, 720p, 480p, 360p, 240p,
+    144p, audio.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="show_video_info"><a class="permalink" href="#show_video_info">show_video_info</a></h2>
+<p class="Pp">Show extra info for videos when selected.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="skip_if_exists"><a class="permalink" href="#skip_if_exists">skip_if_exists</a></h2>
+<p class="Pp">When downloading, skip if the file already exists locally.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="skip_watched"><a class="permalink" href="#skip_watched">skip_watched</a></h2>
+<p class="Pp">Skip already watched/downloaded videos.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="split_videos"><a class="permalink" href="#split_videos">split_videos</a></h2>
+<p class="Pp">Enable or disable support for split-videos. Split-videos are
+    videos that do not include audio and video in the same file.</p>
+<p class="Pp">Disable this option if the videos are loading too slowly, as
+    non-split videos are not throttled by YouTube. Although, the highest
+    resolution of non-split videos is 360p.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="srt_languages"><a class="permalink" href="#srt_languages">srt_languages</a></h2>
+<p class="Pp">List of SRT languages in the order of preference.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="saved_channels_file"><a class="permalink" href="#saved_channels_file">saved_channels_file</a></h2>
+<p class="Pp">Absolute path to the file where to store saved channels
+    (<span class="Li">&quot;:save=i&quot;</span>).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="subscribed_channels_file"><a class="permalink" href="#subscribed_channels_file">subscribed_channels_file</a></h2>
+<p class="Pp">Absolute path to the file where to store subscribed channels
+    (<span class="Li">&quot;:sub=i&quot;</span>).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="subscription_results"><a class="permalink" href="#subscription_results">subscription_results</a></h2>
+<p class="Pp">Comma-separated list of methods used to retrieve videos from
+    subscribed channels.</p>
+<p class="Pp"></p>
+<pre>    subscription_results =&gt; &quot;uploads,streams&quot;,   # include streams in feed
+</pre>
+<p class="Pp">Valid values: uploads, streams, shorts.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="subscriptions_lifetime"><a class="permalink" href="#subscriptions_lifetime">subscriptions_lifetime</a></h2>
+<p class="Pp">Amount of time, in seconds, before rescanning the subscribed
+    channels for new videos (during
+  <span class="Li">&quot;-ls&quot;</span>).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="subscriptions_limit"><a class="permalink" href="#subscriptions_limit">subscriptions_limit</a></h2>
+<p class="Pp">Maximum number of subscription videos to store in the local
+    database. Set to <span class="Li">0</span> for no limit.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="thousand_separator"><a class="permalink" href="#thousand_separator">thousand_separator</a></h2>
+<p class="Pp">Thousands separator character for numbers &gt;= 1000.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="timeout"><a class="permalink" href="#timeout">timeout</a></h2>
+<p class="Pp">HTTPS timeout value in seconds. The default value is 10
+  seconds.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="user_agent"><a class="permalink" href="#user_agent">user_agent</a></h2>
+<p class="Pp">Token that is used to identify the user agent on the network. The
+    agent value is sent as the <span class="Li">&quot;User-Agent&quot;</span>
+    header in the requests.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="video_filename_format"><a class="permalink" href="#video_filename_format">video_filename_format</a></h2>
+<p class="Pp">The format of filename for downloaded files.</p>
+<p class="Pp">The available special tokens are listed in:</p>
+<p class="Pp"></p>
+<pre>    pipe-viewer --tricks
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="video_player_selected"><a class="permalink" href="#video_player_selected">video_player_selected</a></h2>
+<p class="Pp">The selected video player defined in the
+    <span class="Li">&quot;video_players&quot;</span> table.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="video_players"><a class="permalink" href="#video_players">video_players</a></h2>
+<p class="Pp">A table of video players.</p>
+<p class="Pp">The keys for each player are:</p>
+<p class="Pp"></p>
+<pre>    arg        # any arguments for the video player
+    audio      # option specifying the *AUDIO* file
+    cmd        # the main player command
+    fs         # the fullscreen option
+    novideo    # the no-video mode option
+    srt        # option specifying the *SUB* file
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="videoDuration"><a class="permalink" href="#videoDuration">videoDuration</a></h2>
+<p class="Pp">Retrieve only short or long videos in search results.</p>
+<p class="Pp">Valid values: &quot;any&quot;, &quot;short&quot; (under 4
+    minutes), &quot;average&quot; (4-20 minutes), and &quot;long&quot; (over 20
+    minutes).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="watch_history"><a class="permalink" href="#watch_history">watch_history</a></h2>
+<p class="Pp">Set to <span class="Li">1</span> to remember and highlight watched
+    videos across multiple sessions.</p>
+<p class="Pp">Watched videos can be listed with:</p>
+<p class="Pp"></p>
+<pre>    pipe-viewer -wv
+</pre>
+<p class="Pp">The video IDs are saved in the filename specified by
+    <span class="Li">&quot;watch_history_file&quot;</span>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="watch_history_file"><a class="permalink" href="#watch_history_file">watch_history_file</a></h2>
+<p class="Pp">File where to save the video IDs of watched/downloaded videos when
+    <span class="Li">&quot;watch_history&quot;</span> is set to a true
+  value.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="wget_cmd"><a class="permalink" href="#wget_cmd">wget_cmd</a></h2>
+<p class="Pp">Command for <span class="Li">&quot;wget&quot;</span> when
+    <span class="Li">&quot;download_with_wget&quot;</span> is set to a true
+    value.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="youtube_video_url"><a class="permalink" href="#youtube_video_url">youtube_video_url</a></h2>
+<p class="Pp">Format for <span class="Li">sprintf()</span> for constructing an
+    YouTube video URL given the video ID.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="youtube_channel_url"><a class="permalink" href="#youtube_channel_url">youtube_channel_url</a></h2>
+<p class="Pp">Format for <span class="Li">sprintf()</span> for constructing an
+    YouTube channel URL given the channel ID.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="youtube_playlist_url"><a class="permalink" href="#youtube_playlist_url">youtube_playlist_url</a></h2>
+<p class="Pp">Format for <span class="Li">sprintf()</span> for constructing an
+    YouTube playlist URL given the playlist ID.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ytdl"><a class="permalink" href="#ytdl">ytdl</a></h2>
+<p class="Pp">Use <span class="Li">&quot;youtube-dl&quot;</span> for videos with
+    encrypted signatures.</p>
+<p class="Pp">When set to <span class="Li">0</span>, invidious instances will be
+    used instead.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ytdl_cmd"><a class="permalink" href="#ytdl_cmd">ytdl_cmd</a></h2>
+<p class="Pp">Command for <span class="Li">&quot;yt-dlp&quot;</span> or
+    <span class="Li">&quot;youtube-dl&quot;</span> when
+    <span class="Li">&quot;ytdl&quot;</span> is set to
+    <span class="Li">1</span>.</p>
+<p class="Pp">Also command for <span class="Li">&quot;yt-dlp&quot;</span> for
+    extracting YouTube comments when
+    <span class="Li">&quot;ytdlp_comments&quot;</span> is set to
+    <span class="Li">1</span>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ytdlp_comments"><a class="permalink" href="#ytdlp_comments">ytdlp_comments</a></h2>
+<p class="Pp">When set to <span class="Li">1</span>, use
+    <span class="Li">&quot;yt-dlp&quot;</span> for extracting YouTube comments.
+    (experimental)</p>
+<p class="Pp">When set to <span class="Li">0</span>, invidious instances will be
+    used instead.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ytdlp_max_comments"><a class="permalink" href="#ytdlp_max_comments">ytdlp_max_comments</a></h2>
+<p class="Pp">Maximum number of comments to extract with
+    <span class="Li">&quot;yt-dlp&quot;</span>.</p>
+<p class="Pp">Replies count as comments.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ytdlp_max_replies"><a class="permalink" href="#ytdlp_max_replies">ytdlp_max_replies</a></h2>
+<p class="Pp">Maximum number of replies per thread.</p>
+<p class="Pp">Use <span class="Li">0</span> to disable replies.</p>
+<p class="Pp">Use <span class="Li">&quot;all&quot;</span> to extract all
+    replies.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CONFIGURATION_FILES"><a class="permalink" href="#CONFIGURATION_FILES">CONFIGURATION
+  FILES</a></h1>
+<p class="Pp">The configuration files are:</p>
+<p class="Pp"></p>
+<pre>    ~/.config/pipe-viewer/pipe-viewer.conf
+    ~/.config/pipe-viewer/gtk-pipe-viewer.conf
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="INVIDIOUS_API_REFERENCE"><a class="permalink" href="#INVIDIOUS_API_REFERENCE">INVIDIOUS
+  API REFERENCE</a></h1>
+<p class="Pp">https://github.com/iv-org/invidious/wiki/API</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="REPOSITORY"><a class="permalink" href="#REPOSITORY">REPOSITORY</a></h1>
+<p class="Pp">https://github.com/trizen/pipe-viewer</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="LICENSE_AND_COPYRIGHT"><a class="permalink" href="#LICENSE_AND_COPYRIGHT">LICENSE
+  AND COPYRIGHT</a></h1>
+<p class="Pp">Copyright 2010-2024 Trizen.</p>
+<p class="Pp">This program is free software; you can redistribute it and/or
+    modify it under the terms of either: the GNU General Public License as
+    published by the Free Software Foundation; or the Artistic License.</p>
+<p class="Pp">This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.</p>
+<p class="Pp">See &lt;https://dev.perl.org/licenses/&gt; for more
+  information.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2024-09-28</td>
+    <td class="foot-os">perl v5.42.2</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

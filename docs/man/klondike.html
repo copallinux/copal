@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>klondike(6) · Copal Linux</title>
+<meta name="description" content="klondike – Klondike solitaire card game">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-klondike">klondike in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">bsd-games 3.3-r2 — man6/klondike.6.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">KLONDIKE(6)</td>
+    <td class="head-vol">Games Manual</td>
+    <td class="head-rtitle">KLONDIKE(6)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><code class="Nm">klondike</code> &#x2014;
+    <span class="Nd">Klondike solitaire card game</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Klondike is a card game with the object of sorting cards into four
+    piles, one for each suit, sorted by rank from Ace to King. The initial deal
+    creates seven sorting stacks; one card in the first to seven cards in the
+    last. The top card in each stack is revealed, while the rest stay
+  hidden.</p>
+<p class="Pp">The game is played by moving the cards around the sorting stacks.
+    You may only move revealed cards in the sorting stacks, the last card dealt
+    from the deck, and the last card dealt onto the final sorted piles. You may
+    not move cards back into the deck. When you move a card, you must move all
+    the cards on top of it with it. In the sorting stacks you may place a card
+    only onto a card of one rank higher and a different suit color. For example,
+    a Jack of Spades can only be placed onto a Queen of Hearts or Queen of
+    Diamonds. In the final piles you may only place a card that is one rank
+    higher and of the same suit as the card already on top. For example, if a
+    final pile contains Ace-2-3-4 Clubs, then you may only place 5 of Clubs on
+    it. The remaining cards in the deck are dealt one at a time as needed. You
+    may only move the last dealt card from the dealt stack. When no cards remain
+    in the deck, the dealt stack is turned over and becomes the deck again.</p>
+<p class="Pp">The game is won when the four final piles contain the all four
+    suits in Ace-King order.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">June 15, 2016</td>
+    <td class="foot-os">Linux 6.18.52-0-lts</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

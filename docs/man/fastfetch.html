@@ -1,0 +1,1150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fastfetch(1) · Copal Linux</title>
+<meta name="description" content="fastfetch - A fast and feature-rich system information tool similar to neofetch">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="man.css">
+</head>
+<body>
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="../">Copal</a>
+  <a class="key" href="../commands.html">Commands</a>
+  <a class="key" href="../commands.html#c-fastfetch">fastfetch in the guide</a>
+</nav>
+<main class="man">
+<p class="man-src">fastfetch 2.64.2-r0 — man1/fastfetch.1.gz, Alpine 3.24.1</p>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">FASTFETCH(1)</td>
+    <td class="head-vol">FASTFETCH</td>
+    <td class="head-rtitle">FASTFETCH(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">fastfetch - A fast and feature-rich system information tool
+    similar to neofetch</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>fastfetch</b> [<i>OPTIONS</i>...]</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">Fastfetch is a tool for displaying system information in a
+    visually appealing way. Written primarily in C, it focuses on performance
+    and customizability while providing functionality similar to neofetch. It
+    supports Linux, Android, FreeBSD, macOS, and Windows 7 or newer.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CONFIGURATION"><a class="permalink" href="#CONFIGURATION">CONFIGURATION</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Fetch_Structure"><a class="permalink" href="#Fetch_Structure">Fetch
+  Structure</a></h2>
+<p class="Pp">The structure defines which modules to display and in what order.
+    It consists of module names separated by colons (:). For example:
+    <b>title:separator:os:kernel:uptime</b></p>
+<p class="Pp">To list all available modules, use <b>--list-modules</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Config_Files"><a class="permalink" href="#Config_Files">Config
+  Files</a></h2>
+<p class="Pp">Fastfetch uses JSONC (JSON with Comments) for configuration files.
+    These files must have the .jsonc extension.</p>
+<p class="Pp">You can generate a default config file using <b>--gen-config</b>.
+    By default, the config file is saved at
+    <b>~/.config/fastfetch/config.jsonc</b>.</p>
+<p class="Pp">The configuration/preset files are searched in the following
+    locations (in order):</p>
+<p class="Pp"><b>1.</b> Relative to the current working directory</p>
+<p class="Pp"><b>2.</b> Relative to ~/.local/share/fastfetch/presets/</p>
+<p class="Pp"><b>3.</b> Relative to /usr/share/fastfetch/presets/</p>
+<p class="Pp">For detailed information on logo options, module configuration,
+    and formatting, visit:
+    <b>https://github.com/fastfetch-cli/fastfetch/wiki/Configuration</b></p>
+<p class="Pp">Fastfetch provides several built-in presets. List them with
+    <b>--list-presets</b>.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="JSON_Schema"><a class="permalink" href="#JSON_Schema">JSON
+  Schema</a></h2>
+<p class="Pp">A JSON schema is available for editor intelligence when editing
+    the configuration file. Add the following line at the beginning of your
+    config file:</p>
+<p class="Pp"><b>&quot;$schema&quot;:
+    &quot;https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json&quot;</b></p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<p class="Pp">Options are parsed in a case-insensitive manner. For example,
+    <b>--logo-type</b> and <b>--LOGO-TYPE</b> are treated identically.</p>
+<p class="Pp">Arguments in square brackets are optional. Optional boolean
+    arguments default to 'true' when specified without a value.</p>
+<p class="Pp">For more detailed information about a specific option, use:
+    <b>fastfetch -h &lt;option_name_without_dashes&gt;</b></p>
+<p class="Pp">Any combination of options can be made permanent by generating a
+    configuration file: <b>fastfetch &lt;options&gt; --gen-config</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Informative"><a class="permalink" href="#Informative">Informative</a></h2>
+<dl class="Bl-tag">
+  <dt id="h,"><a class="permalink" href="#h,"><b>-h, --help</b>
+    [<i>command</i>]</a></dt>
+  <dd>
+    <br/>
+     Show this help message or help for a specific command
+    <p class="Pp"></p>
+  </dd>
+  <dt id="v,"><a class="permalink" href="#v,"><b>-v, --version</b></a></dt>
+  <dd>
+    <br/>
+     Show the full Fastfetch version
+    <p class="Pp"></p>
+  </dd>
+  <dt id="version_raw"><a class="permalink" href="#version_raw"><b>--version-raw</b></a></dt>
+  <dd>
+    <br/>
+     Show the raw version string (major.minor.patch)
+    <p class="Pp"></p>
+  </dd>
+  <dt id="list_config_paths"><a class="permalink" href="#list_config_paths"><b>--list-config-paths</b></a></dt>
+  <dd>
+    <br/>
+     List search paths for config files
+    <p class="Pp"></p>
+  </dd>
+  <dt id="list_data_paths"><a class="permalink" href="#list_data_paths"><b>--list-data-paths</b></a></dt>
+  <dd>
+    <br/>
+     List search paths for presets and logos
+    <p class="Pp"></p>
+  </dd>
+  <dt id="list_logos"><a class="permalink" href="#list_logos"><b>--list-logos</b></a></dt>
+  <dd>
+    <br/>
+     List available logos
+    <p class="Pp"></p>
+  </dd>
+  <dt id="list_modules"><a class="permalink" href="#list_modules"><b>--list-modules</b></a></dt>
+  <dd>
+    <br/>
+     List available modules
+    <p class="Pp"></p>
+  </dd>
+  <dt id="list_presets"><a class="permalink" href="#list_presets"><b>--list-presets</b></a></dt>
+  <dd>
+    <br/>
+     List available presets
+    <p class="Pp">
+      <br/>
+       Presets can be loaded with &quot;--config &lt;preset-name&gt;&quot;</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="list_features"><a class="permalink" href="#list_features"><b>--list-features</b></a></dt>
+  <dd>
+    <br/>
+     List the supported features that fastfetch was compiled with
+    <p class="Pp">
+      <br/>
+       Mainly for development</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="print_logos"><a class="permalink" href="#print_logos"><b>--print-logos</b></a></dt>
+  <dd>
+    <br/>
+     Show available logos
+    <p class="Pp"></p>
+  </dd>
+  <dt id="print_structure"><a class="permalink" href="#print_structure"><b>--print-structure</b></a></dt>
+  <dd>
+    <br/>
+     Show the default structure
+    <p class="Pp"></p>
+  </dd>
+  <dt id="format"><a class="permalink" href="#format"><b>--format</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Set the output format
+    <p class="Pp"></p>
+  </dd>
+  <dt id="j,"><a class="permalink" href="#j,"><b>-j, --json</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Enable or disable JSON output
+    <p class="Pp">
+      <br/>
+       Shortcut for `--format json`</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="dynamic_interval"><a class="permalink" href="#dynamic_interval"><b>--dynamic-interval</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Keep Fastfetch running and refresh the output every &lt;num&gt;
+      milliseconds
+    <p class="Pp">
+      <br/>
+       Set to 0 (default) to disable this behavior; does not work with
+      --json</p>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Config"><a class="permalink" href="#Config">Config</a></h2>
+<dl class="Bl-tag">
+  <dt id="c,"><a class="permalink" href="#c,"><b>-c, --config</b>
+    <i>config</i></a></dt>
+  <dd>
+    <br/>
+     Specify the config file or preset to load
+    <p class="Pp">
+      <br/>
+       The file is searched in the order shown by &quot;fastfetch
+        --list-config-paths&quot;. Use &quot;-&quot; to read config from stdin,
+        or &quot;none&quot; to disable further config loading. See also
+        https://github.com/fastfetch-cli/fastfetch/wiki/Configuration for
+        details</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="gen_config"><a class="permalink" href="#gen_config"><b>--gen-config</b>
+    [<i>path</i>]</a></dt>
+  <dd>
+    <br/>
+     Generate a minimal config file at the specified path
+    <p class="Pp">
+      <br/>
+       Defaults to &quot;~/.config/fastfetch/config.jsonc&quot;. Prints the
+        generated config if &lt;path&gt; is &quot;-&quot;</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="gen_config_full"><a class="permalink" href="#gen_config_full"><b>--gen-config-full</b>
+    [<i>path</i>]</a></dt>
+  <dd>
+    <br/>
+     Generate a full config file with all optional settings at the specified
+      path
+    <p class="Pp">
+      <br/>
+       Defaults to &quot;~/.config/fastfetch/config.jsonc&quot;. Prints the
+        generated config if &lt;path&gt; is &quot;-&quot;</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="gen_config_force"><a class="permalink" href="#gen_config_force"><b>--gen-config-force</b>
+    [<i>path</i>]</a></dt>
+  <dd>
+    <br/>
+     Generate a config file at the specified path, overwriting any existing file
+    <p class="Pp">
+      <br/>
+       Defaults to &quot;~/.config/fastfetch/config.jsonc&quot;</p>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="General"><a class="permalink" href="#General">General</a></h2>
+<dl class="Bl-tag">
+  <dt id="thread"><a class="permalink" href="#thread"><b>--thread</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Use separate threads for HTTP requests
+    <p class="Pp"></p>
+  </dd>
+  <dt id="wmi_timeout"><a class="permalink" href="#wmi_timeout"><b>--wmi-timeout</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the timeout (ms) for WMI queries
+    <p class="Pp">
+      <br/>
+       Windows only</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="processing_timeout"><a class="permalink" href="#processing_timeout"><b>--processing-timeout</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the timeout (ms) when waiting for child processes
+    <p class="Pp"></p>
+  </dd>
+  <dt id="ds_force_drm"><a class="permalink" href="#ds_force_drm"><b>--ds-force-drm</b>
+    [<i>enum</i>]</a></dt>
+  <dd>
+    <br/>
+     Specify whether display detection should use DRM only
+    <p class="Pp">
+      <br/>
+       Use this option if you encounter problems with other detection methods.
+      <br/>
+       Linux only</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="detect_version"><a class="permalink" href="#detect_version"><b>--detect-version</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Specify whether to detect and display versions for terminal, shell, editor,
+      and others
+    <p class="Pp">
+      <br/>
+       Mainly for benchmarking</p>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Logo"><a class="permalink" href="#Logo">Logo</a></h2>
+<dl class="Bl-tag">
+  <dt id="l,"><a class="permalink" href="#l,"><b>-l, --logo</b>
+    <i>logo</i></a></dt>
+  <dd>
+    <br/>
+     Set the logo source. Use &quot;none&quot; to disable logo output
+    <p class="Pp">
+      <br/>
+       Use either a built-in logo name or a path to an image file. See also
+        https://github.com/fastfetch-cli/fastfetch/wiki/Logo-options</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="logo_type"><a class="permalink" href="#logo_type"><b>--logo-type</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Set the type of logo specified by &quot;--logo&quot;
+    <p class="Pp">
+      <br/>
+       See also https://github.com/fastfetch-cli/fastfetch/wiki/Logo-options</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="logo_width"><a class="permalink" href="#logo_width"><b>--logo-width</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the width of the logo (in characters) if it is an image
+    <p class="Pp">
+      <br/>
+       Required for iTerm image protocol</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="logo_height"><a class="permalink" href="#logo_height"><b>--logo-height</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the height of the logo (in characters) if it is an image
+    <p class="Pp">
+      <br/>
+       Required for iTerm image protocol</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="logo_preserve_aspect_ratio"><a class="permalink" href="#logo_preserve_aspect_ratio"><b>--logo-preserve-aspect-ratio</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Specify whether the logo should fill the specified width and height as much
+      as possible without stretching
+    <p class="Pp">
+      <br/>
+       Supported by iTerm image protocol only</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="logo_color-_1-9_"><a class="permalink" href="#logo_color-_1-9_"><b>--logo-color-[1-9]</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Override a color in the logo
+    <p class="Pp">
+      <br/>
+       See `-h color` for the list of available colors</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="logo_padding"><a class="permalink" href="#logo_padding"><b>--logo-padding</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the padding on the left and right sides of the logo
+    <p class="Pp"></p>
+  </dd>
+  <dt id="logo_padding_left"><a class="permalink" href="#logo_padding_left"><b>--logo-padding-left</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the padding on the left side of the logo
+    <p class="Pp"></p>
+  </dd>
+  <dt id="logo_padding_right"><a class="permalink" href="#logo_padding_right"><b>--logo-padding-right</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the padding on the right side of the logo
+    <p class="Pp"></p>
+  </dd>
+  <dt id="logo_padding_top"><a class="permalink" href="#logo_padding_top"><b>--logo-padding-top</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the padding at the top of the logo
+    <p class="Pp"></p>
+  </dd>
+  <dt id="logo_print_remaining"><a class="permalink" href="#logo_print_remaining"><b>--logo-print-remaining</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Specify whether to print remaining logo lines when the logo is taller than
+      the module list
+    <p class="Pp"></p>
+  </dd>
+  <dt id="logo_position"><a class="permalink" href="#logo_position"><b>--logo-position</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Set the display position of the logo
+    <p class="Pp"></p>
+  </dd>
+  <dt id="logo_recache"><a class="permalink" href="#logo_recache"><b>--logo-recache</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     If true, regenerate the image logo cache
+    <p class="Pp"></p>
+  </dd>
+  <dt id="file"><a class="permalink" href="#file"><b>--file</b>
+    <i>path</i></a></dt>
+  <dd>
+    <br/>
+     Short for --logo-type file --logo &lt;path&gt;
+    <p class="Pp">
+      <br/>
+       See &quot;--help logo-type&quot; for more info</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="file_raw"><a class="permalink" href="#file_raw"><b>--file-raw</b>
+    <i>path</i></a></dt>
+  <dd>
+    <br/>
+     Short for --logo-type file-raw --logo &lt;path&gt;
+    <p class="Pp">
+      <br/>
+       See &quot;--help logo-type&quot; for more info</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="data"><a class="permalink" href="#data"><b>--data</b>
+    <i>data</i></a></dt>
+  <dd>
+    <br/>
+     Short for --logo-type data --logo &lt;data&gt;
+    <p class="Pp">
+      <br/>
+       See &quot;--help logo-type&quot; for more info</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="data_raw"><a class="permalink" href="#data_raw"><b>--data-raw</b>
+    <i>data</i></a></dt>
+  <dd>
+    <br/>
+     Short for --logo-type data-raw --logo &lt;data&gt;
+    <p class="Pp">
+      <br/>
+       See &quot;--help logo-type&quot; for more info</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="raw"><a class="permalink" href="#raw"><b>--raw</b>
+    <i>path</i></a></dt>
+  <dd>
+    <br/>
+     Short for --logo-type raw --logo &lt;path&gt;
+    <p class="Pp">
+      <br/>
+       See &quot;--help logo-type&quot; for more info</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="sixel"><a class="permalink" href="#sixel"><b>--sixel</b>
+    <i>path</i></a></dt>
+  <dd>
+    <br/>
+     Short for --logo-type sixel --logo &lt;path&gt;
+    <p class="Pp">
+      <br/>
+       See &quot;--help logo-type&quot; for more info</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="kitty"><a class="permalink" href="#kitty"><b>--kitty</b>
+    <i>path</i></a></dt>
+  <dd>
+    <br/>
+     Short for --logo-type kitty --logo &lt;path&gt;
+    <p class="Pp">
+      <br/>
+       See &quot;--help logo-type&quot; for more info</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="kitty_direct"><a class="permalink" href="#kitty_direct"><b>--kitty-direct</b>
+    <i>path</i></a></dt>
+  <dd>
+    <br/>
+     Short for --logo-type kitty-direct --logo &lt;path&gt;
+    <p class="Pp">
+      <br/>
+       See &quot;--help logo-type&quot; for more info</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="kitty_icat"><a class="permalink" href="#kitty_icat"><b>--kitty-icat</b>
+    <i>path</i></a></dt>
+  <dd>
+    <br/>
+     Short for --logo-type kitty-icat --logo &lt;path&gt;
+    <p class="Pp">
+      <br/>
+       See &quot;--help logo-type&quot; for more info</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="iterm"><a class="permalink" href="#iterm"><b>--iterm</b>
+    <i>path</i></a></dt>
+  <dd>
+    <br/>
+     Short for --logo-type iterm --logo &lt;path&gt;
+    <p class="Pp">
+      <br/>
+       See &quot;--help logo-type&quot; for more info</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="chafa"><a class="permalink" href="#chafa"><b>--chafa</b>
+    <i>path</i></a></dt>
+  <dd>
+    <br/>
+     Short for --logo-type chafa --logo &lt;path&gt;
+    <p class="Pp">
+      <br/>
+       See &quot;--help logo-type&quot; for more info</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="chafa_fg_only"><a class="permalink" href="#chafa_fg_only"><b>--chafa-fg-only</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Produce character-cell output using foreground colors only
+    <p class="Pp">
+      <br/>
+       See the Chafa documentation for details</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="chafa_symbols"><a class="permalink" href="#chafa_symbols"><b>--chafa-symbols</b>
+    <i>str</i></a></dt>
+  <dd>
+    <br/>
+     Specify character symbols to employ in final output
+    <p class="Pp">
+      <br/>
+       See the Chafa documentation for details</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="chafa_canvas_mode"><a class="permalink" href="#chafa_canvas_mode"><b>--chafa-canvas-mode</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Determine how colors are used in the output
+    <p class="Pp">
+      <br/>
+       This value maps to the integer value of enum ChafaCanvasMode. See the
+        Chafa documentation for details</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="chafa_color_space"><a class="permalink" href="#chafa_color_space"><b>--chafa-color-space</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Set the color space used for quantization
+    <p class="Pp">
+      <br/>
+       This value maps to the integer value of enum ChafaColorSpace. See the
+        Chafa documentation for details</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="chafa_dither_mode"><a class="permalink" href="#chafa_dither_mode"><b>--chafa-dither-mode</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Set the output dithering mode (no effect with 24-bit color)
+    <p class="Pp">
+      <br/>
+       This value maps to the integer value of enum ChafaDitherMode. See the
+        Chafa documentation for details</p>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Display"><a class="permalink" href="#Display">Display</a></h2>
+<dl class="Bl-tag">
+  <dt id="s,"><a class="permalink" href="#s,"><b>-s, --structure</b>
+    <i>structure</i></a></dt>
+  <dd>
+    <br/>
+     Set the structure of the fetch
+    <p class="Pp">
+      <br/>
+       Must be a colon-separated list of module keys. Use &quot;fastfetch
+        --list-modules&quot; to see available options</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="structure_disabled"><a class="permalink" href="#structure_disabled"><b>--structure-disabled</b>
+    <i>structure</i></a></dt>
+  <dd>
+    <br/>
+     Disable specific modules in the structure
+    <p class="Pp">
+      <br/>
+       Must be a colon-separated list of keys</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="stat"><a class="permalink" href="#stat"><b>--stat</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Show execution time (ms) for individual modules
+    <p class="Pp"></p>
+  </dd>
+  <dt id="pipe"><a class="permalink" href="#pipe"><b>--pipe</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Disable colors
+    <p class="Pp">
+      <br/>
+       Auto-detected based on isatty(1) by default</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="color"><a class="permalink" href="#color"><b>--color</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set the color of both keys and title
+    <p class="Pp">
+      <br/>
+       Shortcut for &quot;--color-keys &lt;color&gt;&quot; and
+        &quot;--color-title &lt;color&gt;&quot;
+      <br/>
+       For color syntax, see
+        &lt;https://github.com/fastfetch-cli/fastfetch/wiki/Color-Format-Specification&gt;</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="color_keys"><a class="permalink" href="#color_keys"><b>--color-keys</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set the color of the keys
+    <p class="Pp">
+      <br/>
+       Doesn't affect Title, Separator, and Colors modules. See `-h color` for
+        the list of available colors</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="color_title"><a class="permalink" href="#color_title"><b>--color-title</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set the color of the title
+    <p class="Pp">
+      <br/>
+       See `-h color` for the list of available colors</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="color_output"><a class="permalink" href="#color_output"><b>--color-output</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set the color of module output
+    <p class="Pp">
+      <br/>
+       See `-h color` for the list of available colors</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="color_separator"><a class="permalink" href="#color_separator"><b>--color-separator</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set the color of the key-value separator
+    <p class="Pp">
+      <br/>
+       See `-h color` for the list of available colors</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="duration_abbreviation"><a class="permalink" href="#duration_abbreviation"><b>--duration-abbreviation</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Specify whether to abbreviate duration values
+    <p class="Pp">
+      <br/>
+       If true, output is shown as &quot;1h 2m&quot; instead of &quot;1 hour, 2
+        mins&quot;</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="duration_space_before_unit"><a class="permalink" href="#duration_space_before_unit"><b>--duration-space-before-unit</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Specify whether to put a space before the unit in duration values
+    <p class="Pp"></p>
+  </dd>
+  <dt id="key_width"><a class="permalink" href="#key_width"><b>--key-width</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Align the width of keys to &lt;num&gt; characters
+    <p class="Pp"></p>
+  </dd>
+  <dt id="key_padding_left"><a class="permalink" href="#key_padding_left"><b>--key-padding-left</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the left padding of keys to &lt;num&gt; characters
+    <p class="Pp"></p>
+  </dd>
+  <dt id="key_type"><a class="permalink" href="#key_type"><b>--key-type</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Specify whether to show an icon before string keys
+    <p class="Pp"></p>
+  </dd>
+  <dt id="bright_color"><a class="permalink" href="#bright_color"><b>--bright-color</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Specify whether keys, title, and ASCII logo should be printed in bright
+      color
+    <p class="Pp"></p>
+  </dd>
+  <dt id="separator"><a class="permalink" href="#separator"><b>--separator</b>
+    <i>str</i></a></dt>
+  <dd>
+    <br/>
+     Set the separator between key and value
+    <p class="Pp"></p>
+  </dd>
+  <dt id="show_errors"><a class="permalink" href="#show_errors"><b>--show-errors</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Print errors when they occur
+    <p class="Pp"></p>
+  </dd>
+  <dt id="disable_linewrap"><a class="permalink" href="#disable_linewrap"><b>--disable-linewrap</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Specify whether to disable line wrap during execution
+    <p class="Pp"></p>
+  </dd>
+  <dt id="hide_cursor"><a class="permalink" href="#hide_cursor"><b>--hide-cursor</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Specify whether to hide the cursor during execution
+    <p class="Pp"></p>
+  </dd>
+  <dt id="percent_type"><a class="permalink" href="#percent_type"><b>--percent-type</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the percentage output style
+    <p class="Pp">
+      <br/>
+       1 for percentage number
+      <br/>
+       2 for multi-color bar
+      <br/>
+       3 for both
+      <br/>
+       6 for bar only
+      <br/>
+       9 for colored number
+      <br/>
+       10 for monochrome bar</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="percent_ndigits"><a class="permalink" href="#percent_ndigits"><b>--percent-ndigits</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the number of decimal places to use when formatting percentages
+    <p class="Pp"></p>
+  </dd>
+  <dt id="percent_color_green"><a class="permalink" href="#percent_color_green"><b>--percent-color-green</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set color used for the green state of percentage bars and numbers
+    <p class="Pp">
+      <br/>
+       See `-h color` for the list of available colors</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="percent_color_yellow"><a class="permalink" href="#percent_color_yellow"><b>--percent-color-yellow</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set color used for the yellow state of percentage bars and numbers
+    <p class="Pp">
+      <br/>
+       See `-h color` for the list of available colors</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="percent_color_red"><a class="permalink" href="#percent_color_red"><b>--percent-color-red</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set color used for the red state of percentage bars and numbers
+    <p class="Pp">
+      <br/>
+       See `-h color` for the list of available colors</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="percent_space_before_unit"><a class="permalink" href="#percent_space_before_unit"><b>--percent-space-before-unit</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Specify whether to put a space before the percentage symbol
+    <p class="Pp"></p>
+  </dd>
+  <dt id="percent_width"><a class="permalink" href="#percent_width"><b>--percent-width</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Specify the width of the percentage number, in characters
+    <p class="Pp">
+      <br/>
+       This option affects only percentage numbers, not bars</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="bar_char_elapsed"><a class="permalink" href="#bar_char_elapsed"><b>--bar-char-elapsed</b>
+    <i>str</i></a></dt>
+  <dd>
+    <br/>
+     Set the character used for the elapsed part of percentage bars
+    <p class="Pp"></p>
+  </dd>
+  <dt id="bar_char_total"><a class="permalink" href="#bar_char_total"><b>--bar-char-total</b>
+    <i>str</i></a></dt>
+  <dd>
+    <br/>
+     Set the character used for the total part of percentage bars
+    <p class="Pp"></p>
+  </dd>
+  <dt id="bar_border_left"><a class="permalink" href="#bar_border_left"><b>--bar-border-left</b>
+    <i>string</i></a></dt>
+  <dd>
+    <br/>
+     Set the string to use at the left border of percentage bars
+    <p class="Pp"></p>
+  </dd>
+  <dt id="bar_border_right"><a class="permalink" href="#bar_border_right"><b>--bar-border-right</b>
+    <i>string</i></a></dt>
+  <dd>
+    <br/>
+     Set the string to use at the right border of percentage bars
+    <p class="Pp"></p>
+  </dd>
+  <dt id="bar_border_left_elapsed"><a class="permalink" href="#bar_border_left_elapsed"><b>--bar-border-left-elapsed</b>
+    <i>string</i></a></dt>
+  <dd>
+    <br/>
+     If both bar-border-left-elapsed and bar-border-right-elapsed are set, the
+      border is used as part of the bar content
+    <p class="Pp"></p>
+  </dd>
+  <dt id="bar_border_right_elapsed"><a class="permalink" href="#bar_border_right_elapsed"><b>--bar-border-right-elapsed</b>
+    <i>string</i></a></dt>
+  <dd>
+    <br/>
+     If both bar-border-left-elapsed and bar-border-right-elapsed are set, the
+      border is used as part of the bar content
+    <p class="Pp"></p>
+  </dd>
+  <dt id="bar_color_elapsed"><a class="permalink" href="#bar_color_elapsed"><b>--bar-color-elapsed</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set the color used for the elapsed part of percentage bars
+    <p class="Pp">
+      <br/>
+       By default, this is auto-selected by percent-color-{green,yellow,red}</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="bar_color_total"><a class="permalink" href="#bar_color_total"><b>--bar-color-total</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set the color used for the total part of percentage bars
+    <p class="Pp"></p>
+  </dd>
+  <dt id="bar_color_border"><a class="permalink" href="#bar_color_border"><b>--bar-color-border</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set the color used for percentage bar borders
+    <p class="Pp"></p>
+  </dd>
+  <dt id="bar_width"><a class="permalink" href="#bar_width"><b>--bar-width</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the width of percentage bars in characters
+    <p class="Pp"></p>
+  </dd>
+  <dt id="no_buffer"><a class="permalink" href="#no_buffer"><b>--no-buffer</b>
+    [<i>bool</i>]</a></dt>
+  <dd>
+    <br/>
+     Specify whether stdout buffering should be disabled
+    <p class="Pp"></p>
+  </dd>
+  <dt id="size_ndigits"><a class="permalink" href="#size_ndigits"><b>--size-ndigits</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the number of decimal places to use when formatting sizes
+    <p class="Pp"></p>
+  </dd>
+  <dt id="size_binary_prefix"><a class="permalink" href="#size_binary_prefix"><b>--size-binary-prefix</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Set the binary prefix to use when formatting sizes
+    <p class="Pp"></p>
+  </dd>
+  <dt id="size_max_prefix"><a class="permalink" href="#size_max_prefix"><b>--size-max-prefix</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Set the largest binary prefix to use when formatting sizes
+    <p class="Pp"></p>
+  </dd>
+  <dt id="size_space_before_unit"><a class="permalink" href="#size_space_before_unit"><b>--size-space-before-unit</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Specify whether to put a space before the unit
+    <p class="Pp"></p>
+  </dd>
+  <dt id="freq_ndigits"><a class="permalink" href="#freq_ndigits"><b>--freq-ndigits</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the number of decimal places to use when printing CPU/GPU frequency in
+      GHz
+    <p class="Pp"></p>
+  </dd>
+  <dt id="freq_space_before_unit"><a class="permalink" href="#freq_space_before_unit"><b>--freq-space-before-unit</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Specify whether to put a space before the unit
+    <p class="Pp"></p>
+  </dd>
+  <dt id="fraction_ndigits"><a class="permalink" href="#fraction_ndigits"><b>--fraction-ndigits</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the number of decimal places to use when printing fractional values
+    <p class="Pp">
+      <br/>
+       If negative, the number of digits will be automatically determined based
+        on the value</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="fraction_trailing_zeros"><a class="permalink" href="#fraction_trailing_zeros"><b>--fraction-trailing-zeros</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Set when to keep trailing zeros
+    <p class="Pp"></p>
+  </dd>
+  <dt id="temp_unit"><a class="permalink" href="#temp_unit"><b>--temp-unit</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Set the temperature unit
+    <p class="Pp"></p>
+  </dd>
+  <dt id="temp_ndigits"><a class="permalink" href="#temp_ndigits"><b>--temp-ndigits</b>
+    <i>num</i></a></dt>
+  <dd>
+    <br/>
+     Set the number of decimal places to use when printing temperatures
+    <p class="Pp"></p>
+  </dd>
+  <dt id="temp_color_green"><a class="permalink" href="#temp_color_green"><b>--temp-color-green</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set color used for the green state of temperature values
+    <p class="Pp">
+      <br/>
+       See `-h color` for the list of available colors</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="temp_color_yellow"><a class="permalink" href="#temp_color_yellow"><b>--temp-color-yellow</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set color used for the yellow state of temperature values
+    <p class="Pp">
+      <br/>
+       See `-h color` for the list of available colors</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="temp_color_red"><a class="permalink" href="#temp_color_red"><b>--temp-color-red</b>
+    <i>color</i></a></dt>
+  <dd>
+    <br/>
+     Set color used for the red state of temperature values
+    <p class="Pp">
+      <br/>
+       See `-h color` for the list of available colors</p>
+    <p class="Pp"></p>
+  </dd>
+  <dt id="temp_space_before_unit"><a class="permalink" href="#temp_space_before_unit"><b>--temp-space-before-unit</b>
+    <i>enum</i></a></dt>
+  <dd>
+    <br/>
+     Specify whether to put a space before the unit
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXAMPLES"><a class="permalink" href="#EXAMPLES">EXAMPLES</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Basic_Usage"><a class="permalink" href="#Basic_Usage">Basic
+  Usage</a></h2>
+<p class="Pp"><b>fastfetch</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Use_a_specific_logo"><a class="permalink" href="#Use_a_specific_logo">Use
+  a specific logo</a></h2>
+<p class="Pp"><b>fastfetch --logo arch</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Custom_structure"><a class="permalink" href="#Custom_structure">Custom
+  structure</a></h2>
+<p class="Pp"><b>fastfetch --structure title:os:kernel:uptime:memory</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Generate_a_config_file"><a class="permalink" href="#Generate_a_config_file">Generate
+  a config file</a></h2>
+<p class="Pp"><b>fastfetch --gen-config</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Use_a_preset"><a class="permalink" href="#Use_a_preset">Use a
+  preset</a></h2>
+<p class="Pp"><b>fastfetch --config neofetch</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Config_File_Example"><a class="permalink" href="#Config_File_Example">Config
+  File Example</a></h2>
+<pre>// ~/.config/fastfetch/config.jsonc
+{
+<br/>
+    &quot;$schema&quot;: &quot;https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json&quot;,
+<br/>
+    &quot;logo&quot;: {
+<br/>
+        &quot;type&quot;: &quot;auto&quot;,
+<br/>
+        &quot;source&quot;: &quot;arch&quot;
+<br/>
+    },
+<br/>
+    &quot;display&quot;: {
+<br/>
+        &quot;separator&quot;: &quot;: &quot;,
+<br/>
+        &quot;color&quot;: {
+<br/>
+            &quot;keys&quot;: &quot;blue&quot;,
+<br/>
+            &quot;title&quot;: &quot;red&quot;
+<br/>
+        },
+<br/>
+        &quot;key&quot;: {
+<br/>
+            &quot;width&quot;: 12
+<br/>
+        }
+<br/>
+    },
+<br/>
+    &quot;modules&quot;: [
+<br/>
+        &quot;title&quot;,
+<br/>
+        &quot;separator&quot;,
+<br/>
+        &quot;os&quot;,
+<br/>
+        &quot;kernel&quot;,
+<br/>
+        &quot;uptime&quot;,
+<br/>
+        {
+<br/>
+            &quot;type&quot;: &quot;memory&quot;,
+<br/>
+            &quot;format&quot;: &quot;{used}/{total} ({used_percent}%)&quot;
+<br/>
+        }
+<br/>
+    ]
+}</pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>neofetch</b>(1)</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="BUGS"><a class="permalink" href="#BUGS">BUGS</a></h1>
+<p class="Pp">Please report bugs to:
+    https://github.com/fastfetch-cli/fastfetch/issues</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORS"><a class="permalink" href="#AUTHORS">AUTHORS</a></h1>
+<p class="Pp">Fastfetch is developed by a team of contributors on GitHub. Visit
+    https://github.com/fastfetch-cli/fastfetch for more information.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Jun 08 2026</td>
+    <td class="foot-os">Fastfetch 2.64.2</td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>
