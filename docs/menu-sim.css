@@ -142,6 +142,12 @@
 .sim-run .pill button {
   all: unset; cursor: pointer; padding: 3px 10px; border-radius: 12px; background: #fccf8a; color: #121212;
 }
+/* The documentation for what is running: the Terminal Guide's entry, or the
+   project's own home page. Outlined, so Close stays the obvious way out. */
+.sim-run .pill a.doc {
+  color: #fccf8a; text-decoration: none; padding: 2px 10px; border: 1px solid #fccf8a; border-radius: 12px;
+}
+.sim-run .pill a.doc:hover, .sim-run .pill a.doc:focus-visible { background: #fccf8a; color: #121212; }
 .sim-run .none {
   position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 14px;
   color: #f2e3c0; font: 15px "JetBrains Mono", monospace; text-align: center;
@@ -204,10 +210,6 @@
 .tm-term {
   width: 760px; padding: 22px 26px; background: #151515; border: 1px solid #333; text-align: left;
   font: 16px/1.6 "JetBrains Mono", monospace; color: #d8d2c4; white-space: pre;
-}
-.tm-manlink {
-  font: 15px "JetBrains Mono", monospace; color: #121212; background: #fccf8a;
-  padding: 7px 14px; border-radius: 16px; text-decoration: none; pointer-events: auto;
 }
 .tm-badge {
   position: absolute; left: 60px; top: 612px; z-index: 6; padding: 6px 12px; border-radius: 14px;

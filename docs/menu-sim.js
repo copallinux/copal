@@ -31,6 +31,20 @@
     a.href = "commands.html#c-" + encodeURIComponent(cmd);
     return a;
   }
+  // Where a program is documented: its Terminal Guide entry on this site, or
+  // else the project's home page (from its store playbook, or Alpine's record).
+  var homes = D.homes || {};
+  function docLink(cmd) {
+    var a;
+    if (refs[cmd]) {
+      a = el("a", "doc", "Guide: " + cmd + " →");
+      a.href = "commands.html#c-" + encodeURIComponent(cmd);
+    } else if (homes[cmd]) {
+      a = el("a", "doc", "Docs: " + homes[cmd].replace(/^https?:\/\/(www\.)?/, "").replace(/\/.*$/, "") + " ↗");
+      a.href = homes[cmd]; a.target = "_blank"; a.rel = "noopener";
+    }
+    return a || null;
+  }
   apps.forEach(function (a) { byId[a.id] = a; });
 
   function el(tag, cls, text) {
@@ -126,6 +140,7 @@
   var run = el("div", "sim-run");
   var pill = el("div", "pill"), pillT = el("span"), pillX = el("button", null, "Close  ×");
   pill.appendChild(pillT); pill.appendChild(pillX);
+  var pillDoc = null;
   var runNone = el("div", "none");
   run.appendChild(runNone); run.appendChild(pill);
   st.appendChild(run);
@@ -369,12 +384,11 @@
       runNone.appendChild(b);
       runNone.appendChild(el("div", null, a.name + " would be running here."));
       runNone.appendChild(el("div", null, a.terminal ? "A terminal command, in foot." : "The gallery has no picture of it yet."));
-      if (refs[a.exec]) {
-        var ml = manLink(a.exec); ml.className = "tm-manlink"; ml.textContent = "see man " + a.exec + " →";
-        runNone.appendChild(ml);
-      }
     }
     pillT.textContent = a.name + (a.terminal ? " — in foot" : "") + (u ? " — the gallery's picture of it running" : "");
+    if (pillDoc) pill.removeChild(pillDoc);
+    pillDoc = docLink(a.prog || a.exec);
+    if (pillDoc) pill.insertBefore(pillDoc, pillX);
     title.textContent = a.name;
     run.classList.add("on");
   }

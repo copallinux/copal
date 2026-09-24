@@ -55,16 +55,41 @@
     if (m) return { kind: "install", cmd: m[1] };
     m = act.match(/-e\s+sh\s+-c\s+'(\S+)\s+--help/);
     if (m) return { kind: "help", cmd: m[1] };
-    m = act.match(/^(?:foot|kitty|alacritty|xterm|urxvt)\s+-e\s+(\S+)/);
-    if (m) return { kind: "term", cmd: m[1].replace(/^.*\//, "") };
-    var w = act.split(/\s+/)[0].replace(/^.*\//, "");
-    return { kind: "run", cmd: w };
+    m = act.match(/^(?:foot|kitty|alacritty|xterm|urxvt)\s+-e\s+(.*)$/);
+    if (m) return { kind: "term", cmd: realCommand(m[1]) };
+    return { kind: "run", cmd: realCommand(act) };
+  }
+  // The program behind a wrapper: 'env VAR=1 prog', 'sh -c "... prog ..."'.
+  // Its picture and its documentation are the program's, not env's or sh's.
+  var SKIP = { "if": 1, "then": 1, "else": 1, "fi": 1, "env": 1, "exec": 1, "sh": 1, "bash": 1, "test": 1, "-c": 1 };
+  function realCommand(act) {
+    var w = act.split(/\s+/), k;
+    for (k = 0; k < w.length; k++) {
+      var t = w[k].replace(/^["']+|["';]+$/g, "").replace(/^.*\//, "");
+      if (SKIP[t] || /=/.test(t) || !/^[A-Za-z][\w.+-]*$/.test(t)) continue;
+      return t;
+    }
+    return w[0].replace(/^.*\//, "");
   }
   function shotFor(cmd) {
     var s = byExec[cmd] || (gallery[cmd] ? cmd : null);
     return s ? { small: "img/gallery/" + s + ".jpg", big: site[s] ? "img/site/" + s + ".jpg" : null } : null;
   }
   function refLink(cmd) { return "commands.html#c-" + encodeURIComponent(cmd); }
+  // Where a program is documented: its Terminal Guide entry on this site, or
+  // else the project's home page (from its store playbook, or Alpine's record).
+  var homes = D.homes || {};
+  function docLink(cmd) {
+    var a;
+    if (refs[cmd]) {
+      a = el("a", "doc", "Guide: " + cmd + " →");
+      a.href = refLink(cmd);
+    } else if (homes[cmd]) {
+      a = el("a", "doc", "Docs: " + homes[cmd].replace(/^https?:\/\/(www\.)?/, "").replace(/\/.*$/, "") + " ↗");
+      a.href = homes[cmd]; a.target = "_blank"; a.rel = "noopener";
+    }
+    return a || null;
+  }
 
   // ----- the stage -----
   var wrap = el("div", "sim-wrap tm-wrap");
@@ -119,6 +144,7 @@
   var runNone = el("div", "none");
   var pill = el("div", "pill"), pillT = el("span"), pillX = el("button", null, "Close  ×");
   pill.appendChild(pillT); pill.appendChild(pillX);
+  var pillDoc = null;
   run.appendChild(runNone); run.appendChild(pill);
   st.appendChild(run);
 
@@ -245,13 +271,11 @@
           : ["$ " + p.cmd, "(" + (refs[p.cmd] || "a terminal program") + ")"];
       lines.forEach(function (l) { box.appendChild(el("div", null, l)); });
       runNone.appendChild(box);
-      if (refs[p.cmd]) {
-        var a = el("a", "tm-manlink", "see man " + p.cmd + " →");
-        a.href = refLink(p.cmd);
-        runNone.appendChild(a);
-      }
     }
     pillT.textContent = r.label + (p.kind === "run" ? "" : " — in foot");
+    if (pillDoc) pill.removeChild(pillDoc);
+    pillDoc = docLink(p.cmd);
+    if (pillDoc) pill.insertBefore(pillDoc, pillX);
     title.textContent = r.label;
     run.classList.add("on");
   }

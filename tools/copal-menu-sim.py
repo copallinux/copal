@@ -37,11 +37,14 @@ command, desktop id or the gallery's own label; a larger one from
 docs/img/site is used for the window when there is one.
 """
 
+import glob
 import importlib.machinery
 import importlib.util
 import json
 import os
 import re
+import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -72,8 +75,57 @@ def gallery_index():
     return stems, labels
 
 
+SKIP = {"if", "then", "else", "fi", "env", "exec", "sh", "bash", "test", "-c"}
+
+
+def homes_for(execs):
+    """program -> its project's home page, for the menu's documentation link
+    where the Terminal Guide has no entry. The store's playbook says it first
+    ('# home:'); otherwise Alpine's record for the package that owns it."""
+    homes = {}
+    for f in glob.glob(os.path.join(ROOT, "playbooks", "*", "*.sh")):
+        head = open(f, encoding="utf-8", errors="replace").read(4000)
+        home = re.search(r"^# home:\s*(https?://\S+)", head, re.M)
+        if not home:
+            continue
+        # Every program the playbook names, and what it installs (a flatpak's id).
+        names = re.findall(r"^# program:\s*(\S+)", head, re.M)
+        names += [i.split("@")[0] for i in re.findall(r"^# install:\s*(\S+)", head, re.M)]
+        for n in names:
+            if n != "-":
+                homes.setdefault(n, home.group(1))
+    owner = {}
+    for e in sorted(set(execs) - set(homes)):
+        path = shutil.which(e)
+        if not path:
+            continue
+        out = subprocess.run(["apk", "info", "--who-owns", os.path.realpath(path)],
+                             capture_output=True, text=True).stdout
+        m = re.search(r" is owned by (\S+)", out)
+        if m:
+            owner[e] = re.sub(r"-\d[^-]*-r\d+$", "", m.group(1))
+    # Not installed (the menu's Install rows): the package of that name, from
+    # the index; 'calibre@testing' is the package calibre.
+    for e in sorted(set(execs) - set(homes) - set(owner)):
+        owner[e] = e.split("@")[0]
+    if owner:
+        out = subprocess.run(["apk", "info", "-w"] + sorted(set(owner.values())),
+                             capture_output=True, text=True).stdout
+        pages = {re.sub(r"-\d[^-]*-r\d+$", "", p): u
+                 for p, u in re.findall(r"^(\S+) webpage:\n(https?://\S+)", out, re.M)}
+        for e, p in owner.items():
+            if p in pages:
+                homes[e] = pages[p]
+    # marathon2 and marathon-infinity are Aleph One's, as marathon is.
+    for e in execs:
+        base = re.sub(r"(-[a-z]+|\d+)$", "", e)
+        if e not in homes and base in homes:
+            homes[e] = homes[base]
+    return {e: homes[e] for e in execs if e in homes}
+
+
 def main():
-    bench = os.path.expanduser("~/.cache/copal-store/prefix/share")
+    bench =os.path.expanduser("~/.cache/copal-store/prefix/share")
     if os.path.isdir(bench):
         os.environ["XDG_DATA_DIRS"] = bench + ":" + os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share")
         # GIO hides an entry whose command is not on PATH; the bench's is not.
@@ -119,6 +171,32 @@ def main():
                 return c
         return labels.get(a.get_display_name().casefold())
 
+    def program(a):
+        """The program an entry runs, past a wrapper: 'env VAR=1 prog',
+        'sh -c "prog ..."', 'flatpak run org.x.Prog'. Its documentation is
+        that program's, not coreutils' or the shell's."""
+        try:
+            w = shlex.split(a.get_commandline() or "")
+        except ValueError:
+            w = []
+        while w:
+            h = os.path.basename(w[0])
+            if h == "env":
+                w = [x for x in w[1:] if "=" not in x and not x.startswith("-")]
+            elif h in ("sh", "bash") and "-c" in w:
+                w = shlex.split(w[w.index("-c") + 1]) if w.index("-c") + 1 < len(w) else []
+                w = [x for x in w if x != "exec"]
+            elif h == "flatpak":
+                ids = [x for x in w[1:] if x != "run" and not x.startswith("-")]
+                return ids[0] if ids else h
+            elif re.match(r"^[\w.+-]+$", h) and h not in ("if", "for", "while", "case", "test", "["):
+                return h
+            else:
+                break
+        # A script too clever to read: the entry's own name stands in.
+        i = a.get_id()
+        return i[:-len(".desktop")] if i.endswith(".desktop") else i
+
     entries = []
     for a in apps:
         shot = picture(a)
@@ -130,6 +208,7 @@ def main():
             "generic": a.get_generic_name() or "",
             "keywords": " ".join(a.get_keywords() or []),
             "exec": os.path.basename(a.get_executable() or ""),
+            "prog": program(a),
             "terminal": bool(a.get_boolean("Terminal")),
             "icon": icon(a.get_icon(), ()),
             "shot": shot,
@@ -177,17 +256,40 @@ def main():
     ref = os.path.join(DOCS, "commands-index.json")
     refs = json.load(open(ref)) if os.path.exists(ref) else {}
 
+    # Home pages, for a click on a program the Terminal Guide does not cover.
+    # The text menu's commands are read the way textmenu-sim.js reads them.
+    cmds = [e["prog"] for e in entries]
+    for line in textmenu.splitlines():
+        act = line.split(",", 1)[1] if "," in line else ""
+        m = (re.search(r"copal-install\s+(\S+)", act)
+             or re.search(r"-e\s+sh\s+-c\s+'(\S+)\s+--help", act)
+             or re.match(r"(?:foot|kitty|alacritty|xterm|urxvt)\s+-e\s+(.*)$", act))
+        if act.startswith("^"):
+            continue
+        if m and " " not in m.group(1):
+            cmds.append(os.path.basename(m.group(1)))
+            continue
+        act = m.group(1) if m else act
+        # realCommand() in textmenu-sim.js: past env, sh -c and shell words.
+        for t in act.split():
+            t = os.path.basename(t.lstrip("\"'").rstrip("\"';"))
+            if t in SKIP or "=" in t or not re.match(r"^[A-Za-z][\w.+-]*$", t):
+                continue
+            cmds.append(t)
+            break
+    homes = homes_for(sorted({c for c in cmds if c and c not in refs}))
+
     data = {"px": PX, "cols": COLS, "sections": sections, "session": session,
             "favourites": favs, "apps": entries, "textmenu": textmenu,
-            "gallery": sorted(stems), "site": sorted(site), "refs": refs}
+            "gallery": sorted(stems), "site": sorted(site), "refs": refs, "homes": homes}
     with open(os.path.join(DOCS, "menu-data.js"), "w") as f:
         f.write("// Generated by tools/copal-menu-sim.py from copal-gui on a Copal machine; do not edit.\n")
         f.write("window.COPAL_MENU = ")
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
         f.write(";\n")
     pics = sum(1 for e in entries if e["shot"])
-    print("  ok      %d entries (%d with a picture), %d sections, %d icons -> docs/menu-data.js, docs/img/menu/"
-          % (len(entries), pics, len(sections), len(icons)))
+    print("  ok      %d entries (%d with a picture), %d sections, %d icons, %d home pages -> docs/menu-data.js, docs/img/menu/"
+          % (len(entries), pics, len(sections), len(icons), len(homes)))
     return 0
 
 

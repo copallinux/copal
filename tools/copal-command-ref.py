@@ -910,17 +910,19 @@ def source_text(cmd):
         if os.path.isfile(f):
             return open(f, encoding="utf-8", errors="replace").read()
     lines = open(os.path.join(ROOT, "copal-prep.sh"), encoding="utf-8", errors="replace").read().split("\n")
-    pat = re.compile(r'cat > "?/usr(?:/local)?/bin/%s"? <<\s*\'?"?([A-Z_]+)' % re.escape(cmd))
+    # Every heredoc written to the file, 'cat >' and 'cat >>' alike: some are
+    # built in parts, an unquoted head for the values and a quoted body.
+    pat = re.compile(r'cat >>? "?/usr(?:/local)?/bin/%s"? <<\s*\'?"?([A-Z_]+)' % re.escape(cmd))
+    body = []
     for i, l in enumerate(lines):
         m = pat.search(l)
         if m:
-            tag, body = m.group(1), []
+            tag = m.group(1)
             for l2 in lines[i + 1:]:
                 if l2.strip() == tag:
                     break
                 body.append(l2)
-            return "\n".join(body)
-    return ""
+    return "\n".join(body)
 
 
 def saved_text(cmd):
