@@ -237,6 +237,26 @@ MSG
             && note "$PI_USER added to users, for the games' score files (next login)" \
             || warn "could not add $PI_USER to users -- ZAngband needs it: adduser $PI_USER users"
     fi
+    # Software-defined radio. rtl-sdr's and hackrf's udev rules give the
+    # dongle to the group 'plugdev', which the account is not in: rtl_test
+    # and hackrf_info could see the device and not open it. And the kernel's
+    # DVB-T driver claims an RTL2832U as a television tuner before librtlsdr
+    # can ("usb_claim_interface error -6"); Debian's rtl-sdr blacklists it,
+    # and so does Copal -- the stick is used for radio here, not TV.
+    if command -v rtl_test >/dev/null 2>&1 || command -v hackrf_info >/dev/null 2>&1; then
+        if getent group plugdev >/dev/null 2>&1 && id "$PI_USER" >/dev/null 2>&1 \
+           && ! id -nG "$PI_USER" | tr ' ' '\n' | grep -qx plugdev; then
+            adduser "$PI_USER" plugdev >/dev/null 2>&1 \
+                && note "$PI_USER added to plugdev, for SDR dongles (next login)" \
+                || warn "could not add $PI_USER to plugdev -- an SDR dongle needs doas until: adduser $PI_USER plugdev"
+        fi
+    fi
+    if command -v rtl_test >/dev/null 2>&1 && [ ! -e /etc/modprobe.d/copal-rtl-sdr.conf ]; then
+        printf '%s\n' '# Written by Copal (stage 12): an RTL2832U is used as a radio, not a TV tuner.' \
+            'blacklist dvb_usb_rtl28xxu' 'blacklist rtl2832' 'blacklist rtl2830' 'blacklist rtl2832_sdr' \
+            > /etc/modprobe.d/copal-rtl-sdr.conf \
+            && note "/etc/modprobe.d/copal-rtl-sdr.conf: the DVB-T driver leaves RTL-SDR dongles alone"
+    fi
     # tshark and termshark capture through dumpcap, which Alpine installs
     # root:wireshark mode 0750: anyone outside the group gets "Couldn't run
     # dumpcap in child process: Permission denied" (bench, 24 Sep 2026).

@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 290 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 193 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 210 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.
   How it is written, checked against a running machine: <a href="terminal-guide-lab-report.html">the lab report</a>.</p>
 </header>
@@ -424,23 +424,33 @@ pactl --version</pre>
 </article>
 </section>
 <section class="sec" id="s-control"><h2>Control</h2>
-<article class="cmd facts-only" id="c-redshift" data-s="redshift set color temperature of display according to time of day control redshift">
-<h3><a class="self" href="#c-redshift"><code>redshift</code></a> <span class="purpose">set color temperature of display according to time of day</span></h3>
+<article class="cmd" id="c-redshift" data-s="redshift warm the screen's colour after sunset, following the time of day at your location. control redshift">
+<h3><a class="self" href="#c-redshift"><code>redshift</code></a> <span class="purpose">Warm the screen's colour after sunset, following the time of day at your location.</span></h3>
 <p class="facts">Control · command-line tool · <b>redshift</b> 1.12 · stage 12 · The application catalogue · <a href="man/redshift.html">man redshift(1)</a> · <a href="http://jonls.dk/redshift/">home</a></p>
 <p class="deps">needs python3, libx11, libxxf86vm, libdrm, glib, libxcb</p>
+<p class="why"><b>On Copal:</b> The catalogue's night colour for the X11 desktop (i3). It has no Wayland method, so on Hyprland it cannot reach the screen; there, hyprsunset and gammastep -- installed with it as optionals -- do the same job.</p>
 <pre class="syn">redshift [-l LAT:LON | -l PROVIDER:OPTIONS] [-t DAY:NIGHT] [OPTIONS...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Give it your latitude and longitude; it shifts the colour temperature through the day. <code>-O</code> sets one temperature and leaves it; <code>-x</code> resets.</p>
+<h4>Examples</h4><div class="ex"><code>redshift -l 51.5:-0.1</code><span>follow the sun at London (runs until stopped)</span></div><div class="ex"><code>redshift -l 51.5:-0.1 -t 6500:3500</code><span>daytime and night temperatures</span></div><div class="ex"><code>redshift -O 4000</code><span>one warm setting, now</span></div><div class="ex"><code>redshift -x</code><span>back to normal</span></div><div class="ex"><code>redshift -m list</code><span>the methods this build has</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-l LAT:LON</code></dt><dd>your location</dd><dt><code>-t DAY:NIGHT</code></dt><dd>colour temperatures (default 6500:4500)</dd><dt><code>-O TEMP</code></dt><dd>one-shot: set TEMP and exit</dd><dt><code>-o</code></dt><dd>one-shot: set the current temperature and exit</dd><dt><code>-x</code></dt><dd>reset the screen</dd><dt><code>-P</code></dt><dd>reset the gamma first (for -O)</dd><dt><code>-m METHOD</code></dt><dd>randr, vidmode or drm</dd></dl>
+<h4>Notes</h4><ul><li>On Hyprland it has nothing to talk to: this build's methods are X11's (randr, vidmode) and bare DRM. Use <code>hyprsunset -t 4000</code>, Hyprland's own, or <code>gammastep</code>, redshift's Wayland-capable fork with the same options.</li><li>Settings can live in <code>~/.config/redshift/redshift.conf</code> instead of on the command line.</li></ul>
+<p class="see">See also <a href="#c-hyprctl"><code>hyprctl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-udiskie" data-s="udiskie automounter for removable media control udiskie">
-<h3><a class="self" href="#c-udiskie"><code>udiskie</code></a> <span class="purpose">automounter for removable media</span></h3>
+<article class="cmd" id="c-udiskie" data-s="udiskie mount usb sticks and cards automatically when they are plugged in, with a tray icon. control udiskie">
+<h3><a class="self" href="#c-udiskie"><code>udiskie</code></a> <span class="purpose">Mount USB sticks and cards automatically when they are plugged in, with a tray icon.</span></h3>
 <p class="facts">Control · command-line tool · <b>udiskie</b> 2.6.1 · stage 12 · The application catalogue · <a href="man/udiskie.html">man udiskie(8)</a> · <a href="https://github.com/coldfix/udiskie">home</a></p>
 <p class="deps">needs py3-docopt, py3-keyutils, py3-gobject3, py3-yaml, python3, udisks2</p>
+<p class="why"><b>On Copal:</b> The catalogue's automounter: plug in a stick and it appears under /run/media, with a notification -- no mount commands. It talks to udisks2, which starts on demand.</p>
 <pre class="syn">udiskie [OPTIONS]
 
 udiskie-mount [OPTIONS] (-a | DEVICE...)
 
 udiskie-umount [OPTIONS] (-a | PATH...)</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run it in the background of the desktop session; it mounts removable media as it arrives and offers to unmount from its tray icon. For a one-off, <code>udisksctl</code> mounts and unmounts by hand.</p>
+<h4>Examples</h4><div class="ex"><code>udiskie -a -n -t &amp;</code><span>automount, notify, tray icon</span></div><div class="ex"><code>udiskie -a -n -s &amp;</code><span>the icon only while something is mounted</span></div><div class="ex"><code>udisksctl mount -b /dev/sda1</code><span>mount one partition by hand</span></div><div class="ex"><code>udisksctl unmount -b /dev/sda1</code><span>and unmount it</span></div><div class="ex"><code>udisksctl status</code><span>the drives udisks2 sees</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-a, --automount</code></dt><dd>mount new devices as they appear</dd><dt><code>-n, --notify</code></dt><dd>show a notification for each</dd><dt><code>-t, --tray</code></dt><dd>show a tray icon</dd><dt><code>-s, --smart-tray</code></dt><dd>the tray icon only while there is something to show</dd><dt><code>-N, --no-notify</code></dt><dd>no notifications</dd><dt><code>-T, --no-tray</code></dt><dd>no tray icon</dd></dl>
+<h4>Notes</h4><ul><li>To start it with the desktop, add <code>exec-once = udiskie -a -n -s</code> to <code>~/.config/hypr/local.conf</code>.</li><li>Media are mounted under <code>/run/media/$USER/LABEL</code>; unmount before pulling a stick out, or the last writes may not reach it.</li></ul>
+<p class="see">See also <a href="#c-lsblk"><code>lsblk</code></a>, <a href="#c-sshfs"><code>sshfs</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-crypto"><h2>Crypto</h2>
@@ -1574,19 +1584,29 @@ nethack [ -d directory ] -s [ -v ] [ -p profession ] [ -r race ] [ playernames ]
 </article>
 </section>
 <section class="sec" id="s-instruments"><h2>Instruments</h2>
-<article class="cmd facts-only" id="c-fftw-wisdom" data-s="fftw-wisdom create wisdom (pre-optimized ffts) instruments fftw">
-<h3><a class="self" href="#c-fftw-wisdom"><code>fftw-wisdom</code></a> <span class="purpose">create wisdom (pre-optimized FFTs)</span></h3>
+<article class="cmd" id="c-fftw-wisdom" data-s="fftw-wisdom pre-compute fftw's "wisdom": the fastest way to do given fourier transforms on this machine. instruments fftw">
+<h3><a class="self" href="#c-fftw-wisdom"><code>fftw-wisdom</code></a> <span class="purpose">Pre-compute FFTW's "wisdom": the fastest way to do given Fourier transforms on this machine.</span></h3>
 <p class="facts">Instruments · command-line tool · <b>fftw</b> 3.3.11 · stage 12 · The application catalogue · <a href="man/fftw-wisdom.html">man fftw-wisdom(1)</a> · <a href="http://www.fftw.org/">home</a></p>
 <p class="deps">needs fftw-double-libs, fftw-single-libs, fftw-long-double-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's FFTW tool: programs built on FFTW -- rtl_power_fftw, GNU Radio, Octave -- start their transforms faster, and run them faster, when this machine's best plans are measured once and saved.</p>
 <pre class="syn">fftw-wisdom [OPTION]... [SIZE]...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Name the transform sizes you use; it measures the options on this CPU and writes the result, which FFTW-based programs load. Measuring takes a while; using it is free.</p>
+<h4>Examples</h4><div class="ex"><code>fftw-wisdom -v -c -o wisdom</code><span>common sizes, measured, into ./wisdom</span></div><div class="ex"><code>fftw-wisdom -v -o wisdom cof1024 cof4096</code><span>just these (complex, out-of-place, forward)</span></div><div class="ex"><code>doas fftw-wisdom -c -o /etc/fftw/wisdom</code><span>the system-wide file programs read</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-c</code></dt><dd>the common sizes</dd><dt><code>-o FILE</code></dt><dd>write the wisdom to FILE (default stdout)</dd><dt><code>-t HOURS</code></dt><dd>time limit for the measuring</dd><dt><code>-v</code></dt><dd>verbose</dd><dt><code>-x</code></dt><dd>exhaustive: slowest to make, best plans</dd></dl>
+<h4>Notes</h4><ul><li>Sizes are written as a type and a number: <code>c</code> complex or <code>r</code> real, <code>o</code> out-of-place or <code>i</code> in-place, <code>f</code> forward or <code>b</code> backward -- <code>cof1024</code>.</li><li>Wisdom is for this CPU: made on a Pi 5, it is wrong for a Pi Zero.</li></ul>
+<p class="see">See also <a href="#c-rtl_power_fftw"><code>rtl_power_fftw</code></a>, <a href="#c-octave"><code>octave</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-sigrok-cli" data-s="sigrok-cli command-line client for the sigrok software instruments sigrok-cli">
-<h3><a class="self" href="#c-sigrok-cli"><code>sigrok-cli</code></a> <span class="purpose">Command-line client for the sigrok software</span></h3>
+<article class="cmd" id="c-sigrok-cli" data-s="sigrok-cli capture from logic analysers, oscilloscopes and meters, and decode protocols: i2c, spi, uart... instruments sigrok-cli">
+<h3><a class="self" href="#c-sigrok-cli"><code>sigrok-cli</code></a> <span class="purpose">Capture from logic analysers, oscilloscopes and meters, and decode protocols: I2C, SPI, UART...</span></h3>
 <p class="facts">Instruments · command-line tool · <b>sigrok-cli</b> 0.7.2 · stage 12 · The application catalogue · <a href="man/sigrok-cli.html">man sigrok-cli(1)</a> · <a href="https://sigrok.org/wiki/Sigrok-cli">home</a></p>
 <p class="deps">needs glib, libsigrok, libsigrokdecode</p>
+<p class="why"><b>On Copal:</b> The catalogue's instrument front end: a cheap USB logic analyser and sigrok turn a Pi into a bench tool that decodes what flows on a circuit's wires.</p>
 <pre class="syn">sigrok-cli [OPTIONS] [COMMAND]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>--scan</code> finds the instruments attached. Choose one with <code>-d</code>, capture a number of samples or a time, and decode with <code>-P</code>, or save the capture to open in PulseView, sigrok's window.</p>
+<h4>Examples</h4><div class="ex"><code>sigrok-cli --scan</code><span>the instruments connected</span></div><div class="ex"><code>sigrok-cli -d fx2lafw --samples 1M -c samplerate=4M -o cap.sr</code><span>capture to a file</span></div><div class="ex"><code>sigrok-cli -i cap.sr -P uart:baudrate=9600 -A uart</code><span>decode a saved capture as serial</span></div><div class="ex"><code>sigrok-cli -d demo --samples 20 -O ascii</code><span>try it with the demo device</span></div><div class="ex"><code>sigrok-cli -L</code><span>every driver, format and decoder</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-d DRIVER</code></dt><dd>the instrument driver (demo, fx2lafw, rigol-ds...)</dd><dt><code>-c KEY=VALUE</code></dt><dd>device settings: samplerate, voltage...</dd><dt><code>--samples N</code></dt><dd>capture N samples;  --time MS  or for a time</dd><dt><code>-C CHANNELS</code></dt><dd>which channels -i FILE / -o FILE read / write a capture file</dd><dt><code>-O FORMAT</code></dt><dd>output format: bits, hex, ascii, csv, vcd...</dd><dt><code>-P DECODER</code></dt><dd>a protocol decoder, with its options</dd><dt><code>--scan</code></dt><dd>find devices;  -L  list what is supported</dd></dl>
+<h4>Notes</h4><ul><li>The <code>demo</code> driver needs no hardware: the place to learn the options.</li><li>A USB instrument needs permission to open; if <code>--scan</code> finds nothing with it plugged in, try once with doas to see whether that is why.</li></ul>
+<p class="see">See also <code>pulseview</code>, <a href="#c-rigctl"><code>rigctl</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-internet"><h2>Internet</h2>
@@ -2037,12 +2057,17 @@ Commands:</pre>
 </article>
 </section>
 <section class="sec" id="s-learn"><h2>Learn</h2>
-<article class="cmd facts-only" id="c-gtypist" data-s="gtypist a typing tutor with lessons for different keyboards and languages learn gtypist">
-<h3><a class="self" href="#c-gtypist"><code>gtypist</code></a> <span class="purpose">a typing tutor with lessons for different keyboards and languages</span></h3>
+<article class="cmd" id="c-gtypist" data-s="gtypist gnu typist: touch-typing lessons and drills in the terminal. learn gtypist">
+<h3><a class="self" href="#c-gtypist"><code>gtypist</code></a> <span class="purpose">GNU Typist: touch-typing lessons and drills in the terminal.</span></h3>
 <p class="facts">Learn · terminal program · <b>gtypist</b> 2.10.1 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/gtypist.html">man gtypist(1)</a> · <a href="https://www.gnu.org/software/gtypist/gtypist.html">home</a></p>
 <p class="deps">needs ncurses, perl, libintl, libncursesw</p>
+<p class="why"><b>On Copal:</b> The catalogue's typing tutor: lessons from the home row up, with speed and error rates, in any terminal -- the course <code>copal-guide keyboard</code> points to.</p>
 <pre class="syn">gtypist [OPTION]... [SCRIPT]...</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Start it and pick a course from the menu: the Q series teaches QWERTY from nothing, others Dvorak, Colemak and numbers. Each lesson explains, then drills; mistakes show as you make them.</p>
+<h4>Examples</h4><div class="ex"><code>gtypist</code><span>the menu of courses</span></div><div class="ex"><code>gtypist -b</code><span>track your personal best speeds</span></div><div class="ex"><code>gtypist -e 3</code><span>allow up to 3% errors before a repeat</span></div><div class="ex"><code>gtypist -n</code><span>no timer: accuracy only</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-b, --personal-best</code></dt><dd>keep your best speeds</dd><dt><code>-e, --max-error=PCT</code></dt><dd>the error rate a drill may have (default 3)</dd><dt><code>-n, --notimer</code></dt><dd>turn off the speed timer</dd><dt><code>-t, --term-cursor</code></dt><dd>use the terminal's own cursor</dd></dl>
+<h4>Notes</h4><ul><li>Escape leaves a lesson; the menu's last line exits.</li><li>It comes from Alpine's testing repository (<code>gtypist@testing</code>).</li></ul>
+<p class="see">See also <a href="#c-copal-morse"><code>copal-morse</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-mail"><h2>Mail</h2>
@@ -2509,48 +2534,78 @@ node [--v8-options]</pre>
 </article>
 </section>
 <section class="sec" id="s-radio"><h2>Radio</h2>
-<article class="cmd facts-only" id="c-direwolf" data-s="direwolf soundcard tnc for packet radio. radio direwolf">
-<h3><a class="self" href="#c-direwolf"><code>direwolf</code></a> <span class="purpose">Soundcard TNC for packet radio.</span></h3>
+<article class="cmd" id="c-direwolf" data-s="direwolf a software packet-radio modem and tnc: decode and send ax.25 and aprs through a sound card. radio direwolf">
+<h3><a class="self" href="#c-direwolf"><code>direwolf</code></a> <span class="purpose">A software packet-radio modem and TNC: decode and send AX.25 and APRS through a sound card.</span></h3>
 <p class="facts">Radio · command-line tool · <b>direwolf</b> 1.8.1 · stage 12 · The application catalogue · <a href="man/direwolf.html">man direwolf(1)</a> · <a href="https://github.com/wb2osz/direwolf">home</a></p>
 <p class="deps">needs alsa-lib, avahi-libs, libgpiod, gpsd, hamlib, eudev-libs</p>
+<p class="why"><b>On Copal:</b> The catalogue's packet radio: with a radio and a sound card, or an RTL-SDR, it decodes APRS position reports and packet messages, and serves them to other programs.</p>
 <pre class="syn">direwolf [ options ] [ - | udp:9999 ]
 
 The first audio channel can be streamed thru stdin or a UDP port.  This is typically used
 with an SDR receiver.</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>It reads audio -- from a sound card, or piped from rtl_fm -- and prints each packet it decodes. A configuration file sets the sound device, the modem speed and your call sign.</p>
+<h4>Examples</h4><div class="ex"><code>cp /usr/share/doc/direwolf/conf/direwolf.conf ~/</code><span>a configuration to edit</span></div><div class="ex"><code>direwolf -c ~/direwolf.conf</code><span>run with it</span></div><div class="ex"><code>rtl_fm -f 144.39M -s 24000 - | direwolf -r 24000 -D 1 -</code><span>APRS (N. America) from a dongle</span></div><div class="ex"><code>rtl_fm -f 144.8M -s 24000 - | direwolf -r 24000 -D 1 -</code><span>APRS in Europe</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-c FILE</code></dt><dd>the configuration file</dd><dt><code>-r RATE</code></dt><dd>the audio sample rate</dd><dt><code>-n N</code></dt><dd>audio channels, 1 or 2</dd><dt><code>-B RATE</code></dt><dd>the modem speed: 300, 1200, 9600...</dd><dt><code>-D N</code></dt><dd>divide the audio sample rate (with rtl_fm)</dd><dt><code>-l DIR</code></dt><dd>write logs of received packets to DIR</dd><dt><code>-</code></dt><dd>read audio from stdin</dd></dl>
+<h4>Notes</h4><ul><li>Receiving needs no licence. Transmitting -- beaconing, messaging -- needs an amateur radio licence and your call sign in the configuration.</li><li>Other programs connect to its KISS and AGW ports (8001 and 8000) for maps and messaging.</li></ul>
+<p class="see">See also <a href="#c-rtl_test"><code>rtl_test</code></a>, <a href="#c-rigctl"><code>rigctl</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-dump1090" data-s="dump1090 simple mode s decoder for rtlsdr devices radio dump1090">
-<h3><a class="self" href="#c-dump1090"><code>dump1090</code></a> <span class="purpose">Simple Mode S decoder for RTLSDR devices</span></h3>
+<article class="cmd" id="c-dump1090" data-s="dump1090 decode aircraft transponder broadcasts (ads-b, 1090 mhz) from an rtl-sdr. radio dump1090">
+<h3><a class="self" href="#c-dump1090"><code>dump1090</code></a> <span class="purpose">Decode aircraft transponder broadcasts (ADS-B, 1090 MHz) from an RTL-SDR.</span></h3>
 <p class="facts">Radio · command-line tool · <b>dump1090</b> 11.0 · stage 12 · The application catalogue · <a href="https://github.com/flightaware/dump1090">home</a></p>
 <p class="deps">needs bladerf-libs, libncursesw, librtlsdr</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's plane tracker: a dongle and a 1090 MHz antenna show the aircraft overhead -- call sign, altitude, speed, position. This is FlightAware's dump1090-fa.</p>
+<h4>Use</h4><p>Run it with the dongle attached; it prints each message it decodes. With <code>--net</code> it serves the data to other programs; with <code>--write-json</code> it writes files a web map can read.</p>
+<h4>Examples</h4><div class="ex"><code>dump1090</code><span>decode and print, from dongle 0</span></div><div class="ex"><code>dump1090 --net --quiet</code><span>serve on the usual ports, print nothing</span></div><div class="ex"><code>dump1090 --write-json /tmp/adsb --quiet</code><span>aircraft.json for a map</span></div><div class="ex"><code>dump1090 --gain 40 --lat 51.5 --lon -0.1</code><span>set gain and your position</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>--net</code></dt><dd>serve data on ports 30001-30005</dd><dt><code>--net-only</code></dt><dd>network only, no dongle</dd><dt><code>--write-json DIR</code></dt><dd>write aircraft.json and friends into DIR</dd><dt><code>--gain DB</code></dt><dd>tuner gain</dd><dt><code>--freq HZ</code></dt><dd>another frequency (default 1090 MHz)</dd><dt><code>--lat / --lon</code></dt><dd>your position, for surface positions and range</dd><dt><code>--quiet</code></dt><dd>print nothing to the terminal</dd><dt><code>--metric</code></dt><dd>metres and km/h</dd></dl>
+<h4>Notes</h4><ul><li>This build has no <code>--interactive</code> table; for a live view, <code>--write-json</code> and a map page, or another program reading <code>--net</code>'s port 30003.</li><li>A 1090 MHz antenna matters more than anything else: the dongle's own whip hears aircraft a few kilometres away, a tuned one hundreds.</li><li>The dongle needs <code>plugdev</code> and the TV driver kept off it, as for rtl_test.</li></ul>
+<p class="see">See also <a href="#c-rtl_test"><code>rtl_test</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-hackrf_info" data-s="hackrf_info driver for hackrf, allowing general purpose software defined radio radio hackrf">
-<h3><a class="self" href="#c-hackrf_info"><code>hackrf_info</code></a> <span class="purpose">Driver for HackRF, allowing general purpose software defined radio</span></h3>
+<article class="cmd" id="c-hackrf_info" data-s="hackrf_info identify a hackrf one: its serial number, firmware and board -- and, with its siblings, use it. radio hackrf">
+<h3><a class="self" href="#c-hackrf_info"><code>hackrf_info</code></a> <span class="purpose">Identify a HackRF One: its serial number, firmware and board -- and, with its siblings, use it.</span></h3>
 <p class="facts">Radio · command-line tool · <b>hackrf</b> 2026.01.3 · stage 12 · The application catalogue · <a href="https://github.com/greatscottgadgets/hackrf">home</a></p>
 <p class="deps">needs fftw-single-libs, hackrf-libs</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's HackRF tools, for the transmit-and-receive SDR that covers 1 MHz to 6 GHz. hackrf_info is the first check that the board is seen and its firmware matches the tools.</p>
+<h4>Use</h4><p>Plug the board in and run it; it prints each board found. The package's other commands record and play samples (<code>hackrf_transfer</code>), sweep the spectrum (<code>hackrf_sweep</code>) and update firmware.</p>
+<h4>Examples</h4><div class="ex"><code>hackrf_info</code><span>the boards found, their firmware</span></div><div class="ex"><code>hackrf_transfer -r capture.iq -f 433920000 -s 8000000 -n 80000000</code><span>ten seconds of samples</span></div><div class="ex"><code>hackrf_sweep -f 2400:2500 -l 32 -g 20 &gt; wifi.csv</code><span>sweep 2.4 GHz</span></div>
+<h4>Options</h4><dl class="opts"></dl>
+<h4>Notes</h4><ul><li>"No HackRF boards found": unplugged, or no permission -- the device belongs to <code>plugdev</code>, which Copal adds you to from 24 Sep 2026.</li><li>The firmware and the tools should match: a mismatch is reported here, and <code>hackrf-firmware</code> (an optional) carries the matching images.</li><li>Transmitting needs a licence for the band, and never on frequencies you are not permitted to use.</li></ul>
+<p class="see">See also <a href="#c-rtl_test"><code>rtl_test</code></a>, <code>gqrx</code></p>
 </article>
-<article class="cmd facts-only" id="c-rigctl" data-s="rigctl control radio transceivers and receivers radio hamlib">
-<h3><a class="self" href="#c-rigctl"><code>rigctl</code></a> <span class="purpose">control radio transceivers and receivers</span></h3>
+<article class="cmd" id="c-rigctl" data-s="rigctl hamlib's radio control: read and set a transceiver's frequency, mode and more, over its serial port. radio hamlib">
+<h3><a class="self" href="#c-rigctl"><code>rigctl</code></a> <span class="purpose">Hamlib's radio control: read and set a transceiver's frequency, mode and more, over its serial port.</span></h3>
 <p class="facts">Radio · command-line tool · <b>hamlib</b> 4.7.1 · stage 12 · The application catalogue · <a href="man/rigctl.html">man rigctl(1)</a> · <a href="https://hamlib.github.io/">home</a></p>
 <p class="deps">needs libusb</p>
+<p class="why"><b>On Copal:</b> The catalogue's rig control: one command for hundreds of radio models, and the library that logging and digital-mode programs use to steer the radio.</p>
 <pre class="syn">rigctl [-hiIlLnouV] [-m id] [-r device] [-p device] [-d device] [-P type] [-D type] [-s baud]
        [-c id] [-t char] [-C parm=val] -Y [-v[-Z]] [command|-]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Name the radio's model number and its port, then give commands: <code>f</code> to read the frequency, <code>F</code> to set it, <code>m</code> / <code>M</code> for the mode. With no commands it opens a prompt.</p>
+<h4>Examples</h4><div class="ex"><code>rigctl -l | grep -i icom</code><span>find your radio's model number</span></div><div class="ex"><code>rigctl -m 1 f</code><span>try it with model 1, the dummy radio</span></div><div class="ex"><code>rigctl -m 3073 -r /dev/ttyUSB0 -s 19200 f</code><span>read an IC-7300's frequency</span></div><div class="ex"><code>rigctl -m 3073 -r /dev/ttyUSB0 -s 19200 F 14074000 # set it (20 m FT8)</code></div><div class="ex"><code>rigctld -m 3073 -r /dev/ttyUSB0 &amp;</code><span>share the radio with other programs</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-m ID</code></dt><dd>the radio model (from -l)</dd><dt><code>-r DEVICE</code></dt><dd>its serial port</dd><dt><code>-s BAUD</code></dt><dd>the serial speed</dd><dt><code>-l</code></dt><dd>list every supported model</dd><dt><code>-P TYPE</code></dt><dd>how PTT is keyed (RIG, DTR, RTS...)</dd></dl>
+<h4>Notes</h4><ul><li>The serial port belongs to <code>dialout</code>; Copal adds you with the radio and Geiger counter setup, as <code>id</code> will show.</li><li>Model 1 is Hamlib's dummy radio: every command works on it with no hardware, which makes it the place to learn the commands.</li></ul>
+<p class="see">See also <a href="#c-direwolf"><code>direwolf</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-rtl_power_fftw" data-s="rtl_power_fftw obtain a power spectrum from rtl2832u devices radio rtl-power-fftw">
-<h3><a class="self" href="#c-rtl_power_fftw"><code>rtl_power_fftw</code></a> <span class="purpose">obtain a power spectrum from RTL2832U devices</span></h3>
+<article class="cmd" id="c-rtl_power_fftw" data-s="rtl_power_fftw scan a wide band of spectrum with an rtl-sdr and record the power at each frequency. radio rtl-power-fftw">
+<h3><a class="self" href="#c-rtl_power_fftw"><code>rtl_power_fftw</code></a> <span class="purpose">Scan a wide band of spectrum with an RTL-SDR and record the power at each frequency.</span></h3>
 <p class="facts">Radio · command-line tool · <b>rtl-power-fftw</b> 20200601 · stage 12 · The application catalogue · <a href="man/rtl_power_fftw.html">man rtl_power_fftw(1)</a> · <a href="https://github.com/AD-Vega/rtl-power-fftw">home</a></p>
 <p class="deps">needs fftw-single-libs, librtlsdr</p>
+<p class="why"><b>On Copal:</b> The catalogue's spectrum survey: sweep hundreds of megahertz in steps and see where the signals are -- faster and finer than rtl_power, thanks to FFTW.</p>
 <pre class="syn">rtl_power_fftw [OPTION ...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Give a frequency or a range; it steps the tuner across it and prints the power in each bin, as text a plotting program reads directly.</p>
+<h4>Examples</h4><div class="ex"><code>rtl_power_fftw -f 88M:108M -b 512 -n 100 &gt; fm.dat</code><span>the FM band, once</span></div><div class="ex"><code>rtl_power_fftw -f 430M:440M -b 1024 -c -e 3600 -q &gt; 70cm.dat</code><span>an hour, continuously</span></div><div class="ex"><code>rtl_power_fftw -f 1090M -b 256 -t 10</code><span>one frequency, 10 seconds</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-f HZ | HZ:HZ</code></dt><dd>one frequency or a range to sweep</dd><dt><code>-b N</code></dt><dd>bins in each FFT (resolution)</dd><dt><code>-n N</code></dt><dd>spectra to average per step</dd><dt><code>-t SECS</code></dt><dd>integration time per step</dd><dt><code>-c</code></dt><dd>continue: sweep until stopped</dd><dt><code>-e SECS</code></dt><dd>stop after SECS seconds</dd><dt><code>-g GAIN</code></dt><dd>tuner gain, in tenths of a dB</dd><dt><code>-q</code></dt><dd>quiet: data only</dd></dl>
+<h4>Notes</h4><ul><li>It comes from Alpine's testing repository (<code>rtl-power-fftw@testing</code>).</li><li>The same dongle rules apply as for rtl_test: the <code>plugdev</code> group and the TV driver kept off it.</li></ul>
+<p class="see">See also <a href="#c-rtl_test"><code>rtl_test</code></a>, <a href="#c-gnuplot"><code>gnuplot</code></a>, <a href="#c-fftw-wisdom"><code>fftw-wisdom</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-rtl_test" data-s="rtl_test software defined radio receiver for realtek rtl2832u (tools) radio rtl-sdr">
-<h3><a class="self" href="#c-rtl_test"><code>rtl_test</code></a> <span class="purpose">Software defined radio receiver for Realtek RTL2832U (tools)</span></h3>
+<article class="cmd" id="c-rtl_test" data-s="rtl_test test an rtl-sdr dongle -- and, with its siblings, tune, record and scan with one. radio rtl-sdr">
+<h3><a class="self" href="#c-rtl_test"><code>rtl_test</code></a> <span class="purpose">Test an RTL-SDR dongle -- and, with its siblings, tune, record and scan with one.</span></h3>
 <p class="facts">Radio · command-line tool · <b>rtl-sdr</b> 2.0.2 · stage 12 · The application catalogue · <a href="https://osmocom.org/projects/sdr/wiki/rtl-sdr">home</a></p>
 <p class="deps">needs librtlsdr</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's rtl-sdr tools, for the cheap RTL2832U USB dongle that turns a Pi into a wide-band radio receiver. rtl_test is the first command: is the stick there, and does it keep up?</p>
+<h4>Use</h4><p>Plug the dongle in and run <a href="#c-rtl_test"><code>rtl_test</code></a>: it names the tuner, then counts lost samples; none lost means the USB link keeps up. The same package has <code>rtl_fm</code> (listen), <code>rtl_sdr</code> (record raw samples), <code>rtl_power</code> (scan) and <code>rtl_tcp</code> (serve it to another machine).</p>
+<h4>Examples</h4><div class="ex"><code>rtl_test</code><span>find the dongle, check for lost samples</span></div><div class="ex"><code>rtl_test -p</code><span>measure its frequency error, in ppm</span></div><div class="ex"><code>rtl_fm -f 96.3M -M wbfm -s 200k -r 48k - | aplay -r 48000 -f S16_LE</code><span>FM radio</span></div><div class="ex"><code>rtl_sdr -f 433.92M -s 1.024M -n 10240000 capture.bin</code><span>ten seconds of raw samples</span></div><div class="ex"><code>rtl_tcp -a 0.0.0.0</code><span>serve it to Gqrx or SDR# on another machine</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-d INDEX</code></dt><dd>which dongle, when there are several</dd><dt><code>-s RATE</code></dt><dd>the sample rate (default 2048000)</dd><dt><code>-p[SECS]</code></dt><dd>measure the PPM error over SECS seconds</dd><dt><code>-t</code></dt><dd>the E4000 tuner benchmark</dd></dl>
+<h4>Notes</h4><ul><li>"usb_claim_interface error -6": the kernel's TV driver took the stick. Copal blacklists it from 24 Sep 2026 (<code>/etc/modprobe.d/copal-rtl-sdr.conf</code>); unplug and plug in again.</li><li>"usb_open error -3": no permission. The device belongs to the group <code>plugdev</code>, which Copal adds you to from the same date; log in again after.</li><li>A ppm figure from <code>-p</code> goes to other tools as <code>-p N</code> (rtl_fm) or the frequency correction setting (Gqrx).</li></ul>
+<p class="see">See also <a href="#c-rtl_power_fftw"><code>rtl_power_fftw</code></a>, <a href="#c-dump1090"><code>dump1090</code></a>, <a href="#c-direwolf"><code>direwolf</code></a>, <code>gqrx</code></p>
 </article>
 </section>
 <section class="sec" id="s-retro"><h2>Retro</h2>
@@ -3244,19 +3299,25 @@ tig &lt;      [Git command output]</pre>
 </article>
 </section>
 <section class="sec" id="s-terminals"><h2>Terminals</h2>
-<article class="cmd facts-only" id="c-abduco" data-s="abduco terminal session manager terminals abduco">
-<h3><a class="self" href="#c-abduco"><code>abduco</code></a> <span class="purpose">terminal session manager</span></h3>
+<article class="cmd" id="c-abduco" data-s="abduco detach and reattach any terminal program -- sessions without a multiplexer. terminals abduco">
+<h3><a class="self" href="#c-abduco"><code>abduco</code></a> <span class="purpose">Detach and reattach any terminal program -- sessions without a multiplexer.</span></h3>
 <p class="facts">Terminals · command-line tool · <b>abduco</b> 0.6 · stage 12 · The application catalogue · <a href="man/abduco.html">man abduco(1)</a> · <a href="https://www.brain-dump.org/projects/abduco/">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's smallest session keeper: it does one thing tmux does -- keep a program running when the terminal goes -- and nothing else, so it pairs with dvtm or any single program.</p>
 <pre class="syn">abduco [-e detachkey] [-r] [-f] -c name command [args ...]
 abduco [-e detachkey] [-r] [-f] -n name command [args ...]
 abduco [-e detachkey] [-r] [-f] [-l] -A name command [args ...]
 abduco [-e detachkey] [-r] [-l] -a name</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>-c NAME CMD</code> starts a program in a named session; Ctrl-\ detaches; <code>-a NAME</code> reattaches. With no arguments it lists the sessions.</p>
+<h4>Examples</h4><div class="ex"><code>abduco -c build make -j4</code><span>run a build in session "build"</span></div><div class="ex"><code>abduco</code><span>the sessions, and whether they are attached</span></div><div class="ex"><code>abduco -a build</code><span>back into it</span></div><div class="ex"><code>abduco -A work dvtm</code><span>attach, or create it running dvtm</span></div><div class="ex"><code>abduco -n logs tail -f /var/log/messages</code><span>start one detached</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-c NAME CMD</code></dt><dd>create a session running CMD and attach</dd><dt><code>-n NAME CMD</code></dt><dd>create it detached</dd><dt><code>-a NAME</code></dt><dd>attach to it</dd><dt><code>-A NAME CMD</code></dt><dd>attach, or create if it does not exist</dd><dt><code>-e KEY</code></dt><dd>the detach key (default ^\)</dd><dt><code>-r</code></dt><dd>read-only: watch without typing</dd></dl>
+<h4>Notes</h4><ul><li>Ctrl-\ is the detach key; the program keeps running.</li><li>It keeps no screen contents: reattaching shows what the program draws next. A full-screen program redraws; a plain shell shows only new output.</li></ul>
+<p class="see">See also <a href="#c-dtach"><code>dtach</code></a>, <a href="#c-dvtm"><code>dvtm</code></a>, <a href="#c-tmux"><code>tmux</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-byobu" data-s="byobu wrapper script for seeding a user's byobu configuration and launching a text based window manager (either screen or tmux) terminals byobu">
-<h3><a class="self" href="#c-byobu"><code>byobu</code></a> <span class="purpose">wrapper script for seeding a user's byobu configuration and launching a text based window manager (either screen or tmux)</span></h3>
+<article class="cmd" id="c-byobu" data-s="byobu a friendlier face on tmux: function-key shortcuts and a status bar of system facts. terminals byobu">
+<h3><a class="self" href="#c-byobu"><code>byobu</code></a> <span class="purpose">A friendlier face on tmux: function-key shortcuts and a status bar of system facts.</span></h3>
 <p class="facts">Terminals · terminal program · <b>byobu</b> 6.16 · stage 12 · The application catalogue · <a href="man/byobu.html">man byobu(1)</a> · <a href="https://byobu.org">home</a></p>
 <p class="deps">needs python3, tmux, py3-newt</p>
+<p class="why"><b>On Copal:</b> The catalogue's easy multiplexer: tmux underneath, but F2 for a new window and F6 to detach, with no prefix key to learn.</p>
 <pre class="syn">byobu [options]
 
 byobu-screen [screen options]
@@ -3264,26 +3325,40 @@ byobu-screen [screen options]
 byobu-tmux [tmux options]
 
 Options to byobu are simply passed through screen(1) or tmux(1).</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Run <a href="#c-byobu"><code>byobu</code></a> and work as in tmux; the function keys do the common things, and the status line along the bottom shows load, memory and the clock. Sessions persist and reattach, as tmux's do.</p>
+<h4>Examples</h4><div class="ex"><code>byobu</code><span>start or reattach</span></div><div class="ex"><code>byobu new -s work</code><span>a named session (tmux's options pass through)</span></div><div class="ex"><code>byobu ls</code><span>the sessions</span></div><div class="ex"><code>F2             (inside) a new window</code></div><div class="ex"><code>F3  F4         previous / next window</code></div><div class="ex"><code>F6             detach</code></div><div class="ex"><code>F8             rename the window</code></div><div class="ex"><code>F9             the configuration menu</code></div>
+<h4>Options</h4><dl class="opts"></dl>
+<h4>Notes</h4><ul><li>"locale: not found" at start is harmless: byobu asks for the character map with a <code>locale</code> command that musl systems do not have.</li><li>Function keys that the terminal or desktop keeps for itself (F11 for full screen, F10 in some terminals) do not reach it; F9 lets you switch to Ctrl-a keys instead.</li><li>Its settings live in <code>~/.byobu</code>.</li></ul>
+<p class="see">See also <a href="#c-tmux"><code>tmux</code></a>, <a href="#c-screen"><code>screen</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-dtach" data-s="dtach simple program that emulates the detach feature of screen. terminals dtach">
-<h3><a class="self" href="#c-dtach"><code>dtach</code></a> <span class="purpose">simple program that emulates the detach feature of screen.</span></h3>
+<article class="cmd" id="c-dtach" data-s="dtach keep a program running detached from the terminal, reached through a socket file. terminals dtach">
+<h3><a class="self" href="#c-dtach"><code>dtach</code></a> <span class="purpose">Keep a program running detached from the terminal, reached through a socket file.</span></h3>
 <p class="facts">Terminals · command-line tool · <b>dtach</b> 0.9 · stage 12 · The application catalogue · <a href="man/dtach.html">man dtach(1)</a> · <a href="https://dtach.sourceforge.net/">home</a></p>
+<p class="why"><b>On Copal:</b> The catalogue's oldest and smallest session keeper, abduco's ancestor: a program behind a socket you can leave and come back to.</p>
 <pre class="syn">dtach -a &lt;socket&gt; &lt;options&gt;
 dtach -A &lt;socket&gt; &lt;options&gt; &lt;command...&gt;
 dtach -c &lt;socket&gt; &lt;options&gt; &lt;command...&gt;
 dtach -n &lt;socket&gt; &lt;options&gt; &lt;command...&gt;
 dtach -N &lt;socket&gt; &lt;options&gt; &lt;command...&gt;
 dtach -p &lt;socket&gt;</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Name a socket file and a command. <code>-c</code> creates the session and attaches, <code>-a</code> reattaches, and Ctrl-\ detaches.</p>
+<h4>Examples</h4><div class="ex"><code>dtach -c /tmp/build.sock make -j4</code><span>start, attached</span></div><div class="ex"><code>dtach -a /tmp/build.sock</code><span>reattach later</span></div><div class="ex"><code>dtach -A /tmp/ed.sock nvim notes.md</code><span>attach, or start it if not running</span></div><div class="ex"><code>dtach -n /tmp/srv.sock ./server</code><span>start detached</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-c SOCK CMD</code></dt><dd>create a session and attach</dd><dt><code>-n SOCK CMD</code></dt><dd>create it detached</dd><dt><code>-a SOCK</code></dt><dd>attach</dd><dt><code>-A SOCK CMD</code></dt><dd>attach, or create if it does not exist</dd><dt><code>-e CHAR</code></dt><dd>the detach character (default ^\)</dd><dt><code>-E</code></dt><dd>no detach character at all</dd><dt><code>-r METHOD</code></dt><dd>how to redraw on attach: none, ctrl_l or winch</dd></dl>
+<h4>Notes</h4><ul><li>The socket is an ordinary file path: anyone who can open it can attach, so keep it in a folder only you can read, not a shared /tmp in a multi-user machine.</li><li>Like abduco, it keeps no screen: <code>-r winch</code> asks a full-screen program to redraw when you attach.</li></ul>
+<p class="see">See also <a href="#c-abduco"><code>abduco</code></a>, <a href="#c-screen"><code>screen</code></a>, <a href="#c-tmux"><code>tmux</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-dvtm" data-s="dvtm dynamic virtual terminal manager terminals dvtm">
-<h3><a class="self" href="#c-dvtm"><code>dvtm</code></a> <span class="purpose">dynamic virtual terminal manager</span></h3>
+<article class="cmd" id="c-dvtm" data-s="dvtm a tiling window manager for the terminal: several shells arranged side by side, dwm-style. terminals dvtm">
+<h3><a class="self" href="#c-dvtm"><code>dvtm</code></a> <span class="purpose">A tiling window manager for the terminal: several shells arranged side by side, dwm-style.</span></h3>
 <p class="facts">Terminals · terminal program · <b>dvtm</b> 0.15_git20210309 · stage 12 · The application catalogue · <a href="man/dvtm.html">man dvtm(1)</a> · <a href="https://www.brain-dump.org/projects/dvtm/">home</a></p>
 <p class="deps">needs ncurses-terminfo, libncursesw</p>
+<p class="why"><b>On Copal:</b> The catalogue's smallest way to split a terminal: panes laid out automatically, as dwm lays out windows. It does not detach by itself; with abduco, it does.</p>
 <pre class="syn">dvtm [-v] [-M] [-m modifier] [-d delay] [-h lines] [-t title] [-s status-fifo] [-c cmd-fifo]
      [command ...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Start it; Ctrl-g is the prefix. Ctrl-g c opens another shell, and the layout tiles them: one large on the left, the rest stacked on the right.</p>
+<h4>Examples</h4><div class="ex"><code>dvtm</code><span>start, with one shell</span></div><div class="ex"><code>dvtm htop 'watch -n2 df -h'</code><span>start with these programs in panes</span></div><div class="ex"><code>abduco -c work dvtm</code><span>a detachable dvtm session</span></div><div class="ex"><code>Ctrl-g c       (inside) a new shell</code></div><div class="ex"><code>Ctrl-g j / k   next / previous pane</code></div><div class="ex"><code>Ctrl-g Space   the next layout</code></div><div class="ex"><code>Ctrl-g q q     quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-m MOD</code></dt><dd>another prefix key: -m ^b for Ctrl-b</dd><dt><code>-M</code></dt><dd>mouse support on</dd><dt><code>-d DELAY</code></dt><dd>Escape delay, in milliseconds</dd><dt><code>-h LINES</code></dt><dd>scrollback lines per pane</dd><dt><code>-t TITLE</code></dt><dd>the terminal title</dd><dt><code>CMD...</code></dt><dd>start with these commands in panes</dd></dl>
+<h4>Notes</h4><ul><li>To keep a session when the terminal closes, run it inside abduco (as above) and reattach with <code>abduco -a work</code>.</li><li>Ctrl-g is also a key some programs want; <code>-m</code> moves the prefix.</li></ul>
+<p class="see">See also <a href="#c-abduco"><code>abduco</code></a>, <a href="#c-tmux"><code>tmux</code></a>, <a href="#c-zellij"><code>zellij</code></a></p>
 </article>
 <article class="cmd facts-only" id="c-pwsh" data-s="pwsh a cross-platform automation and configuration tool/framework terminals powershell">
 <h3><a class="self" href="#c-pwsh"><code>pwsh</code></a> <span class="purpose">A cross-platform automation and configuration tool/framework</span></h3>
@@ -3291,20 +3366,30 @@ dtach -p &lt;socket&gt;</pre>
 <p class="deps">needs dotnet10-runtime, libpsl-native</p>
 <p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
 </article>
-<article class="cmd facts-only" id="c-screen" data-s="screen screen manager with vt100/ansi terminal emulation terminals screen">
-<h3><a class="self" href="#c-screen"><code>screen</code></a> <span class="purpose">screen manager with VT100/ANSI terminal emulation</span></h3>
+<article class="cmd" id="c-screen" data-s="screen gnu screen: terminal sessions that survive disconnection, with windows inside one terminal. terminals screen">
+<h3><a class="self" href="#c-screen"><code>screen</code></a> <span class="purpose">GNU Screen: terminal sessions that survive disconnection, with windows inside one terminal.</span></h3>
 <p class="facts">Terminals · terminal program · <b>screen</b> 5.0.2 · stage 7 · Compilers, editors, Claude Code and the ~/code checkouts · <a href="man/screen.html">man screen(1)</a> · <a href="https://www.gnu.org/software/screen/">home</a></p>
 <p class="deps">needs libncursesw, linux-pam</p>
+<p class="why"><b>On Copal:</b> The catalogue's original multiplexer, beside tmux: on nearly every Unix, and still the one many guides and serial-console recipes use -- <code>screen /dev/ttyUSB0 115200</code> is a serial terminal.</p>
 <pre class="syn">screen [ -options ] [ cmd [ args ] ]
 screen -r [[pid.]tty[.host]]
 screen -r sessionowner/[[pid.]tty[.host]]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Start a session, run programs in its windows, detach with Ctrl-a d, and reattach later -- from this machine or over SSH. Every key starts with the prefix Ctrl-a.</p>
+<h4>Examples</h4><div class="ex"><code>screen -S build</code><span>a named session</span></div><div class="ex"><code>screen -ls</code><span>the sessions running</span></div><div class="ex"><code>screen -r build</code><span>reattach</span></div><div class="ex"><code>screen -d -r build</code><span>reattach, detaching it elsewhere first</span></div><div class="ex"><code>screen /dev/ttyUSB0 115200</code><span>a serial console at 115200 baud</span></div><div class="ex"><code>Ctrl-a d       (inside) detach</code></div><div class="ex"><code>Ctrl-a c       a new window;  Ctrl-a n / p  next / previous</code></div><div class="ex"><code>Ctrl-a [       scrollback: move with the arrows, Esc to leave</code></div><div class="ex"><code>Ctrl-a ?       every key</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-S NAME</code></dt><dd>name the new session</dd><dt><code>-ls</code></dt><dd>list sessions</dd><dt><code>-r [NAME]</code></dt><dd>reattach</dd><dt><code>-d -r</code></dt><dd>detach elsewhere, then reattach here</dd><dt><code>-x</code></dt><dd>attach without detaching (share the session)</dd><dt><code>-L</code></dt><dd>log the window to screenlog.0</dd></dl>
+<h4>Notes</h4><ul><li>A serial device needs the group <code>dialout</code>; leave a serial session with Ctrl-a k.</li><li>tmux is Copal's default multiplexer (stage 7); screen is here for the habits and recipes that name it.</li></ul>
+<p class="see">See also <a href="#c-tmux"><code>tmux</code></a>, <a href="#c-byobu"><code>byobu</code></a>, <a href="#c-abduco"><code>abduco</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-zellij" data-s="zellij run zellij terminals zellij">
-<h3><a class="self" href="#c-zellij"><code>zellij</code></a> <span class="purpose">run zellij</span></h3>
+<article class="cmd" id="c-zellij" data-s="zellij a terminal workspace: panes, tabs and floating windows, with its keys shown on screen. terminals zellij">
+<h3><a class="self" href="#c-zellij"><code>zellij</code></a> <span class="purpose">A terminal workspace: panes, tabs and floating windows, with its keys shown on screen.</span></h3>
 <p class="facts">Terminals · terminal program · <b>zellij</b> 0.42.2 · stage 12 · The application catalogue · <a href="man/zellij.html">man zellij(1)</a> · <a href="https://zellij.dev/">home</a></p>
 <p class="deps">needs libcrypto3, libssl3</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> The catalogue's modern multiplexer: tmux's detachable sessions, but every key it takes is listed at the bottom, so nothing needs to be learned first.</p>
+<h4>Use</h4><p>Start it and work in panes and tabs. The bar at the bottom shows the modes -- Ctrl-p for panes, Ctrl-t for tabs, and so on -- and inside each mode the keys it offers. Sessions survive a detach and reattach by name.</p>
+<h4>Examples</h4><div class="ex"><code>zellij</code><span>a new session</span></div><div class="ex"><code>zellij -s work</code><span>a named one</span></div><div class="ex"><code>zellij ls</code><span>the sessions</span></div><div class="ex"><code>zellij attach work</code><span>back into it</span></div><div class="ex"><code>zellij kill-session work</code><span>end it</span></div><div class="ex"><code>Ctrl-p n       (inside) a new pane;  Ctrl-p d  one below</code></div><div class="ex"><code>Ctrl-t n       a new tab</code></div><div class="ex"><code>Ctrl-o d       detach</code></div><div class="ex"><code>Ctrl-q         quit, ending the session</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-s, --session NAME</code></dt><dd>name the new session</dd><dt><code>attach NAME</code></dt><dd>attach to a session (a)</dd><dt><code>list-sessions</code></dt><dd>list them (ls)</dd><dt><code>kill-session NAME</code></dt><dd>end one (k)</dd><dt><code>options</code></dt><dd>change behaviour for this run</dd></dl>
+<h4>Notes</h4><ul><li>Its Ctrl keys can clash with programs inside it (Ctrl-p in a shell's history, Ctrl-o in nano); Ctrl-g locks them so everything passes through, and Ctrl-g again unlocks.</li><li>Configuration is <code>~/.config/zellij/config.kdl</code>; <code>zellij setup --dump-config</code> prints the default to start from.</li></ul>
+<p class="see">See also <a href="#c-tmux"><code>tmux</code></a>, <a href="#c-screen"><code>screen</code></a>, <a href="#c-byobu"><code>byobu</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-tools"><h2>Tools</h2>

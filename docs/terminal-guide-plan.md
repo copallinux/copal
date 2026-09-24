@@ -436,6 +436,24 @@ Each ends with a review of what it produced before the next begins.
   `--help` points to them. Options a front end leaves to gcc's manual
   (gfortran's `-O` levels) go in a note, not the options list.
 
+### Phase 4, batches 11 and 12: Devtools, and the rest of the catalogue (24 Sep 2026)
+
+- **Batch 11, 14 entries** (Devtools): `bear`, `ccache`, `meson`, `just`,
+  `cgdb`, `strace`, `ltrace`, `cppcheck`, `ctags`, `doxygen`, `shellcheck`,
+  `shfmt`, `lua-language-server`, `pylsp`. `lldb` and `pwndbg` keep their
+  facts only; `cl65` waits for `cc65` on a bench that has it.
+- **Batch 12, 17 entries**: `screen`, `byobu`, `zellij`, `dvtm`, `abduco`,
+  `dtach`; `rtl_test`, `rtl_power_fftw`, `hackrf_info`, `dump1090`,
+  `direwolf`, `rigctl`; `sigrok-cli`, `fftw-wisdom`; `gtypist`; `redshift`,
+  `udiskie`.
+- **Installer fixes**: SDR dongles belong to `plugdev`, which the account
+  was not in, and the kernel's DVB-T driver claimed RTL2832U sticks; stage
+  12 adds the group and writes `/etc/modprobe.d/copal-rtl-sdr.conf`.
+  redshift has no Wayland method, so `hyprsunset` and `gammastep` are its
+  optionals; pylsp gains its checkers (`py3-pyflakes`, `py3-pycodestyle`).
+- **The catalogue is written**, apart from Security (11, facts only by the
+  author's choice), `lldb`, `pwndbg` and `cl65`. The store's shelf is next.
+
 ## VII. Risks
 
 - **Stale options.** An option written from memory rather than checked.
