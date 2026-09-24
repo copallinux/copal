@@ -9,13 +9,21 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="site.css">
-<link rel="stylesheet" href="menu-sim.css">
+<link rel="stylesheet" href="menus.css">
+<link rel="stylesheet" href="desk.css">
 </head>
 <body>
 
+<!-- The desktop (desk.js) is drawn here. Everything below it is what the site
+     is without JavaScript, and what a search engine or a screen reader reads:
+     the same pages, as a list. -->
+<div id="desk"></div>
+
+<div class="desk-fallback">
 <nav class="site-nav" aria-label="Site">
   <a class="mark" href="./">Copal</a>
   <a class="key" href="./" aria-current="page">Home</a>
+  <a class="key" href="about.html">About</a>
   <a class="key" href="desktop.html">Desktop</a>
   <a class="key" href="install.html">Install</a>
   <a class="key" href="platforms.html">Platforms</a>
@@ -25,178 +33,40 @@
 </nav>
 
 <main>
-
-<header>
-  <!-- The orbit: the full level's workspace strip, planets on a curve with
-       the active one flaring. Falls back to nothing if canvas is unavailable,
-       which costs a decoration and no information. -->
-  <canvas id="orbit" aria-hidden="true"></canvas>
-
+<header class="page-head">
   <h1 class="wordmark display">Copal<em>Alpine Linux</em></h1>
-
   <p class="thesis display">One installer turns stock Alpine into a
   <b>finished desktop</b> — on a Raspberry Pi, a PC, or a virtual machine on
   your Mac — in eighteen stages you can re-run in any order.</p>
-
-  <p class="resin-note">Copal is tree resin caught halfway to amber: hardened,
-  but not yet stone. Alpine boots <em>diskless</em> — its root filesystem is a
-  RAM disk that evaporates at power-off — and Copal is what sets it on the disk
-  without giving up the smallness that made it worth booting.</p>
-
-  <div class="start">
-    <code>./copal build vm</code>
-    <code>./copal card pi4</code>
-  </div>
-  <p style="font-size:.8rem;color:var(--ink-dim)">One command on your Mac. It
-  asks what you are building, shows the consequences, and writes an SD card, a
-  UEFI disk image or a virtual machine.</p>
 </header>
 
-<h2><span class="idx">01</span>What you get</h2>
+<p>This page is Copal's desktop, drawn in the browser: its menus open every
+page of the site as a window. Without JavaScript, here is every page as it
+stands.</p>
 
-<div class="plate">
-  <figure id="menu-sim">
-    <img src="img/site/desktop-menu.jpg" width="1280" height="800" loading="lazy"
-         alt="The Copal desktop on Hyprland: an Art Nouveau wallpaper of lilies, a large clock, the bar along the top, and the Mint-style application menu open on the left.">
-    <figcaption><b>The full monty.</b> Hyprland with the Linux Antiquity theme,
-    the bar along the top, and the application menu laid out the way Linux
-    Mint's is — on an aarch64 virtual machine on a Mac.</figcaption>
-    <p class="sim-hint" hidden>It works: hover a category, hover a program to
-    see what it opens to, click to start it, type to search, right-click for
-    favourites. A started program carries a link to its documentation: its
-    <a href="commands.html">Terminal Guide</a> entry, or its project's own
-    pages. <kbd>Esc</kbd> clears the search, then closes the menu; the
-    bar's <kbd>≡</kbd> opens it again. The entries, icons and pictures are the
-    real menu's and the gallery's; the wallpaper is Linux Antiquity's (MIT).</p>
-  </figure>
-</div>
-
-<div class="plate">
-  <figure id="textmenu-sim">
-    <img src="img/menu-apps.png" width="520" height="553" loading="lazy"
-         alt="copal-menu in wofi: a dark list of every application, with the search prompt reading Applications and System.">
-    <figcaption><b>The keyboard's menu.</b> <code>copal-menu</code>, on
-    Super+Space: every program in one list on the left, the categories, the
-    settings, the session and an Install branch on the right — two panes,
-    never more than two levels deep, and it lists the terminal programs a
-    launcher cannot see.</figcaption>
-    <p class="sim-hint" hidden>It plays itself until you point at it. Then:
-    type to filter, <kbd>↑</kbd> <kbd>↓</kbd> to move, <kbd>←</kbd>
-    <kbd>→</kbd> to cross between the panes or go back, <kbd>Enter</kbd> to
-    run. Whatever runs links to its documentation: its
-    <a href="commands.html">Terminal Guide</a> entry, or its project's own
-    pages.</p>
-  </figure>
-</div>
-
-<p>Copal is an <strong>opinionated desktop</strong>, decided once so you do
-not have to: a tiling Wayland compositor, a theme drawn from old scientific
-illustration, a menu for the mouse and a launcher for the keyboard, a
-toolchain with an AI agent in it, and a shelf of programs chosen because they
-are good — each with two sentences saying what it is.
-<a href="desktop.html">The desktop →</a></p>
-
-<div class="levels">
-  <article class="level server">
-    <div class="body"></div>
-    <h3>Server</h3>
-    <p class="what">No screen attached.</p>
-    <p>The base system made persistent, compressed RAM swap, your SSH key, the
-    partition grown into the disk, then root handed over to <code>doas</code>.
-    Nothing graphical at all.</p>
-    <p class="stages">Any board</p>
-  </article>
-  <article class="level medium">
-    <div class="body"></div>
-    <h3>Medium</h3>
-    <p class="what">X11 and i3, on the framebuffer.</p>
-    <p>The tiling desktop that fits a Pi Zero: X rendering on the CPU, i3, a
-    terminal, the catalogue, emulators and the toolchain. The ceiling for the
-    smallest boards.</p>
-    <p class="stages">Every board, 512 MB and up</p>
-  </article>
-  <article class="level full">
-    <div class="body"></div>
-    <h3>Full monty</h3>
-    <p class="what">Hyprland, themed as Linux Antiquity.</p>
-    <p>Everything above, then a GPU-composited Wayland desktop, Copal Apps,
-    and thirteen more programs installed at the first login while a slideshow
-    shows each one arriving.</p>
-    <p class="stages">aarch64 and x86_64</p>
-  </article>
-</div>
-
-<h2><span class="idx">02</span>Where it runs</h2>
-
-<p>Nine targets, one script. The Raspberry Pi boards are written as SD cards
-that the Pi's own firmware boots; everything else is a UEFI disk, and on a Mac
-with Apple Silicon a UTM virtual machine runs the ARM build at native speed.
-<a href="platforms.html">Every platform, and what has been tested on it →</a></p>
-
-<div class="scroll">
-<table>
-  <thead><tr><th>Target</th><th>Architecture</th><th>What it is</th></tr></thead>
-  <tbody>
-    <tr><td>zero</td><td>armhf</td><td>Pi Zero, Zero W, Pi 1 — <em>the board this was written for</em></td></tr>
-    <tr><td>pi2b</td><td>armv7</td><td>Pi 2 B v1.1</td></tr>
-    <tr><td>zero2</td><td>aarch64</td><td>Pi Zero 2 W, Pi 3, CM3</td></tr>
-    <tr><td>pi4, pi5</td><td>aarch64</td><td>Pi 4, Pi 400, CM4, Pi 5 — <em>the boards with power to spare</em></td></tr>
-    <tr><td>pc</td><td>x86_64</td><td>any UEFI PC or laptop, or an Intel Mac</td></tr>
-    <tr><td>pc32</td><td>x86</td><td>32-bit UEFI machines</td></tr>
-    <tr><td>vm</td><td>aarch64</td><td>UTM on Apple Silicon — <em>native speed</em></td></tr>
-    <tr><td>vmx86</td><td>x86_64</td><td>UTM emulating a PC on Apple Silicon</td></tr>
-  </tbody>
-</table>
-</div>
-
-<h2><span class="idx">03</span>How it installs</h2>
-
-<p>You answer a handful of questions on your Mac, boot the result, pick a
-level, and walk away. Every program Copal puts on the machine is a
-<strong>playbook</strong> — one file per project, with its prerequisites, its
-steps and its two sentences — and every install is recorded, so what happened
-can be read afterwards rather than guessed at.
-<a href="install.html">The installer →</a></p>
-
-<h2><span class="idx">04</span>Built on Alpine</h2>
-
-<p>Alpine Linux is small, simple and secure: musl libc, BusyBox, OpenRC and
-the <code>apk</code> package manager — by Alpine's own count, a minimal
-install to disk needs about 130 MB. Copal downloads stock Alpine, checks it against Alpine's own
-published checksum, and builds on it with Alpine's own tools. It is not a
-fork, and nothing in it is a binary you have to trust.
-<a href="alpine.html">Why Alpine →</a></p>
-
-<h2><span class="idx">05</span>Software made for it</h2>
-
-<p>Copal Apps, the menus, the clipboard bridge, a fleet console for a room of
-machines, a Geiger counter's instrument panel, a task manager in one terminal
-window — and a gallery of 203 programs photographed running on it.
-<a href="software.html">The software →</a></p>
-
-<p>Every terminal command on a Copal machine, in one searchable page: what it
-is, why it is here, the package it came in, working examples, the options
-that matter and the parts people get wrong — with its full man page a click
-away, because Copal puts <code>man</code> back on Alpine.
-<a href="commands.html">The Terminal Guide →</a></p>
-
-<div class="honest">
-  <b>Honest about what this is.</b> Copal is an aggregation of Alpine Linux:
-  it downloads stock Alpine and calls Alpine's own tools. It is not a fork,
-  not a remaster, and not affiliated with or endorsed by the Alpine project.
-  It is one person's desktop, built in the open and documented as it goes.
-</div>
+<ul>
+  <li><a href="about.html">About Copal</a> — what it is, what you get, where it runs</li>
+  <li><a href="desktop.html">The Desktop</a> — Hyprland, the Linux Antiquity theme, the menus</li>
+  <li><a href="install.html">The Installer</a> — eighteen stages, and a playbook per program</li>
+  <li><a href="platforms.html">Platforms</a> — every board and machine, and what has been tested</li>
+  <li><a href="alpine.html">Alpine Linux</a> — why it is built on Alpine</li>
+  <li><a href="software.html">Software</a> — Copal Apps and the programs made for it</li>
+  <li><a href="gallery.html">Gallery</a> — the programs, photographed running</li>
+  <li><a href="commands.html">The Terminal Guide</a> — every terminal command, checked against the machine</li>
+  <li><a href="terminal-guide-lab-report.html">Writing a Command Reference Against the Machine</a> — the lab report</li>
+</ul>
 
 <footer>
   <p>Copal Linux · MIT licensed · <a href="https://github.com/copallinux/copal">github.com/copallinux/copal</a> ·
   the Linux Antiquity theme is by <a href="https://github.com/diinki/linux-antiquity">diinki</a> ·
   Alpine Linux is a trademark of its project, which this is not part of.</p>
 </footer>
-
 </main>
-<script src="orbit.js"></script>
+</div>
+
 <script src="menu-data.js"></script>
-<script src="menu-sim.js"></script>
-<script src="textmenu-sim.js"></script>
+<script src="menu-gui.js"></script>
+<script src="menu-keys.js"></script>
+<script src="desk.js"></script>
 </body>
 </html>

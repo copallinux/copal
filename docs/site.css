@@ -358,6 +358,14 @@ footer a:hover { color: var(--ember); }
   background: var(--resin); box-shadow: none; transform: translate(2px, 2px);
 }
 
+/* Inside a window on the desktop (index.html) the desktop is the navigation:
+   desk.js marks a page it frames with html.framed, and the page drops its
+   own nav and the air above its heading. Opened directly, nothing changes. */
+html.framed .site-nav { display: none; }
+html.framed body { padding-bottom: 2rem; }
+html.framed header { padding-top: 2rem; }
+html.framed .page-head { padding-top: 1.5rem; }
+
 /* An inner page's heading: the wordmark's face, a size down, and a lede. */
 .page-head { padding: 3.5rem 0 .5rem; }
 .page-head h1 {

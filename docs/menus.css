@@ -1,24 +1,17 @@
-/* The live menu on the home page: copal-gui, drawn at the screenshot's own
-   geometry (a 1280x800 desktop) and scaled to the plate. Its colours are the
-   desktop's, not the page's -- it is a picture of the machine, and a picture
-   keeps its own palette whatever it is printed on. */
+/* The two menus -- copal-gui (Super+A) and copal-menu (Super+Space, Super+Z)
+   -- and the bar and clock they sit under, on the site's desktop (desk.js),
+   drawn at the page's own pixels. Their colours are the desktop's, not the
+   pages': it is a picture of the machine, and a picture keeps its own palette
+   whatever it is printed on. */
 
-.sim-wrap {
-  position: relative; width: 100%; aspect-ratio: 16 / 10; overflow: hidden;
-  border: 1px solid var(--ink-key); box-shadow: 5px 5px 0 var(--ink-key);
-  background: #2b2b24;
-}
-.sim-wrap:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
-
-.sim {
+.desk {
   --bar: #121212; --bar-ink: #a79f8a; --bar-hot: #e9b86a;
   /* The menu panel on the theme's menu ground, as copal-gui draws it now:
      Antiquity (helios) -- menu-bg, shadow, highlight, text-light, accent. */
   --panel: #181818; --side: #121212; --line: #333333;
   --row-hot: #333333; --ink: #d0daed; --ink-soft: #9aa3b4;
   --accent: #fccf8a; --accent-dark: #87704f;
-  position: absolute; left: 0; top: 0; width: 1280px; height: 800px;
-  transform-origin: 0 0; overflow: hidden; user-select: none;
+  position: fixed; inset: 0; overflow: hidden; user-select: none;
   font: 15px/1.2 "Recia", "Inter", "Cantarell", system-ui, sans-serif;
   color: var(--ink); background: #6f7a55 center / cover no-repeat;
   cursor: default;
@@ -26,7 +19,7 @@
 
 /* ----- the bar and the desktop's own clock ----- */
 .sim-bar {
-  position: absolute; inset: 0 0 auto 0; height: 26px; z-index: 5;
+  position: absolute; inset: 0 0 auto 0; height: 26px; z-index: 10;
   display: flex; align-items: center; gap: 14px; padding: 0 10px;
   background: var(--bar); color: var(--bar-ink);
   font: 12px/26px "JetBrains Mono", ui-monospace, monospace;
@@ -41,7 +34,7 @@
 .sim-bar .time { color: var(--bar-hot); font-weight: 700; }
 
 .sim-clock {
-  position: absolute; left: 560px; top: 118px; z-index: 1; pointer-events: none;
+  position: absolute; left: 44%; top: 15%; z-index: 1; pointer-events: none;
   text-align: left;
 }
 .sim-clock .hm {
@@ -55,7 +48,7 @@
 
 /* ----- the menu ----- */
 .sim-menu {
-  position: absolute; left: 6px; top: 32px; width: 590px; height: 562px; z-index: 4;
+  position: absolute; left: 6px; top: 32px; width: 590px; height: min(562px, calc(100% - 40px)); z-index: 8;
   display: flex; background: var(--panel);
   border: 1px solid var(--accent-dark); border-radius: 8px;
   box-shadow: 0 8px 28px rgba(0,0,0,.45);
@@ -114,12 +107,14 @@
 
 /* ----- hover: what the program opens to ----- */
 .sim-peek {
-  position: absolute; left: 640px; top: 350px; width: 560px; z-index: 3;
+  position: absolute; left: 610px; top: 32px; width: min(560px, calc(100% - 626px)); z-index: 7;
   background: #fce2ab; border: 1px solid #121212; box-shadow: 5px 5px 0 #121212;
   padding: 8px 8px 10px; pointer-events: none;
   opacity: 0; transform: translateY(6px); transition: opacity .12s, transform .12s;
 }
 .sim-peek.on { opacity: 1; transform: none; }
+/* No room beside the menu: no picture, rather than one on top of it. */
+@media (max-width: 1100px) { .sim-peek { display: none; } }
 .sim-peek .shot {
   width: 100%; aspect-ratio: 16 / 10; display: block; background: #e7d5a6 center / cover no-repeat;
   border: 1px solid #121212; image-rendering: auto;
@@ -128,34 +123,9 @@
 .sim-peek .cap { margin-top: 7px; font-size: 13px; color: #1b1710; line-height: 1.35; }
 .sim-peek .cap b { font-weight: 700; }
 
-/* ----- click: the program's screen ----- */
-.sim-run {
-  position: absolute; inset: 0; z-index: 8; background: #000 center / cover no-repeat;
-  opacity: 0; pointer-events: none; transition: opacity .18s;
-}
-.sim-run.on { opacity: 1; pointer-events: auto; }
-.sim-run .pill {
-  position: absolute; right: 14px; top: 34px; display: flex; align-items: center; gap: 12px;
-  padding: 7px 8px 7px 14px; border-radius: 18px; background: rgba(18,18,18,.86); color: #f2e3c0;
-  font: 13px "JetBrains Mono", monospace;
-}
-.sim-run .pill button {
-  all: unset; cursor: pointer; padding: 3px 10px; border-radius: 12px; background: #fccf8a; color: #121212;
-}
-/* The documentation for what is running: the Terminal Guide's entry, or the
-   project's own home page. Outlined, so Close stays the obvious way out. */
-.sim-run .pill a.doc {
-  color: #fccf8a; text-decoration: none; padding: 2px 10px; border: 1px solid #fccf8a; border-radius: 12px;
-}
-.sim-run .pill a.doc:hover, .sim-run .pill a.doc:focus-visible { background: #fccf8a; color: #121212; }
-.sim-run .none {
-  position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 14px;
-  color: #f2e3c0; font: 15px "JetBrains Mono", monospace; text-align: center;
-}
-
 /* ----- the session buttons' screens ----- */
 .sim-veil {
-  position: absolute; inset: 0; z-index: 9; display: none; place-items: center; align-content: center;
+  position: absolute; inset: 0; z-index: 20; display: none; place-items: center; align-content: center;
   gap: 10px; background: rgba(10,10,10,.92); color: #f2e3c0; text-align: center;
   font: 16px "JetBrains Mono", monospace; cursor: pointer;
 }
@@ -164,22 +134,16 @@
 
 /* ----- right-click ----- */
 .sim-ctx {
-  position: absolute; z-index: 10; min-width: 190px; padding: 4px; display: none;
+  position: absolute; z-index: 21; min-width: 190px; padding: 4px; display: none;
   background: #fff; border: 1px solid rgba(0,0,0,.2); border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.2);
 }
 .sim-ctx.on { display: block; }
 .sim-ctx div { padding: 6px 10px; border-radius: 4px; cursor: pointer; }
 .sim-ctx div:hover { background: var(--row-hot); }
 
-.sim-hint { font-size: .8rem; color: var(--ink-dim); margin-top: .5rem; }
-.sim-hint kbd {
-  font: .75rem "JetBrains Mono", monospace; padding: 0 .3rem;
-  border: 1px solid var(--ink-key); border-radius: 3px; background: var(--paper-raised);
-}
-
 /* ----- the other menu: copal-menu in wofi, as the screenshots show it ----- */
 .tm-menu {
-  position: absolute; left: 60px; top: 60px; width: 520px; height: 540px; z-index: 4;
+  position: absolute; left: 6px; top: 32px; width: 520px; max-height: calc(100% - 40px); z-index: 8;
   background: #1a1a1a; border: 1px solid #2c2c2c; border-radius: 4px; overflow: hidden;
   font: 14px/1 "JetBrains Mono", ui-monospace, monospace; color: #d8d2c4;
   box-shadow: 0 8px 28px rgba(0,0,0,.35);
@@ -198,7 +162,7 @@
 }
 .tm-row.on { background: #2b2b2b; border-left-color: #e9b86a; color: #e9b86a; }
 .tm-row.tm-none { color: #6d6658; cursor: default; }
-.tm-card { left: 640px; top: 150px; }
+.tm-card { left: 540px; width: min(560px, calc(100% - 556px)); }
 .tm-man {
   width: 100%; height: 100%; box-sizing: border-box; padding: 26px 28px; background: #151515;
   font: 15px/1.5 "JetBrains Mono", monospace; color: #d8d2c4; text-align: left;
@@ -207,11 +171,3 @@
 .tm-man .c { color: #e9b86a; font-size: 22px; margin: 12px 0 10px; }
 .tm-man .p { color: #efe6d2; }
 .sim-peek .cap a { color: #8a6320; font-weight: 700; }
-.tm-term {
-  width: 760px; padding: 22px 26px; background: #151515; border: 1px solid #333; text-align: left;
-  font: 16px/1.6 "JetBrains Mono", monospace; color: #d8d2c4; white-space: pre;
-}
-.tm-badge {
-  position: absolute; left: 60px; top: 612px; z-index: 6; padding: 6px 12px; border-radius: 14px;
-  background: rgba(18,18,18,.82); color: #f2e3c0; font: 13px "JetBrains Mono", monospace;
-}

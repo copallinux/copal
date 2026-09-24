@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
-"""copal-menu-sim -- the data behind the site's live menu (docs/menu-sim.js).
+"""copal-menu-sim -- the data behind the site's desktop and its two menus (docs/desk.js,
+docs/menu-gui.js, docs/menu-keys.js).
 
 The home page's first picture is the full monty with copal-gui open. The
 simulation that replaces it is fed from the real menu on a real Copal
@@ -257,7 +258,7 @@ def main():
     refs = json.load(open(ref)) if os.path.exists(ref) else {}
 
     # Home pages, for a click on a program the Terminal Guide does not cover.
-    # The text menu's commands are read the way textmenu-sim.js reads them.
+    # The text menu's commands are read the way menu-keys.js reads them.
     cmds = [e["prog"] for e in entries]
     for line in textmenu.splitlines():
         act = line.split(",", 1)[1] if "," in line else ""
@@ -270,7 +271,7 @@ def main():
             cmds.append(os.path.basename(m.group(1)))
             continue
         act = m.group(1) if m else act
-        # realCommand() in textmenu-sim.js: past env, sh -c and shell words.
+        # realCommand() in menu-keys.js: past env, sh -c and shell words.
         for t in act.split():
             t = os.path.basename(t.lstrip("\"'").rstrip("\"';"))
             if t in SKIP or "=" in t or not re.match(r"^[A-Za-z][\w.+-]*$", t):

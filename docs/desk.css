@@ -1,0 +1,71 @@
+/* The desktop that is the site (desk.js): the bar's menu buttons, the tiled
+   windows and what goes in them. The menus themselves are menus.css. */
+
+/* With the desktop drawn, the page underneath is its fallback: kept in the
+   document for anyone without JavaScript, a search engine and a screen
+   reader's list of links, and out of sight for everyone else. */
+html.desk-on, html.desk-on body { height: 100%; overflow: hidden; }
+html.desk-on .desk-fallback { display: none; }
+
+.desk .sim-bar .desk-menu {
+  all: unset; cursor: pointer; padding: 0 7px; color: var(--bar-hot); font-size: 15px; line-height: 26px;
+}
+.desk .sim-bar .desk-menu.keys { font: 700 12px/26px "JetBrains Mono", monospace; }
+.desk .sim-bar .desk-menu:hover, .desk .sim-bar .desk-menu:focus-visible { background: #2a2a2a; }
+/* A workspace with windows on it is marked, as Hyprland's bar marks it. */
+.desk .sim-ws span.used:not(.on) { color: #d9cfb6; }
+.desk .sim-ws span.used::after { content: "·"; margin-left: 1px; }
+@media (max-width: 640px) { .desk .sim-bar .stat { display: none; } }
+
+/* ----- tiles: a workspace, split between its windows ----- */
+.desk-tiles { position: absolute; inset: 26px 0 0 0; z-index: 2; pointer-events: none; }
+.desk-ws { position: absolute; inset: 0; display: flex; gap: 8px; padding: 8px; }
+.desk-ws[hidden] { display: none; }
+@media (max-width: 759px) { .desk-ws { padding: 4px; } }
+
+.desk-win {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; pointer-events: auto;
+  background: #181818; border: 2px solid #3a3a3a; border-radius: 8px; overflow: hidden;
+  box-shadow: 0 6px 22px rgba(0,0,0,.35);
+}
+/* Hyprland's active border: the theme's gold on the window with focus. */
+.desk-win.focus { border-color: var(--bar-hot); }
+.desk-head {
+  flex: none; height: 30px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 12px;
+  background: #121212; color: #d9cfb6; font: 12px/30px "JetBrains Mono", monospace;
+}
+.desk-head .name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.desk-head .shut {
+  all: unset; cursor: pointer; width: 24px; height: 22px; text-align: center; line-height: 22px;
+  border-radius: 4px; color: #a79f8a; font-size: 16px;
+}
+.desk-head .shut:hover, .desk-head .shut:focus-visible { background: #3a2a1a; color: var(--bar-hot); }
+.desk-body { flex: 1; min-height: 0; position: relative; }
+
+/* A page of the site, as it is. */
+.desk-win.page .desk-body { background: #f2e3c0; }
+.desk-win.page iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+/* A program: its picture beside what it is. */
+.desk-win.app .desk-body {
+  display: flex; gap: 18px; padding: 18px; overflow: auto; background: #181818; color: #e8e1cf;
+}
+.desk-pic {
+  flex: 3 1 0; min-width: 0; aspect-ratio: 16 / 10; align-self: flex-start;
+  background: #0d0d0d center / contain no-repeat; border: 1px solid #333;
+}
+.desk-pic.none {
+  display: grid; place-items: center; color: #8e8778; font: 13px "JetBrains Mono", monospace;
+}
+.desk-txt { flex: 2 1 0; min-width: 14rem; font: 14px/1.55 "JetBrains Mono", monospace; }
+.desk-txt h2 { margin: 0 0 .6rem; font: 600 28px/1.1 "Cormorant Garamond", Georgia, serif; color: #f4c27c; }
+.desk-txt p { margin: 0 0 .8rem; }
+.desk-txt .cmd { color: var(--bar-hot); }
+.desk-txt a.doc {
+  display: inline-block; margin: 0 .5rem .5rem 0; padding: 3px 10px; border: 1px solid #fccf8a;
+  border-radius: 12px; color: #fccf8a; text-decoration: none; font-size: 13px;
+}
+.desk-txt a.doc:hover, .desk-txt a.doc:focus-visible { background: #fccf8a; color: #121212; }
+/* Narrow: the picture above the words. */
+@container (max-width: 560px) { .desk-win.app .desk-body { flex-direction: column; } }
+.desk-win.app { container-type: inline-size; }
