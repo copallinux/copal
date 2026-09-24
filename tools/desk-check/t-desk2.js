@@ -28,6 +28,29 @@
     ok("See also links its neighbours", see.length >= 1, see.length + " links");
     location.hash = "#app/audacity"; await wait(1500);
     ok("a program the guide does not cover still opens", last().querySelector("h2").textContent === "Audacity");
+    // The details go at a click anywhere.
+    document.querySelector(".desk-menu").click();
+    [].slice.call(document.querySelectorAll(".sim-app")).filter(function (r) { return r._app.name === "Audacity"; })[0].click();
+    var aud = last(); var n0 = wins().length;
+    aud.querySelector(".desk-body").click();
+    ok("a click in a program's details closes them", wins().length === n0 - 1 && wins().indexOf(aud) < 0);
+    ok("…and the menu it came from comes back", !document.querySelector(".sim-menu").hidden);
+    document.querySelector(".desk").click();         // closes the menu
+    location.hash = "#app/brogue"; await wait(1500);
+    var br = last(); n0 = wins().length;
+    br.querySelector(".see a").click(); await wait(800);
+    ok("a link in the details does not close them", wins().indexOf(br) >= 0 && wins().length === n0 + 1);
+    var n1 = wins().length;
+    document.querySelector(".desk").click();         // the desktop around them
+    ok("a click on the desktop closes a program's details", wins().length === n1 - 1, n1 + " -> " + wins().length);
+    location.hash = "#app/cmus"; await wait(1500);
+    n1 = wins().length;
+    document.querySelector("header").click();        // the page, outside the panel
+    ok("a click on the page outside the panel closes them", !wins().some(function (w) { return w.getAttribute("aria-label") === "cmus"; }), n1 + " -> " + wins().length);
+    location.hash = "#app/btop"; await wait(1500);
+    n1 = wins().length;
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true }));
+    ok("Esc closes them", wins().length === n1 - 1, n1 + " -> " + wins().length);
     var d = document.createElement("pre"); d.textContent = out.join("\n"); document.body.appendChild(d);
     out.forEach(function (l, i) { fetch("/verdict/" + i + "/" + encodeURIComponent(l)).catch(function () {}); });
   })().catch(function (e) { fetch("/verdict/0/" + encodeURIComponent("ERROR " + e)); });

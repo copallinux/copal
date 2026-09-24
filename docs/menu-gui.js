@@ -333,7 +333,7 @@
     function launch(a) {
       close();
       if (a.page) { desk.launch({ page: a.page }); return; }
-      desk.launch({ name: a.name, cmd: a.prog || a.exec, kind: a.terminal ? "term" : "run" });
+      desk.launch({ name: a.name, cmd: a.prog || a.exec, kind: a.terminal ? "term" : "run", from: "gui" });
     }
 
     // ----- open, close -----

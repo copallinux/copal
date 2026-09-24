@@ -244,7 +244,12 @@
     showCues();
   }
   // The layer-shell backdrop: a click that misses a menu closes it.
-  root.addEventListener("click", closeMenus);
+  // A click on the desktop itself -- the wallpaper, between windows -- closes
+  // an open menu, or else a program's details, as a click anywhere does.
+  root.addEventListener("click", function () {
+    if (gui.isOpen() || keys.isOpen()) closeMenus();
+    else dismissDetails(true);
+  });
   root.addEventListener("contextmenu", function (e) { if (e.target === root || e.target === tiles) e.preventDefault(); });
 
   // ----- windows -----
@@ -329,8 +334,35 @@
 
   // A program's window: its gallery picture beside its Terminal Guide entry.
   // A terminal program's entry is set in a foot window, as it would be read.
+  // A program's window is its details, and they go at a click anywhere: in
+  // the window (not on a link, not while selecting text), on the desktop
+  // around it, or on the page outside the panel; Esc too. From inside the
+  // desktop the menu it came from comes back, for the next pick.
+  function dismiss(x, again) {
+    close(x);
+    if (again && x.from === "gui") gui.open({ quiet: true });
+    else if (again && x.from === "keys") keys.open();
+  }
+  function dismissDetails(again) {
+    var here = onSpace(current).filter(function (y) { return y.detail; });
+    if (here.length) dismiss(here[here.length - 1], again);
+  }
+  document.addEventListener("click", function (e) {
+    if (root.contains(e.target) || root.classList.contains("full")) return;
+    wins.filter(function (y) { return y.detail; }).forEach(function (y) { close(y); });
+  });
+
   function program(x, item) {
     var cmd = item.cmd, u = shot(cmd), a = byCmd[cmd];
+    x.detail = true;
+    x.from = item.from || null;
+    x.el.addEventListener("click", function (e) {
+      if (e.target.closest("a, button")) return;
+      if (String(window.getSelection() || "")) return;
+      dismiss(x, true);
+    });
+    var hint = el("span", "tip", "click anywhere to close");
+    x.el.querySelector(".desk-head").insertBefore(hint, x.el.querySelector(".desk-head .shut"));
     var term = item.kind === "term" || item.kind === "help" || !!(a && a.terminal);
     x.el.classList.add("app");
     if (term) x.el.classList.add("foot");
@@ -434,7 +466,11 @@
     if (!r) return null;
     closeMenus();
     var same = wins.filter(function (y) { return y.route === route; })[0];
-    if (same) { focus(same); return same; }
+    if (same) {
+      if (item && item.from) same.from = item.from;   // picked again, from this menu
+      focus(same);
+      return same;
+    }
     // A page opened again at another anchor is the same window, moved there.
     if (r.kind === "page") {
       var pg = wins.filter(function (y) { return y.routeName === r.name; })[0];
@@ -530,7 +566,9 @@
   function onKeyDown(e) {
     if (shortcut(e)) { e.preventDefault(); return; }
     if (gui.isOpen()) { if (gui.key(e)) e.preventDefault(); return; }
-    if (keys.isOpen()) { if (keys.key(e)) e.preventDefault(); }
+    if (keys.isOpen()) { if (keys.key(e)) e.preventDefault(); return; }
+    // Esc: a program's details go, as a click would take them.
+    if (e.key === "Escape" && focused && focused.detail) { dismiss(focused, true); e.preventDefault(); }
   }
   document.addEventListener("keydown", onKeyDown);
 

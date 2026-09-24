@@ -234,7 +234,7 @@
       if (pg) { close(); desk.launch({ page: pg[1] }); return; }
       var p = program(r.act);
       close();
-      desk.launch({ name: r.label, cmd: p.cmd, kind: p.kind });
+      desk.launch({ name: r.label, cmd: p.cmd, kind: p.kind, from: "keys" });
     }
 
     // Super+Space opens the Applications pane; Super+Z the System one.

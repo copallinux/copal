@@ -137,6 +137,12 @@ html.desk-full, html.desk-full body { overflow: hidden; }
 .desk-txt pre.ex .run { color: #efe6d2; }
 .desk-txt pre.ex .note { color: #8e8778; }
 
+/* A program's details say how they go. */
+.desk-head .tip { flex: none; color: #8e8778; font-size: 11px; font-style: italic; }
+@media (max-width: 900px) { .desk-head .tip { display: none; } }
+.desk-win.app { cursor: pointer; }
+.desk-win.app .desk-txt, .desk-win.app pre { cursor: auto; }
+
 /* The title bar's links: the full entry, the man page, the project's home. */
 .desk-head .links { display: flex; gap: 4px; flex: none; }
 .desk-head .links a {
