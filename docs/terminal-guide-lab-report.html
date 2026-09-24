@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Writing a Command Reference Against the Machine · Copal Linux</title>
+<meta name="description" content="The Terminal Guide is one hyperlinked page describing every terminal command a Copal machine installs — 290 of them — in a fixed template: a purpose, why Copal carries it, its use, working examples, the options that matter, and the notes people need. This report describes the process that produced 1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="./">Copal</a>
+  <a class="key" href="./">Home</a>
+  <a class="key" href="desktop.html">Desktop</a>
+  <a class="key" href="install.html">Install</a>
+  <a class="key" href="platforms.html">Platforms</a>
+  <a class="key" href="alpine.html">Alpine</a>
+  <a class="key" href="software.html">Software</a>
+  <a class="key" href="commands.html">Commands</a>
+</nav>
+
+<main class="report">
+
+<header class="page-head">
+  <h1>Writing a Command Reference Against the Machine: Screen Automation, Log Feedback and Human Review in the Copal Terminal Guide</h1>
+  <p class="lede">Lab Report — IEEE Format</p>
+</header>
+
+<p>Copyright (c) 2026 Paul Richeson. MIT licensed — see <code>LICENSE</code>. Copal Linux is
+an aggregation of Alpine Linux, not a derivative work of it; Alpine and its
+packages remain under their own licences.</p>
+<p><em>Copal Linux, Hyprland 0.54 desktop, Alpine 3.24 aarch64 guest under UTM on a
+Mac: the "bench". 23–24 September 2026. The work was done by the author with
+an AI coding assistant (Claude) in one terminal on the bench, in reviewed
+batches; this report records the method as well as the results, so the
+method can be used again.</em></p>
+<hr/>
+<h2 id="abstract">Abstract</h2>
+<p>The Terminal Guide is one hyperlinked page describing every terminal command
+a Copal machine installs — 290 of them — in a fixed template: a purpose, why
+Copal carries it, its use, working examples, the options that matter, and
+the notes people need. This report describes the process that produced 179 of
+those entries in two days, and the property that made it trustworthy: every
+statement was checked against the installed program on a running Copal
+machine, not written from memory. Facts (package, version, dependencies,
+installing stage, man page) were generated from the machine; the written
+layer was drafted in batches of about twenty, and a checker refused any
+option the installed man page or <code>--help</code> did not document. Screen automation
+on the desktop captured pictures for the documentation and for review, and
+the feedback cycle ran through log files, screenshots and the author&#39;s
+review of each batch before it was committed. Writing against the machine
+found and fixed eleven defects in the installer itself — programs installed
+but unusable, from Tesseract with no language data to a corrupted man-page
+index — and caught about thirty statements in the drafts that were wrong for
+this version of the program. Section VI gives the procedure as a checklist.</p>
+<h2 id="i.-objective">I. Objective</h2>
+<ol>
+<li>A working process for filling a documentation template — one file per
+command, the same sections every time — for a few hundred programs, at a
+rate of a batch of about twenty per review cycle.</li>
+<li>Entries that are <em>correct for Copal</em>: its Alpine packages, BusyBox,
+musl, OpenRC, its installer&#39;s choices, its desktop — not the answers
+found online for other systems.</li>
+<li>Every defect the writing uncovers fixed in the installer, so a clean
+install carries the fix, and the documentation never describes a
+workaround where a fix was possible.</li>
+<li>Integration pictures and samples taken by automation on the real desktop,
+without disturbing the person using it.</li>
+<li>A record of the method, this report, so the rest of the catalogue and the
+next project can use it.</li>
+</ol>
+<h2 id="ii.-materials">II. Materials</h2>
+<ul>
+<li><strong>The bench</strong>: a Copal full-monty install, aarch64, 128 GiB disk, 2779
+packages, running the Hyprland desktop; the author&#39;s terminal on
+workspace 2.</li>
+<li><strong>The repository</strong>: <code>copal-prep.sh</code> (the installer, 34 000 lines), the
+stage playbooks (<code>playbooks&#47;Stages&#47;</code>), <code>tools&#47;copal-store</code> (Copal Apps),
+<code>docs&#47;</code> (the site, published by GitHub Pages).</li>
+<li><strong>The generator</strong>: <code>tools&#47;copal-command-ref.py</code>, with <code>inventory</code>,
+<code>collect</code> (facts from apk and mandoc), <code>man-html</code> (the man pages as site
+pages), <code>render</code> (the page) and <code>check</code> (the notes against the machine).</li>
+<li><strong>The template</strong>: <code>docs&#47;commands&#47;&#60;Section&#62;&#47;&#60;cmd&#62;.md</code> — a header of
+<code>command</code>, <code>purpose</code>, <code>why</code>, <code>see</code>, then <code>## Use</code>, <code>## Examples</code>,
+<code>## Options</code>, <code>## Notes</code>.</li>
+<li><strong>Screen tools</strong>: <code>grim</code> (screenshots by region), <code>hyprctl</code> (windows,
+workspaces, the pointer), <code>foot</code> (a terminal per sample), headless
+Firefox (<code>--screenshot</code>) for the site&#39;s own pages, ImageMagick.</li>
+<li><strong>The assistant</strong>, working only in the author&#39;s terminal: no background
+agents, one batch at a time, committing only when told.</li>
+</ul>
+<h2 id="iii.-method">III. Method</h2>
+<h3 id="a.-two-layers-generated-facts-and-written-notes">A. Two layers: generated facts and written notes</h3>
+<p>Nothing that can be read from the machine is written by hand. <code>make
+commands-facts</code>, run on the bench, walks the inventory (the core list, the
+catalogue, the store, Copal&#39;s own programs), asks apk for each command&#39;s
+package, version, origin and dependencies in batched queries, finds the
+stage that installs it, and reads the man page&#39;s NAME and SYNOPSIS. The
+result is <code>docs&#47;commands&#47;facts.json</code>, committed, so the page can be rendered
+anywhere. The written layer — purpose, why, use, examples, options, notes —
+sits beside it in one small Markdown file per command.</p>
+<h3 id="b.-the-batch-loop">B. The batch loop</h3>
+<p>Each batch was about twenty commands from one or two sections:</p>
+<ol>
+<li><strong>Survey.</strong> Facts, catalogue rows and anything Copal writes for the
+program (<code>grep</code> of the installer); its <code>--help</code> and man page captured to
+scratch.</li>
+<li><strong>Probe the specifics.</strong> Small experiments on the bench before a claim
+was written: does <code>logread</code> work here (no — syslogd writes a file), may a
+user run <code>dmesg</code> (no — <code>dmesg_restrict</code>), does <code>-fsanitize=address</code> link
+(no — no runtime), does the game start (ZAngband did not).</li>
+<li><strong>Write</strong> the entries, one file each.</li>
+<li><strong>Check.</strong> <code>make commands</code> renders the page and runs <code>check</code>, which
+refuses a note whose options are not in the installed man page or
+<code>--help</code> (section C).</li>
+<li><strong>Run the examples</strong> that are safe as a user, in a scratch folder.</li>
+<li><strong>Record</strong> the batch in <code>docs&#47;terminal-guide-plan.md</code>, stop, and hand
+it to the author: the list, what was found, what was fixed, what was not
+tested.</li>
+<li><strong>Review and commit.</strong> The author reads the files; "fine, commit and
+push" ends the cycle.</li>
+</ol>
+<h3 id="c.-the-checker-as-a-colleague">C. The checker as a colleague</h3>
+<p><code>check</code> began as a lint for missing sections and grew, batch by batch, into
+the reviewer that caught most errors. It reads, for each command, the man
+page (and its subcommand pages: <code>apk-add(8)</code> for <code>apk add</code>) and the program&#39;s
+own help, and every flag in an entry&#39;s Options section must appear there.
+The help is read the way each program actually gives it:</p>
+<ul>
+<li>both output streams (ssh, resize2fs and orrery print usage on stderr);</li>
+<li><code>--help-extra</code>, <code>--show-options</code> and <code>--fullhelp</code> where <code>--help</code> points to
+them (tesseract, GHC, Nim), and <code>-h</code> where <code>--help</code> starts the program
+(ZAngband);</li>
+<li>with colour codes and OSC 8 links stripped (coreutils 9.11 wraps each
+option in a link, which hid <code>sha224sum -b</code>);</li>
+<li>accepting the documented shorthand forms: apk&#39;s <code>--no-X</code>, clang&#39;s
+<code>-W&#60;warning&#62;</code>, <code>--[no-]name</code>, <code>-[no-]name</code>, and glued values such as
+dot&#39;s <code>-ooutfile</code>;</li>
+<li>following a man page that is only <code>.so</code> to the page it names (pdflatex).</li>
+</ul>
+<p>Every widening of the checker was a response to a correct option it had
+refused; none was made to let a wrong one through.</p>
+<h3 id="d.-screen-automation-safely">D. Screen automation, safely</h3>
+<p>Pictures were taken three ways:</p>
+<ul>
+<li><strong>The site&#39;s own pages</strong> in headless Firefox (<code>--screenshot</code>), then
+cropped: nothing of the desktop can appear in them.</li>
+<li><strong>Program samples</strong> in <code>foot</code>, one window per command with its own
+app-id, opened on an empty workspace with <code>hyprctl dispatch exec
+"[workspace N silent] ..."</code>; the window&#39;s position is read from
+<code>hyprctl clients -j</code> and only that rectangle is captured with
+<code>grim -g</code>, after confirming the workspace is showing; then the window is
+closed.</li>
+<li><strong>The real menus</strong>, opened for a moment and captured, then closed;
+anything beyond the menu cropped away before a picture is kept.</li>
+</ul>
+<p>The first attempt used the existing gallery probe on workspace 2, where the
+author&#39;s own terminal lives, and its full-screen captures included that
+terminal. They were deleted before anything was committed, and the rules
+above — own workspace, capture by window geometry, check the workspace
+before the shutter, look at every picture before keeping it — came from
+that. The author&#39;s instruction afterwards was simpler still: launch test
+windows on workspace 3, and close them.</p>
+<h3 id="e.-the-feedback-cycle-logs-pictures-review">E. The feedback cycle: logs, pictures, review</h3>
+<p>Three signals closed the loop. <strong>Logs</strong>: build logs (<code>copal-store</code>&#39;s
+per-build log and its summary), <code>&#47;var&#47;log&#47;messages</code>, and each command&#39;s own
+error output — <code>tesseract</code>&#39;s "Failed loading language &#39;eng&#39;" is what found
+its missing data. <strong>Pictures</strong>: every capture was looked at before it was
+kept, and a picture was how the terminal leak in D was noticed and how the
+menu backgrounds were judged. <strong>Review</strong>: the author read each batch; the
+most valuable review comments were the ones that changed direction
+("man pages from the READMEs", "add the optionals", "this report").</p>
+<h2 id="iv.-results">IV. Results</h2>
+<h3 id="a.-the-guide">A. The guide</h3>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Commands in the inventory</td>
+<td>290</td>
+</tr>
+<tr>
+<td>Entries written and checked</td>
+<td>179 (Security&#39;s 11 left as facts, by choice)</td>
+</tr>
+<tr>
+<td>Man pages on the site</td>
+<td>192, of which 8 made from project READMEs</td>
+</tr>
+<tr>
+<td>Review batches, each committed after review</td>
+<td>10, in 15 commits (<code>1d243a4</code> … <code>0628fdc</code>)</td>
+</tr>
+<tr>
+<td>Time per batch of ~20</td>
+<td>roughly an hour, most of it probing</td>
+</tr>
+</tbody>
+</table></div>
+<p>Every entry passes <code>check</code> on the bench: its options are in the installed
+program&#39;s own documentation, its examples were run where running them is
+safe, and each claim about Copal was traced to the installer or tried on
+the machine.</p>
+<h3 id="b.-defects-found-by-writing-fixed-in-the-installer">B. Defects found by writing, fixed in the installer</h3>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>Found while writing</th>
+<th>What was wrong</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>man</code> &#47; <code>apropos</code></td>
+<td><code>mandoc.db</code> corrupt: <code>makewhatis</code> raced mandoc-apropos&#39;s own background trigger</td>
+<td>take the trigger&#39;s lock (<code>install_manuals</code>, Copal Apps)</td>
+</tr>
+<tr>
+<td><code>bluetoothctl</code></td>
+<td>headphones paired but PipeWire could not play to them</td>
+<td>stage 10 installs <code>pipewire-spa-bluez</code></td>
+</tr>
+<tr>
+<td><code>tesseract</code></td>
+<td>installed with no language data: it read nothing</td>
+<td>the row brings <code>tesseract-ocr-data-eng</code></td>
+</tr>
+<tr>
+<td><code>zangband</code></td>
+<td>died at start for anyone outside group <code>users</code></td>
+<td>stage 12 adds the account</td>
+</tr>
+<tr>
+<td><code>robots</code>, <code>snake</code>, <code>atc</code></td>
+<td>scores shown, then lost: wrong path in the package</td>
+<td>stage 12 links <code>&#47;var&#47;lib&#47;bsdgames</code></td>
+</tr>
+<tr>
+<td><code>tshark</code>, <code>termshark</code></td>
+<td>could not capture: <code>dumpcap</code> is group <code>wireshark</code> only</td>
+<td>stage 12 adds the account</td>
+</tr>
+<tr>
+<td><code>abcde</code></td>
+<td>no encoder installed, so it ripped and stopped</td>
+<td>the row brings <code>vorbis-tools</code> and <code>flac</code></td>
+</tr>
+<tr>
+<td>Super+A menu</td>
+<td>hover made the list run away; the panel vanished against a light terminal</td>
+<td>calm edge scrolling; the theme&#39;s opaque menu ground</td>
+</tr>
+<tr>
+<td>the Menu&#39;s Install</td>
+<td>a program installed from the menu got no man page, no plugins</td>
+<td><code>copal-install</code> calls the store&#39;s <code>manpages</code> and <code>optionals</code></td>
+</tr>
+<tr>
+<td>every program</td>
+<td>plugins, codecs and format loaders never installed</td>
+<td>the optionals table (section D)</td>
+</tr>
+<tr>
+<td>the <code>~&#47;code</code> programs</td>
+<td>no man pages at all</td>
+<td><code>copal-build</code> makes one from each README</td>
+</tr>
+</tbody>
+</table></div>
+<p>Five tool defects were fixed on the way: <code>ip</code> linked to the socket page
+ip(7), <code>cargo</code> credited to the bench&#39;s personal rustup, pdflatex&#39;s man page
+empty on the site, the checker blind to stderr and to OSC 8 links.</p>
+<h3 id="c.-what-the-drafts-got-wrong-and-what-caught-it">C. What the drafts got wrong, and what caught it</h3>
+<p>About thirty statements in the drafts were wrong for this machine and were
+corrected before review. They fall into four kinds:</p>
+<ul>
+<li><strong>Options from another version</strong> (caught by <code>check</code>): robots and snake
+options from other BSD games; Syncthing 1&#39;s flags in Syncthing 2; croc&#39;s
+old way of receiving; <code>7z -mhe=on</code> as a separate switch.</li>
+<li><strong>Keys and file locations from memory</strong> (caught by reading the program&#39;s
+own help or strings): aerc&#39;s reply keys, openmpt123&#39;s seek keys, Brogue&#39;s
+save folder, cdw&#39;s quit key, atc&#39;s command syntax.</li>
+<li><strong>Absences that were not</strong> (caught by trying): plain <code>lua</code> exists (it is
+5.1); w3m&#39;s image support is installed; sc-im exports XLSX.</li>
+<li><strong>Things that do not exist here</strong> (caught by <code>command -v</code>): <code>vimtutor</code>,
+<code>ms_print</code>, <code>cowsay</code>, a web page <code>links</code> could render.</li>
+</ul>
+<p>Where a key or path could not be confirmed from the program itself —
+tty-solitaire ships no documentation — it was left out rather than guessed.</p>
+<h3 id="d.-the-optionals">D. The optionals</h3>
+<p>Alpine has no "recommends". A table in <code>tools&#47;copal-store</code> now names each
+program&#39;s plugins, codecs, helpers and data (57 rows), with rows keyed on
+shared libraries so whole groups gain formats at once: gdk-pixbuf&#39;s loaders
+(WebP, AVIF, HEIF, JPEG XL, camera RAW) for every GTK viewer, Qt&#39;s image
+plugins, ImageMagick&#39;s and libheif&#39;s modules, and GStreamer&#39;s good, bad,
+ugly and libav plugins. Server modules, <code>-systemd</code> files, language library
+ecosystems, Vim plugins and giant data sets are left out on purpose. On the
+bench it adds 143 packages, 0.7 GiB. The build summary gained a "with" line:
+what each source build found and compiled in — OpenShot&#39;s shows FFmpeg,
+ALSA, Qt6 and ZeroMQ — the answer to "which formats and codecs does this
+build have".</p>
+<h3 id="e.-pictures">E. Pictures</h3>
+<p><img src="img/terminal-guide-lab/super-a-before-after.png" alt="The Super+A menu before and after: the GTK window colour, which matched a
+light terminal behind it, and the theme's opaque menu ground" /></p>
+<p><em>Fig. 1. Super+A (copal-gui), before and after: the panel on the GTK window
+colour, then on the theme&#39;s menu ground. Captured on the bench, cropped to
+the menu.</em></p>
+<p><img src="img/terminal-guide-lab/menu-simulations.jpg" alt="The home page's two menu simulations, the Mint-style one and the keyboard
+menu, both on their dark panels" /></p>
+<p><em>Fig. 2. The home page&#39;s simulations of both menus after the change,
+captured with headless Firefox: Super+A (left), Super+Z (right).</em></p>
+<h2 id="v.-discussion">V. Discussion</h2>
+<p><strong>The machine is the specification.</strong> The largest single finding is that
+an entry written from general knowledge is wrong often enough to matter —
+about one in six drafts had something that was true elsewhere and false
+here. The remedy was not more care but a different source: the installed
+help, a probe, a run. The checker made that systematic for options; the
+probes did it for behaviour.</p>
+<p><strong>Documentation finds bugs.</strong> Writing "what it is for, with an example that
+works" is an integration test with a human reason attached. Eleven of the
+installer&#39;s defects surfaced this way, several of them silent for weeks:
+a program that installs, appears in the menu, and does nothing. The rule
+held throughout: fix it in the installer, then describe the fixed program;
+document a workaround only where no fix is Copal&#39;s to make (wofi&#39;s
+scrolling, which Copal cannot change from outside).</p>
+<p><strong>Small, reviewed batches.</strong> A batch of about twenty was small enough to
+review in one sitting and large enough to find a section&#39;s shared problems
+(the group-permission pattern appeared in three games and two capture
+tools). Stopping for review after every batch cost minutes and bought the
+author&#39;s corrections at the point they were cheapest.</p>
+<p><strong>Automation on a desktop someone is using.</strong> The screen is shared with a
+person. Three incidents shaped the rules in III-D. Full-screen captures
+included the author&#39;s terminal; they were deleted and capture moved to
+window geometry on a separate workspace. A test command passed a list of
+names inside a quoted <code>sh -c</code> string, where each new line became a command
+of its own, and opened AbiWord beside the author&#39;s terminal; it was closed,
+the cause found without running anything, and the lesson kept. And
+<code>pkill -f PATTERN</code> twice matched the shell running it. Each was reported
+the moment it was noticed.</p>
+<p><strong>Working in one terminal.</strong> The author asked for no background agents and
+for commits only on instruction; both held for the whole session. Two
+kinds of interruption shaped the working rhythm. A paste through the
+guest–host clipboard arrived garbled, and the right response was to ask,
+not to guess. Several long responses were cut off partway by an automated
+safety check; nothing half-written was kept, and writing one entry per
+step, with a check after each few, avoided further interruptions. When
+the author rejected a command that had already partly run, its effects
+were found and undone before anything else.</p>
+<p><strong>What remains.</strong> The rest of the catalogue (Devtools, Terminals, Radio,
+Instruments, Learn, Control) and the store&#39;s shelf; the program pictures
+for terminal commands, of which 31 of 126 were captured before the sweep
+was paused; and a clean install from the current installer, which is the
+test every fix in IV-B still owes.</p>
+<h2 id="vi.-procedures">VI. Procedures</h2>
+<p>To write a batch:</p>
+<ol>
+<li><code>make commands-facts</code> on a Copal machine when packages have changed.</li>
+<li>For each command: read its catalogue row and <code>grep</code> the installer for
+it; capture <code>--help</code> (both streams) and <code>man</code>; try the claims that are
+specific to Copal (permissions, paths, services, what is installed).</li>
+<li>Write <code>docs&#47;commands&#47;&#60;Section&#62;&#47;&#60;cmd&#62;.md</code> in the template, one at a time.
+Options only as the program documents them; keys only as the program&#39;s
+own help lists them; nothing from memory that could not be confirmed.</li>
+<li><code>make commands</code> after every few; <code>make lint</code> before stopping.</li>
+<li>Run the safe examples in a scratch folder.</li>
+<li>If a program does not work as installed: fix the installer (catalogue
+row, stage, Copal Apps), sync (<code>make sync-playbooks</code>, <code>make
+sync-store</code>), then document the fixed program and date the fix in the
+note.</li>
+<li>Record the batch in <code>docs&#47;terminal-guide-plan.md</code>; stop for review;
+commit and push on the author&#39;s word.</li>
+</ol>
+<p>To take a picture on the desktop:</p>
+<ol>
+<li>Open the window on its own workspace (3):
+<code>hyprctl dispatch exec "[workspace 3 silent] CMD"</code>.</li>
+<li>Read its geometry from <code>hyprctl clients -j</code>; switch to the workspace and
+confirm it is showing (<code>hyprctl activeworkspace</code>) before capturing.</li>
+<li><code>grim -g "X,Y WxH"</code> that rectangle only; never the whole screen.</li>
+<li>Close the window by its class or PID — never <code>pkill -f</code> with a pattern
+that appears in your own command.</li>
+<li>Look at the picture before keeping it; crop anything that is not the
+subject.</li>
+</ol>
+<h2 id="vii.-files-touched">VII. Files touched</h2>
+<ul>
+<li><code>docs&#47;commands&#47;*&#47;*.md</code> — the entries (179); <code>docs&#47;commands&#47;facts.json</code>,
+<code>docs&#47;commands.html</code>, <code>docs&#47;man&#47;*.html</code> — generated.</li>
+<li><code>tools&#47;copal-command-ref.py</code> — the collector, renderer and checker.</li>
+<li><code>tools&#47;copal-readme-man</code> — man pages from READMEs; <code>copal-build</code>&#39;s
+<code>write_man</code>, in <code>copal-prep.sh</code>.</li>
+<li><code>tools&#47;copal-store</code> — <code>optionals_table</code>, <code>optionals_for</code>, <code>manpages</code>, the
+summary&#39;s "with" line.</li>
+<li><code>tools&#47;copal-gui</code>, <code>docs&#47;menu-sim.*</code>, <code>docs&#47;textmenu-sim.js</code> — the menus.</li>
+<li><code>playbooks&#47;Stages&#47;04</code>, <code>07</code>, <code>10</code>, <code>12</code>, <code>18</code> and <code>copal-prep.sh</code> — the
+installer fixes of IV-B.</li>
+<li><code>docs&#47;terminal-guide-plan.md</code> — the plan and each batch&#39;s record.</li>
+</ul>
+<h2 id="references">References</h2>
+<p>[1] Copal Linux, "The Terminal Guide: plan," <code>docs&#47;terminal-guide-plan.md</code>, 2026.</p>
+<p>[2] Copal Linux, "Installing Extra Packages and Libraries During Integration
+Testing," <code>docs&#47;integration-lab-report.md</code>, 2026.</p>
+<p>[3] Alpine Linux, "apk-tools 3 documentation," man pages <code>apk(8)</code> and
+<code>apk-add(8)</code>.</p>
+<p>[4] mandoc, "makewhatis(8) and the mandoc.db format," man pages on the bench.</p>
+<p>[5] Hyprland, "hyprctl," <code>hyprctl --help</code>, version 0.54.3.</p>
+
+
+<nav class="onward" aria-label="Next">
+  <a href="commands.html">The Terminal Guide →</a>
+  <a href="https://github.com/copallinux/copal/blob/main/docs/terminal-guide-lab-report.md">The source of this report →</a>
+</nav>
+
+<footer>
+  <p>Copal Linux · MIT licensed · <a href="https://github.com/copallinux/copal">github.com/copallinux/copal</a> ·
+  Alpine Linux is its project's own; Copal is not part of it.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -215,8 +215,8 @@ corrected before review. They fall into four kinds:
 - **Things that do not exist here** (caught by `command -v`): `vimtutor`,
   `ms_print`, `cowsay`, a web page `links` could render.
 
-Where a key or path could not be confirmed from the program itself — tty-
-solitaire ships no documentation — it was left out rather than guessed.
+Where a key or path could not be confirmed from the program itself —
+tty-solitaire ships no documentation — it was left out rather than guessed.
 
 ### D. The optionals
 

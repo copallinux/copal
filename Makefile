@@ -869,6 +869,12 @@ sync-store:
 	@printf '  ok      tools/copal-store -> playbooks/Stages/18-stage-store.sh -> $(PREP)\n'
 	@$(MAKE) --no-print-directory lint
 
+## reports: the lab reports as pages of the site (docs/NAME.html), from their Markdown.
+REPORTS = docs/terminal-guide-lab-report.md
+.PHONY: reports
+reports:
+	@python3 tools/copal-report-html $(REPORTS)
+
 ## sync-readme-man: copy tools/copal-readme-man into install_copal_build's heredoc.
 sync-readme-man:
 	@python3 -c 'import sys;\

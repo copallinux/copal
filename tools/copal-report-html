@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+#
+# copal-report-html -- a lab report's Markdown as a page of the site.
+#
+#   tools/copal-report-html docs/NAME.md...     writes docs/NAME.html
+#
+# The reports are written as Markdown, which GitHub renders and the site
+# (served as-is, .nojekyll) does not: copallinux.org handed them out as raw
+# text. This makes each one a page in the site's own style -- its nav, its
+# type, its footer -- with lowdown doing the Markdown. Tables are wrapped in
+# the site's .scroll so a phone can pan them; figures fit the column. The
+# Markdown stays the source; the page is regenerated from it.
+import html
+import os
+import re
+import subprocess
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+PAGE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>%(short)s · Copal Linux</title>
+<meta name="description" content="%(desc)s">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="mark" href="./">Copal</a>
+  <a class="key" href="./">Home</a>
+  <a class="key" href="desktop.html">Desktop</a>
+  <a class="key" href="install.html">Install</a>
+  <a class="key" href="platforms.html">Platforms</a>
+  <a class="key" href="alpine.html">Alpine</a>
+  <a class="key" href="software.html">Software</a>
+  <a class="key" href="commands.html">Commands</a>
+</nav>
+
+<main class="report">
+
+<header class="page-head">
+  <h1>%(title)s</h1>
+  <p class="lede">%(lede)s</p>
+</header>
+
+%(body)s
+
+<nav class="onward" aria-label="Next">
+  <a href="commands.html">The Terminal Guide →</a>
+  <a href="https://github.com/copallinux/copal/blob/main/docs/%(src)s">The source of this report →</a>
+</nav>
+
+<footer>
+  <p>Copal Linux · MIT licensed · <a href="https://github.com/copallinux/copal">github.com/copallinux/copal</a> ·
+  Alpine Linux is its project's own; Copal is not part of it.</p>
+</footer>
+
+</main>
+</body>
+</html>
+"""
+
+
+def page(md_path):
+    text = open(md_path, encoding="utf-8").read()
+    text = re.sub(r"<!--.*?-->\n?", "", text, flags=re.S)
+    m = re.search(r"^# (.+)$", text, re.M)
+    title = m.group(1).strip() if m else os.path.basename(md_path)
+    text = text[:m.start()] + text[m.end():] if m else text
+    # The format line under the title ("*Lab Report -- IEEE Format*") is the lede.
+    lm = re.search(r"^\*([^*\n]+)\*\s*$", text, re.M)
+    lede = lm.group(1).strip() if lm else "Lab report"
+    if lm:
+        text = text[:lm.start()] + text[lm.end():]
+    body = subprocess.run(["lowdown", "-Thtml", "--out-no-smarty"], input=text, capture_output=True,
+                          text=True, check=True).stdout
+    body = re.sub(r"(<table>.*?</table>)", r'<div class="scroll">\1</div>', body, flags=re.S)
+    # The abstract's first paragraph describes the page to search engines.
+    am = re.search(r"<h2[^>]*>Abstract</h2>\s*<p>(.*?)</p>", body, re.S)
+    desc = re.sub(r"<[^>]+>", "", am.group(1)) if am else title
+    desc = " ".join(desc.split())[:300]
+    short = title.split(":")[0].strip()
+    return PAGE % {"title": html.escape(title), "short": html.escape(short),
+                   "lede": html.escape(lede), "desc": html.escape(desc, quote=True),
+                   "body": body, "src": os.path.basename(md_path)}
+
+
+def main(argv):
+    if len(argv) < 2:
+        print("usage: copal-report-html docs/NAME.md...", file=sys.stderr)
+        return 2
+    for md in argv[1:]:
+        out = os.path.splitext(md)[0] + ".html"
+        with open(out, "w", encoding="utf-8") as f:
+            f.write(page(md))
+        print("  ok      %s -> %s" % (os.path.relpath(md, ROOT), os.path.relpath(out, ROOT)))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

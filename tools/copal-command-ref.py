@@ -799,7 +799,8 @@ GUIDE_PAGE = """<!doctype html>
   <p class="lede">Every terminal command a Copal machine carries on purpose: %(n)d of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
   <p class="gen">Facts read from Alpine %(alpine)s (%(arch)s) on %(date)s; %(written)d commands have written notes so
-  far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.</p>
+  far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.
+  How it is written, checked against a running machine: <a href="terminal-guide-lab-report.html">the lab report</a>.</p>
 </header>
 <div class="finder">
   <input id="find" type="search" placeholder="Find a command: name, purpose, package" autocomplete="off" aria-label="Find a command">

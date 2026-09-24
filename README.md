@@ -2135,7 +2135,7 @@ bindings, the account model, the SD-card wear analysis — is in
 | `docs/fleet-lab-report.md` | What Timbuktu, Veyon and Xen Orchestra each got right, and the console a fleet should have. IEEE format |
 | `docs/fleet-m4-backlog.md` | **The next milestone, ready to resume.** The bus and the wall, broken into ten work items with acceptance tests, three blocking decisions, and the demo that closes it |
 | `docs/interface-report.md` | Interface simplification for the technically capable user — the design position, IEEE format |
-| `docs/terminal-guide-lab-report.md` | Writing the Terminal Guide against a running machine: the template, the checker, screen automation and review, and the installer defects the writing found. IEEE format |
+| `docs/terminal-guide-lab-report.md` | ([on the site](https://copallinux.org/terminal-guide-lab-report.html)) Writing the Terminal Guide against a running machine: the template, the checker, screen automation and review, and the installer defects the writing found. IEEE format |
 
 ## Repository policy
 

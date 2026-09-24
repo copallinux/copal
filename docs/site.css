@@ -419,3 +419,9 @@ footer a:hover { color: var(--ember); }
   padding: .7rem 1rem; font-size: .85rem;
 }
 .onward a:hover { color: var(--ember); }
+
+/* ===================== REPORTS ======================================== */
+/* Lab reports, made from their Markdown by tools/copal-report-html. */
+.report img { max-width: 100%; height: auto; display: block;
+              border: 1px solid var(--ink-key); box-shadow: 3px 3px 0 var(--ink-key); }
+.report h3 { margin-top: 1.6rem; }
