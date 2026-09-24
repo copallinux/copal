@@ -786,6 +786,11 @@ fresh-img-%: | require-tools $(BUILDDIR)
 # repository embeds. https://github.com/vonglurt/orrery
 ORRERY_SRC ?= $(HOME)/code/orrery
 
+## install-fleet: 'copal fleet' as a real command here, in ~/.local/bin, running this checkout's console.
+.PHONY: install-fleet
+install-fleet:
+	@sh tools/copal-fleet-cmd.sh
+
 ## fleet-console: the curses wall. §12's second face, over this checkout.
 .PHONY: fleet-console
 fleet-console:

@@ -34,6 +34,14 @@ order is what keeps the console from becoming the thing the fleet depends on:
 Anything the TUI can do, `copal fleet` can do, because the TUI calls it. If a
 thing can only be done in the wall, that is a bug in the wall.
 
+**Where the command comes from.** On a Copal machine, `copal fleet` is a verb
+of the front door, and it runs `tools/copal-fleet.sh` from the checkout in
+`~/code/copal`. On the Mac or Linux host that holds the fleet's authority, run
+`make install-fleet` once in the checkout: it writes `~/.local/bin/copal`,
+which does that one thing for this checkout. Either way the console runs from
+the checkout, not from a copy, because it needs the checkout around it —
+`answers.txt`, the tools beside it, and `fleets/`.
+
 Options most verbs take:
 
 ```

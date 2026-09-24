@@ -904,12 +904,11 @@ def source_text(cmd):
     starts a screenshot, copal-halt shuts down, and most take no --help.
     Their text is their source -- the heredoc copal-prep.sh writes them
     from, else their file in tools/."""
-    if cmd == "copal":        # the installer's copy of itself
-        return open(PREP, encoding="utf-8", errors="replace").read()
     lines = open(os.path.join(ROOT, "copal-prep.sh"), encoding="utf-8", errors="replace").read().split("\n")
     # Every heredoc written to the file, 'cat >' and 'cat >>' alike: some are
     # built in parts, an unquoted head for the values and a quoted body.
-    pat = re.compile(r'cat >>? "?/usr(?:/local)?/bin/%s"? <<\s*\'?"?([A-Z_]+)' % re.escape(cmd))
+    # '.new': the front door, copal, is written beside itself and renamed.
+    pat = re.compile(r'cat >>? "?/usr(?:/local)?/bin/%s(?:\.new)?"? <<\s*\'?"?([A-Z_]+)' % re.escape(cmd))
     body = []
     for i, l in enumerate(lines):
         m = pat.search(l)

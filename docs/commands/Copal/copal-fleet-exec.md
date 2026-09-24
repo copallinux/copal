@@ -13,8 +13,8 @@ request in `SSH_ORIGINAL_COMMAND`. The fleet agent hands bus commands to it
 the same way. Read it to know exactly what the console can do to a machine.
 
 ## Examples
-    sh tools/copal-fleet.sh run uptime   # on the console, in ~/code/copal: every node
-    sh tools/copal-fleet.sh run message Please stand back
+    copal fleet run uptime               # from the console: one verb, every node
+    copal fleet run message Please stand back
     doas tail /var/log/copal-fleet.log   # on a node: what was asked, and refused
 
 ## Options

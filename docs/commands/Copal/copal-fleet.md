@@ -41,8 +41,8 @@ logs ID|all [DAYS]  the logs the warden has collected, even for a dead node
 
 ## Notes
 - The fleet console is a different program on the operator's machine:
-  `tools/copal-fleet.sh` in the copal checkout, which the fleet guides
-  call `copal fleet`. It reaches this one through copal-fleet-exec.
+  `copal fleet` (`make install-fleet` on a Mac or Linux host). It reaches
+  this one through copal-fleet-exec.
 - The warden is chosen by a score every node computes and publishes; the
   highest announcing node takes the role. `role-pin` in
   `/etc/copal/fleet` fixes a role by hand.

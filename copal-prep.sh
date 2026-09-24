@@ -34869,6 +34869,9 @@ copal -- Copal Alpine Linux, on the machine itself.
   copal --check [ref]   say whether an update is available; change nothing
   copal --check --from PATH   the same, against a checkout
   copal --version       what is installed, and where it came from
+  copal fleet VERB ...  the fleet console, run from the checkout in ~/code/copal
+                        (COPAL_CHECKOUT for another); 'copal fleet' alone lists
+                        its verbs
   copal --help          this
 
 Updating fetches copal-prep.sh -- over HTTPS, or from --from -- and extracts
@@ -35076,7 +35079,19 @@ update_args() {  # <check-only 0|1> [ref | --from PATH]
     esac
 }
 
+# THE FLEET CONSOLE, from a checkout rather than a copy of it: it needs the
+# checkout around it -- answers.txt, the Python tools beside it, fleets/ -- and
+# a copy here would be a second console to keep in step with the first.
+# ~/code/copal is the checkout copal-code always makes.
+fleet_console() {
+    for _c in "${COPAL_CHECKOUT:-}" "$HOME/code/copal"; do
+        [ -n "$_c" ] && [ -f "$_c/tools/copal-fleet.sh" ] && exec sh "$_c/tools/copal-fleet.sh" "$@"
+    done
+    die "copal fleet runs the console from a checkout of copal, and there is none in ~/code/copal. 'copal-code' clones it; COPAL_CHECKOUT names another."
+}
+
 case "${1:-}" in
+    fleet)        shift; fleet_console "$@" ;;
     -U|--update)  shift; update_args 0 "$@" ;;
     --check)      shift; update_args 1 "$@" ;;
     --version|-V) cmd_version ;;
