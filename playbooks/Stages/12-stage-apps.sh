@@ -237,6 +237,16 @@ MSG
             && note "$PI_USER added to users, for the games' score files (next login)" \
             || warn "could not add $PI_USER to users -- ZAngband needs it: adduser $PI_USER users"
     fi
+    # tshark and termshark capture through dumpcap, which Alpine installs
+    # root:wireshark mode 0750: anyone outside the group gets "Couldn't run
+    # dumpcap in child process: Permission denied" (bench, 24 Sep 2026).
+    # Membership is Wireshark's own intended way to capture without root.
+    if [ -x /usr/bin/dumpcap ] && getent group wireshark >/dev/null 2>&1 && id "$PI_USER" >/dev/null 2>&1 \
+       && ! id -nG "$PI_USER" | tr ' ' '\n' | grep -qx wireshark; then
+        adduser "$PI_USER" wireshark >/dev/null 2>&1 \
+            && note "$PI_USER added to wireshark, to capture without doas (next login)" \
+            || warn "could not add $PI_USER to wireshark -- capture needs doas: adduser $PI_USER wireshark"
+    fi
     offer_source_builds
 
     # ------------------------------------------------------------------

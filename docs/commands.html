@@ -25,7 +25,7 @@
   <h1>The Terminal Guide</h1>
   <p class="lede">Every terminal command a Copal machine carries on purpose: 290 of them. What each is
   for, why it is here, the package it came in, how to use it, and the parts people get wrong.</p>
-  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 112 commands have written notes so
+  <p class="gen">Facts read from Alpine 3.24.1 (aarch64) on 2026-09-24; 119 commands have written notes so
   far, the rest their facts and man page. Every page in <code>man</code> on a Copal machine is here too.</p>
 </header>
 <div class="finder">
@@ -2303,44 +2303,70 @@ Options:</pre>
 </article>
 </section>
 <section class="sec" id="s-science"><h2>Science</h2>
-<article class="cmd facts-only" id="c-gnuplot" data-s="gnuplot an interactive plotting program science gnuplot">
-<h3><a class="self" href="#c-gnuplot"><code>gnuplot</code></a> <span class="purpose">an interactive plotting program</span></h3>
+<article class="cmd" id="c-gnuplot" data-s="gnuplot plot functions and data files, in a window, to an image, or as text in the terminal. science gnuplot">
+<h3><a class="self" href="#c-gnuplot"><code>gnuplot</code></a> <span class="purpose">Plot functions and data files, in a window, to an image, or as text in the terminal.</span></h3>
 <p class="facts">Science · command-line tool · <b>gnuplot</b> 6.0.4 · stage 12 · The application catalogue · <a href="man/gnuplot.html">man gnuplot(1)</a> · <a href="https://gnuplot.sourceforge.net/">home</a></p>
 <p class="deps">needs libx11, cairo, libcerf, libgd, glib, pango, readline, libwebp</p>
+<p class="why"><b>On Copal:</b> The catalogue's plotter, and the one Octave, Maxima and ngspice draw through. A plot of a data file is one line.</p>
 <pre class="syn">gnuplot [X11 options] [options] [file ...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p><code>plot</code> a function or a file's columns. Where the plot goes is the terminal setting: a window, a PNG or SVG file, or the text terminal itself (<code>dumb</code>, or <code>sixelgd</code> in a terminal that shows sixel images).</p>
+<h4>Examples</h4><div class="ex"><code>gnuplot -p -e 'plot sin(x)'</code><span>a window that stays open</span></div><div class="ex"><code>gnuplot -e 'set terminal dumb; plot sin(x)'</code><span>as text, over SSH</span></div><div class="ex"><code>gnuplot -e "set terminal pngcairo; set output 'p.png'; plot 'data.txt' using 1:2 with lines"</code></div><div class="ex"><code>gnuplot script.gp</code><span>a file of commands</span></div><div class="ex"><code>gnuplot</code><span>the prompt</span></div><div class="ex"><code>plot 'data.csv' using 1:3 with lines   (at the prompt) columns 1 and 3</code></div><div class="ex"><code>set datafile separator ','             for CSV</code></div><div class="ex"><code>replot                                 draw again after a change</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-e 'CMDS'</code></dt><dd>run the commands (separated by ;)</dd><dt><code>-p</code></dt><dd>persist: keep the window after gnuplot exits -c FILE ARGS run FILE with arguments</dd><dt><code>-d</code></dt><dd>ignore any ~/.gnuplot initialisation file</dd></dl>
+<h4>Notes</h4><ul><li>The terminals this build has: <code>x11</code> (a window), <code>pngcairo</code>, <code>svg</code>, <code>sixelgd</code>, <code>kittycairo</code>, and <code>dumb</code>. <code>set terminal</code> lists them all.</li><li>A CSV needs <code>set datafile separator ','</code>; otherwise columns are split on whitespace.</li></ul>
+<p class="see">See also <a href="#c-octave"><code>octave</code></a>, <a href="#c-maxima"><code>maxima</code></a>, <a href="#c-ngspice"><code>ngspice</code></a>, <a href="#c-python3"><code>python3</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-gp" data-s="gp the pari calculator science pari">
-<h3><a class="self" href="#c-gp"><code>gp</code></a> <span class="purpose">The PARI calculator</span></h3>
+<article class="cmd" id="c-gp" data-s="gp pari/gp: a calculator for number theory -- huge integers, primes, factoring, elliptic curves. science pari">
+<h3><a class="self" href="#c-gp"><code>gp</code></a> <span class="purpose">PARI/GP: a calculator for number theory -- huge integers, primes, factoring, elliptic curves.</span></h3>
 <p class="facts">Science · terminal program · <b>pari</b> 2.17.3 · stage 12 · The application catalogue · <a href="man/gp.html">man gp(1)</a> · <a href="https://pari.math.u-bordeaux.fr/">home</a></p>
 <p class="deps">needs pari-libs, readline</p>
+<p class="why"><b>On Copal:</b> The catalogue's number-theory system: exact arithmetic on numbers with thousands of digits, fast, at an interactive prompt.</p>
 <pre class="syn">gp [-s stacksize] [-p primelimit] [--emacs] [-f|--fast] [-q|--quiet] [-D|--default key=val]
 [--help] [--test] [--texmacs] [--version] [--version-short] [ file1 file2 ...]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Type an expression at the <code>?</code> prompt and get the answer. Integers are exact at any size; <code>\p</code> sets the decimal precision for everything else.</p>
+<h4>Examples</h4><div class="ex"><code>gp</code><span>the prompt</span></div><div class="ex"><code>echo 'factor(2^128+1)' | gp -q</code><span>one computation, quietly</span></div><div class="ex"><code>gp -q script.gp</code><span>run a file</span></div><div class="ex"><code>factor(2^67 - 1)       (at the prompt) factor a number</code></div><div class="ex"><code>isprime(10^100 + 267)  is it prime?</code></div><div class="ex"><code>nextprime(10^50)       the next prime</code></div><div class="ex"><code>\p 100                 100 digits of precision;  Pi  then shows them</code></div><div class="ex"><code>?factor                help on one function;  \q  quit</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-q, --quiet</code></dt><dd>no banner</dd><dt><code>-s SIZE</code></dt><dd>the initial stack size</dd><dt><code>-p N</code></dt><dd>precompute primes up to N</dd><dt><code>--default KEY=VAL</code></dt><dd>set a default at start: --default realprecision=50</dd></dl>
+<h4>Notes</h4><ul><li>"the PARI stack overflows": it grows the stack itself up to <code>parisizemax</code>; for very large computations, <code>default(parisizemax, "2G")</code>.</li><li><code>?</code> alone lists the help sections; <code>??factor</code> is the long manual entry.</li></ul>
+<p class="see">See also <a href="#c-maxima"><code>maxima</code></a>, <a href="#c-Singular"><code>Singular</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-maxima" data-s="maxima common lisp version of macsyma symbolic mathematics package released under the gnu public license rmaxima - a version of maxima that supports command autocompletion xmaxima - a graphical version of maxima science maxima">
-<h3><a class="self" href="#c-maxima"><code>maxima</code></a> <span class="purpose">Common Lisp version of MACSYMA symbolic mathematics package released under the GNU Public License rmaxima - A version of Maxima that supports command autocompletion Xmaxima - A graphical version of Maxima</span></h3>
+<article class="cmd" id="c-maxima" data-s="maxima computer algebra: solve, simplify, differentiate, integrate -- exactly, with symbols. science maxima">
+<h3><a class="self" href="#c-maxima"><code>maxima</code></a> <span class="purpose">Computer algebra: solve, simplify, differentiate, integrate -- exactly, with symbols.</span></h3>
 <p class="facts">Science · terminal program · <b>maxima</b> 5.48.1 · stage 12 · The application catalogue · <a href="man/maxima.html">man maxima(1)</a> · <a href="http://maxima.sourceforge.net">home</a></p>
 <p class="deps">needs texinfo, shared-mime-info, ecl</p>
+<p class="why"><b>On Copal:</b> The catalogue's symbolic mathematics: the answer as a formula, not a number -- integrals, limits, series, systems of equations.</p>
 <pre class="syn">maxima [options]
 
 rmaxima [options]
 
 xmaxima [options]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Type expressions at the <code>(%i1)</code> prompt, each ending with <code>;</code> (show the result) or <code>$</code> (hide it). <code>%</code> is the last result. Everything stays exact until you ask for a number with <code>float()</code>.</p>
+<h4>Examples</h4><div class="ex"><code>maxima</code><span>the prompt</span></div><div class="ex"><code>maxima --batch-string='integrate(x*sin(x), x);'</code><span>one computation, then exit</span></div><div class="ex"><code>maxima -b work.mac</code><span>run a file of commands</span></div><div class="ex"><code>diff(x^3*sin(x), x);         (at the prompt) differentiate</code></div><div class="ex"><code>integrate(1/(1+x^2), x, 0, 1);   a definite integral: %pi/4</code></div><div class="ex"><code>solve([x+y=3, x-y=1], [x,y]);    a system of equations</code></div><div class="ex"><code>float(%pi);                  a number</code></div><div class="ex"><code>quit();                      leave</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-b, --batch FILE</code></dt><dd>run FILE and exit</dd><dt><code>--batch-string=STR</code></dt><dd>run STR and exit</dd><dt><code>-q, --quiet</code></dt><dd>no banner</dd><dt><code>-r, --run-string=STR</code></dt><dd>run STR, then stay at the prompt</dd></dl>
+<h4>Notes</h4><ul><li>Every input ends with <code>;</code> or <code>$</code>. Without one, Maxima waits for more.</li><li><code>plot2d(sin(x), [x, 0, 6])</code> draws with gnuplot.</li><li>It comes from Alpine's testing repository (<code>maxima@testing</code>).</li></ul>
+<p class="see">See also <a href="#c-octave"><code>octave</code></a>, <a href="#c-gp"><code>gp</code></a>, <a href="#c-Singular"><code>Singular</code></a>, <a href="#c-gnuplot"><code>gnuplot</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-octave" data-s="octave a high-level interactive programming language for numerical computations. science octave">
-<h3><a class="self" href="#c-octave"><code>octave</code></a> <span class="purpose">A high-level interactive programming language for numerical computations.</span></h3>
+<article class="cmd" id="c-octave" data-s="octave gnu octave: numerical computing in a language compatible with matlab. science octave">
+<h3><a class="self" href="#c-octave"><code>octave</code></a> <span class="purpose">GNU Octave: numerical computing in a language compatible with MATLAB.</span></h3>
 <p class="facts">Science · terminal program · <b>octave</b> 11.1.0 · stage 12 · The application catalogue · <a href="man/octave.html">man octave(1)</a> · <a href="https://octave.org/">home</a></p>
 <p class="deps">needs qt6-qtbase-sqlite, openblas, mesa-gl, glu, graphicsmagick-c++, graphicsmagick, qt6-qtbase, qt6-qt5compat</p>
+<p class="why"><b>On Copal:</b> The catalogue's MATLAB-alike: matrices, linear algebra, signal processing and plots, and most MATLAB scripts run unchanged.</p>
 <pre class="syn">octave [options]... [file]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Type at the <code>&gt;&gt;</code> prompt, or run a <code>.m</code> script. Everything is a matrix; <code>;</code> at the end of a line stops it printing the result.</p>
+<h4>Examples</h4><div class="ex"><code>octave</code><span>the prompt</span></div><div class="ex"><code>octave script.m</code><span>run a script</span></div><div class="ex"><code>octave --eval 'disp(inv([2 1; 1 3]))'</code><span>one expression</span></div><div class="ex"><code>octave --no-gui</code><span>the terminal prompt, never a window</span></div><div class="ex"><code>A = [1 2; 3 4];     (at the prompt) a matrix</code></div><div class="ex"><code>x = A \ [5; 6]      solve A x = b</code></div><div class="ex"><code>plot(sin(0:0.1:6))  a plot, in a window</code></div><div class="ex"><code>pkg list            the installed packages;  exit  leave</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>--eval CODE</code></dt><dd>run CODE and exit</dd><dt><code>--no-gui</code></dt><dd>the command line, no window</dd><dt><code>-q, --quiet</code></dt><dd>no banner</dd><dt><code>-W, --no-window-system</code></dt><dd>no graphics at all (plots fail; for scripts)</dd><dt><code>--path DIR</code></dt><dd>add DIR to the function search path</dd></dl>
+<h4>Notes</h4><ul><li>Plots open a window, so they need the desktop. Over SSH, use <code>graphics_toolkit gnuplot</code> and <code>set terminal dumb</code> for ASCII, or <code>print -dpng plot.png</code> to save the figure.</li><li>Octave-Forge packages (<code>pkg install -forge NAME</code>) build from source and need <code>build-base</code>; several are in Alpine as <code>octave-NAME</code>.</li></ul>
+<p class="see">See also <a href="#c-python3"><code>python3</code></a>, <a href="#c-R"><code>R</code></a>, <a href="#c-gnuplot"><code>gnuplot</code></a>, <a href="#c-maxima"><code>maxima</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-pdflatex" data-s="pdflatex comprehensive tex document production system science texlive">
-<h3><a class="self" href="#c-pdflatex"><code>pdflatex</code></a> <span class="purpose">Comprehensive TeX document production system</span></h3>
+<article class="cmd" id="c-pdflatex" data-s="pdflatex typeset a latex document straight to pdf. science texlive">
+<h3><a class="self" href="#c-pdflatex"><code>pdflatex</code></a> <span class="purpose">Typeset a LaTeX document straight to PDF.</span></h3>
 <p class="facts">Science · command-line tool · <b>texlive</b> 2026.0 · stage 12 · The application catalogue · <a href="man/pdflatex.html">man pdflatex(1)</a> · <a href="https://tug.org/texlive/">home</a></p>
 <p class="deps">needs ghostscript, perl, texmf-dist, texmf-dist-latex, libx11, cairo, gmp, icu-libs</p>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<p class="why"><b>On Copal:</b> TeX Live, for papers, theses, letters and anything with equations. Stage 14 asks which: texlive, a few hundred MB, or texlive-full, about 4 GB, with every package there is.</p>
+<pre class="syn">pdftex [options] [&amp;format] [file|\commands]</pre>
+<h4>Use</h4><p>Write the document as a <code>.tex</code> file; <a href="#c-pdflatex"><code>pdflatex</code></a> turns it into a <code>.pdf</code>. Cross-references, a table of contents and citations need a second run, because the first only records where things are.</p>
+<h4>Examples</h4><div class="ex"><code>pdflatex paper.tex</code><span>paper.pdf</span></div><div class="ex"><code>pdflatex paper.tex &amp;&amp; pdflatex paper.tex</code><span>twice: references settle</span></div><div class="ex"><code>pdflatex -interaction=nonstopmode paper.tex</code><span>do not stop at errors</span></div><div class="ex"><code>latexmk -pdf paper.tex</code><span>as many runs as needed, bibliography too</span></div><div class="ex"><code>kpsewhich tikz.sty</code><span>is this package installed?</span></div>
+<h4>Options</h4><dl class="opts"><dt><code>-interaction=nonstopmode</code></dt><dd>carry on through errors, no prompt</dd><dt><code>-halt-on-error</code></dt><dd>stop at the first error</dd><dt><code>-output-directory=DIR</code></dt><dd>write the PDF and logs there</dd><dt><code>-jobname=NAME</code></dt><dd>name the output NAME.pdf</dd><dt><code>-shell-escape</code></dt><dd>let the document run commands (minted needs it)</dd></dl>
+<h4>Notes</h4><ul><li>"File <code>tikz.sty' not found" means the package is not installed. With the smaller </code>texlive<code>, add a collection: </code>doas apk add texmf-dist-pictures<code> (TikZ), </code>texmf-dist-latexextra` (most others).</li><li>At an error it waits at a <code>?</code> prompt: <code>x</code> Enter leaves. The real message is a few lines above, and in the <code>.log</code>.</li><li>Keep <code>-shell-escape</code> for documents you wrote: it lets the document run programs.</li></ul>
+<p class="see">See also <a href="#c-gnuplot"><code>gnuplot</code></a>, <a href="#c-octave"><code>octave</code></a>, <a href="#c-maxima"><code>maxima</code></a></p>
 </article>
 <article class="cmd" id="c-python3" data-s="python3 the python interpreter: scripts, a calculator, and a large standard library. science python3">
 <h3><a class="self" href="#c-python3"><code>python3</code></a> <span class="purpose">The Python interpreter: scripts, a calculator, and a large standard library.</span></h3>
@@ -2359,24 +2385,34 @@ xmaxima [options]</pre>
 <h4>Notes</h4><ul><li><code>pip install</code> outside a virtual environment says "externally-managed-environment". That is deliberate: the system's Python belongs to apk. <code>apk add py3-NAME</code> if it exists, or a venv.</li><li>Packages with C parts often have no ready wheel for musl and build from source: <code>apk add build-base python3-dev</code> first.</li><li>Python 2 is gone: <code>python</code> is Python 3 too, but scripts written for Copal say <a href="#c-python3"><code>python3</code></a>, which works on every system that has it.</li></ul>
 <p class="see">See also <a href="#c-pip"><code>pip</code></a>, <a href="#c-gdb"><code>gdb</code></a>, <a href="#c-nvim"><code>nvim</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-R" data-s="r a language for data analysis and graphics science r">
-<h3><a class="self" href="#c-R"><code>R</code></a> <span class="purpose">a language for data analysis and graphics</span></h3>
+<article class="cmd" id="c-R" data-s="r the r language for statistics and graphics. science r">
+<h3><a class="self" href="#c-R"><code>R</code></a> <span class="purpose">The R language for statistics and graphics.</span></h3>
 <p class="facts">Science · terminal program · <b>R</b> 4.6.0 · stage 12 · The application catalogue · <a href="man/R.html">man R(1)</a> · <a href="https://www.R-project.org/">home</a></p>
 <p class="deps">needs R-mathlib, tzdata, openblas, libx11, libxmu, libxt, libbz2, cairo</p>
+<p class="why"><b>On Copal:</b> The catalogue's statistics environment: data frames, models, tests and plots, with CRAN's twenty thousand packages behind it.</p>
 <pre class="syn">R [options] [&lt; infile] [&gt; outfile]
 R CMD command [arguments]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Type at the <code>&gt;</code> prompt, or run a script with <code>Rscript</code>. Data frames hold tables; <code>summary()</code>, <code>lm()</code> and <code>plot()</code> do most of the everyday work.</p>
+<h4>Examples</h4><div class="ex"><code>R</code><span>the prompt</span></div><div class="ex"><code>Rscript analysis.R</code><span>run a script</span></div><div class="ex"><code>R -q -e 'summary(mtcars)'</code><span>one expression</span></div><div class="ex"><code>R --vanilla</code><span>no saved workspace, no profiles</span></div><div class="ex"><code>d &lt;- read.csv("data.csv")    (at the prompt) load a table</code></div><div class="ex"><code>summary(d)                   the statistics of each column</code></div><div class="ex"><code>fit &lt;- lm(y ~ x, data=d)     a linear model;  summary(fit)</code></div><div class="ex"><code>install.packages("ggplot2")  a package from CRAN</code></div><div class="ex"><code>q()                          leave</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-q, --quiet</code></dt><dd>no banner</dd><dt><code>-e EXPR</code></dt><dd>evaluate EXPR (with R -q -e)</dd><dt><code>--vanilla</code></dt><dd>no profile, no saved workspace</dd><dt><code>--no-save</code></dt><dd>do not save the workspace on exit</dd><dt><code>-f FILE</code></dt><dd>read commands from FILE</dd></dl>
+<h4>Notes</h4><ul><li>The system library is not writable: the first <code>install.packages()</code> offers a personal library in your home -- answer yes.</li><li>Packages with C or Fortran compile from source on Alpine (no binary packages for musl) and need <code>build-base</code> and <a href="#c-gfortran"><code>gfortran</code></a>; the first install of a big one takes a while.</li><li><code>q()</code> asks whether to save the workspace; <code>n</code>, or it reloads into every later session.</li></ul>
+<p class="see">See also <a href="#c-python3"><code>python3</code></a>, <a href="#c-octave"><code>octave</code></a>, <a href="#c-gnuplot"><code>gnuplot</code></a></p>
 </article>
-<article class="cmd facts-only" id="c-Singular" data-s="singular manual page for singular for version 4.x.x science singular">
-<h3><a class="self" href="#c-Singular"><code>Singular</code></a> <span class="purpose">manual page for Singular for version 4.x.x</span></h3>
+<article class="cmd" id="c-Singular" data-s="singular computer algebra for polynomials: gröbner bases, ideals, singularities. science singular">
+<h3><a class="self" href="#c-Singular"><code>Singular</code></a> <span class="purpose">Computer algebra for polynomials: Gröbner bases, ideals, singularities.</span></h3>
 <p class="facts">Science · terminal program · <b>singular</b> 4.4.1_p5 · stage 12 · The application catalogue · <a href="man/Singular.html">man Singular(1)</a> · <a href="https://www.singular.uni-kl.de/">home</a></p>
 <p class="deps">needs python3, cddlib, flint, gmp</p>
+<p class="why"><b>On Copal:</b> The catalogue's polynomial-algebra system, the tool of commutative algebra and algebraic geometry. The command has a capital S.</p>
 <pre class="syn">Singular [options] [file1 [file2 ...]]
 
 ESingular [options] [file1 [file2 ...]]
 
 TSingular [options] [file1 [file2 ...]]</pre>
-<p class="pending">No notes yet: the facts above are read from apk and the man page.</p>
+<h4>Use</h4><p>Declare a ring -- the field, the variables, the ordering -- then work in it with polynomials and ideals. Every statement ends with <code>;</code>.</p>
+<h4>Examples</h4><div class="ex"><code>Singular</code><span>the prompt (capital S)</span></div><div class="ex"><code>Singular -q script.sing</code><span>run a file</span></div><div class="ex"><code>ring r = 0, (x,y,z), dp;       (at the prompt) rational coefficients, x y z</code></div><div class="ex"><code>ideal I = x2 - y, y2 - z;      an ideal (x2 is x^2)</code></div><div class="ex"><code>std(I);                        its Gröbner basis</code></div><div class="ex"><code>help std;                      help on a command</code></div><div class="ex"><code>quit;                          leave</code></div>
+<h4>Options</h4><dl class="opts"><dt><code>-q, --quiet</code></dt><dd>no banner, and quit at the end of a file</dd><dt><code>-b, --batch</code></dt><dd>batch mode</dd><dt><code>--no-rc</code></dt><dd>do not read the .singularrc file</dd><dt><code>-c CMD</code></dt><dd>run CMD first</dd></dl>
+<h4>Notes</h4><ul><li>The command is <a href="#c-Singular"><code>Singular</code></a>; <code>singular</code> is not found.</li><li>In a ring declared with short variable names, <code>x2y</code> means <code>x^2*y</code>.</li></ul>
+<p class="see">See also <a href="#c-maxima"><code>maxima</code></a>, <a href="#c-gp"><code>gp</code></a></p>
 </article>
 </section>
 <section class="sec" id="s-security"><h2>Security</h2>

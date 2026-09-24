@@ -314,6 +314,23 @@ def help_usage(path):
 MANSECS = ("1", "8", "6", "7", "5")
 
 
+def so_target(f):
+    """A page that is only '.so man1/pdftex.1' is the page it names: mandoc
+    does not find that one when it is compressed (pdflatex's is)."""
+    try:
+        with (gzip.open(f) if f.endswith(".gz") else open(f, "rb")) as h:
+            head = h.read(400).decode("latin-1")
+    except OSError:
+        return f
+    m = re.match(r"(?:\.\\\".*\n|\s*\n)*\.so\s+(\S+)", head)
+    if m:
+        for ext in (".gz", ""):
+            t = os.path.join("/usr/share/man", m.group(1) + ext)
+            if os.path.exists(t):
+                return t
+    return f
+
+
 def man_page(cmd):
     """The page named exactly after the command, by section, before
     man -w's first guess (which answers 'apk' with apk-package(5))."""
@@ -323,7 +340,7 @@ def man_page(cmd):
             for ext in (".gz", ""):
                 f = os.path.join(d, "%s.%s%s%s" % (cmd, sec, suf, ext))
                 if os.path.exists(f):
-                    return f
+                    return so_target(f)
     mp = run(["man", "-w", cmd]).strip().split("\n")[0]
     return mp if mp and os.path.exists(mp) else None
 
@@ -894,8 +911,9 @@ def check():
                 # clang: every -Wname, stated once as -W<warning>.
                 if re.match(r"-W[a-z]", flag) and "-W<warning>" in text:
                     continue
-                # --[no-]shuffle is openmpt123's way of stating both.
-                if flag.startswith("--") and "--[no-]" + flag[2:] in text:
+                # --[no-]shuffle (openmpt123) and -[no-]shell-escape (TeX) state both.
+                bare = flag.lstrip("-")
+                if ("--[no-]" + bare) in text or ("-[no-]" + bare) in text:
                     continue
                 # Some answer only -h (zangband starts the game on --help).
                 if not found(flag) and path and not tried_h:

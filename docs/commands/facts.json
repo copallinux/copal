@@ -4739,9 +4739,9 @@
     "libsynctex",
     "zlib"
    ],
-   "man": "man1/pdflatex.1.gz",
-   "man_name": "",
-   "synopsis": "",
+   "man": "man1/pdftex.1.gz",
+   "man_name": "pdftex - PDF output from TeX",
+   "synopsis": "pdftex [options] [&format] [file|\\commands]",
    "gallery": false
   },
   {
@@ -6509,7 +6509,7 @@
    ],
    "section": "Graphics",
    "label": "Tesseract (OCR)",
-   "packages": "tesseract-ocr",
+   "packages": "tesseract-ocr tesseract-ocr-data-eng",
    "mode": "h",
    "gate": "!v6,!x32",
    "stage": 12,
