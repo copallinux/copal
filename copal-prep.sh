@@ -9991,7 +9991,10 @@ COPALCODE
     note "wrote /usr/local/bin/copal-yodacon"
 
     say "Running copal-yodacon as $PI_USER  (the Go toolchain download is the slow part)"
-    if su - "$PI_USER" -c copal-yodacon; then
+    # By its full path, as install_copal_code runs copal-code: a login shell
+    # from su need not have /usr/local/bin on PATH, and on 24 September 2026
+    # this said "copal-yodacon: command not found".
+    if su - "$PI_USER" -c /usr/local/bin/copal-yodacon; then
         note "Yodacon, with Gonex and Konex inside it, is in $_h/code/yodacon; iusethis.org beside it"
     else
         warn "copal-yodacon did not finish -- as $PI_USER, run 'copal-yodacon' to retry;"
