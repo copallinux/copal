@@ -4232,7 +4232,6 @@ Smallweb|gemget (gemini downloader)|gemget|gemget|h|*
 Smallweb|gmnisrv (serve gemini)|gmnisrv|gmnisrv|h|*
 Languages|Rust (compiler + cargo + std source)|rust cargo rust-src rustfmt|cargo|h|*
 Languages|rust-analyzer (Rust language server)|rust-analyzer|rust-analyzer|h|*
-Languages|Go (compiler + gopls language server)|go gopls|go|h|*
 Languages|Delve (Go debugger - breakpoints)|delve|dlv|h|64
 Languages|Haskell (GHC + cabal)|ghc cabal|ghc|h|64
 Languages|hlint (Haskell linter)|hlint|hlint|h|64
@@ -9882,10 +9881,15 @@ MSG
 # engine), and ~/code/iusethisorg rendered by its own strict build.
 #
 # GOTOOLCHAIN=auto: Alpine pins it to local, and gonex wants a newer Go than
-# the package -- go fetches the one go.mod names into ~/go, once.
+# the package -- go fetches the one go.mod names into ~/go, once. Unless the
+# upstream Go is installed from Copal Apps (Programming > Go (upstream)):
+# its go is in /usr/local/bin, put first on PATH here, and new enough that
+# nothing is fetched.
 # TMPDIR: the Go linker's scratch. /tmp is a small tmpfs on a Copal machine
 # and a 40 MB link does not fit in it.
 set -u
+case ":$PATH:" in *:/usr/local/bin:*) ;; *) PATH="/usr/local/bin:$PATH" ;; esac
+export PATH
 CODE="$HOME/code"
 YODACON="$CODE/yodacon"
 GONEX="$YODACON/gonex"
@@ -9990,7 +9994,8 @@ COPALCODE
     chmod 0755 /usr/local/bin/copal-yodacon
     note "wrote /usr/local/bin/copal-yodacon"
 
-    say "Running copal-yodacon as $PI_USER  (the Go toolchain download is the slow part)"
+    say "Running copal-yodacon as $PI_USER  (the Go toolchain download is the slow part,"
+    note "unless Go (upstream) is installed from Copal Apps: then nothing is downloaded)"
     # By its full path, as install_copal_code runs copal-code: a login shell
     # from su need not have /usr/local/bin on PATH, and on 24 September 2026
     # this said "copal-yodacon: command not found".
@@ -30134,6 +30139,8 @@ Multimedia|YouTube Player (pipe-viewer)|pipe-viewer|pipe-viewer|t|*|Searches and
 Programming|Arduino CLI|arduino-cli@testing|arduino-cli|h|*|Compiles and uploads Arduino sketches from a terminal. It also manages boards and libraries.|https://github.com/arduino/arduino-cli
 Programming|GitHub CLI|github-cli|gh|h|*|GitHub from the command line: pull requests, issues and releases. gh pr create and gh repo clone, without the web page.|https://github.com/cli/cli
 Programming|GNOME Builder|gnome-builder|gnome-builder|x|*|GNOME's IDE, for C, Rust, Python and Vala projects. Builds, runs and debugging are a click away.|https://gitlab.gnome.org/GNOME/gnome-builder
+Programming|Go (Alpine's, with gopls)|go gopls|go|h|*|The Go language and its tools -- build, test, format, fetch modules -- as Alpine packages it, with gopls, the language server editors use. One release behind upstream.|https://go.dev
+Programming|Go (upstream, go.dev)|gotoolchain@source|-|h|*|The newest Go, as the Go project releases it: go and gofmt in /usr/local, ahead of Alpine's go on PATH. For modules that want a newer Go than Alpine carries.|https://go.dev
 Programming|Node.js|nodejs npm|node|t|*|The JavaScript runtime outside the browser. npm comes with it to fetch packages.|https://github.com/nodejs/node
 Programming|Thonny (Python IDE)|thonny|thonny|x|*|A Python editor for beginners. Step through code one line at a time and watch the variables change.|https://github.com/thonny/thonny
 Science|Fraqtive (Mandelbrot fractals)|fraqtive@source|fraqtive|x|!v6|A fast generator of Mandelbrot-family fractals, with presets, colour gradients and high-resolution image export. Its 3D view needs desktop OpenGL, so on ARM boards it stays black; the 2D view is the program.|https://fraqtive.mimec.org/
@@ -31232,6 +31239,40 @@ funkin_rdeps() { echo "love"; }
 funkin_needs() { echo ""; }
 funkin_source() { echo "github HTV04/funkin-rewritten"; }
 
+# ---- playbooks/Programming/gotoolchain.sh
+# Go, upstream: the release archive from go.dev, the file for this machine's
+# architecture at a pinned version and checksum. The Go project builds its
+# tools statically, so they run on musl as they are -- checked on the bench,
+# along with cgo through Alpine's gcc. Installed whole into $PREFIX/lib/go,
+# with go and gofmt linked into $PREFIX/bin: /usr/local/bin comes before
+# /usr/bin on PATH, so this go answers ahead of Alpine's (the 'go' entry),
+# and removing it hands the name back.
+#
+# WHY IT IS HERE. Alpine carries one Go release behind, and builds it with
+# GOTOOLCHAIN=local; a module that asks for the newer one -- Gonex does --
+# then has its compiler downloaded into ~/go at build time, outside apk and
+# outside this shelf. With this installed, nothing is downloaded: the go that
+# answers is new enough. It keeps upstream's own GOTOOLCHAIN=auto.
+GOTOOLCHAIN_VER=1.27.1
+gotoolchain_install() {
+    case "$(apk --print-arch 2>/dev/null)" in
+        aarch64) _a=arm64  _sum=3450b45a3f9ee8568792736a5c5e70a1f2e9b36c35a8f74958c03e51d7d92bec ;;
+        x86_64)  _a=amd64  _sum=63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445 ;;
+        armv7|armhf) _a=armv6l _sum=44893f200fb034791d4188df9fc9b9e73eadbb5fceafd5166703f0b9bab73fc2 ;;
+        x86)     _a=386    _sum=3b72028095439d2bc0ce84e271cc70328a878d879020c5721eaa46df5f72fbc0 ;;
+        *) echo "go.dev has no build for $(apk --print-arch)"; return 1 ;;
+    esac
+    _f=$(url_asset "https://go.dev/dl/go$GOTOOLCHAIN_VER.linux-$_a.tar.gz" "$_sum") || return 1
+    mkdir -p "$DEST$PREFIX/lib" "$DEST$PREFIX/bin"
+    tar -xzf "$_f" -C "$DEST$PREFIX/lib" || return 1
+    ln -sf ../lib/go/bin/go "$DEST$PREFIX/bin/go"
+    ln -sf ../lib/go/bin/gofmt "$DEST$PREFIX/bin/gofmt"
+}
+gotoolchain_bdeps() { echo ""; }
+gotoolchain_rdeps() { echo ""; }
+gotoolchain_needs() { echo ""; }
+gotoolchain_source() { echo "url go.dev"; }
+
 # ---- playbooks/Games/kmahjongg.sh
 # KMahjongg, from KDE's own repository (the GitHub mirror of invent.kde.org), at
 # KDE Gear 26.04.3 -- the release series of Alpine's libkdegames, so the game
@@ -31927,7 +31968,7 @@ xaos_rdeps() { echo ""; }
 xaos_needs() { echo ""; }
 xaos_source() { echo "github xaos-project/XaoS"; }
 
-RECIPES="alephone amiberry ardour astromenace bleachbit browsh ccleste darktable ddnet devilutionx dxx endlesssky ffconverter focuswriter fraqtive funkin kmahjongg konquest kretro kreversi ksnakeduel kspaceduel kubrick librecad naev ohmyposh openshot opentyrian pacman pencil2d persepolis pixelorama pychess smc taisei veracrypt xaos"
+RECIPES="alephone amiberry ardour astromenace bleachbit browsh ccleste darktable ddnet devilutionx dxx endlesssky ffconverter focuswriter fraqtive funkin gotoolchain kmahjongg konquest kretro kreversi ksnakeduel kspaceduel kubrick librecad naev ohmyposh openshot opentyrian pacman pencil2d persepolis pixelorama pychess smc taisei veracrypt xaos"
 
 # The ~/code projects: cloned and built by copal-build, as the person.
 ascitty_bdeps() { echo "git rust cargo"; }
