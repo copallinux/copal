@@ -9748,10 +9748,56 @@ NPMG
             | sed 's/^/    /'
         su - "$PI_USER" -c 'claude plugin list' 2>/dev/null | grep -q rust-analyzer-lsp \
             || note "not installed -- later, as $PI_USER: claude plugin install rust-analyzer-lsp@claude-plugins-official"
+        install_claude_in_chrome
     fi
     note "Sign in by running:  claude      (as $PI_USER, not as root)"
     note "Credentials land in ~/.claude, so run it as the account you use."
     note "If it runs out of memory: NODE_OPTIONS=--max-old-space-size=256 claude"
+}
+
+# Claude in Chrome, at the FULL level: Alpine's Chromium, and the Claude
+# extension preinstalled in it. The full monty's everyday browser is the
+# Flathub Brave, and Claude Code cannot use it. On Linux it looks for the
+# extension, and writes its native-messaging host, only under
+# ~/.config/<browser>/ (read out of the 2.1.284 binary, not guessed), while the
+# Flatpak keeps its profile in ~/.var/app/com.brave.Browser -- and even with
+# the manifest copied across, the sandbox could not start a host that lives
+# outside it. So the extension goes into a native browser: Alpine's own
+# Chromium, which tracks upstream stable (152 in v3.24), and which Claude Code
+# knows as 'chromium' with ~/.config/chromium.
+#
+# The extension comes by policy, 'normal_installed': Chromium fetches it from
+# the Web Store on its first start, and it can be switched off but not
+# removed. The native host is Claude Code's to write, since its manifest names
+# a wrapper script Claude Code generates -- the first 'claude --chrome' does it.
+# Gated by the catalogue's own Chromium row, so a port without Chromium
+# (armhf, 32-bit x86) skips this with a note rather than failing an apk add.
+CLAUDE_EXT_ID=fcoeoabgfenejglbffodgkkbkcdhcgfn
+install_claude_in_chrome() {
+    say "Claude in Chrome: Chromium and the Claude extension"
+    if ! catalogue_available | grep -q '^Internet|[^|]*|chromium|'; then
+        note "no Chromium on this port -- Claude in Chrome needs a Chromium-based browser"
+        return 0
+    fi
+    have chromium || add_optional chromium
+    have chromium || { note "Chromium did not install -- later: doas apk add chromium"; return 0; }
+    mkdir -p /etc/chromium/policies/managed
+    cat > /etc/chromium/policies/managed/copal-claude.json <<POLICY
+{
+  "ExtensionSettings": {
+    "$CLAUDE_EXT_ID": {
+      "installation_mode": "normal_installed",
+      "update_url": "https://clients2.google.com/service/update2/crx"
+    }
+  }
+}
+POLICY
+    chmod 0644 /etc/chromium/policies/managed/copal-claude.json
+    note "$(chromium --version 2>/dev/null | head -n1), with the Claude extension by policy"
+    note "  (/etc/chromium/policies/managed/copal-claude.json)"
+    note "First time: start Chromium and sign in to the extension, then run"
+    note "  claude --chrome     (as $PI_USER) -- it writes the native host, and"
+    note "  /chrome inside it can make that the default."
 }
 
 # ------------------------------------------------ /tmp, on a running system ---
