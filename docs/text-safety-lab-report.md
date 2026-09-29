@@ -851,6 +851,50 @@ were `A && ok || bad`, which are `if` and `else` now.
 what it was: 44, 26, 32, 51, 34, 133, 80 and 36. A script that tests is
 held to the rule that its own rewriting must not change what it finds.
 
+## XIX. Addendum: the redeploy, run (29 September 2026)
+
+Section XVII's five entries were done and waiting for the bench. Stages 7,
+4 and 17 were redeployed to it at 14:11, in that order, and the log read.
+
+| Entry | What the run showed |
+|---|---|
+| S-18 | `/usr/local/bin/copal` is of 29 September, and has the signature check in it |
+| S-19 | no `have: not found`; Claude in Chrome's step wrote its policy |
+| S-20 | `claude doctor` ran, and the plugin was found installed |
+| S-21 | the bar was running after stages 4 and 17 |
+| S-22 | `copal-theme` went to the boot partition and over the installed copy |
+
+The session ends as `wayland` and the theme as `antiquity`, which is
+stage 17 having the last word after stage 4. Nothing of copal's is left in
+`/tmp`.
+
+**And two more that nobody had looked for.**
+
+| Stage | What was seen | What it was |
+|---|---|---|
+| 4 | "replaced a copy you had changed", of two stylesheets | the theme tool's own line, taken for the person's edit (S-24) |
+| 7 | `glfw: X11: The DISPLAY environment variable is missing` | suites that start a window system, where there is none (S-25) |
+
+They are the same kind as the four of section XVII: right where written,
+wrong where run. The first is a record kept by one program of a file a
+second program also writes. The second passed at every desk it was tried
+at, because a desk has a session to borrow a display from, and failed on
+every machine set up from a card, where it ended a script that had three
+more things to build.
+
+**The first was reported wrongly before it was understood.** The log was
+read as the installer having replaced the person's edited stylesheets,
+and that was said. Nobody had edited them: each `.bak` was byte for byte
+the file it was the backup of, which one `cmp` would have shown. A message
+that says "you had changed" is evidence that a sum differed and of nothing
+more.
+
+**What was not run.** Gonex's suites under a real `xvfb-run`: the bench
+does not have it, and installing it is root's. The script's three ways
+were each run with stand-ins, and the game was built on the bench with no
+display. The installer as a whole has still not run on a machine built
+from nothing.
+
 ## References
 
 [1] Copal Linux, "Backlog," `docs/backlog.md`, 2026.
