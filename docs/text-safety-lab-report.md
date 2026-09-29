@@ -395,6 +395,47 @@ truncated capture — and all thirty failed. A check that cannot fail is not
 evidence, and seven of these twelve pass today only because the defect they
 guard against has not been made yet.
 
+## X. Addendum: the four defects closed (29 September 2026)
+
+T-02, T-03, T-01 and T-04 were made in that order and the hostile check run
+after each, so that each change is seen to do its own work. Cleaning at the
+door first would have hidden whether `ffescape` and `printable` were right.
+
+| After | Failing, of 30 | What turned |
+|---|---|---|
+| nothing | 18 | |
+| T-02, `ffescape` | 15 | one chapter; lyrics and description whole |
+| T-03, `printable` at the exits | 8 | `ytq list`, `ytq status`, `sstr verify`, the log, a notification |
+| T-01, `clean` at the door | 5 | the `.txt`, the queue, the tags |
+| T-04, `one_line` | 0 | every forged row |
+
+A thirty-first check was added with T-01: a URL whose path is an escape
+sequence is refused. Run against the ytq of `75cbf7d`, the finished check
+fails 19 of 31; against the new one, none.
+
+**The whole suite found what the hostile check could not.** With all four
+changes in, `ytq-runner-crosscheck` disagreed with the Python ytq on caption
+files: a tab in a caption had been made a space before `fill` could expand
+it to a tab stop, as Python's `textwrap` does. Captions are now cleaned with
+`clean`, which keeps a tab, and not `one_line`. A check written for the
+defect would never have caught a fault in the fix; the comparison with the
+specification did.
+
+**One defect in T-03 was found by reading, before any check ran.**
+`printable` makes a newline `^J`, and `say()` is given messages of several
+lines. It is applied line by line.
+
+`make check` in staticstream: 431 checks and 149 unit tests, exit 0.
+
+| Rule | Held by |
+|---|---|
+| T1 | `clean`, `clean_info`; hostile check, *text* |
+| T2 | `one_line`; hostile check, *rows* |
+| T3 | `ffescape` and its unit test; hostile check, *tags* |
+| T7 | `term::printable`; hostile check, *terminal* |
+
+T4, T5, T6 and T8 wait on T-05, T-06 and T-08.
+
 ## References
 
 [1] Copal Linux, "Backlog," `docs/backlog.md`, 2026.

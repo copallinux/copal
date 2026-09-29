@@ -26,22 +26,13 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | C | configuration | `copal` |
 | S | shell scripts | `copal` |
 
-**Standing:** 18 open · 1 in progress · 1 done · 1 dropped. Written 29 September 2026.
+**Standing:** 14 open · 0 in progress · 6 done · 1 dropped. Written 29 September 2026.
 
 ---
 
 ## Open
 
-### First: the check, then the defects it proves
-
-| ID | Entry | Rule | Check |
-|---|---|---|---|
-| T-01 | One cleaning function, used where text enters: after `json::parse` of `NOTES`, `META` and `TALK`, on the title in `check()`, and in `vtt_words`. Control characters are dropped, except newline and tab | T1 | hostile check: no byte below 0x20 but newline and tab in the `.txt`, the log and the queue |
-| T-02 | `ffescape` handles carriage return and NUL | T3 | hostile check: one chapter, and a `lyrics` tag, in the MP4 |
-| T-03 | `printable()` on what the commands print: `ytq list`, `ytq status`, `say()`, and the `source`, `license` and `note` rows of `sstr verify` | T7 | hostile check: `cat -v` of each shows no `^[` |
-| T-04 | One-line fields lose their newlines: title, uploader, channel, license, location, chapter titles, tags | T2 | hostile check: one `License:` row and one `URL:` row in the notes; one `license` line in `sstr verify` |
-
-### Then: hardening
+### Hardening
 
 | ID | Entry | Rule | Check |
 |---|---|---|---|
@@ -74,14 +65,17 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 
 ## In progress
 
-| ID | Entry | Rule | Where it stands |
-|---|---|---|---|
-| T-07 | `tests/ytq-hostile-check.sh` and `tests/standin/yt-dlp-hostile`, in `make check` and as `make ytq-hostile-check`: the real ytq against a stand-in yt-dlp whose every field carries an attack | T1–T3, T7 | written 29 September 2026, not committed. **18 of its 30 checks fail, as they should;** T-01 to T-04 turn them green, and the entry is done when they have. The other 12 were each made to fail once, by a sabotaged copy, so none passes by default. The rest of `make check` is untouched: 400 checks and 146 unit tests pass |
+*Nothing.*
 
 ## Done
 
 | ID | Entry | Done | Commit |
 |---|---|---|---|
+| T-07 | `tests/ytq-hostile-check.sh` and `tests/standin/yt-dlp-hostile`, as `make ytq-hostile-check` and last in `make check`: the real ytq against a stand-in yt-dlp whose every field carries an attack. **Check:** 31 checks. Against the ytq of `75cbf7d`, 19 fail; against this one, none. The 12 that passed from the start were each made to fail once by a sabotaged copy | 29 September 2026 | staticstream `425ba64` |
+| T-02 | `ffescape` escapes a carriage return and leaves out a NUL, which cannot be escaped. **Check:** with this change alone the MP4 had one chapter where it had three, and its lyrics and description whole: 18 failures became 15 | 29 September 2026 | staticstream `425ba64` |
+| T-03 | `printable()` on what `ytq list`, `ytq status` and a runner print, on every line of the log, on a notification line by line, on the `stream`, `source`, `license`, `note` and `key` rows of `sstr verify`, and on the line the Workspace shows before it runs it. **Check:** with T-02 and this, 15 failures became 8 — and `sstr verify` lost its forged rows too, a newline being `^J` | 29 September 2026 | staticstream `425ba64` |
+| T-01 | `src/ytq/clean.rs`: `clean`, used on `NOTES`, `META` and the comments as they are parsed, on every line yt-dlp writes, on the check's title, and on a caption's words after its entities are undone. A URL with a control character in it is refused. **Check:** 8 failures became 5, the five forged-row checks | 29 September 2026 | staticstream `425ba64` |
+| T-04 | `one_line`: every string of yt-dlp's info is one line, but the description and a comment's text. **Check:** 5 failures became none; `make check` passes, 431 checks and 149 unit tests, the crosschecks against the Python ytq agreeing as before | 29 September 2026 | staticstream `425ba64` |
 | S-01 | `playbooks/Code/radbeeper.sh` was cut short inside a here-document, and the cut was worse in `copal-prep.sh` than in the playbook: the here-document stayed open for 403 lines and took in `staticstream_post`, `install_ytbrave`, `write_media_conf` and `grub_default_lts`, so a fresh install defined none of them. The 196 lines left behind are back in the playbook and gone from where they were stranded. The cut was made by hand when the function was split out in `df8f98e`, not by `tools/copal-playbooks.py`, which reads a body whole. **Check:** `sh -n` passes on all 297 playbooks; a shell that reads the region defines all five functions, where it defined one; `radbeeper_pre` is line for line the function of before the split | 29 September 2026 | `e1300c5` |
 
 ## Dropped
