@@ -151,6 +151,7 @@ BAS
         cd "$SRCDIR" || { warn "cannot enter $SRCDIR"; return 0; }
         _tgz="minivmac-$MINIVMAC_VER.src.tgz"
         _url="https://www.gryphel.com/d/minivmac/minivmac-$MINIVMAC_VER/$_tgz"
+        _mvm_card=0
 
         # Three sources, in order of how much can go wrong with them: one
         # already unpacked here from a previous run, one copal-prep.sh staged
@@ -170,6 +171,7 @@ BAS
                 if cp "$_staged" "$SRCDIR/"; then
                     _tgz=$(basename "$_staged")
                     _v=${_tgz#minivmac-}; MINIVMAC_VER=${_v%.src.tgz}
+                    _mvm_card=1
                     note "using $_tgz from the card -- no download needed"
                 else
                     warn "could not copy $_staged -- falling back to the download"
@@ -184,6 +186,9 @@ BAS
             note "and re-run with:  MINIVMAC_VER=<version> sh /boot/copal-init.sh"
             note "Or stage it on the card and skip the network entirely:"
             note "  on the Mac -- ./fetch-minivmac.sh && ./copal-prep.sh --refresh"
+        elif [ "$_mvm_card" = 0 ] && ! source_is "$_tgz" "$_url"; then
+            rm -f "$_tgz"
+            warn "Mini vMac is not built"
         else
             rm -rf "$SRCDIR/minivmac-build"; mkdir -p "$SRCDIR/minivmac-build"
             tar xzf "$_tgz" -C "$SRCDIR/minivmac-build"
@@ -283,6 +288,9 @@ MSG
                     warn "could not download VICE $VICE_VER"
                     note "Check https://vice-emu.sourceforge.io/ for the current version and"
                     note "re-run with:  VICE_VER=<version> sh /boot/copal-init.sh"
+                elif ! source_is "$_vtgz" "$_vurl"; then
+                    rm -f "$_vtgz"
+                    warn "VICE is not built"
                 else
                     rm -rf "vice-$VICE_VER"
                     tar xzf "$_vtgz"

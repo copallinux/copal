@@ -149,6 +149,12 @@ stage_hyprland() {
     for _c in "$BOOT/antiquity/linux-antiquity.tar.gz" /media/*/antiquity/linux-antiquity.tar.gz; do
         [ -f "$_c" ] && { _theme_tgz="$_c"; break; }
     done
+    # THE COMMIT, NOT THE BRANCH. A branch is whatever it was last pushed to be,
+    # and this archive is unpacked by root. c0e3eac is the theme as it was
+    # forked (docs/THEME.md, IX): its configs/ are the card's, byte for byte.
+    # The sum is of GitHub's archive of that commit.
+    _theme_at=c0e3eac816e36124610fd557be4d2f87dd1f558a
+    _theme_sum=52594bd0c8449530a9011ae28c2206e2b4dc0d9a513acc03015f4547a5a11aed
     _tdir="/tmp/antiquity.$$"
     rm -rf "$_tdir"; mkdir -p "$_tdir"
     if [ -n "$_theme_tgz" ]; then
@@ -156,9 +162,10 @@ stage_hyprland() {
         note "theme from the card: $_theme_tgz"
     else
         note "no staged theme on the boot partition -- fetching from GitHub"
-        if wget -q -O "$_tdir/main.tar.gz" \
-                "https://github.com/diinki/linux-antiquity/archive/refs/heads/main.tar.gz"; then
-            tar -xzf "$_tdir/main.tar.gz" -C "$_tdir" && rm -f "$_tdir/main.tar.gz"
+        if wget -q -O "$_tdir/theme.tar.gz" \
+                "https://github.com/diinki/linux-antiquity/archive/$_theme_at.tar.gz" \
+           && sha256_is "$_tdir/theme.tar.gz" "$_theme_sum"; then
+            tar -xzf "$_tdir/theme.tar.gz" -C "$_tdir" && rm -f "$_tdir/theme.tar.gz"
         else
             warn "could not fetch the theme -- no card copy, no network copy. Stopping here."
             rm -rf "$_tdir"
@@ -166,8 +173,8 @@ stage_hyprland() {
         fi
     fi
     # The staged tarball unpacks to configs/; the GitHub one to
-    # linux-antiquity-main/configs. Point at whichever appeared.
-    [ -d "$_tdir/configs" ] || _tdir="$_tdir/linux-antiquity-main"
+    # linux-antiquity-COMMIT/configs. Point at whichever appeared.
+    [ -d "$_tdir/configs" ] || _tdir="$_tdir/linux-antiquity-$_theme_at"
     [ -d "$_tdir/configs" ] || { warn "no configs/ in the theme archive -- corrupt download?"; rm -rf "/tmp/antiquity.$$"; return 1; }
 
     # The copy is upstream install.sh's behaviour, kept because its simplicity

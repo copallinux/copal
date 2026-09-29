@@ -2574,7 +2574,7 @@ if [ -n "$ANTIQ_SRC" ]; then
     info "  stage 17 uses this and does not need the network for the theme"
 else
     warn "no linux-antiquity checkout under vendor/ -- stage 17 will download the theme"
-    warn "Unpack https://github.com/diinki/linux-antiquity/archive/refs/heads/main.zip into vendor/,"
+    warn "Unpack https://github.com/diinki/linux-antiquity/archive/c0e3eac816e36124610fd557be4d2f87dd1f558a.zip into vendor/,"
     warn "or add the subtree (docs/THEME.md, 'Forking and vendoring'), then --refresh."
 fi
 
@@ -6124,15 +6124,28 @@ MSG
     # script finds something it can use, that is the route to take and no
     # Flatpak runtime is needed.
     #
-    # Piped to sh, which is what the instruction says, and guarded by the
-    # `command -v brave` check afterwards rather than by the script's exit
-    # status: a shell script that prints "could not find a supported package
-    # manager" and exits 0 is not a Brave installation, and the only honest
-    # test of whether a browser was installed is whether it is there.
+    # TO A FILE, AND THEN RUN -- the instruction says to pipe it to sh, and
+    # this does not. A pipe runs whatever part of the script had arrived
+    # when the connection dropped, as root, and leaves no record of what it
+    # was. A file is whole or it is not run, and the log says which script
+    # it was: Brave publishes no sum to hold it to, so its size and its
+    # sha256 are written down for whoever asks later.
+    #
+    # Guarded by the `command -v brave` check afterwards rather than by the
+    # script's exit status: a shell script that prints "could not find a
+    # supported package manager" and exits 0 is not a Brave installation,
+    # and the only honest test of whether a browser was installed is
+    # whether it is there.
     if command -v curl >/dev/null 2>&1 || try_add curl; then
         say "Trying Brave's own installer"
-        note "curl -fsS https://dl.brave.com/install.sh | sh"
-        curl -fsS https://dl.brave.com/install.sh | sh || true
+        _brave_sh=$(mktemp /tmp/brave-install.XXXXXX) || return 0
+        if curl -fsS -o "$_brave_sh" https://dl.brave.com/install.sh; then
+            note "https://dl.brave.com/install.sh: $(wc -c < "$_brave_sh" | tr -d ' ') bytes, sha256 $(sha256sum "$_brave_sh" | cut -d' ' -f1)"
+            sh "$_brave_sh" || true
+        else
+            note "it could not be fetched"
+        fi
+        rm -f "$_brave_sh"
         if command -v brave-browser >/dev/null 2>&1 || command -v brave >/dev/null 2>&1; then
             note "installed by Brave's installer: $(command -v brave-browser 2>/dev/null || command -v brave)"
             # THE CATALOGUE ASKS FOR 'brave' AND THIS PATH MAY LEAVE
@@ -13013,6 +13026,77 @@ P3MNT=/media/snapshots
 # re-encoding them, so a quote checked against the file is checked against
 # what was served. Neither that nor the notes decides whether a copy may be
 # kept; the guide's "What the copy is" says what does and does not.
+# IS THIS THE FILE THAT WAS MEANT?   sha256_is <file> <sha256>
+#
+# Every download that is built or run as root is asked this before it is
+# unpacked. There are two kinds of sum, and they prove different things. One
+# written in this script proves the file is the one somebody here read. One
+# fetched from beside the file proves only that it arrived whole: whoever
+# can change the file can change the sum.
+sha256_is() {
+    _got=$(sha256sum "$1" 2>/dev/null | cut -d' ' -f1)
+    if [ -n "$_got" ] && [ "$_got" = "$2" ]; then
+        return 0
+    fi
+    warn "$(basename "$1") is not the file that was expected -- not using it"
+    note "expected sha256  $2"
+    note "got              ${_got:-nothing: it could not be read}"
+    return 1
+}
+
+# THE SUMS THIS SCRIPT KNOWS, by the address each file is fetched from. One
+# table, so that a version and its sum are changed in one place and read in
+# one place. Each is the sha256 of what that address gave on 29 September
+# 2026, twice over; none could be set beside a sum its project publishes,
+# since none of these projects publishes one for these files.
+pinned_sum() {  # <url>
+    case "$1" in
+        */pianobooster/PianoBooster/archive/6dafdcbdfc5d35d12cecb051c30632d0f5be5806.tar.gz)
+            echo e868b3cb09da73c0c94a529906c12a6a44e7b291c4992ea4a8ad05bc4a10c04f ;;
+        */d/minivmac/minivmac-36.04/minivmac-36.04.src.tgz)
+            echo 9b7343cec87723177a203e69ad3baf20f49b4e8f03619e366c4bf2705167dfa4 ;;
+        */vice-emu/files/releases/vice-3.9.tar.gz/download)
+            echo 40202b63455e26b87ecc63eb5a52322c6fa3f57cab12acf0c227cf9f4daec370 ;;
+        */analogdevicesinc/libad9361-iio/archive/refs/tags/v0.4.0.tar.gz)
+            echo f4976a1317a0b7cf84727d068be5a52c070539ca7301f0160b0677a429538d87 ;;
+        */analogdevicesinc/libm2k/archive/refs/tags/v0.9.1.tar.gz)
+            echo f9a78a8573cc2781d7787e89eebbf9e4efd88e978afdb7be78dbe6b4a00d10a6 ;;
+        */analogdevicesinc/iio-oscilloscope/archive/refs/tags/v0.18.1.tar.gz)
+            echo 557ad13448bea0c8655920ab73e3d935abad15f8dceed293393f7af3f8c6ec4a ;;
+        */tbeu/matio/releases/download/v1.6.0/matio-1.6.0.tar.gz)
+            echo 1481dc74e01d249e90f064333f969369fe3dd11d6cc6963e8635c581aa5d7711 ;;
+        */gtkdatabox-1.0.0.tar.gz)
+            echo 8bee70206494a422ecfec9a88d32d914c50bb7a0c0e8fedc4512f5154aa9d3e3 ;;
+        */kicad-templates/-/archive/10.0.6/kicad-templates-10.0.6.tar.gz)
+            echo 18b4e3f2ed781383179c1b15a82c94e5176dc825e1c646f84e89ed50e835063b ;;
+    esac
+}
+
+# A source that was downloaded, before it is unpacked and built as root.
+# One this script knows a sum for is held to it. One it does not -- a version
+# named on the command line, a release newer than this script -- is built,
+# and said to be unverified: nobody here has read it.
+#
+# A copy from the card is not asked. The card is where this script came from
+# too, and whoever wrote one wrote the other.
+source_is() {  # <file> <url it was fetched from>
+    _want=$(pinned_sum "$2")
+    if [ -z "$_want" ]; then
+        warn "$(basename "$1"): this script knows no sum for it -- building it unverified"
+        note "from $2"
+        return 0
+    fi
+    sha256_is "$1" "$_want"
+}
+
+# The sum the release gives for its own zipapp. yt-dlp is installed at its
+# latest, so there is no sum to write here ahead of time; the release's list
+# is what there is, and is the second kind above.
+ytdlp_release_sum() {  # <url of the release's files>
+    curl -fsSL --retry 3 --max-time 60 "$1/SHA2-256SUMS" 2>/dev/null \
+        | awk '$2 == "yt-dlp" { print $1; exit }'
+}
+
 install_ytdlp() {
     say "yt-dlp"
     require_network || return 1
@@ -13040,20 +13124,29 @@ MSG
         n|N) note "Skipped."; return 0 ;;
         *)
             try_add python3 || { warn "python3 is required by the zipapp -- not installing"; return 1; }
-            _url=https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
+            _rel=https://github.com/yt-dlp/yt-dlp/releases/latest/download
+            _url=$_rel/yt-dlp
             say "Fetching $_url"
             mkdir -p /usr/local/bin
             # To a temporary name, then renamed: a half-downloaded yt-dlp left
             # in place would shadow nothing and fail confusingly. -L because
-            # the release URL redirects to the CDN.
-            if curl -fL --retry 3 -o /usr/local/bin/.yt-dlp.new "$_url"; then
+            # the release URL redirects to the CDN. And checked against the
+            # release's own sum before the rename, so that what replaces a
+            # working yt-dlp is at least the file the release holds.
+            _sum=$(ytdlp_release_sum "$_rel")
+            if [ -z "$_sum" ]; then
+                warn "could not read yt-dlp's checksums -- leaving yt-dlp as it is"
+                return 1
+            fi
+            if curl -fL --retry 3 -o /usr/local/bin/.yt-dlp.new "$_url" \
+               && sha256_is /usr/local/bin/.yt-dlp.new "$_sum"; then
                 chmod 0755 /usr/local/bin/.yt-dlp.new
                 mv /usr/local/bin/.yt-dlp.new /usr/local/bin/yt-dlp
                 note "installed: $(/usr/local/bin/yt-dlp --version 2>/dev/null || echo 'installed, but it did not report a version')"
                 note "update it later with:  yt-dlp -U"
             else
                 rm -f /usr/local/bin/.yt-dlp.new
-                warn "download failed -- leaving yt-dlp uninstalled"
+                warn "download failed, or was not the file expected -- leaving yt-dlp as it is"
                 return 1
             fi ;;
     esac
@@ -15461,7 +15554,8 @@ print(sorted(tags, key=lambda s: [int(x) for x in s.split(".")])[-1] if tags els
             mkdir -p /usr/local/src
             _w=$(mktemp -d /usr/local/src/kicad-templates.XXXXXX)
             _url="https://gitlab.com/kicad/libraries/kicad-templates/-/archive/$_tver/kicad-templates-$_tver.tar.gz"
-            if curl -fsSL --retry 3 --max-time 300 -o "$_w/t.tgz" "$_url" && tar -xzf "$_w/t.tgz" -C "$_w"; then
+            if curl -fsSL --retry 3 --max-time 300 -o "$_w/t.tgz" "$_url" \
+               && source_is "$_w/t.tgz" "$_url" && tar -xzf "$_w/t.tgz" -C "$_w"; then
                 cp -r "$_w/kicad-templates-$_tver/Projects/." "$_tdir/"
                 find "$_w/kicad-templates-$_tver/Worksheets" -name '*.kicad_wks' -exec cp {} "$_tdir/" \;
                 note "kicad-templates $_tver: $(find "$_tdir" -mindepth 1 -maxdepth 1 -type d | wc -l) project templates, $(find "$_tdir" -maxdepth 1 -name '*.kicad_wks' | wc -l) drawing sheets"
@@ -16207,6 +16301,9 @@ iio_build() {
         wget -q -O "$_tgz" "$_u" \
             || { rm -f "$_tgz"; warn "$_n: could not download $_u"; return 1; }
     fi
+    # Whether it came just now or on an earlier run: one that was cut short
+    # is a file too.
+    source_is "$_tgz" "$_u" || { rm -f "$_tgz"; return 1; }
     rm -rf "$SRCDIR/$_n"; mkdir -p "$SRCDIR/$_n"
     tar xzf "$_tgz" -C "$SRCDIR/$_n" --strip-components=1 \
         || { warn "$_n: the archive did not unpack -- delete $_tgz and try again"
@@ -17133,9 +17230,11 @@ MSG
     if [ -z "$_pb_tgz" ]; then
         _pb_url="https://github.com/pianobooster/PianoBooster/archive/$PIANOBOOSTER_REF.tar.gz"
         say "Downloading PianoBooster $PIANOBOOSTER_REF"
-        if wget -q -O "$SRCDIR/pianobooster-src.tar.gz" "$_pb_url"; then
+        if wget -q -O "$SRCDIR/pianobooster-src.tar.gz" "$_pb_url" \
+           && source_is "$SRCDIR/pianobooster-src.tar.gz" "$_pb_url"; then
             _pb_tgz="$SRCDIR/pianobooster-src.tar.gz"
         else
+            rm -f "$SRCDIR/pianobooster-src.tar.gz"
             warn "could not download $_pb_url"
             note "Stage it on the card instead and re-run this bundle:"
             note "  on the Mac -- ./copal-prep.sh --refresh"
@@ -27077,6 +27176,7 @@ BAS
         cd "$SRCDIR" || { warn "cannot enter $SRCDIR"; return 0; }
         _tgz="minivmac-$MINIVMAC_VER.src.tgz"
         _url="https://www.gryphel.com/d/minivmac/minivmac-$MINIVMAC_VER/$_tgz"
+        _mvm_card=0
 
         # Three sources, in order of how much can go wrong with them: one
         # already unpacked here from a previous run, one copal-prep.sh staged
@@ -27096,6 +27196,7 @@ BAS
                 if cp "$_staged" "$SRCDIR/"; then
                     _tgz=$(basename "$_staged")
                     _v=${_tgz#minivmac-}; MINIVMAC_VER=${_v%.src.tgz}
+                    _mvm_card=1
                     note "using $_tgz from the card -- no download needed"
                 else
                     warn "could not copy $_staged -- falling back to the download"
@@ -27110,6 +27211,9 @@ BAS
             note "and re-run with:  MINIVMAC_VER=<version> sh /boot/copal-init.sh"
             note "Or stage it on the card and skip the network entirely:"
             note "  on the Mac -- ./fetch-minivmac.sh && ./copal-prep.sh --refresh"
+        elif [ "$_mvm_card" = 0 ] && ! source_is "$_tgz" "$_url"; then
+            rm -f "$_tgz"
+            warn "Mini vMac is not built"
         else
             rm -rf "$SRCDIR/minivmac-build"; mkdir -p "$SRCDIR/minivmac-build"
             tar xzf "$_tgz" -C "$SRCDIR/minivmac-build"
@@ -27209,6 +27313,9 @@ MSG
                     warn "could not download VICE $VICE_VER"
                     note "Check https://vice-emu.sourceforge.io/ for the current version and"
                     note "re-run with:  VICE_VER=<version> sh /boot/copal-init.sh"
+                elif ! source_is "$_vtgz" "$_vurl"; then
+                    rm -f "$_vtgz"
+                    warn "VICE is not built"
                 else
                     rm -rf "vice-$VICE_VER"
                     tar xzf "$_vtgz"
@@ -28543,6 +28650,12 @@ stage_hyprland() {
     for _c in "$BOOT/antiquity/linux-antiquity.tar.gz" /media/*/antiquity/linux-antiquity.tar.gz; do
         [ -f "$_c" ] && { _theme_tgz="$_c"; break; }
     done
+    # THE COMMIT, NOT THE BRANCH. A branch is whatever it was last pushed to be,
+    # and this archive is unpacked by root. c0e3eac is the theme as it was
+    # forked (docs/THEME.md, IX): its configs/ are the card's, byte for byte.
+    # The sum is of GitHub's archive of that commit.
+    _theme_at=c0e3eac816e36124610fd557be4d2f87dd1f558a
+    _theme_sum=52594bd0c8449530a9011ae28c2206e2b4dc0d9a513acc03015f4547a5a11aed
     _tdir="/tmp/antiquity.$$"
     rm -rf "$_tdir"; mkdir -p "$_tdir"
     if [ -n "$_theme_tgz" ]; then
@@ -28550,9 +28663,10 @@ stage_hyprland() {
         note "theme from the card: $_theme_tgz"
     else
         note "no staged theme on the boot partition -- fetching from GitHub"
-        if wget -q -O "$_tdir/main.tar.gz" \
-                "https://github.com/diinki/linux-antiquity/archive/refs/heads/main.tar.gz"; then
-            tar -xzf "$_tdir/main.tar.gz" -C "$_tdir" && rm -f "$_tdir/main.tar.gz"
+        if wget -q -O "$_tdir/theme.tar.gz" \
+                "https://github.com/diinki/linux-antiquity/archive/$_theme_at.tar.gz" \
+           && sha256_is "$_tdir/theme.tar.gz" "$_theme_sum"; then
+            tar -xzf "$_tdir/theme.tar.gz" -C "$_tdir" && rm -f "$_tdir/theme.tar.gz"
         else
             warn "could not fetch the theme -- no card copy, no network copy. Stopping here."
             rm -rf "$_tdir"
@@ -28560,8 +28674,8 @@ stage_hyprland() {
         fi
     fi
     # The staged tarball unpacks to configs/; the GitHub one to
-    # linux-antiquity-main/configs. Point at whichever appeared.
-    [ -d "$_tdir/configs" ] || _tdir="$_tdir/linux-antiquity-main"
+    # linux-antiquity-COMMIT/configs. Point at whichever appeared.
+    [ -d "$_tdir/configs" ] || _tdir="$_tdir/linux-antiquity-$_theme_at"
     [ -d "$_tdir/configs" ] || { warn "no configs/ in the theme archive -- corrupt download?"; rm -rf "/tmp/antiquity.$$"; return 1; }
 
     # The copy is upstream install.sh's behaviour, kept because its simplicity
