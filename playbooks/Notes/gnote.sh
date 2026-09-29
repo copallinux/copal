@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gnote
 # source:   apk
 # origin:   catalogue

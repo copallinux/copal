@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: FreeCAD
 # source:   apk
 # origin:   catalogue

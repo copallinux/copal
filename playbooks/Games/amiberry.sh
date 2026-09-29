@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: amiberry
 # source:   github BlitterStudio/amiberry
 # build:    build-base cmake samurai pkgconf sdl3-dev sdl3_image-dev@testing flac-dev mpg123-dev

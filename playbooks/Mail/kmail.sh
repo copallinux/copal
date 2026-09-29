@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: kmail
 # source:   apk
 # origin:   catalogue

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: birdshot
 # source:   clone https://github.com/vonglurt/birdshot.git
 # origin:   code

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: openrct2
 # source:   apk
 #

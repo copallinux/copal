@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: tilda
 # source:   apk
 # origin:   catalogue

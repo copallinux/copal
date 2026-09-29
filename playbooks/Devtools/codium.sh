@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: codium
 # source:   apk
 # origin:   catalogue

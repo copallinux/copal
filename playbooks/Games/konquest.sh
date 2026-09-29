@@ -1,9 +1,9 @@
+# shellcheck shell=sh
 # playbook: konquest
 # source:   github KDE/konquest
 # build:    build-base cmake samurai extra-cmake-modules gettext-dev qt6-qtbase-dev qt6-qtsvg-dev
-#           qt6-qtscxml-dev kcolorscheme-dev kconfig-dev kcoreaddons-dev kcrash-dev
-#           kdbusaddons-dev kdoctools-dev kguiaddons-dev ki18n-dev kwidgetsaddons-dev kxmlgui-dev
-#           libkdegames-dev
+#           qt6-qtscxml-dev kcolorscheme-dev kconfig-dev kcoreaddons-dev kcrash-dev kdbusaddons-dev
+#           kdoctools-dev kguiaddons-dev ki18n-dev kwidgetsaddons-dev kxmlgui-dev libkdegames-dev
 # runs:     libkdegames
 #
 # program:  konquest

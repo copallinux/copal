@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: cool-retro-term
 # source:   apk
 # origin:   catalogue

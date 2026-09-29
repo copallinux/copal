@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: solvespace
 # source:   apk
 # origin:   catalogue

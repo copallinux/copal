@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: qterminal
 # source:   apk
 # origin:   catalogue

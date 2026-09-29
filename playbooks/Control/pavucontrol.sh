@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: pavucontrol
 # source:   apk
 # origin:   catalogue

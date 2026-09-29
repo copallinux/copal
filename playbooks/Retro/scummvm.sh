@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: scummvm
 # source:   apk
 # origin:   catalogue

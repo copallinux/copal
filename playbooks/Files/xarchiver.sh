@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: xarchiver
 # source:   apk
 # origin:   catalogue

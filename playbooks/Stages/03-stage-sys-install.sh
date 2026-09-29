@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-sys-install
 # source:   copal
 # origin:   stage
@@ -258,7 +259,7 @@ FSTAB
     rm -f /mnt/etc/apk/cache
     mkdir -p /mnt/var/cache/apk /mnt/etc/apk
     ln -s /var/cache/apk /mnt/etc/apk/cache
-    sed -i "\|[[:space:]]$P2MNT[[:space:]]|d" /mnt/etc/fstab
+    sed -i "\|[[:space:]]${P2MNT}[[:space:]]|d" /mnt/etc/fstab
     note "cache -> /var/cache/apk (on the new root)"
 
     echo

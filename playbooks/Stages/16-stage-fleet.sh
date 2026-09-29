@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-fleet
 # source:   copal
 # origin:   stage

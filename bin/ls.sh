@@ -11,7 +11,7 @@
 #  shortcut that changes its summary says so here by itself, and a new one
 #  appears without anybody editing a list.
 set -eu
-HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 
 B='\033[1m'; D='\033[2m'; C='\033[36m'; Z='\033[0m'
 [ -t 1 ] || { B=''; D=''; C=''; Z=''; }

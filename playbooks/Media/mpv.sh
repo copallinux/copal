@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: mpv
 # source:   apk
 # origin:   catalogue

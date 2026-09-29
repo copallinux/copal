@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: liferea
 # source:   apk
 # origin:   catalogue

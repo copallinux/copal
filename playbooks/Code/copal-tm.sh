@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: copal-tm
 # source:   clone https://github.com/vonglurt/copal-tm.git
 # origin:   code

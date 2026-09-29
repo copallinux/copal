@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: pingus
 # source:   apk
 # origin:   catalogue

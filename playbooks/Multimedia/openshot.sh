@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: openshot
 # source:   github OpenShot/libopenshot-audio
 # build:    build-base cmake samurai swig python3-dev qt6-qtbase-dev qt6-qtsvg-dev ffmpeg-dev

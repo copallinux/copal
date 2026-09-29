@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: abiword
 # source:   apk
 # origin:   catalogue

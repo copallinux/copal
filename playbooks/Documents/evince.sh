@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: evince
 # source:   apk
 # origin:   catalogue

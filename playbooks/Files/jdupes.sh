@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: jdupes
 # source:   apk
 #

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: kubrick
 # source:   github KDE/kubrick
 # build:    build-base cmake samurai extra-cmake-modules gettext-dev qt6-qtbase-dev qt6-qtsvg-dev

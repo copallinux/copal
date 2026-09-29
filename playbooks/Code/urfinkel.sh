@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: urfinkel
 # source:   clone https://github.com/vonglurt/urfinkel.git
 # origin:   code

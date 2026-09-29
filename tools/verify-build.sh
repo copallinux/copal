@@ -31,7 +31,7 @@
 #   tools/verify-build.sh --quiet              # verdict only, for scripts
 set -uo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 IMAGE="build/copal-vm.img"
 DO_BOOT=0

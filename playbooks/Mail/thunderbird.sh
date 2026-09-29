@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: thunderbird
 # source:   apk
 # origin:   catalogue
@@ -23,6 +24,7 @@ thunderbird_post() {
     _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
     _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
     _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default\nIsRelative=1\nPath=copal.default\nDefault=1\n' > "$_t"
     seed_home_if_absent .thunderbird/profiles.ini "$_t"
     cat > "$_t" <<TB

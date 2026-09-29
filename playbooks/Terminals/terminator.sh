@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: terminator
 # source:   apk
 # origin:   catalogue

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: nemo
 # source:   apk
 #

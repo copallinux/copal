@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-gui
 # source:   copal
 # origin:   stage
@@ -4852,6 +4853,7 @@ XRES
     # the medium level still has the switch. tokyo-night is this desktop's
     # (i3, i3status and .Xresources already wear it); stage 17 applies
     # antiquity. Run last, after every file it edits has been written.
+    # shellcheck disable=SC2154  # set by the installer, before any stage
     [ -d "$copal_theme_dir/antiquity" ] || copal_write_themes
     copal_apply_theme tokyo-night
     note "switch the whole look at any time:  copal-theme --toggle  (Super+Shift+N)"

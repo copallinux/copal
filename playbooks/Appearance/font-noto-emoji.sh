@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: font-noto-emoji
 # source:   apk
 #

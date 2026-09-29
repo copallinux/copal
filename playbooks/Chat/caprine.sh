@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: caprine
 # source:   apk
 #

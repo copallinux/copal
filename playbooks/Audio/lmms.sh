@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: lmms
 # source:   apk
 # origin:   catalogue

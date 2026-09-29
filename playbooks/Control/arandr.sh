@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: arandr
 # source:   apk
 # origin:   catalogue

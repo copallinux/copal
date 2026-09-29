@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: mscore
 # source:   apk
 # origin:   catalogue

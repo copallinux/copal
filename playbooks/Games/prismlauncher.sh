@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: prismlauncher
 # source:   apk
 #

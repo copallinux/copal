@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gitk
 # source:   apk
 # origin:   catalogue

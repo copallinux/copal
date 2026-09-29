@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: koreader
 # source:   apk
 # origin:   catalogue

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: simple-scan
 # source:   apk
 # origin:   catalogue

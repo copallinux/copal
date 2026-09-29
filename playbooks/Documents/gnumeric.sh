@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gnumeric
 # source:   apk
 # origin:   catalogue

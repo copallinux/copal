@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: shotwell
 # source:   apk
 #

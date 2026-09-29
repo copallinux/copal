@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: hydrogen
 # source:   apk
 # origin:   catalogue

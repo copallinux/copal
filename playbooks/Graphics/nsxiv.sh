@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: nsxiv
 # source:   apk
 # origin:   catalogue

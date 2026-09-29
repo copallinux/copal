@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: btop
 # source:   apk
 #

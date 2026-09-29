@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: rpi-imager
 # source:   apk
 #

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: x64sc
 # source:   apk
 # origin:   catalogue

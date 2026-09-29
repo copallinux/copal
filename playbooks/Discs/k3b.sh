@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: k3b
 # source:   apk
 #

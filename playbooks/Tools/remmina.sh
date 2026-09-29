@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: remmina
 # source:   apk
 # origin:   catalogue

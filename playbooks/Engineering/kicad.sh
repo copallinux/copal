@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: kicad
 # source:   apk
 # origin:   catalogue

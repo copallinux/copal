@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: arduino-cli
 # source:   apk
 #

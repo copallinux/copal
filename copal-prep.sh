@@ -14672,6 +14672,7 @@ claws_mail_post() {
     _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
     _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
     _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     cat > "$_t" <<CLAWS
 [Account: 1]
 account_name=$PI_MAIL_ADDRESS
@@ -14729,6 +14730,7 @@ POL
 # already written a katerc (stage 7 does, with the LSP client); then the
 # line is added there instead.
 kate_post() {
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[General]\nShow welcome view for new window=false\n' > "$_t"
     seed_home_if_absent .config/katerc "$_t"
 }
@@ -14738,6 +14740,7 @@ kate_post() {
 # vanishing into the tray: on i3 the bar has no tray, so a window closed
 # "to the tray" is simply gone until the process is killed.
 qbittorrent_post() {
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[LegalNotice]\nAccepted=true\n\n[Preferences]\nGeneral\\CloseToTray=false\nGeneral\\MinimizeToTray=false\nGeneral\\SystrayEnabled=false\n' > "$_t"
     seed_home_if_absent .config/qBittorrent/qBittorrent.conf "$_t"
 }
@@ -14754,6 +14757,7 @@ thunderbird_post() {
     _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
     _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
     _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default\nIsRelative=1\nPath=copal.default\nDefault=1\n' > "$_t"
     seed_home_if_absent .thunderbird/profiles.ini "$_t"
     cat > "$_t" <<TB
@@ -14793,6 +14797,7 @@ TB
 # Zim: without a notebook the first window is "Add Notebook". One in
 # ~/Notebooks/Notes, registered as the default, and it opens on a page.
 zim_post() {
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[NotebookList]\nDefault=~/Notebooks/Notes\n\n[Notebook 1]\nuri=~/Notebooks/Notes\nname=Notes\n' > "$_t"
     seed_home_if_absent .config/zim/notebooks.list "$_t"
     printf '[Notebook]\nversion=0.4\nname=Notes\nhome=Home\n' > "$_t"
@@ -20848,7 +20853,7 @@ MSG
     mkdir -p "$P2MNT"
     UUID=$(uuid_of "$P2")
     [ -n "$UUID" ] || die "could not read the UUID of $P2"
-    sed -i "\|[[:space:]]$P2MNT[[:space:]]|d" /etc/fstab
+    sed -i "\|[[:space:]]${P2MNT}[[:space:]]|d" /etc/fstab
     printf 'UUID=%s\t%s\text4\tdefaults,noatime\t0 2\n' "$UUID" "$P2MNT" >> /etc/fstab
     is_mounted "$P2MNT" || mount "$P2MNT"
     note "mounted: $(df -h "$P2MNT" | awk 'NR==2 {print $1, $2, "on", $6}')"
@@ -21136,7 +21141,7 @@ FSTAB
     rm -f /mnt/etc/apk/cache
     mkdir -p /mnt/var/cache/apk /mnt/etc/apk
     ln -s /var/cache/apk /mnt/etc/apk/cache
-    sed -i "\|[[:space:]]$P2MNT[[:space:]]|d" /mnt/etc/fstab
+    sed -i "\|[[:space:]]${P2MNT}[[:space:]]|d" /mnt/etc/fstab
     note "cache -> /var/cache/apk (on the new root)"
 
     echo
@@ -26116,6 +26121,7 @@ XRES
     # the medium level still has the switch. tokyo-night is this desktop's
     # (i3, i3status and .Xresources already wear it); stage 17 applies
     # antiquity. Run last, after every file it edits has been written.
+    # shellcheck disable=SC2154  # set by the installer, before any stage
     [ -d "$copal_theme_dir/antiquity" ] || copal_write_themes
     copal_apply_theme tokyo-night
     note "switch the whole look at any time:  copal-theme --toggle  (Super+Shift+N)"
@@ -26314,6 +26320,7 @@ MSG
             ssh_write_policy yes || warn "policy not applied"
         fi
     elif ssh_key_usable; then
+        # shellcheck disable=SC2034  # read by ask(), in the installer
         AUTO_DEFAULT=y
         if confirm_yes "Require the key and disable password login over SSH?"; then
             ssh_write_policy no || warn "policy not applied"
@@ -27018,7 +27025,7 @@ BAS
                 # same applies to armhf.
                 add_optional git autoconf automake m4 gcc g++ make \
                              sdl2-dev libx11-dev gmp-dev mpfr-dev
-                cd "$SRCDIR"
+                cd "$SRCDIR" || { warn "cannot enter $SRCDIR"; return 0; }
                 if [ ! -d macemu ]; then
                     git clone --depth 1 https://github.com/kanjitalk755/macemu \
                       || { warn "clone failed"; return 0; }
@@ -27052,7 +27059,7 @@ BAS
     # ---------------------------------------------------------- Mini vMac --
     if [ "${_do_minivmac:-0}" = 1 ]; then
         add_optional libx11-dev libxext-dev
-        cd "$SRCDIR"
+        cd "$SRCDIR" || { warn "cannot enter $SRCDIR"; return 0; }
         _tgz="minivmac-$MINIVMAC_VER.src.tgz"
         _url="https://www.gryphel.com/d/minivmac/minivmac-$MINIVMAC_VER/$_tgz"
 
@@ -27178,7 +27185,7 @@ MSG
                 add_optional autoconf automake libtool bison flex pkgconf \
                              sdl2-dev sdl2_image-dev libpng-dev giflib-dev zlib-dev \
                              alsa-lib-dev texinfo dos2unix xa
-                cd "$SRCDIR"
+                cd "$SRCDIR" || { warn "cannot enter $SRCDIR"; return 0; }
                 _vtgz="vice-$VICE_VER.tar.gz"
                 _vurl="https://sourceforge.net/projects/vice-emu/files/releases/$_vtgz/download"
                 if [ ! -f "$_vtgz" ] && ! wget -q -O "$_vtgz" "$_vurl"; then
@@ -27557,7 +27564,7 @@ SHRINK
         mkdir -p "$P3MNT"
         if ! is_mounted "$P3MNT"; then
             _u=$(uuid_of "$P3")
-            sed -i "\|[[:space:]]$P3MNT[[:space:]]|d" /etc/fstab
+            sed -i "\|[[:space:]]${P3MNT}[[:space:]]|d" /etc/fstab
             printf 'UUID=%s\t%s\text4\tdefaults,noatime\t0 2\n' "$_u" "$P3MNT" >> /etc/fstab
             mount "$P3MNT" && note "mounted $P3 at $P3MNT"
         fi
@@ -27886,7 +27893,7 @@ MSG
     ask "Choose [m/a/s/l/q]:"
     case "$REPLY" in
         l|L)
-            catalogue_available | while IFS='|' read -r sec label pkgs bin mode; do
+            catalogue_available | while IFS='|' read -r sec label pkgs bin _; do
                 if command -v "$bin" >/dev/null 2>&1; then _m="installed"
                 else _m="-"; fi
                 printf '    %-11s %-34s %-10s %s\n' "$sec" "$label" "$_m" "$pkgs"
@@ -28061,6 +28068,7 @@ MSG
     note "About 215 MB. Iosevka and the large Nerd cuts are NOT in this --"
     note "they are 1.9 GB between them; 'copal-fonts install coding-extra' asks."
     note "'copal-fonts' afterwards for those and for the document fonts."
+    # shellcheck disable=SC2034  # read by ask(), in the installer
     if [ "${AUTO:-0}" = 1 ]; then AUTO_DEFAULT=y; fi
     if confirm_yes "Install them?"; then
         require_network && /usr/local/bin/copal-fonts install coding console ibmpc \
@@ -28386,6 +28394,7 @@ stage_hyprland() {
         aarch64|x86_64) : ;;
         *)  warn "this is a $(apk --print-arch 2>/dev/null || uname -m) board -- Alpine packages no Hyprland for it."
             note "Stage 4 (X.Org and i3) is the desktop for this hardware."
+            # shellcheck disable=SC2034  # read by ask(), in the installer
             if [ "${AUTO:-0}" = 1 ]; then AUTO_DEFAULT=n; fi
             confirm "Try anyway (it will almost certainly fail)?" || return 0 ;;
     esac
@@ -28596,6 +28605,7 @@ stage_hyprland() {
     # stage 17 can be run on a machine that never ran stage 7 -- and if it was
     # run, an editor that is open right now repaints within three seconds
     # without being restarted. See dev_write_nvim_ui() and ~/.config/nvim/theme.lua.
+    # shellcheck disable=SC2154  # set by the installer, before any stage
     [ -d "$copal_theme_dir/antiquity" ] || copal_write_themes
     # The theme itself is applied at the very end of this stage (see "Stage
     # 16 complete"), after the bar's stylesheet, mako's config, hyprland.conf
@@ -29859,9 +29869,12 @@ GTKINI
     # machine with dconf; settings.ini is the fallback for everything else.
     # Writing both is belt and braces, and neither is fatal if absent.
     if command -v gsettings >/dev/null 2>&1; then
-        for _k in "gtk-theme $_gtktheme" "icon-theme Adwaita" "cursor-theme Adwaita" "font-name 'Recia 11'"; do
-            gsettings set org.gnome.desktop.interface ${_k%% *} "${_k#* }" 2>/dev/null || true
-        done
+        _gs() { gsettings set org.gnome.desktop.interface "$1" "$2" 2>/dev/null || true; }
+        _gs gtk-theme "$_gtktheme"
+        _gs icon-theme Adwaita
+        _gs cursor-theme Adwaita
+        # The quotes are gsettings', not the shell's: a string, as it writes one.
+        _gs font-name "'Recia 11'"
         gsettings set org.gnome.desktop.interface color-scheme prefer-dark 2>/dev/null || true
     fi
 
@@ -31270,7 +31283,7 @@ ffconverter_install() {
     sed -i "s|presets_lookup_dirs = \\[|presets_lookup_dirs = [\"$PREFIX/share/\", |" "$_s/ffconverter/config.py"
     pip3 install --no-deps --no-build-isolation --no-compile --break-system-packages \
          --target "$DEST$_t" "$_s"
-    rm -rf "$DEST$_t/bin" "$DEST$_t/share"
+    rm -rf "$DEST${_t:?}/bin" "$DEST${_t:?}/share"
     mkdir -p "$DEST$PREFIX/share/ffconverter" "$DEST$PREFIX/share/icons/hicolor/128x128/apps"
     cp "$_s/share/presets.xml" "$DEST$PREFIX/share/ffconverter/"
     cp "$_s/share/ffconverter.png" "$DEST$PREFIX/share/icons/hicolor/128x128/apps/"
@@ -32129,6 +32142,7 @@ claws_mail_post() {
     _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
     _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
     _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     cat > "$_t" <<CLAWS
 [Account: 1]
 account_name=$PI_MAIL_ADDRESS
@@ -32184,6 +32198,7 @@ POL
 # already written a katerc (stage 7 does, with the LSP client); then the
 # line is added there instead.
 kate_post() {
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[General]\nShow welcome view for new window=false\n' > "$_t"
     seed_home_if_absent .config/katerc "$_t"
 }
@@ -32192,6 +32207,7 @@ kate_post() {
 # vanishing into the tray: on i3 the bar has no tray, so a window closed
 # "to the tray" is simply gone until the process is killed.
 qbittorrent_post() {
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[LegalNotice]\nAccepted=true\n\n[Preferences]\nGeneral\\CloseToTray=false\nGeneral\\MinimizeToTray=false\nGeneral\\SystrayEnabled=false\n' > "$_t"
     seed_home_if_absent .config/qBittorrent/qBittorrent.conf "$_t"
 }
@@ -32207,6 +32223,7 @@ thunderbird_post() {
     _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
     _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
     _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default\nIsRelative=1\nPath=copal.default\nDefault=1\n' > "$_t"
     seed_home_if_absent .thunderbird/profiles.ini "$_t"
     cat > "$_t" <<TB
@@ -32245,6 +32262,7 @@ TB
 # Zim: without a notebook the first window is "Add Notebook". One in
 # ~/Notebooks/Notes, registered as the default, and it opens on a page.
 zim_post() {
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[NotebookList]\nDefault=~/Notebooks/Notes\n\n[Notebook 1]\nuri=~/Notebooks/Notes\nname=Notes\n' > "$_t"
     seed_home_if_absent .config/zim/notebooks.list "$_t"
     printf '[Notebook]\nversion=0.4\nname=Notes\nhome=Home\n' > "$_t"
@@ -33673,6 +33691,7 @@ COPALAPPS
 MSG
     note "Starter set: $STORE_STARTER"
     note "(OpenShot is compiled -- 150 MB of source, a few minutes on four cores)"
+    # shellcheck disable=SC2034  # read by ask(), in the installer
     [ "${AUTO:-0}" = 1 ] && AUTO_DEFAULT=y
     if confirm_yes "Install the starter set now?"; then
         require_network || { warn "no network -- the store can install them later"; return 0; }

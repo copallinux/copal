@@ -16,5 +16,5 @@
 #  came before. Build fresh whenever the result is meant to mean something.
 #
 #      bin/fresh.sh MODEL=vmx86
-cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
+cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 exec make fresh "$@"

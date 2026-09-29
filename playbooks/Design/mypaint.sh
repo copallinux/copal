@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: mypaint
 # source:   apk
 # origin:   catalogue

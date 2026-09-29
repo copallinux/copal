@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: xfce4-taskmanager
 # source:   apk
 # origin:   catalogue

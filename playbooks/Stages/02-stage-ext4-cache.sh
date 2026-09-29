@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-ext4-cache
 # source:   copal
 # origin:   stage
@@ -49,7 +50,7 @@ MSG
     mkdir -p "$P2MNT"
     UUID=$(uuid_of "$P2")
     [ -n "$UUID" ] || die "could not read the UUID of $P2"
-    sed -i "\|[[:space:]]$P2MNT[[:space:]]|d" /etc/fstab
+    sed -i "\|[[:space:]]${P2MNT}[[:space:]]|d" /etc/fstab
     printf 'UUID=%s\t%s\text4\tdefaults,noatime\t0 2\n' "$UUID" "$P2MNT" >> /etc/fstab
     is_mounted "$P2MNT" || mount "$P2MNT"
     note "mounted: $(df -h "$P2MNT" | awk 'NR==2 {print $1, $2, "on", $6}')"

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: kretro
 # source:   github KDE/kretro
 # build:    build-base cmake samurai extra-cmake-modules gettext-dev qt6-qtbase-dev

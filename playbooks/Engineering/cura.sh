@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: cura
 # source:   apk
 # origin:   catalogue

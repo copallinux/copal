@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: dosbox
 # source:   apk
 # origin:   catalogue

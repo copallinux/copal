@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: monero-wallet-gui
 # source:   apk
 #

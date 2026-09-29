@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: powder
 # source:   apk
 #

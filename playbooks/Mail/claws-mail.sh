@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: claws-mail
 # source:   apk
 # origin:   catalogue
@@ -21,6 +22,7 @@ claws_mail_post() {
     _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
     _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
     _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     cat > "$_t" <<CLAWS
 [Account: 1]
 account_name=$PI_MAIL_ADDRESS

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: audacious
 # source:   apk
 # origin:   catalogue

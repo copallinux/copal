@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-snapshots
 # source:   copal
 # origin:   stage
@@ -97,7 +98,7 @@ SHRINK
         mkdir -p "$P3MNT"
         if ! is_mounted "$P3MNT"; then
             _u=$(uuid_of "$P3")
-            sed -i "\|[[:space:]]$P3MNT[[:space:]]|d" /etc/fstab
+            sed -i "\|[[:space:]]${P3MNT}[[:space:]]|d" /etc/fstab
             printf 'UUID=%s\t%s\text4\tdefaults,noatime\t0 2\n' "$_u" "$P3MNT" >> /etc/fstab
             mount "$P3MNT" && note "mounted $P3 at $P3MNT"
         fi

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: vsid
 # source:   apk
 # origin:   catalogue

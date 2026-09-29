@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: pacman
 # source:   github ebuc99/pacman
 # build:    build-base sdl2-dev sdl2_image-dev sdl2_ttf-dev sdl2_mixer-dev

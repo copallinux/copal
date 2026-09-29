@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: netsurf
 # source:   apk
 # origin:   catalogue

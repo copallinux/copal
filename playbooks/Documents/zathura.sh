@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: zathura
 # source:   apk
 # origin:   catalogue

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-sshkey
 # source:   copal
 # origin:   stage
@@ -87,6 +88,7 @@ MSG
             ssh_write_policy yes || warn "policy not applied"
         fi
     elif ssh_key_usable; then
+        # shellcheck disable=SC2034  # read by ask(), in the installer
         AUTO_DEFAULT=y
         if confirm_yes "Require the key and disable password login over SSH?"; then
             ssh_write_policy no || warn "policy not applied"

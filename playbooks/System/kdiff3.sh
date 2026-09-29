@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: kdiff3
 # source:   apk
 # origin:   catalogue

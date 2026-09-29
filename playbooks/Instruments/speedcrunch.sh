@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: speedcrunch
 # source:   apk
 # origin:   catalogue

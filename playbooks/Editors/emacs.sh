@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: emacs
 # source:   apk
 # origin:   catalogue

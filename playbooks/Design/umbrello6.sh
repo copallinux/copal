@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: umbrello6
 # source:   apk
 # origin:   catalogue

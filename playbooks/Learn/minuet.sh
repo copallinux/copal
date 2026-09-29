@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: minuet
 # source:   apk
 # origin:   catalogue

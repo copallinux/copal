@@ -30,7 +30,7 @@
 # photographs what comes up. Run it after an install, not instead of one.
 set -uo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 IMAGE="build/copal-vm.img"
 OUT="docs/media"

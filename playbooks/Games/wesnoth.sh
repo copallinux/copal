@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: wesnoth
 # source:   apk
 # origin:   catalogue

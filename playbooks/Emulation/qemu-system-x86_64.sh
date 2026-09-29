@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: qemu-system-x86_64
 # source:   apk
 #

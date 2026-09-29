@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: naev
 # source:   github naev/naev
 # build:    build-base meson samurai pkgconf sdl2-dev sdl2_image-dev enet-dev pcre2-dev

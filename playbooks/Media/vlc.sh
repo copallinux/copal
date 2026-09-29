@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: vlc
 # source:   apk
 # origin:   catalogue

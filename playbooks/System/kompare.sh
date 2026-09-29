@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: kompare
 # source:   apk
 # origin:   catalogue

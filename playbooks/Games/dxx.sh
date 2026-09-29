@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: dxx
 # source:   github dxx-rebirth/dxx-rebirth
 # build:    build-base scons pkgconf sdl2-dev sdl2_mixer-dev sdl2_image-dev physfs-dev libpng-dev

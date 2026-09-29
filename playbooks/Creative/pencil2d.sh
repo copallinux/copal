@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: pencil2d
 # source:   github pencil2d/pencil
 # build:    build-base qt6-qtbase-dev qt6-qtsvg-dev qt6-qtmultimedia-dev qt6-qttools-dev

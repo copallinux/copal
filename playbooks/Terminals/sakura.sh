@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: sakura
 # source:   apk
 # origin:   catalogue

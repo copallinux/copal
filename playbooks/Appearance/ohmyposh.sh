@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: ohmyposh
 # source:   github JanDeDobbeleer/oh-my-posh
 # build:    go

@@ -27,7 +27,7 @@
 #   tools/collect-logs.sh --out /tmp/logs
 set -uo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 IMAGE="build/copal-vm.img"
 OUT=""

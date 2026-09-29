@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: ddnet
 # source:   github ddnet/ddnet
 # build:    build-base cmake samurai python3 rust cargo sdl2-dev sqlite-dev curl-dev freetype-dev

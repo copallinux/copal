@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: PPSSPPQt
 # source:   apk
 #

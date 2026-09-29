@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: chocolate-doom
 # source:   apk
 # origin:   catalogue

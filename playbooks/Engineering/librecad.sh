@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: librecad
 # source:   github LibreCAD/LibreCAD
 # build:    build-base cmake samurai qt5-qtbase-dev qt5-qtsvg-dev qt5-qttools-dev boost-dev

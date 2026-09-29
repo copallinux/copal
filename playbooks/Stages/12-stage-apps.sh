@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-apps
 # source:   copal
 # origin:   stage
@@ -114,7 +115,7 @@ MSG
     ask "Choose [m/a/s/l/q]:"
     case "$REPLY" in
         l|L)
-            catalogue_available | while IFS='|' read -r sec label pkgs bin mode; do
+            catalogue_available | while IFS='|' read -r sec label pkgs bin _; do
                 if command -v "$bin" >/dev/null 2>&1; then _m="installed"
                 else _m="-"; fi
                 printf '    %-11s %-34s %-10s %s\n' "$sec" "$label" "$_m" "$pkgs"
@@ -289,6 +290,7 @@ MSG
     note "About 215 MB. Iosevka and the large Nerd cuts are NOT in this --"
     note "they are 1.9 GB between them; 'copal-fonts install coding-extra' asks."
     note "'copal-fonts' afterwards for those and for the document fonts."
+    # shellcheck disable=SC2034  # read by ask(), in the installer
     if [ "${AUTO:-0}" = 1 ]; then AUTO_DEFAULT=y; fi
     if confirm_yes "Install them?"; then
         require_network && /usr/local/bin/copal-fonts install coding console ibmpc \

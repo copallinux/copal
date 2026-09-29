@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: kodi
 # source:   apk
 #

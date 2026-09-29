@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: funkin
 # source:   github HTV04/funkin-rewritten
 # build:    zip

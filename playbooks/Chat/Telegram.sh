@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: Telegram
 # source:   apk
 #

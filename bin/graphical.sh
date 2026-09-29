@@ -9,5 +9,5 @@
 #  The same boot as bin/vm.sh, in a window rather than on this terminal.
 #
 #      bin/graphical.sh MEM=4096
-cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
+cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 exec make graphical "$@"

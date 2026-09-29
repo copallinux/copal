@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: inkscape
 # source:   apk
 # origin:   catalogue

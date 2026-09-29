@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gzdoom
 # source:   apk
 # origin:   catalogue

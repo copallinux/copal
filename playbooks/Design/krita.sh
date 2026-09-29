@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: krita
 # source:   apk
 # origin:   catalogue

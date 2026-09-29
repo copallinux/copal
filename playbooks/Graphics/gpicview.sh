@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gpicview
 # source:   apk
 # origin:   catalogue

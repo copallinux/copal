@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: xfburn
 # source:   apk
 # origin:   catalogue

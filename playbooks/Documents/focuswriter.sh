@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: focuswriter
 # source:   github gottcode/focuswriter
 # build:    build-base cmake samurai pkgconf qt6-qtbase-dev qt6-qttools-dev qt6-qtmultimedia-dev

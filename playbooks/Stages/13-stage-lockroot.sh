@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-lockroot
 # source:   copal
 # origin:   stage

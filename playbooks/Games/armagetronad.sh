@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: armagetronad
 # source:   apk
 #

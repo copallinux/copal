@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: ardour
 # source:   url community.ardour.org
 # build:    build-base python3 pkgconf gettext-dev itstool boost-dev glibmm2.66-dev libsndfile-dev

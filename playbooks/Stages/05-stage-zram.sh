@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-zram
 # source:   copal
 # origin:   stage

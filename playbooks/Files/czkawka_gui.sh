@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: czkawka_gui
 # source:   apk
 #

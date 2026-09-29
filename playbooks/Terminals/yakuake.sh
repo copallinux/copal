@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: yakuake
 # source:   apk
 # origin:   catalogue

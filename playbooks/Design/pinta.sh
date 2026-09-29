@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: pinta
 # source:   apk
 # origin:   catalogue

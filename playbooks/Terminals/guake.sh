@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: guake
 # source:   apk
 # origin:   catalogue

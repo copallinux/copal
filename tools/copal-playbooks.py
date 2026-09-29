@@ -18,6 +18,9 @@
 #   program, label, shelf, install, mode,       one block per program it puts on the
 #   gate, home, about                           machine; 'program' is its command
 #
+# Its first line names its shell, '# shellcheck shell=sh': a playbook is read
+# into the installer and never run by itself, so it has no '#!' to say so.
+#
 # and its body is shell, every name in it prefixed by the project's: NAME_pre,
 # NAME_install, NAME_post, NAME_remove, NAME_check, NAME_VER=, patch_* used by it.
 # Programs from apk have a header and no body.
@@ -55,7 +58,7 @@
 # NAME_post -- the system setup it needs (a udev rule, a service, a config) --
 # gathered into a marked region of copal-prep.sh, where the stage that sets it
 # up calls them; they use the installer's helpers, so the store does not.
-import os, re, sys
+import os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PB = os.path.join(ROOT, "playbooks")
@@ -65,6 +68,7 @@ PROJECT_KEYS = ("playbook", "source", "origin", "build", "runs", "needs",
                 "stage", "category", "step", "weight", "levels", "summary")
 LEVELS = ("server", "medium", "full")
 PROGRAM_KEYS = ("program", "label", "shelf", "install", "mode", "gate", "home", "about")
+SHELL = "# shellcheck shell=sh"
 GATE = re.compile(r"^(\*|64|!(v6|v7|x32|x64|a64))(,(64|!(v6|v7|x32|x64|a64)))*$")
 
 
@@ -78,6 +82,9 @@ def parse(path):
     head, i = [], 0
     while i < len(lines) and lines[i].startswith("#"):
         head.append(lines[i]); i += 1
+    shell = bool(head) and head[0] == SHELL
+    if shell:
+        head = head[1:]
     body = "\n".join(lines[i:]).strip("\n")
     proj, progs, cur, key = {}, [], None, None
     for l in head:
@@ -107,7 +114,7 @@ def parse(path):
             tgt[key] = (tgt[key] + sep + m.group(1).strip()).strip()
             continue
         raise Bad("%s: header line not understood: %r" % (path, l))
-    return {"path": path, "proj": proj, "progs": progs, "body": body}
+    return {"path": path, "proj": proj, "progs": progs, "body": body, "shell": shell}
 
 
 def load():
@@ -204,6 +211,21 @@ def validate(books):
             for n in shell_names(b["body"]):
                 if n != fname(name) + "_post":
                     errs.append("%s: a catalogue playbook defines only %s_post, not %s" % (rel, fname(name), n))
+        # A BODY IS WHOLE, OR IT IS NOT A PLAYBOOK. radbeeper's was cut inside a
+        # here-document when it was split out, and every check here passed:
+        # the names it defined were the right ones, as far as it went. Read
+        # into copal-prep.sh, the open here-document took in the four
+        # functions after it, and 'sh -n' passed there too, because it ended
+        # at the next line that happened to be its end word.
+        if not b["shell"]:
+            errs.append("%s: its first line is not '%s' -- run: tools/copal-playbooks.py fmt" % (rel, SHELL))
+        if b["body"]:
+            left = open_heredoc(b["body"])
+            if left:
+                errs.append("%s: the here-document <<%s never ends" % (rel, left))
+            said = parses(b["body"])
+            if said:
+                errs.append("%s: a shell cannot read it: %s" % (rel, said))
         # Every name the body defines is the project's own -- in the shell
         # itself, not in the files its heredocs write.
         for n in shell_names(b["body"]):
@@ -225,6 +247,27 @@ def validate(books):
 def fname(name):
     """A playbook's name as a shell function prefix: hyphens are not allowed there."""
     return name.replace("-", "_").replace(".", "_").replace("+", "_")
+
+
+def open_heredoc(body):
+    """The end word of a here-document the body opens and never closes, or None."""
+    end = None
+    for l in body.split("\n"):
+        if end is not None:
+            if l.strip() == end:
+                end = None
+            continue
+        h = re.search(r"<<-?\s*['\"]?([A-Za-z_][A-Za-z0-9_]*)['\"]?", l)
+        if h and "<<<" not in l:
+            end = h.group(1)
+    return end
+
+
+def parses(body):
+    """What 'sh -n' says of the body: nothing, if a shell can read it."""
+    r = subprocess.run(["sh", "-n"], input=body + "\n", capture_output=True, text=True)
+    said = (r.stderr.strip().split("\n") or [""])[-1]
+    return "" if r.returncode == 0 else (said or "sh -n exited %d" % r.returncode)
 
 
 def shell_names(body):
@@ -416,7 +459,7 @@ def wrap(key, value, width=100):
 
 
 def fmt(b):
-    out = []
+    out = [SHELL]
     for k in PROJECT_KEYS:
         if k in b["proj"] or k in ("playbook", "source"):
             out += wrap(k, b["proj"].get(k, ""))
@@ -495,7 +538,7 @@ def main():
         print("error: tools/copal-store differs from playbooks/ -- run: make sync-playbooks"); return 1
     if newprep != prep:
         print("error: copal-prep.sh's catalogue differs from playbooks/ -- run: make sync-playbooks"); return 1
-    print("  ok      playbooks: %d, %d programs, headers and names valid, tools/copal-store in step" % (
+    print("  ok      playbooks: %d, %d programs, headers and names valid, every body read by sh, tools/copal-store in step" % (
         len(books), sum(len(b["progs"]) for b in books)))
     if one:
         print("  note    playbooks: %d descriptions are not yet two sentences" % one)

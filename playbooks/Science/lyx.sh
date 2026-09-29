@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: lyx
 # source:   apk
 # origin:   catalogue

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gnome-disks
 # source:   apk
 # origin:   catalogue

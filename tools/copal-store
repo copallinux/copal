@@ -1218,7 +1218,7 @@ ffconverter_install() {
     sed -i "s|presets_lookup_dirs = \\[|presets_lookup_dirs = [\"$PREFIX/share/\", |" "$_s/ffconverter/config.py"
     pip3 install --no-deps --no-build-isolation --no-compile --break-system-packages \
          --target "$DEST$_t" "$_s"
-    rm -rf "$DEST$_t/bin" "$DEST$_t/share"
+    rm -rf "$DEST${_t:?}/bin" "$DEST${_t:?}/share"
     mkdir -p "$DEST$PREFIX/share/ffconverter" "$DEST$PREFIX/share/icons/hicolor/128x128/apps"
     cp "$_s/share/presets.xml" "$DEST$PREFIX/share/ffconverter/"
     cp "$_s/share/ffconverter.png" "$DEST$PREFIX/share/icons/hicolor/128x128/apps/"
@@ -2077,6 +2077,7 @@ claws_mail_post() {
     _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
     _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
     _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     cat > "$_t" <<CLAWS
 [Account: 1]
 account_name=$PI_MAIL_ADDRESS
@@ -2132,6 +2133,7 @@ POL
 # already written a katerc (stage 7 does, with the LSP client); then the
 # line is added there instead.
 kate_post() {
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[General]\nShow welcome view for new window=false\n' > "$_t"
     seed_home_if_absent .config/katerc "$_t"
 }
@@ -2140,6 +2142,7 @@ kate_post() {
 # vanishing into the tray: on i3 the bar has no tray, so a window closed
 # "to the tray" is simply gone until the process is killed.
 qbittorrent_post() {
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[LegalNotice]\nAccepted=true\n\n[Preferences]\nGeneral\\CloseToTray=false\nGeneral\\MinimizeToTray=false\nGeneral\\SystrayEnabled=false\n' > "$_t"
     seed_home_if_absent .config/qBittorrent/qBittorrent.conf "$_t"
 }
@@ -2155,6 +2158,7 @@ thunderbird_post() {
     _mname="${PI_MAIL_NAME:-${PI_GIT_NAME:-$PI_MAIL_ADDRESS}}"
     _imap="${PI_MAIL_IMAP:-imap.${PI_MAIL_ADDRESS#*@}}"
     _smtp="${PI_MAIL_SMTP:-smtp.${PI_MAIL_ADDRESS#*@}}"
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default\nIsRelative=1\nPath=copal.default\nDefault=1\n' > "$_t"
     seed_home_if_absent .thunderbird/profiles.ini "$_t"
     cat > "$_t" <<TB
@@ -2193,6 +2197,7 @@ TB
 # Zim: without a notebook the first window is "Add Notebook". One in
 # ~/Notebooks/Notes, registered as the default, and it opens on a page.
 zim_post() {
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[NotebookList]\nDefault=~/Notebooks/Notes\n\n[Notebook 1]\nuri=~/Notebooks/Notes\nname=Notes\n' > "$_t"
     seed_home_if_absent .config/zim/notebooks.list "$_t"
     printf '[Notebook]\nversion=0.4\nname=Notes\nhome=Home\n' > "$_t"

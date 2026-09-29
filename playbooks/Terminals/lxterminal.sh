@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: lxterminal
 # source:   apk
 # origin:   catalogue

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: widelands
 # source:   apk
 # origin:   catalogue

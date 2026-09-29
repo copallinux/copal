@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: font-cascadia-code-nerd
 # source:   apk
 #

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gparted
 # source:   apk
 # origin:   catalogue

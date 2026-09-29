@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: pulseview
 # source:   apk
 # origin:   catalogue

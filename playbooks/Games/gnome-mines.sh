@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gnome-mines
 # source:   apk
 # origin:   catalogue

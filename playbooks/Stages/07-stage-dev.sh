@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-dev
 # source:   copal
 # origin:   stage

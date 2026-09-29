@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: libresprite
 # source:   apk
 # origin:   catalogue

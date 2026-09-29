@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: persepolis
 # source:   github persepolisdm/persepolis
 # build:    meson samurai

@@ -1037,6 +1037,11 @@ define POSIX_PARSE_EMBEDDED
 	fi
 endef
 
+## shell-lint: shellcheck over every script -- no error, no warning, and no more notes than before
+.PHONY: shell-lint
+shell-lint:
+	@sh tools/shell-lint.sh
+
 lint: | $(BUILDDIR)
 	@sh -n $(PREP) && printf '  ok      copal-prep.sh\n'
 	@sh -n $(VMRUN) && printf '  ok      copal-vm.sh\n'
@@ -1055,6 +1060,7 @@ lint: | $(BUILDDIR)
 	    printf '  ok      bin/*.sh (%s shortcuts)\n' "$$(ls bin/*.sh | wc -l | xargs)"
 	@for _s in tools/*.sh; do sh -n "$$_s" || exit 1; done; \
 	    printf '  ok      tools/*.sh (%s programs)\n' "$$(ls tools/*.sh | wc -l | xargs)"
+	@sh tools/shell-lint.sh
 	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal_nkeys.py \
 	    && printf '  ok      tools/copal_nkeys.py\n'
 	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal_nats.py \

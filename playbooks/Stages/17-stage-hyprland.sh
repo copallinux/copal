@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-hyprland
 # source:   copal
 # origin:   stage
@@ -24,6 +25,7 @@ stage_hyprland() {
         aarch64|x86_64) : ;;
         *)  warn "this is a $(apk --print-arch 2>/dev/null || uname -m) board -- Alpine packages no Hyprland for it."
             note "Stage 4 (X.Org and i3) is the desktop for this hardware."
+            # shellcheck disable=SC2034  # read by ask(), in the installer
             if [ "${AUTO:-0}" = 1 ]; then AUTO_DEFAULT=n; fi
             confirm "Try anyway (it will almost certainly fail)?" || return 0 ;;
     esac
@@ -234,6 +236,7 @@ stage_hyprland() {
     # stage 17 can be run on a machine that never ran stage 7 -- and if it was
     # run, an editor that is open right now repaints within three seconds
     # without being restarted. See dev_write_nvim_ui() and ~/.config/nvim/theme.lua.
+    # shellcheck disable=SC2154  # set by the installer, before any stage
     [ -d "$copal_theme_dir/antiquity" ] || copal_write_themes
     # The theme itself is applied at the very end of this stage (see "Stage
     # 16 complete"), after the bar's stylesheet, mako's config, hyprland.conf
@@ -1497,9 +1500,12 @@ GTKINI
     # machine with dconf; settings.ini is the fallback for everything else.
     # Writing both is belt and braces, and neither is fatal if absent.
     if command -v gsettings >/dev/null 2>&1; then
-        for _k in "gtk-theme $_gtktheme" "icon-theme Adwaita" "cursor-theme Adwaita" "font-name 'Recia 11'"; do
-            gsettings set org.gnome.desktop.interface ${_k%% *} "${_k#* }" 2>/dev/null || true
-        done
+        _gs() { gsettings set org.gnome.desktop.interface "$1" "$2" 2>/dev/null || true; }
+        _gs gtk-theme "$_gtktheme"
+        _gs icon-theme Adwaita
+        _gs cursor-theme Adwaita
+        # The quotes are gsettings', not the shell's: a string, as it writes one.
+        _gs font-name "'Recia 11'"
         gsettings set org.gnome.desktop.interface color-scheme prefer-dark 2>/dev/null || true
     fi
 

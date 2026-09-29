@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: alephone
 # source:   github Aleph-One-Marathon/alephone
 # build:    build-base boost-dev asio-dev sdl2-dev sdl2_ttf-dev sdl2_image-dev openal-soft-dev

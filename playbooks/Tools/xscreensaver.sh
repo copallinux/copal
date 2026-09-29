@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: xscreensaver
 # source:   apk
 # origin:   catalogue

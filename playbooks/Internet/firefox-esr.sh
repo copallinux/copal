@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: firefox-esr
 # source:   apk
 # origin:   catalogue

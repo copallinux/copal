@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: deadbeef
 # source:   apk
 # origin:   catalogue

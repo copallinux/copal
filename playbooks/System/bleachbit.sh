@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: bleachbit
 # source:   github bleachbit/bleachbit
 # build:    make

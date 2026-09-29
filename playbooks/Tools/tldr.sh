@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: tldr
 # source:   apk
 #

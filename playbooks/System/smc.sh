@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: smc
 # source:   github hakandundar34coding/system-monitoring-center
 # build:    meson samurai gettext

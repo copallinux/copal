@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: ccleste
 # source:   github lemon32767/ccleste
 # build:    build-base sdl2-dev sdl2_mixer-dev

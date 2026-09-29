@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: kmahjongg
 # source:   github KDE/kmahjongg
 # build:    build-base cmake samurai extra-cmake-modules gettext-dev qt6-qtbase-dev qt6-qtsvg-dev

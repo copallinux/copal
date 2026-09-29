@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: dolphin-emu
 # source:   apk
 #

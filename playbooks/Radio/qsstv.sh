@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: qsstv
 # source:   apk
 # origin:   catalogue

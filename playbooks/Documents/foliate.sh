@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: foliate
 # source:   apk
 # origin:   catalogue

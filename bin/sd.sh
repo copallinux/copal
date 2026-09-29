@@ -15,7 +15,7 @@
 #  BOARD is any name copal-prep.sh takes. pizero2 and pizero work too, since
 #  that is what fingers type. With no BOARD this prints the list.
 set -eu
-cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
+cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 
 if [ $# -lt 1 ]; then
     printf 'usage: %s BOARD [VAR=value ...]\n\n' "$(basename "$0")" >&2

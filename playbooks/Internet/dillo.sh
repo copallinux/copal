@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: dillo
 # source:   apk
 # origin:   catalogue

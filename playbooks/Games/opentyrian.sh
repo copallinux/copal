@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: opentyrian
 # source:   github opentyrian/opentyrian
 # build:    build-base pkgconf sdl2-dev sdl2_net-dev

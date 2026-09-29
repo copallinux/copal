@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-emulators
 # source:   copal
 # origin:   stage
@@ -113,7 +114,7 @@ BAS
                 # same applies to armhf.
                 add_optional git autoconf automake m4 gcc g++ make \
                              sdl2-dev libx11-dev gmp-dev mpfr-dev
-                cd "$SRCDIR"
+                cd "$SRCDIR" || { warn "cannot enter $SRCDIR"; return 0; }
                 if [ ! -d macemu ]; then
                     git clone --depth 1 https://github.com/kanjitalk755/macemu \
                       || { warn "clone failed"; return 0; }
@@ -147,7 +148,7 @@ BAS
     # ---------------------------------------------------------- Mini vMac --
     if [ "${_do_minivmac:-0}" = 1 ]; then
         add_optional libx11-dev libxext-dev
-        cd "$SRCDIR"
+        cd "$SRCDIR" || { warn "cannot enter $SRCDIR"; return 0; }
         _tgz="minivmac-$MINIVMAC_VER.src.tgz"
         _url="https://www.gryphel.com/d/minivmac/minivmac-$MINIVMAC_VER/$_tgz"
 
@@ -273,7 +274,7 @@ MSG
                 add_optional autoconf automake libtool bison flex pkgconf \
                              sdl2-dev sdl2_image-dev libpng-dev giflib-dev zlib-dev \
                              alsa-lib-dev texinfo dos2unix xa
-                cd "$SRCDIR"
+                cd "$SRCDIR" || { warn "cannot enter $SRCDIR"; return 0; }
                 _vtgz="vice-$VICE_VER.tar.gz"
                 _vurl="https://sourceforge.net/projects/vice-emu/files/releases/$_vtgz/download"
                 if [ ! -f "$_vtgz" ] && ! wget -q -O "$_vtgz" "$_vurl"; then

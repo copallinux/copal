@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: libreoffice
 # source:   apk
 # origin:   catalogue

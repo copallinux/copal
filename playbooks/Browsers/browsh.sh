@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: browsh
 # source:   github browsh-org/browsh
 # build:    go

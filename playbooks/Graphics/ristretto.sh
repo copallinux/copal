@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: ristretto
 # source:   apk
 # origin:   catalogue

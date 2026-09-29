@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gnome-sudoku
 # source:   apk
 # origin:   catalogue

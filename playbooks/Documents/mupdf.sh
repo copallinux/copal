@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: mupdf
 # source:   apk
 # origin:   catalogue

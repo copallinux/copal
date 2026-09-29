@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: feh
 # source:   apk
 # origin:   catalogue

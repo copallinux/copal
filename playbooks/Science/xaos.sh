@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: xaos
 # source:   github xaos-project/XaoS
 # build:    build-base cmake samurai qt6-qtbase-dev qt6-qttools-dev

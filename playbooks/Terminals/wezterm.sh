@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: wezterm
 # source:   apk
 # origin:   catalogue

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: ascitty
 # source:   clone https://github.com/vonglurt/ascitty.git
 # origin:   code

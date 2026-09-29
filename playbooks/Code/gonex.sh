@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gonex
 # source:   clone https://github.com/yodacon/gonex.git
 # origin:   code

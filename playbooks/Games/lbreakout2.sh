@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: lbreakout2
 # source:   apk
 # origin:   catalogue

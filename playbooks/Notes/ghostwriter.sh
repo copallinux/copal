@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: ghostwriter
 # source:   apk
 # origin:   catalogue

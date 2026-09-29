@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: radbeeper
 # source:   clone https://github.com/vonglurt/radbeeper.git
 # origin:   code

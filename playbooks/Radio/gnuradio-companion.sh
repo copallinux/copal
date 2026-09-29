@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gnuradio-companion
 # source:   apk
 # origin:   catalogue

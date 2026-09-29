@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: ffconverter
 # source:   github l-koehler/FF-converter
 # build:    py3-pip py3-setuptools py3-wheel
@@ -26,7 +27,7 @@ ffconverter_install() {
     sed -i "s|presets_lookup_dirs = \\[|presets_lookup_dirs = [\"$PREFIX/share/\", |" "$_s/ffconverter/config.py"
     pip3 install --no-deps --no-build-isolation --no-compile --break-system-packages \
          --target "$DEST$_t" "$_s"
-    rm -rf "$DEST$_t/bin" "$DEST$_t/share"
+    rm -rf "$DEST${_t:?}/bin" "$DEST${_t:?}/share"
     mkdir -p "$DEST$PREFIX/share/ffconverter" "$DEST$PREFIX/share/icons/hicolor/128x128/apps"
     cp "$_s/share/presets.xml" "$DEST$PREFIX/share/ffconverter/"
     cp "$_s/share/ffconverter.png" "$DEST$PREFIX/share/icons/hicolor/128x128/apps/"

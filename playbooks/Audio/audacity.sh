@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: audacity
 # source:   apk
 # origin:   catalogue

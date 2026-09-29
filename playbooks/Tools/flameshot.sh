@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: flameshot
 # source:   apk
 #

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: freeciv-sdl2
 # source:   apk
 # origin:   catalogue

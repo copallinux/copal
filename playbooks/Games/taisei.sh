@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: taisei
 # source:   github taisei-project/taisei
 # build:    build-base meson samurai pkgconf sdl3-dev freetype-dev libwebp-dev zlib-dev zstd-dev

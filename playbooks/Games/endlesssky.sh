@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: endlesssky
 # source:   github endless-sky/endless-sky
 # build:    build-base cmake samurai pkgconf sdl2-dev sdl2-compat-static libpng-dev

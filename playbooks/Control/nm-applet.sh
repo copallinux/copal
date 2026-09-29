@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: nm-applet
 # source:   apk
 # origin:   catalogue

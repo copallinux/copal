@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: alacritty
 # source:   apk
 # origin:   catalogue

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: supertux2
 # source:   apk
 # origin:   catalogue

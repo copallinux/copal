@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: fraqtive
 # source:   github mimecorg/fraqtive
 # build:    build-base qt5-qtbase-dev mesa-dev glu-dev

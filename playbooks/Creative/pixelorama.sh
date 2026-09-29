@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: pixelorama
 # source:   github Orama-Interactive/Pixelorama
 # build:

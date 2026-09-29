@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: syncthing-gtk
 # source:   apk
 #

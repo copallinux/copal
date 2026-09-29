@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: chromium
 # source:   apk
 # origin:   catalogue

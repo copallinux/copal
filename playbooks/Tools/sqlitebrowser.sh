@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: sqlitebrowser
 # source:   apk
 # origin:   catalogue

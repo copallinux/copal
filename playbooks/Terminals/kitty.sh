@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: kitty
 # source:   apk
 # origin:   catalogue

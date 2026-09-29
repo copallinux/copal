@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-grow
 # source:   copal
 # origin:   stage

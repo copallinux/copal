@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: srb2
 # source:   apk
 #

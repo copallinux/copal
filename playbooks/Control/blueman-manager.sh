@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: blueman-manager
 # source:   apk
 # origin:   catalogue

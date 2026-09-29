@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: cherrytree
 # source:   apk
 # origin:   catalogue

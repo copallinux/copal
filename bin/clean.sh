@@ -13,5 +13,5 @@
 #  machines, which live in UTM's container and are nobody's business here.
 #
 #  Run bin/space.sh first if you want to see the bill before paying it.
-cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
+cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 exec make clean "$@"

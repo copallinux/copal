@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: kate
 # source:   apk
 # origin:   catalogue
@@ -16,6 +17,7 @@
 # already written a katerc (stage 7 does, with the LSP client); then the
 # line is added there instead.
 kate_post() {
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[General]\nShow welcome view for new window=false\n' > "$_t"
     seed_home_if_absent .config/katerc "$_t"
 }

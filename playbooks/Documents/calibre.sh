@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: calibre
 # source:   apk
 # origin:   catalogue

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: fs-uae
 # source:   apk
 # origin:   catalogue

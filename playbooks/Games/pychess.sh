@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: pychess
 # source:   github pychess/pychess
 # build:

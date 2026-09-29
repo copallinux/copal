@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: lagrange
 # source:   apk
 # origin:   catalogue

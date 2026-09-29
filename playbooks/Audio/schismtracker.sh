@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: schismtracker
 # source:   apk
 # origin:   catalogue

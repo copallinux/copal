@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: sdrangel
 # source:   apk
 # origin:   catalogue

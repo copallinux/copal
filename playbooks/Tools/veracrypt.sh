@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: veracrypt
 # source:   github veracrypt/VeraCrypt
 # build:    build-base pkgconf wxwidgets-dev fuse3-dev pcsc-lite-dev

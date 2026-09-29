@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: openscad
 # source:   apk
 #

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: fheroes2
 # source:   apk
 #

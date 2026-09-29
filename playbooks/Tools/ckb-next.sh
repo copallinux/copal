@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: ckb-next
 # source:   apk
 #

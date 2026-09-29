@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: milkytracker
 # source:   apk
 # origin:   catalogue

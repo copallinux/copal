@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: krusader
 # source:   apk
 # origin:   catalogue

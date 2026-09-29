@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: codexofconquest
 # source:   clone https://github.com/vonglurt/codexofconquest.git
 # origin:   code

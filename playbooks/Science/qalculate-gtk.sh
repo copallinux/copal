@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: qalculate-gtk
 # source:   apk
 # origin:   catalogue

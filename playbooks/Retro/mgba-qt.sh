@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: mgba-qt
 # source:   apk
 # origin:   catalogue

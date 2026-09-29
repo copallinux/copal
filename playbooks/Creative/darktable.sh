@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: darktable
 # source:   github darktable-org/darktable
 # build:    build-base cmake samurai pkgconf gettext-dev intltool libxslt perl gtk+3.0-dev glib-dev

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gnome-maps
 # source:   apk
 #

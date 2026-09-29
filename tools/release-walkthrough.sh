@@ -27,7 +27,7 @@
 #   tools/release-walkthrough.sh --shots-only   # skip to the screenshot steps
 set -uo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 PURGE=1
 SHOTS_ONLY=0
@@ -223,5 +223,8 @@ done_ "gallery rebuilt"
 
 printf '\n%s%s  Release walkthrough complete.%s\n\n' "$B" "$G" "$N"
 printf '  In docs/media:\n'
-ls -1 docs/media 2>/dev/null | grep -vE '\.md$' | sed 's/^/    /' || true
+for _f in docs/media/*; do
+    case "$_f" in *.md) continue ;; esac
+    if [ -e "$_f" ]; then printf '    %s\n' "${_f##*/}"; fi
+done
 printf '\n  %sReview, then commit:%s  git add docs && git commit\n\n' "$D" "$N"

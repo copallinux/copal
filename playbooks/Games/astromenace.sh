@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: astromenace
 # source:   github viewizard/astromenace
 # build:    build-base cmake samurai sdl2-dev openal-soft-dev freealut-dev@testing libogg-dev

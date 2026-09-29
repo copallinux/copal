@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: qspectrumanalyzer
 # source:   apk
 # origin:   catalogue

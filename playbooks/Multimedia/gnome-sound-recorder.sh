@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gnome-sound-recorder
 # source:   apk
 #

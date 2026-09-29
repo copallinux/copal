@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: meld
 # source:   apk
 # origin:   catalogue

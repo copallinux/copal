@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: openmw-launcher
 # source:   apk
 # origin:   catalogue

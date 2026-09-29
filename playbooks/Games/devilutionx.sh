@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: devilutionx
 # source:   github diasurgical/devilutionX
 # build:    build-base cmake samurai pkgconf sdl2-dev sdl2-compat-static sdl2_image-dev zlib-dev

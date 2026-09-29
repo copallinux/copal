@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: retroarch
 # source:   apk
 # origin:   catalogue

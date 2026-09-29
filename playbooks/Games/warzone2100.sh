@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: warzone2100
 # source:   apk
 #

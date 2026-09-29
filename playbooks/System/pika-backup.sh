@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: pika-backup
 # source:   apk
 #

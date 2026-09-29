@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: qbittorrent
 # source:   apk
 # origin:   catalogue
@@ -16,6 +17,7 @@
 # vanishing into the tray: on i3 the bar has no tray, so a window closed
 # "to the tray" is simply gone until the process is killed.
 qbittorrent_post() {
+    # shellcheck disable=SC2154  # seed_app_configs' scratch file, made before the posts run
     printf '[LegalNotice]\nAccepted=true\n\n[Preferences]\nGeneral\\CloseToTray=false\nGeneral\\MinimizeToTray=false\nGeneral\\SystrayEnabled=false\n' > "$_t"
     seed_home_if_absent .config/qBittorrent/qBittorrent.conf "$_t"
 }

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: welle-io
 # source:   apk
 # origin:   catalogue

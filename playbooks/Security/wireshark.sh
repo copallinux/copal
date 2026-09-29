@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: wireshark
 # source:   apk
 # origin:   catalogue

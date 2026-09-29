@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: mousepad
 # source:   apk
 # origin:   catalogue

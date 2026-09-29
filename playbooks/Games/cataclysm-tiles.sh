@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: cataclysm-tiles
 # source:   apk
 # origin:   catalogue

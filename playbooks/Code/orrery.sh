@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: orrery
 # source:   clone https://github.com/vonglurt/orrery.git
 # origin:   code

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: openttd
 # source:   apk
 # origin:   catalogue

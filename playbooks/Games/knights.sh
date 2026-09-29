@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: knights
 # source:   apk
 #

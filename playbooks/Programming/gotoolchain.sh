@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gotoolchain
 # source:   url go.dev
 # build:

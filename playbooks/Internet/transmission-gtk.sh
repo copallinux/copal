@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: transmission-gtk
 # source:   apk
 # origin:   catalogue

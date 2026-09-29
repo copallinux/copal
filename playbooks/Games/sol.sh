@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: sol
 # source:   apk
 # origin:   catalogue

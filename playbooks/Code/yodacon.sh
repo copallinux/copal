@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: yodacon
 # source:   clone https://github.com/yodacon/yodacon.git
 # origin:   code

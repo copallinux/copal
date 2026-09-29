@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: thonny
 # source:   apk
 #

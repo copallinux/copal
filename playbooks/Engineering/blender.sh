@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: blender
 # source:   apk
 # origin:   catalogue

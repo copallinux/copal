@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: speedtest-cli
 # source:   apk
 #

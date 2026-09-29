@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: rdfind
 # source:   apk
 #

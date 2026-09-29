@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: badwolf
 # source:   apk
 # origin:   catalogue

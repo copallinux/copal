@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gimp
 # source:   apk
 # origin:   catalogue

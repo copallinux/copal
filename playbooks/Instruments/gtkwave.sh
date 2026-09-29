@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: gtkwave
 # source:   apk
 # origin:   catalogue

@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: staticstream
 # source:   clone https://github.com/vonglurt/staticstream.git
 # origin:   code

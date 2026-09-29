@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # playbook: stage-sdcard
 # source:   copal
 # origin:   stage
