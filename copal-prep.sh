@@ -4537,6 +4537,19 @@ write_catalogue() {
 # user's configuration.
 WRITTEN_RECORD=/var/lib/copal/written
 
+# A file's checksum, but for the one line that is copal-theme's to write.
+#
+# copal-theme puts an @import of the theme's colours at the head of the bar's
+# and the launcher's stylesheets, with the home's own path in it, every time
+# a theme is set: by stage 17, and by the person at Super+Shift+N. So those
+# files were never what was written here for longer than it took the theme
+# step to run, and every later run said "replaced a copy you had changed" of
+# a file nobody had touched. Found by redeploying the bench: two of them,
+# and both .bak files were byte for byte the files they were the backups of.
+written_sum() {  # <file>
+    sed '/copal\/current\/colors\.css/d' "$1" 2>/dev/null | sha256sum | cut -d' ' -f1
+}
+
 install_home_file() {  # <relative path> <source file>
     _rel="$1"; _src="$2"
     # Before the loop, because the loop's own guard is `is it a directory` --
@@ -4562,14 +4575,24 @@ install_home_file() {  # <relative path> <source file>
             cp "$_h/$_rel" "$_h/$_rel.bak"
             _rec=$(awk -v f="$_h/$_rel" '$2 == f { print $1; exit }' "$WRITTEN_RECORD" 2>/dev/null)
             if [ -n "$_rec" ]; then
-                _now=$(sha256sum "$_h/$_rel" 2>/dev/null | cut -d' ' -f1)
-                [ "$_now" = "$_rec" ] || _was=" -- replaced a copy you had changed; it is in $_rel.bak"
+                # The file is somebody's when it is none of: what was
+                # written, by the sum the record keeps now; what was written,
+                # by the whole-file sum a record from before written_sum
+                # keeps; or what is about to be written. The last is a run
+                # that changes nothing, which is most of them, and it is what
+                # spares a machine with an old record one more false word.
+                _now=$(written_sum "$_h/$_rel")
+                if [ "$_now" != "$_rec" ] \
+                   && [ "$(sha256sum "$_h/$_rel" 2>/dev/null | cut -d' ' -f1)" != "$_rec" ] \
+                   && [ "$_now" != "$(written_sum "$_src")" ]; then
+                    _was=" -- replaced a copy you had changed; it is in $_rel.bak"
+                fi
             fi
         fi
         cp "$_src" "$_h/$_rel"
         # Remember what was written. One line per path, the newest winning.
         mkdir -p "$(dirname "$WRITTEN_RECORD")" 2>/dev/null
-        _sum=$(sha256sum "$_h/$_rel" 2>/dev/null | cut -d' ' -f1)
+        _sum=$(written_sum "$_h/$_rel")
         if [ -n "$_sum" ]; then
             { grep -v " $_h/$_rel\$" "$WRITTEN_RECORD" 2>/dev/null; printf '%s %s\n' "$_sum" "$_h/$_rel"; } \
                 > "$WRITTEN_RECORD.new" && mv "$WRITTEN_RECORD.new" "$WRITTEN_RECORD"
@@ -9972,9 +9995,10 @@ MSG
         warn "no usable account for $PI_USER -- skipping"
         return 0
     fi
+    # xvfb-run is for the suites, which want a display: see copal-yodacon.
     add_optional git go build-base pkgconf python3 make cmake \
         alsa-lib-dev libx11-dev libxcursor-dev libxi-dev libxinerama-dev \
-        libxrandr-dev libxxf86vm-dev mesa-dev glu-dev
+        libxrandr-dev libxxf86vm-dev mesa-dev glu-dev xvfb-run
     for _p in git go gcc make cmake python3; do
         command -v "$_p" >/dev/null 2>&1 || { warn "$_p is missing -- cannot build; skipping"; return 0; }
     done
@@ -10090,7 +10114,27 @@ else
     note "resource-fork round trip -- is skipped. The rest runs."
     _targets="test gonex"
 fi
-(cd "$YODACON" && make $_targets) >>"$LOG" 2>&1 || fail "make $_targets in $YODACON"
+# THE SUITES NEED A DISPLAY, and an installation has none. Fifteen of
+# Gonex's packages reach Ebitengine, whose init() starts GLFW before a test
+# has run: with no DISPLAY it is "X11: The DISPLAY environment variable is
+# missing", a panic, and FAIL. That ended this script at its first step on
+# every machine set up from a card -- no game, no Konex, no site -- and
+# passed at a desk, where there is a session to borrow a display from.
+# So: the display there is; or one made for the purpose, where xvfb-run is
+# installed; or the game without its suites, which says so.
+_under=""
+if [ -z "${DISPLAY:-}" ]; then
+    if command -v xvfb-run >/dev/null 2>&1; then
+        _under="xvfb-run -a"
+        note "no display here: the suites run under xvfb-run"
+    else
+        note "no display here and no xvfb-run: the suites are skipped, the game"
+        note "is built. In a session, 'copal-yodacon' runs them."
+        _targets=gonex
+    fi
+fi
+# shellcheck disable=SC2086  # two words, and none: a command and its flag
+(cd "$YODACON" && $_under make $_targets) >>"$LOG" 2>&1 || fail "make $_targets in $YODACON"
 note "make $_targets: ok -- $GONEX/gonex-bin"
 
 say "Konex: the 2005 engine"
