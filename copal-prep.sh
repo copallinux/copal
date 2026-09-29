@@ -13057,7 +13057,52 @@ MSG
     say "ffmpeg -- needed to join separate video and audio streams"
     add_optional ffmpeg
 
+    install_js_runtime
     write_ytdlp_conf
+}
+
+# Does the node on this machine run? Packaged is not the same as working:
+# Alpine ships a nodejs for armhf, and Node dropped ARMv6 years ago, so on a
+# Pi Zero it is there and ends in an illegal instruction.
+node_runs() {
+    command -v node >/dev/null 2>&1 && node -e 'process.exit(0)' >/dev/null 2>&1
+}
+
+# YOUTUBE'S PLAYER IS A PROGRAM, and yt-dlp has to run part of it to be given
+# a video's address. Without something to run it in, every download warns
+# that 'no supported JavaScript runtime could be found' and some formats are
+# never offered. yt-dlp carries the script it needs (the zipapp has yt-dlp-ejs
+# inside); the runtime is what is missing.
+#
+# WHICH ONE is a question about strangers' code. That script comes from the
+# site, so what matters is what it is allowed to touch:
+#
+#   deno     run with no permissions at all. Not packaged for ARMv7 or ARMv6.
+#   node     run with --permission: no files, no network unless granted.
+#            Packaged everywhere; runs everywhere but ARMv6.
+#   quickjs  2 MB, runs anywhere -- and is given no such limits.
+#
+# So node, where it runs. quickjs is left to the person: a line in
+# ~/.config/yt-dlp/config is theirs to add, and it says what it does.
+install_js_runtime() {
+    say "A JavaScript runtime -- YouTube's player is a program, and yt-dlp runs it"
+    if node_runs; then
+        note "node $(node --version 2>/dev/null) is here, and runs"
+        return 0
+    fi
+    if command -v node >/dev/null 2>&1; then
+        warn "the installed node does not run on this CPU."
+        note "YouTube downloads will warn, and may be offered fewer formats."
+        note "quickjs would run here, unconfined:  apk add quickjs, then"
+        note "  echo '--js-runtimes quickjs' >> ~/.config/yt-dlp/config"
+        return 0
+    fi
+    if confirm_yes "Install nodejs for yt-dlp (~50 MB)?"; then
+        try_add nodejs || { warn "could not install nodejs -- YouTube downloads will warn"; return 0; }
+        node_runs || warn "nodejs is installed and does not run on this CPU -- YouTube downloads will warn"
+    else
+        note "Skipped. 'apk add nodejs' and re-run stage 10 to have it."
+    fi
 }
 
 # yt-dlp's filenames, for every run on the machine: the first word of the
@@ -13108,6 +13153,18 @@ write_ytdlp_conf() {
 --replace-in-metadata safe_id '[^A-Za-z0-9_-]+' _
 -o '%(safe_head&{}_|)s%(safe_id)s.%(ext)s'
 CONF
+    # Only where node runs: named on a machine where it does not, yt-dlp
+    # would warn of that as well.
+    if node_runs; then
+        cat >> /etc/yt-dlp.conf <<'CONF'
+
+# YouTube's player is a program, and yt-dlp runs part of it to be given a
+# video's address. It looks only for deno unless told of another; this tells
+# it of node, which it runs with --permission -- no files and no network.
+--js-runtimes node
+CONF
+        note "yt-dlp runs YouTube's player in node, confined  (/etc/yt-dlp.conf)"
+    fi
     chmod 0644 /etc/yt-dlp.conf
     note "yt-dlp names files Author-Title_ID.ext in A-Z a-z 0-9 - _ only  (/etc/yt-dlp.conf)"
 }
