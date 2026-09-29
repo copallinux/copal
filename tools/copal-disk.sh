@@ -47,6 +47,13 @@ die() { printf 'copal-disk: %s\n' "$*" >&2; exit 2; }
 VERBS='list show probe part unmount-all unmount mount partition type bootflag
 eject image-attach image-detach image-attached sha256-check'
 
+# The verbs, one to a line. VERBS is a list of words, and this is the one
+# place that splits it into them.
+verb_list() {
+    # shellcheck disable=SC2086  # split into words, on purpose
+    printf '%s\n' $VERBS
+}
+
 case "$(uname -s)" in
     Darwin) BACKEND=macos ;;
     Linux)  BACKEND=linux ;;
@@ -382,7 +389,7 @@ self_test() {
     want "$(human_size 4194304)"       '4.0 MB' 'four megabytes'
 
     printf 'copal-disk: %s checks passed (%s backend, %s verbs)\n' \
-        "$TESTS" "${BACKEND:-none}" "$(printf '%s\n' $VERBS | wc -l | xargs)"
+        "$TESTS" "${BACKEND:-none}" "$(verb_list | wc -l | xargs)"
 }
 
 # ------------------------------------------------------------------ verbs ---
@@ -390,13 +397,13 @@ self_test() {
 _verb=${1:-}
 [ $# -gt 0 ] && shift || true
 case "$_verb" in
-    verbs)     printf '%s\n' $VERBS; exit 0 ;;
+    verbs)     verb_list; exit 0 ;;
     backend)   printf '%s\n' "${BACKEND:-none}"; exit 0 ;;
     self-test) self_test; exit 0 ;;
     '')        die "which verb? try: copal-disk.sh verbs" ;;
 esac
 
-printf '%s\n' $VERBS | grep -qx -- "$_verb" || die "no such verb: $_verb"
+verb_list | grep -qx -- "$_verb" || die "no such verb: $_verb"
 [ -n "$BACKEND" ] || die "$(uname -s) is not a host copal can build from (macOS or Linux)"
 
 _impl="${BACKEND}_$(printf '%s' "$_verb" | tr '-' '_')"

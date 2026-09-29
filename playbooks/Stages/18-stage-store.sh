@@ -3686,8 +3686,10 @@ MSG
         # service installs only what is still missing, so a reboot in the
         # middle resumes, and removes itself when the queue is done.
         say "The full monty's programs: queued for the first desktop login"
+        # shellcheck disable=SC2086,SC2116  # echo makes one line of a list written on several
         note "$(echo $STORE_FULL)"
         mkdir -p /var/lib/copal
+        # shellcheck disable=SC2086  # a list of programs: split into words, on purpose
         printf '%s\n' $STORE_FULL > /var/lib/copal/apps-queue
         cat > /etc/init.d/copal-apps-queue <<'QUEUESVC'
 #!/sbin/openrc-run

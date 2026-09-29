@@ -164,6 +164,7 @@ BAS
         # and a mismatch between the two would name the wrong version in every
         # message from here down.
         if [ ! -f "$_tgz" ]; then
+            # shellcheck disable=SC2012  # the names are ours: no space or newline in them
             _staged=$(ls "$BOOT"/minivmac/minivmac-*.src.tgz 2>/dev/null | head -n1 || true)
             if [ -n "$_staged" ]; then
                 if cp "$_staged" "$SRCDIR/"; then

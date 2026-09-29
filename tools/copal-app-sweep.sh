@@ -20,9 +20,17 @@ mkdir -p "$HOME/.cache/copal-gallery/cwd" && cd "$HOME/.cache/copal-gallery/cwd"
 TAB="$(printf '\t')"
 while IFS="$TAB" read -r name cmd act; do
     [ -n "$name" ] || continue
+    # shellcheck disable=SC2034  # w is read inside the eval below
     case "$name" in winebox-*|winecfg) w=60 ;; *) w=30 ;; esac
     if [ -n "$act" ]; then set -- --act "copal-act $act"; else set --; fi
     echo "=== $(date +%H:%M:%S) $name"
-    eval "\"$REPO/tools/copal-app-probe.sh\" --wait $w --gallery \"$REPO/docs/img/gallery\" \"\$@\" \"\$name\" $cmd"
+    # ONE WORD OF THIS LINE IS CODE, AND ONLY ONE: $cmd, the row's command
+    # line, which is written as a person would type it -- foot -e sh -c
+    # 'links; sleep 25' -- and has to be read by a shell to be run at all.
+    # The list is copal-app-sweeplist.py's, made from the catalogue, in the
+    # person's own ~/.cache. Everything else is left for eval to expand, in
+    # quotes, so that a checkout in a folder with a space or a $ in its name
+    # is a folder and not a command.
+    eval '"$REPO/tools/copal-app-probe.sh" --wait "$w" --gallery "$REPO/docs/img/gallery" "$@" "$name" '"$cmd"
 done < "$LIST"
 echo "=== $(date +%H:%M:%S) SWEEP DONE"

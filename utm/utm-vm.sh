@@ -660,9 +660,11 @@ layout_start_vms() {
             '') warn "$_n does not exist in UTM -- skipping"
                 note "Make it with: utm/utm-vm.sh create --target ${_n#Copal-}" ;;
             *)  info "Starting $_n"
-                "$UTMCTL" start "$_n" >/dev/null 2>&1 \
-                    && _started=1 \
-                    || warn "could not start $_n" ;;
+                if "$UTMCTL" start "$_n" >/dev/null 2>&1; then
+                    _started=1
+                else
+                    warn "could not start $_n"
+                fi ;;
         esac
     done
     # Only wait if something was actually started. UTM opens the window a
@@ -1592,6 +1594,7 @@ do_status() {
         printf '    %-16s %s\n' "Status" "$("$UTMCTL" status "$NAME" 2>/dev/null || echo 'not registered with UTM yet')" >&2
     fi
     local d
+    # shellcheck disable=SC2012  # UTM names the disk: no space or newline in it
     d=$(ls "$BUNDLE/Data"/*.qcow2 2>/dev/null | head -1 || true)
     [ -n "$d" ] && printf '    %-16s %s\n' "Disk" "$(du -h "$d" | awk '{print $1}') on disk" >&2
     [ -f "$BUNDLE/Data/efi_vars.fd" ] \
@@ -1653,7 +1656,7 @@ do_delete() {
         mkdir -p "$BUNDLE" 2>/dev/null || true
         "$UTMCTL" delete "$NAME" >/dev/null 2>&1 || true
         rm -rf "$BUNDLE" 2>/dev/null || true
-        utm_knows && warn "UTM still lists $NAME; quit UTM and try again" || info "Cleared."
+        if utm_knows; then warn "UTM still lists $NAME; quit UTM and try again"; else info "Cleared."; fi
     fi
 }
 
@@ -1700,6 +1703,7 @@ do_grow() {
         die "'$NAME' is running. Stop it first: $0 stop --target $TARGET"
     fi
     local disk now want
+    # shellcheck disable=SC2012  # UTM names the disk: no space or newline in it
     disk=$(ls "$BUNDLE/Data"/*.qcow2 2>/dev/null | head -1) || true
     [ -n "$disk" ] || die "no disk in $BUNDLE/Data"
     # The text form, not --output=json: the JSON lists the file under the
@@ -1729,7 +1733,9 @@ do_export() {
         die "'$NAME' is running. Stop it first: $0 stop --target $TARGET"
     fi
     local disk
-    disk=$(ls "$BUNDLE/Data"/*.qcow2 2>/dev/null | head -1) || die "no disk in $BUNDLE/Data"
+    # shellcheck disable=SC2012  # UTM names the disk: no space or newline in it
+    disk=$(ls "$BUNDLE/Data"/*.qcow2 2>/dev/null | head -1) || true
+    [ -n "$disk" ] || die "no disk in $BUNDLE/Data"
 
     # Refuse to clobber silently. The image is what every other tool reads,
     # and overwriting a good one with an empty machine's disk is the mistake
@@ -1756,6 +1762,7 @@ do_refresh() {
         die "'$NAME' is running. Stop it first -- refreshing a live disk corrupts it."
     fi
     local disk prep
+    # shellcheck disable=SC2012  # UTM names the disk: no space or newline in it
     disk=$(ls "$BUNDLE/Data"/*.qcow2 2>/dev/null | head -1) || die "no disk in $BUNDLE/Data"
     prep="$(cd "$(dirname "$0")/.." && pwd)/copal-prep.sh"
     [ -x "$prep" ] || die "cannot find copal-prep.sh at $prep"
@@ -1782,7 +1789,7 @@ do_refresh() {
 do_ip() {
     require_bundle
     local mac leases ip
-    mac=$(plutil -extract Network.0.MacAddress raw -o - "$BUNDLE/config.plist" 2>/dev/null | tr 'A-Z' 'a-z')
+    mac=$(plutil -extract Network.0.MacAddress raw -o - "$BUNDLE/config.plist" 2>/dev/null | tr '[:upper:]' '[:lower:]')
     [ -n "$mac" ] || die "no MAC address in $BUNDLE/config.plist"
     leases=/var/db/dhcpd_leases
     if [ ! -r "$leases" ]; then
@@ -1977,6 +1984,7 @@ REMOTE
     printf '%s\n' "$_out" | grep -v '^#SAMPLE '
     _s=$(printf '%s\n' "$_out" | grep '^#SAMPLE fmt ' | head -1)
     if [ -n "$_s" ]; then
+        # shellcheck disable=SC2086  # a line of fields: split into words, on purpose
         set -- $_s
         [ $# -ge 4 ] && _rate_line "$3" "$4"
     fi

@@ -167,6 +167,7 @@ if [ -n "$HEAD_REV" ]; then
 fi
 
 # --- 6. the Alpine the script pins today --------------------------------
+# shellcheck disable=SC2016  # a literal $ in the pattern: it is looked for, not expanded
 WANT_ALPINE=$(sed -n 's/^ALPINE_VER="\${ALPINE_VER:-\([^}]*\)}"/\1/p' copal-prep.sh | head -1)
 if [ -n "$WANT_ALPINE" ] && [ -n "$BALPINE" ]; then
     if [ "$WANT_ALPINE" = "$BALPINE" ]; then

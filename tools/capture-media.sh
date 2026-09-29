@@ -164,14 +164,17 @@ if [ "$VIDEO" = 1 ]; then
         # -vf pad: H.264 needs even dimensions and a terminal render is
         # whatever the font produced. Padding rather than scaling keeps the
         # text pixel-exact instead of resampling it into mush.
-        ffmpeg -y -loglevel error \
+        if ffmpeg -y -loglevel error \
             -i "$OUT/install-cast.gif" \
             -movflags +faststart -pix_fmt yuv420p \
             -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" \
             -c:v libx264 -crf 20 -preset slow \
-            "$OUT/install.mp4" \
-          && info "Rendered: $OUT/install.mp4 ($(du -h "$OUT/install.mp4" | cut -f1))" \
-          || warn "ffmpeg could not encode the video"
+            "$OUT/install.mp4"
+        then
+            info "Rendered: $OUT/install.mp4 ($(du -h "$OUT/install.mp4" | cut -f1))"
+        else
+            warn "ffmpeg could not encode the video"
+        fi
 
         # webm alongside, because it is smaller and every browser that
         # matters plays one of the two. A build of ffmpeg without libvpx
@@ -202,14 +205,17 @@ fi
 # of UEFI firmware messages. --marker seeks the frame where the level prompt
 # has finished printing and keeps a window around it.
 if command -v python3 >/dev/null 2>&1; then
-    python3 tools/cast-trim.py "$CAST" "$OUT/guided.cast" \
+    if python3 tools/cast-trim.py "$CAST" "$OUT/guided.cast" \
             --marker "Level [s/m" --before 26 --after 3 \
         && agg --speed 3 --last-frame-duration 6 \
                --font-family "JetBrains Mono,Menlo,monospace" \
                --theme "$THEME" "$OUT/guided.cast" "$OUT/guided-levels.gif" \
-        && sed -i '' 's|media/guided-levels\.png|media/guided-levels.gif|' docs/index.html \
-        && info "Rendered: $OUT/guided-levels.gif (the level chooser)" \
-        || warn "could not cut the guided-levels still -- the main cast is fine"
+        && sed -i '' 's|media/guided-levels\.png|media/guided-levels.gif|' docs/index.html
+    then
+        info "Rendered: $OUT/guided-levels.gif (the level chooser)"
+    else
+        warn "could not cut the guided-levels still -- the main cast is fine"
+    fi
 fi
 
 [ "$KEEP" = 1 ] || rm -f "$OUT"/*.cast

@@ -562,6 +562,7 @@ WATERS
 # pick genuinely uniform for any pool size, so the count above can change freely.
 random_hostname() {
     local names count pick limit
+    # shellcheck disable=SC2020  # tr is given sets: a space or a newline becomes a newline
     names=$(hostname_pool | tr -s ' \n' '\n\n' | grep -v '^$')
     count=$(printf '%s\n' "$names" | wc -l | tr -d ' ')
     limit=$(( 32768 - 32768 % count ))
@@ -1301,6 +1302,7 @@ fetch_bootloader() {  # <payload dir>
     [ -f "$_dest/apks/$ARCH/APKINDEX.tar.gz" ] \
         || die "$BOOTLOADER_ISO has no apks/$ARCH/APKINDEX.tar.gz -- the
        repository on the card would be unreadable to apk."
+    # shellcheck disable=SC2012  # counted, not read; apk names its packages
     info "Repository: apks/$ARCH ($(ls "$_dest/apks/$ARCH"/*.apk 2>/dev/null | wc -l | xargs) packages, $(du -sh "$_dest/apks" | awk '{print $1}'))"
 }
 
@@ -1455,6 +1457,7 @@ fi
 # caught the Zero 2 rainbow hang before the card was written.
 kernel_config=""
 if [ "$REFRESH" -eq 0 ]; then
+    # shellcheck disable=SC2012  # Alpine names its kernel configs: no space or newline in them
     case "$PLATFORM" in
         rpi) kernel_config=$(ls "$SRC"/boot/config-*-rpi 2>/dev/null | head -n1 || true) ;;
         pc)  kernel_config=$(ls "$SRC"/boot/config-*-lts 2>/dev/null | head -n1 || true) ;;
@@ -2477,10 +2480,13 @@ _here="$(cd "$(dirname "$0")" && pwd)"
 rm -rf "$MNT/tools" "$MNT/themes"
 mkdir -p "$MNT/tools" "$MNT/themes"
 for _t in copal-terminal-theme copal-theme; do
-    [ -f "$_here/tools/$_t" ] && cp "$_here/tools/$_t" "$MNT/tools/" || warn "tools/$_t is missing; the target will do without it"
+    if ! { [ -f "$_here/tools/$_t" ] && cp "$_here/tools/$_t" "$MNT/tools/"; }; then
+        warn "tools/$_t is missing; the target will do without it"
+    fi
 done
 if [ -d "$_here/themes" ]; then
     cp -R "$_here/themes/." "$MNT/themes/"
+    # shellcheck disable=SC2012  # shown to a person, not read
     info "themes staged: $(ls "$_here/themes" | tr '\n' ' ')"
 else
     warn "themes/ is missing; the target will have the editor theme only"
@@ -2491,6 +2497,7 @@ mkdir -p "$MNT/minivmac"
 
 # Newest tarball wins, so a card written after a version bump carries the new
 # one without this script being told about it.
+# shellcheck disable=SC2012  # the newest, by ls -t; the names are ours: no space or newline in them
 MVM_TGZ=$(ls -t "$MVM_LOCAL"/minivmac/minivmac-*.src.tgz 2>/dev/null | head -n1 || true)
 if [ -n "$MVM_TGZ" ]; then
     cp "$MVM_TGZ" "$MNT/minivmac/"
@@ -2523,6 +2530,7 @@ fi
 # and the source is 3 MB. Alpine packages no piano tutor at all, so this is the
 # only copy that will ever be on the machine -- worth not making it depend on
 # GitHub being reachable at the end of a multi-hour install.
+# shellcheck disable=SC2012  # the newest, by ls -t; the names are ours: no space or newline in them
 PB_TGZ=$(ls -t "$MVM_LOCAL"/pianobooster/pianobooster-*.tar.gz 2>/dev/null | head -n1 || true)
 if [ -n "$PB_TGZ" ]; then
     mkdir -p "$MNT/pianobooster"
@@ -13676,9 +13684,11 @@ RADBEEPERSHIM
             if id -nG "$PI_USER" 2>/dev/null | tr ' ' '\n' | grep -qx dialout; then
                 note "$PI_USER is already in the dialout group"
             else
-                adduser "$PI_USER" dialout >/dev/null 2>&1 \
-                    && note "$PI_USER added to dialout (takes effect at the next login)" \
-                    || warn "could not add $PI_USER to dialout -- do it by hand: adduser $PI_USER dialout"
+                if adduser "$PI_USER" dialout >/dev/null 2>&1; then
+                    note "$PI_USER added to dialout (takes effect at the next login)"
+                else
+                    warn "could not add $PI_USER to dialout -- do it by hand: adduser $PI_USER dialout"
+                fi
             fi
         else
             warn "no dialout group on this system -- the serial node may be owned by uucp instead"
@@ -13740,9 +13750,11 @@ start_pre() {
 }
 RADBEEPERRC
     chmod 0755 /etc/init.d/radbeeper
-    rc-update add radbeeper default >/dev/null 2>&1 \
-        && note "radbeeper added to the default runlevel" \
-        || warn "could not add radbeeper to the default runlevel"
+    if rc-update add radbeeper default >/dev/null 2>&1; then
+        note "radbeeper added to the default runlevel"
+    else
+        warn "could not add radbeeper to the default runlevel"
+    fi
 
     # HANDING THE COUNTER OVER WITHOUT A PASSWORD. Only one program can hold
     # the serial port, so watching the counter yourself means stopping the
@@ -13894,6 +13906,7 @@ RADBEEPERUDEV
     # both, because one of the two writers is always root and the other is
     # always the owner. Testing only the group bit calls the second one broken.
     if [ -d /var/lib/radbeeper ]; then
+        # shellcheck disable=SC2012  # the newest, by ls -t; the names are ours: no space or newline in them
         _log=$(ls -1t /var/lib/radbeeper/cpm-*.tsv 2>/dev/null | head -1)
         if [ -z "$_log" ]; then
             note "no log written yet -- the first one will be group-writable"
@@ -21250,7 +21263,7 @@ FSTAB
 
     Note the path change: the boot partition is mounted at /boot from now on,
     NOT at /media/mmcblk0p1, which stops existing the moment the new fstab
-    takes effect. (`copal` on its own also works -- a copy was installed
+    takes effect. ('copal' on its own also works -- a copy was installed
     to /usr/local/bin -- but /boot/copal-init.sh is always there.)
 
     Then check:
@@ -21604,6 +21617,7 @@ set $mod Mod4
 font pango:DejaVu Sans Mono 9
 
 I3A
+        # shellcheck disable=SC2016  # a literal $: it is i3's, for its config
         printf 'set $term %s\n\n' "$TERMEMU"
         cat <<'I3B'
 # i3 has no desktop icons and no start menu -- that is the design, not a
@@ -22039,6 +22053,7 @@ I3B
     # Super+Shift+Space's; Super+Shift+T's is Super+Ctrl+T's) or produce a
     # meaningless one (Ctrl+Alt+Alt). They are doors, not verbs: the one
     # implementation behind each is bound elsewhere in this file already.
+    # shellcheck disable=SC2016  # a literal $: it is i3's, for its config
     {
         printf '\n# ---- more doors ---------------------------------------------------\n'
         printf '# The theme picker; and the two chords Omarchy uses for its system menu\n'
@@ -27075,6 +27090,7 @@ BAS
         # and a mismatch between the two would name the wrong version in every
         # message from here down.
         if [ ! -f "$_tgz" ]; then
+            # shellcheck disable=SC2012  # the names are ours: no space or newline in them
             _staged=$(ls "$BOOT"/minivmac/minivmac-*.src.tgz 2>/dev/null | head -n1 || true)
             if [ -n "$_staged" ]; then
                 if cp "$_staged" "$SRCDIR/"; then
@@ -27935,6 +27951,7 @@ MSG
              # playbooks/Stages/levels.list, generated as level_choice.
              _wh=$(level_choice "$(copal_profile)" withhold)
              if [ -n "$_wh" ]; then
+                 # shellcheck disable=SC2086  # a list of programs: split into words, on purpose
                  _excl="$_excl|$(echo $_wh | tr ' ' '|')"
                  note "$(copal_profile) install: skipping $_wh -- withheld at this level"
              fi
@@ -27968,6 +27985,7 @@ MSG
 
     # Deduplicate -- several entries share a package (7zip, unzip, the
     # audacious plugins) and apk is happier asked once.
+    # shellcheck disable=SC2086  # a list of packages: split into words, on purpose
     _want=$(echo $_want | tr ' ' '\n' | awk 'NF && !s[$0]++' | tr '\n' ' ')
     note "About to install:"
     note "$_want"
@@ -28012,9 +28030,11 @@ MSG
     fi
     if { command -v zangband || command -v robots; } >/dev/null 2>&1 && id "$PI_USER" >/dev/null 2>&1 \
        && ! id -nG "$PI_USER" | tr ' ' '\n' | grep -qx users; then
-        adduser "$PI_USER" users >/dev/null 2>&1 \
-            && note "$PI_USER added to users, for the games' score files (next login)" \
-            || warn "could not add $PI_USER to users -- ZAngband needs it: adduser $PI_USER users"
+        if adduser "$PI_USER" users >/dev/null 2>&1; then
+            note "$PI_USER added to users, for the games' score files (next login)"
+        else
+            warn "could not add $PI_USER to users -- ZAngband needs it: adduser $PI_USER users"
+        fi
     fi
     # Software-defined radio. rtl-sdr's and hackrf's udev rules give the
     # dongle to the group 'plugdev', which the account is not in: rtl_test
@@ -28025,9 +28045,11 @@ MSG
     if command -v rtl_test >/dev/null 2>&1 || command -v hackrf_info >/dev/null 2>&1; then
         if getent group plugdev >/dev/null 2>&1 && id "$PI_USER" >/dev/null 2>&1 \
            && ! id -nG "$PI_USER" | tr ' ' '\n' | grep -qx plugdev; then
-            adduser "$PI_USER" plugdev >/dev/null 2>&1 \
-                && note "$PI_USER added to plugdev, for SDR dongles (next login)" \
-                || warn "could not add $PI_USER to plugdev -- an SDR dongle needs doas until: adduser $PI_USER plugdev"
+            if adduser "$PI_USER" plugdev >/dev/null 2>&1; then
+                note "$PI_USER added to plugdev, for SDR dongles (next login)"
+            else
+                warn "could not add $PI_USER to plugdev -- an SDR dongle needs doas until: adduser $PI_USER plugdev"
+            fi
         fi
     fi
     if command -v rtl_test >/dev/null 2>&1 && [ ! -e /etc/modprobe.d/copal-rtl-sdr.conf ]; then
@@ -28042,9 +28064,11 @@ MSG
     # Membership is Wireshark's own intended way to capture without root.
     if [ -x /usr/bin/dumpcap ] && getent group wireshark >/dev/null 2>&1 && id "$PI_USER" >/dev/null 2>&1 \
        && ! id -nG "$PI_USER" | tr ' ' '\n' | grep -qx wireshark; then
-        adduser "$PI_USER" wireshark >/dev/null 2>&1 \
-            && note "$PI_USER added to wireshark, to capture without doas (next login)" \
-            || warn "could not add $PI_USER to wireshark -- capture needs doas: adduser $PI_USER wireshark"
+        if adduser "$PI_USER" wireshark >/dev/null 2>&1; then
+            note "$PI_USER added to wireshark, to capture without doas (next login)"
+        else
+            warn "could not add $PI_USER to wireshark -- capture needs doas: adduser $PI_USER wireshark"
+        fi
     fi
     offer_source_builds
 
@@ -28071,8 +28095,9 @@ MSG
     # shellcheck disable=SC2034  # read by ask(), in the installer
     if [ "${AUTO:-0}" = 1 ]; then AUTO_DEFAULT=y; fi
     if confirm_yes "Install them?"; then
-        require_network && /usr/local/bin/copal-fonts install coding console ibmpc \
-            || warn "fonts skipped -- 'doas copal-fonts install coding console ibmpc' later"
+        if ! { require_network && /usr/local/bin/copal-fonts install coding console ibmpc; }; then
+            warn "fonts skipped -- 'doas copal-fonts install coding console ibmpc' later"
+        fi
     else
         note "Skipped. 'doas copal-fonts install coding' when you want them."
     fi
@@ -29818,6 +29843,7 @@ ANTIQFOOT
         chmod 0644 /usr/share/fonts/copal-antiquity/* 2>/dev/null || true
         if command -v fc-cache >/dev/null 2>&1; then
             fc-cache -f >/dev/null 2>&1 || true
+            # shellcheck disable=SC2012  # counted, not read; the names are ours: no space or newline in them
             note "fonts installed system-wide: $(ls /usr/share/fonts/copal-antiquity 2>/dev/null | wc -l | tr -d ' ') faces, cache rebuilt"
         else
             note "fonts copied to /usr/share/fonts/copal-antiquity (no fc-cache to refresh)"
@@ -33729,8 +33755,10 @@ MSG
         # service installs only what is still missing, so a reboot in the
         # middle resumes, and removes itself when the queue is done.
         say "The full monty's programs: queued for the first desktop login"
+        # shellcheck disable=SC2086,SC2116  # echo makes one line of a list written on several
         note "$(echo $STORE_FULL)"
         mkdir -p /var/lib/copal
+        # shellcheck disable=SC2086  # a list of programs: split into words, on purpose
         printf '%s\n' $STORE_FULL > /var/lib/copal/apps-queue
         cat > /etc/init.d/copal-apps-queue <<'QUEUESVC'
 #!/sbin/openrc-run
@@ -36421,6 +36449,7 @@ if [ "$PLATFORM" = pc ]; then
         printf '    BROKEN  EFI/BOOT/%s is not a PE/EFI binary\n' "$EFI_NAME"
         MISSING=1
     fi
+    # shellcheck disable=SC2013  # kernel paths from grub.cfg, one word each
     for _k in $(sed -n 's/^[[:space:]]*linux[[:space:]]*\([^ ]*\).*/\1/p' "$MNT/boot/grub/grub.cfg" 2>/dev/null | sort -u); do
         if [ -e "$MNT$_k" ]; then
             printf '    ok      grub.cfg -> %s\n' "$_k"

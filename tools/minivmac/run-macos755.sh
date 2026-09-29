@@ -7,6 +7,7 @@
 # macOS755.dsk is a 2 GB HFS volume -- the largest a classic Mac can address,
 # since HFS tops out at 65536 allocation blocks. It boots straight up.
 set -eu
+# shellcheck disable=SC1091  # lib-profile.sh is beside this file, and is linted by its own name
 . "$(dirname "$0")/lib-profile.sh"
 require_bits
 say "Profile: System 7.5.5 -- ready to boot"

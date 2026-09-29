@@ -135,7 +135,13 @@ case "${1:-}" in
         for _v in COPAL_STORE_PREFIX COPAL_STORE_STATE COPAL_STORE_CACHE COPAL_STORE_WORK \
                   COPAL_STORE_LOGDIR COPAL_STORE_NODEPS PKG_CONFIG_PATH CMAKE_PREFIX_PATH \
                   QT_ADDITIONAL_PACKAGES_PREFIX_PATH CPATH LIBRARY_PATH LD_LIBRARY_PATH PATH; do
-            eval "printf 'export %s=\"%s\"\n' $_v \"\$$_v\""
+            # eval, to read a variable by its name: the names are the list
+            # above, and the value is expanded inside it, in quotes. What is
+            # printed is for a shell to read back, so the value goes in
+            # single quotes, and a single quote in it is written '\''.
+            _val=''
+            eval "_val=\${$_v-}"
+            printf "export %s='%s'\n" "$_v" "$(printf '%s' "$_val" | sed "s/'/'\\\\''/g")"
         done ;;
     run)    shift; shift; exec "$@" ;;
     remove) exec "$STORE" remove "$2" ;;

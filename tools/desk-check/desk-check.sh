@@ -29,6 +29,7 @@ FF=$(command -v firefox-esr || command -v firefox || true)
 
 WORK=$(mktemp -d)
 SRV=""
+# shellcheck disable=SC2329  # called by the trap below
 cleanup() {
     [ -n "$SRV" ] && kill "$SRV" 2>/dev/null
     rm -rf "$WORK"
@@ -86,6 +87,7 @@ if [ "${1:-}" = --shots ]; then
     exit 0
 fi
 
+# shellcheck disable=SC2012  # the names are ours: no space or newline in them
 pages=${1:-$(cd "$HERE" && ls t-desk*.js | sed 's/\.js$//')}
 fail=0
 for n in $pages; do

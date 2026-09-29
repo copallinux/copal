@@ -170,7 +170,10 @@ for c in json.load(sys.stdin):
     if c.get("address") in ours:
         a = c["size"][0] * c["size"][1]
         if best is None or a > best[0]: best = (a, c)
-if best:
+# What is printed is evaluated by the shell, so it is held to what it should
+# be: an address in hexadecimal, and four whole numbers.
+import re
+if best and re.fullmatch(r"0x[0-9a-fA-F]+", str(best[1].get("address", ""))):
     c = best[1]
     print("COPAL_WIN_ADDR=%s COPAL_WIN_X=%d COPAL_WIN_Y=%d COPAL_WIN_W=%d COPAL_WIN_H=%d"
           % (c["address"], c["at"][0], c["at"][1], c["size"][0], c["size"][1]))' \

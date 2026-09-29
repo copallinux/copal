@@ -157,6 +157,7 @@ MSG
              # playbooks/Stages/levels.list, generated as level_choice.
              _wh=$(level_choice "$(copal_profile)" withhold)
              if [ -n "$_wh" ]; then
+                 # shellcheck disable=SC2086  # a list of programs: split into words, on purpose
                  _excl="$_excl|$(echo $_wh | tr ' ' '|')"
                  note "$(copal_profile) install: skipping $_wh -- withheld at this level"
              fi
@@ -190,6 +191,7 @@ MSG
 
     # Deduplicate -- several entries share a package (7zip, unzip, the
     # audacious plugins) and apk is happier asked once.
+    # shellcheck disable=SC2086  # a list of packages: split into words, on purpose
     _want=$(echo $_want | tr ' ' '\n' | awk 'NF && !s[$0]++' | tr '\n' ' ')
     note "About to install:"
     note "$_want"
@@ -234,9 +236,11 @@ MSG
     fi
     if { command -v zangband || command -v robots; } >/dev/null 2>&1 && id "$PI_USER" >/dev/null 2>&1 \
        && ! id -nG "$PI_USER" | tr ' ' '\n' | grep -qx users; then
-        adduser "$PI_USER" users >/dev/null 2>&1 \
-            && note "$PI_USER added to users, for the games' score files (next login)" \
-            || warn "could not add $PI_USER to users -- ZAngband needs it: adduser $PI_USER users"
+        if adduser "$PI_USER" users >/dev/null 2>&1; then
+            note "$PI_USER added to users, for the games' score files (next login)"
+        else
+            warn "could not add $PI_USER to users -- ZAngband needs it: adduser $PI_USER users"
+        fi
     fi
     # Software-defined radio. rtl-sdr's and hackrf's udev rules give the
     # dongle to the group 'plugdev', which the account is not in: rtl_test
@@ -247,9 +251,11 @@ MSG
     if command -v rtl_test >/dev/null 2>&1 || command -v hackrf_info >/dev/null 2>&1; then
         if getent group plugdev >/dev/null 2>&1 && id "$PI_USER" >/dev/null 2>&1 \
            && ! id -nG "$PI_USER" | tr ' ' '\n' | grep -qx plugdev; then
-            adduser "$PI_USER" plugdev >/dev/null 2>&1 \
-                && note "$PI_USER added to plugdev, for SDR dongles (next login)" \
-                || warn "could not add $PI_USER to plugdev -- an SDR dongle needs doas until: adduser $PI_USER plugdev"
+            if adduser "$PI_USER" plugdev >/dev/null 2>&1; then
+                note "$PI_USER added to plugdev, for SDR dongles (next login)"
+            else
+                warn "could not add $PI_USER to plugdev -- an SDR dongle needs doas until: adduser $PI_USER plugdev"
+            fi
         fi
     fi
     if command -v rtl_test >/dev/null 2>&1 && [ ! -e /etc/modprobe.d/copal-rtl-sdr.conf ]; then
@@ -264,9 +270,11 @@ MSG
     # Membership is Wireshark's own intended way to capture without root.
     if [ -x /usr/bin/dumpcap ] && getent group wireshark >/dev/null 2>&1 && id "$PI_USER" >/dev/null 2>&1 \
        && ! id -nG "$PI_USER" | tr ' ' '\n' | grep -qx wireshark; then
-        adduser "$PI_USER" wireshark >/dev/null 2>&1 \
-            && note "$PI_USER added to wireshark, to capture without doas (next login)" \
-            || warn "could not add $PI_USER to wireshark -- capture needs doas: adduser $PI_USER wireshark"
+        if adduser "$PI_USER" wireshark >/dev/null 2>&1; then
+            note "$PI_USER added to wireshark, to capture without doas (next login)"
+        else
+            warn "could not add $PI_USER to wireshark -- capture needs doas: adduser $PI_USER wireshark"
+        fi
     fi
     offer_source_builds
 
@@ -293,8 +301,9 @@ MSG
     # shellcheck disable=SC2034  # read by ask(), in the installer
     if [ "${AUTO:-0}" = 1 ]; then AUTO_DEFAULT=y; fi
     if confirm_yes "Install them?"; then
-        require_network && /usr/local/bin/copal-fonts install coding console ibmpc \
-            || warn "fonts skipped -- 'doas copal-fonts install coding console ibmpc' later"
+        if ! { require_network && /usr/local/bin/copal-fonts install coding console ibmpc; }; then
+            warn "fonts skipped -- 'doas copal-fonts install coding console ibmpc' later"
+        fi
     else
         note "Skipped. 'doas copal-fonts install coding' when you want them."
     fi

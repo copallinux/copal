@@ -368,7 +368,7 @@ FSTAB
 
     Note the path change: the boot partition is mounted at /boot from now on,
     NOT at /media/mmcblk0p1, which stops existing the moment the new fstab
-    takes effect. (`copal` on its own also works -- a copy was installed
+    takes effect. ('copal' on its own also works -- a copy was installed
     to /usr/local/bin -- but /boot/copal-init.sh is always there.)
 
     Then check:

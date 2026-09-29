@@ -99,10 +99,12 @@ fi
 # --- 3. the running guest, if one is reachable ---------------------------
 if utm/utm-vm.sh status --target aarch64 2>/dev/null | grep -q 'Status *started'; then
     info "A UTM machine is running -- trying its logs over SSH"
-    utm/utm-vm.sh log --target aarch64 > "$OUT/utm-guest.log" 2>&1 \
-        && printf '    utm-guest.log\n' >&2 \
-        || { rm -f "$OUT/utm-guest.log"
-             warn "could not reach the guest over SSH (stage 1 may not have run yet)"; }
+    if utm/utm-vm.sh log --target aarch64 > "$OUT/utm-guest.log" 2>&1; then
+        printf '    utm-guest.log\n' >&2
+    else
+        rm -f "$OUT/utm-guest.log"
+        warn "could not reach the guest over SSH (stage 1 may not have run yet)"
+    fi
 fi
 
 # --- 4. a summary that answers the questions worth asking ----------------

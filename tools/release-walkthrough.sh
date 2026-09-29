@@ -185,6 +185,7 @@ fi
 blank
 say "Booting the image and photographing what comes up..."
 if tools/capture-screens.sh --shots 4 --wait 150 --interval 25 --prefix screen; then
+    # shellcheck disable=SC2012  # counted, not read; the names are ours: no space or newline in them
     _n=$(ls docs/media/screen-*.png 2>/dev/null | wc -l | tr -d ' ')
     done_ "$_n frame(s) captured -- docs/media/screen-*.png"
     blank

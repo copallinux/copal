@@ -9,6 +9,7 @@
 # You need a bootable System 6 disk image; Gryphel's recipe walks through
 # producing one:  https://www.gryphel.com/c/minivmac/recipes/sys6util/
 set -eu
+# shellcheck disable=SC1091  # lib-profile.sh is beside this file, and is linted by its own name
 . "$(dirname "$0")/lib-profile.sh"
 require_bits
 say "Profile: System 6 -- roll your own disks"

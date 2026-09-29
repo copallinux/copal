@@ -336,6 +336,7 @@ set $mod Mod4
 font pango:DejaVu Sans Mono 9
 
 I3A
+        # shellcheck disable=SC2016  # a literal $: it is i3's, for its config
         printf 'set $term %s\n\n' "$TERMEMU"
         cat <<'I3B'
 # i3 has no desktop icons and no start menu -- that is the design, not a
@@ -771,6 +772,7 @@ I3B
     # Super+Shift+Space's; Super+Shift+T's is Super+Ctrl+T's) or produce a
     # meaningless one (Ctrl+Alt+Alt). They are doors, not verbs: the one
     # implementation behind each is bound elsewhere in this file already.
+    # shellcheck disable=SC2016  # a literal $: it is i3's, for its config
     {
         printf '\n# ---- more doors ---------------------------------------------------\n'
         printf '# The theme picker; and the two chords Omarchy uses for its system menu\n'

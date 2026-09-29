@@ -17,7 +17,7 @@
 # cards need not have it, and the bench does.
 
 set -eu
-NOTES=57
+NOTES=0
 
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 

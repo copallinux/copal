@@ -304,6 +304,7 @@ summarise() {
 info "Wrote $ANSWERS (mode 600)"
 note ""
 note "  git identity   ${COPAL_GIT_NAME} <${COPAL_GIT_EMAIL}>"
+# shellcheck disable=SC2086  # a list of repositories: split into words, on purpose
 note "  ~/code         $(set -- ${COPAL_GIT_REPOS:-}; [ $# -gt 0 ] && echo "$# repositor$([ $# = 1 ] && echo y || echo ies)" || echo '(none)')"
 [ -n "$COPAL_MAIL_ADDRESS" ] && note "  mail           ${COPAL_MAIL_ADDRESS} via ${COPAL_MAIL_IMAP} / ${COPAL_MAIL_SMTP}"
 note "  user           ${COPAL_USER}"
@@ -367,7 +368,11 @@ fi
 PREP="$ROOT/copal-prep.sh"
 if [ -r "$PREP" ] \
    && _pool=$(sed -n '/^hostname_pool() {/,/^}/p;/^random_hostname() {/,/^}/p' "$PREP") \
-   && [ -n "$_pool" ]; then
+   && [ -n "$_pool" ] \
+   && printf '%s\n' "$_pool" | sh -n 2>/dev/null; then
+    # What is evaluated is this repository's own code, cut at the first } in
+    # column 0 -- the cut that once left a playbook half a function. So it is
+    # parsed before it is believed: a bad cut takes the fallback below.
     eval "$_pool"
 else
     random_hostname() { printf 'copal\n'; }

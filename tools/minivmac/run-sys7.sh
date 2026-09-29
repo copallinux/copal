@@ -10,6 +10,7 @@
 # Boot something that already runs, use ImportFl to bring the .smi.bin inside,
 # then run Apple's installer onto disk1.
 set -eu
+# shellcheck disable=SC1091  # lib-profile.sh is beside this file, and is linted by its own name
 . "$(dirname "$0")/lib-profile.sh"
 require_bits
 say "Profile: System 7.0.1 -- install onto a hard disk"

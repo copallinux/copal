@@ -1449,6 +1449,7 @@ ANTIQFOOT
         chmod 0644 /usr/share/fonts/copal-antiquity/* 2>/dev/null || true
         if command -v fc-cache >/dev/null 2>&1; then
             fc-cache -f >/dev/null 2>&1 || true
+            # shellcheck disable=SC2012  # counted, not read; the names are ours: no space or newline in them
             note "fonts installed system-wide: $(ls /usr/share/fonts/copal-antiquity 2>/dev/null | wc -l | tr -d ' ') faces, cache rebuilt"
         else
             note "fonts copied to /usr/share/fonts/copal-antiquity (no fc-cache to refresh)"

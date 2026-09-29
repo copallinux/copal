@@ -344,8 +344,8 @@ cmd_ls() {
     done
     printf '\n'
     [ "$SHOW_ALL" = 1 ] && strangers
-    printf "    ${D}✓ proved by certificate    ? found, not yet enrolled    ✗ another CA${Z}\n"
-    printf "    ${D}A beacon fills this list. A certificate is what decides.${Z}\n\n"
+    printf '    %b✓ proved by certificate    ? found, not yet enrolled    ✗ another CA%b\n' "$D" "$Z"
+    printf '    %bA beacon fills this list. A certificate is what decides.%b\n\n' "$D" "$Z"
 }
 
 # Machines on this network that are NOT in the fleet. Shown, never contacted.
@@ -358,7 +358,7 @@ strangers() {
         note "$(browse_help)"; return 0
     fi
     beacons | cut -f2 | sort -u > "$TMP/mine"
-    printf "    ${Y}Strangers${Z} ${D}-- on this network, not in the fleet${Z}\n"
+    printf '    %bStrangers%b %b-- on this network, not in the fleet%b\n' "$Y" "$Z" "$D" "$Z"
     avahi-browse -apt 2>/dev/null | awk -F';' '$1 == "=" { print $8 "\t" $4 }' \
         | sort -u | while IFS="$TAB" read -r _a _nm; do
             [ -n "$_a" ] || continue
@@ -1313,7 +1313,7 @@ scene_list() {
         _d=$(sed -n 's/^# scene: *//p' "$_f" | head -1)
         printf "    ${C}%-8s${Z} %s\n" "$_n" "$_d"
     done
-    printf "\n    ${D}copal fleet scene NAME    --check to report without changing${Z}\n\n"
+    printf '\n    %bcopal fleet scene NAME    --check to report without changing%b\n\n' "$D" "$Z"
 }
 cmd_scene() {
     _name=""

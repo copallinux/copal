@@ -176,6 +176,7 @@ if [ -n "$HDSIZE" ]; then
 fi
 
 # ----------------------------------------------------------------- guide ---
+# shellcheck disable=SC2012  # ls -la is shown to a person, not read
 cat <<EOF
 
 $(info "Contents of $DEST")

@@ -142,9 +142,11 @@ RADBEEPERSHIM
             if id -nG "$PI_USER" 2>/dev/null | tr ' ' '\n' | grep -qx dialout; then
                 note "$PI_USER is already in the dialout group"
             else
-                adduser "$PI_USER" dialout >/dev/null 2>&1 \
-                    && note "$PI_USER added to dialout (takes effect at the next login)" \
-                    || warn "could not add $PI_USER to dialout -- do it by hand: adduser $PI_USER dialout"
+                if adduser "$PI_USER" dialout >/dev/null 2>&1; then
+                    note "$PI_USER added to dialout (takes effect at the next login)"
+                else
+                    warn "could not add $PI_USER to dialout -- do it by hand: adduser $PI_USER dialout"
+                fi
             fi
         else
             warn "no dialout group on this system -- the serial node may be owned by uucp instead"
@@ -206,9 +208,11 @@ start_pre() {
 }
 RADBEEPERRC
     chmod 0755 /etc/init.d/radbeeper
-    rc-update add radbeeper default >/dev/null 2>&1 \
-        && note "radbeeper added to the default runlevel" \
-        || warn "could not add radbeeper to the default runlevel"
+    if rc-update add radbeeper default >/dev/null 2>&1; then
+        note "radbeeper added to the default runlevel"
+    else
+        warn "could not add radbeeper to the default runlevel"
+    fi
 
     # HANDING THE COUNTER OVER WITHOUT A PASSWORD. Only one program can hold
     # the serial port, so watching the counter yourself means stopping the
@@ -360,6 +364,7 @@ RADBEEPERUDEV
     # both, because one of the two writers is always root and the other is
     # always the owner. Testing only the group bit calls the second one broken.
     if [ -d /var/lib/radbeeper ]; then
+        # shellcheck disable=SC2012  # the newest, by ls -t; the names are ours: no space or newline in them
         _log=$(ls -1t /var/lib/radbeeper/cpm-*.tsv 2>/dev/null | head -1)
         if [ -z "$_log" ]; then
             note "no log written yet -- the first one will be group-writable"
