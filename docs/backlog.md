@@ -26,7 +26,7 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | C | configuration | `copal` |
 | S | shell scripts | `copal` |
 
-**Standing:** 20 open · 0 done · 0 dropped. Written 29 September 2026.
+**Standing:** 18 open · 1 in progress · 1 done · 1 dropped. Written 29 September 2026.
 
 ---
 
@@ -36,7 +36,6 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 
 | ID | Entry | Rule | Check |
 |---|---|---|---|
-| T-07 | `tests/ytq-hostile-check.sh`, in `make check`: the real ytq against a stand-in yt-dlp whose every field carries an attack. It fails today, on purpose; T-01 to T-04 turn it green | T1–T3, T7 | it fails before T-01 and passes after T-04 |
 | T-01 | One cleaning function, used where text enters: after `json::parse` of `NOTES`, `META` and `TALK`, on the title in `check()`, and in `vtt_words`. Control characters are dropped, except newline and tab | T1 | hostile check: no byte below 0x20 but newline and tab in the `.txt`, the log and the queue |
 | T-02 | `ffescape` handles carriage return and NUL | T3 | hostile check: one chapter, and a `lyrics` tag, in the MP4 |
 | T-03 | `printable()` on what the commands print: `ytq list`, `ytq status`, `say()`, and the `source`, `license` and `note` rows of `sstr verify` | T7 | hostile check: `cat -v` of each shows no `^[` |
@@ -60,7 +59,6 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 
 | ID | Entry | Rule | Check |
 |---|---|---|---|
-| S-01 | `playbooks/Code/radbeeper.sh` is cut short inside a here-document. Restore it from `copal-prep.sh`, and fix the cut in `tools/copal-playbooks.py`: it stops at the first `}` in column 0, here-document or not | S12 | `sh -n playbooks/Code/radbeeper.sh` |
 | S-02 | `make lint` runs `sh -n` over every file in `playbooks/` | S12 | lint fails on the radbeeper playbook before S-01 and passes after |
 | S-03 | `# shellcheck shell=sh` in the 297 playbooks, written by `tools/copal-playbooks.py fmt` | S1 | no SC2148 |
 | S-04 | shellcheck in `make lint`: errors fail it now; warnings are held to a count in the Makefile that may only go down | S1–S10 | `make lint` |
@@ -74,11 +72,17 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 
 ---
 
+## In progress
+
+| ID | Entry | Rule | Where it stands |
+|---|---|---|---|
+| T-07 | `tests/ytq-hostile-check.sh` and `tests/standin/yt-dlp-hostile`, in `make check` and as `make ytq-hostile-check`: the real ytq against a stand-in yt-dlp whose every field carries an attack | T1–T3, T7 | written 29 September 2026, not committed. **18 of its 30 checks fail, as they should;** T-01 to T-04 turn them green, and the entry is done when they have. The other 12 were each made to fail once, by a sabotaged copy, so none passes by default. The rest of `make check` is untouched: 400 checks and 146 unit tests pass |
+
 ## Done
 
 | ID | Entry | Done | Commit |
 |---|---|---|---|
-| | *nothing yet* | | |
+| S-01 | `playbooks/Code/radbeeper.sh` was cut short inside a here-document, and the cut was worse in `copal-prep.sh` than in the playbook: the here-document stayed open for 403 lines and took in `staticstream_post`, `install_ytbrave`, `write_media_conf` and `grub_default_lts`, so a fresh install defined none of them. The 196 lines left behind are back in the playbook and gone from where they were stranded. The cut was made by hand when the function was split out in `df8f98e`, not by `tools/copal-playbooks.py`, which reads a body whole. **Check:** `sh -n` passes on all 297 playbooks; a shell that reads the region defines all five functions, where it defined one; `radbeeper_pre` is line for line the function of before the split | 29 September 2026 | `e1300c5` |
 
 ## Dropped
 

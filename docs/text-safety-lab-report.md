@@ -341,10 +341,59 @@ made; it is done because its check passed.
 | File | Change |
 |---|---|
 | `docs/text-safety-lab-report.md` | this report |
-| `docs/backlog.md` | new: twenty entries, all open |
+| `docs/backlog.md` | new: twenty entries |
 | `README.md` | two rows in the table of files |
 
 No program was changed.
+
+## IX. Addendum: the first two entries (29 September 2026)
+
+**S-01 was worse than section IV says.** The playbook was cut at line 188,
+and `make sync-playbooks` had carried the cut into `copal-prep.sh`. There the
+here-document did not end at the cut: it ran on for 403 lines until it met
+the `RADBEEPERRC` of the function's stranded second half. Everything between
+was text in a file, not shell:
+
+| Function | Defined, before | Defined, after |
+|---|---|---|
+| `radbeeper_pre` | yes | yes |
+| `staticstream_post` | **no** | yes |
+| `install_ytbrave` | **no** | yes |
+| `write_media_conf` | **no** | yes |
+| `grub_default_lts` | **no** | yes |
+
+Stage 10 calls `install_ytbrave` and `staticstream_post`. On a machine
+installed from `df8f98e` or later it would have found neither, and
+`/etc/init.d/radbeeper` would have held four hundred lines of the installer.
+`sh -n` passed throughout, because an open here-document that happens to meet
+its end word is good syntax. The bench never showed it: its `yt-brave` is of
+17 September, from before the split.
+
+The fix moved 196 lines: into the playbook, and out of the place they were
+stranded. The function is now, line for line, what it was before the split.
+The cut was made by hand during the split; `tools/copal-playbooks.py` reads a
+body whole and was not at fault, as the backlog first said it was.
+
+What this adds to section V: **a syntax check proves a file can be read, not
+that it says what was meant.** The check that found this asked a shell which
+functions it had after reading the file. S-02 should ask the same.
+
+**T-07 is written, and red.** `tests/ytq-hostile-check.sh` makes 30 checks.
+
+| | Checks | Now |
+|---|---|---|
+| nothing is run; only the stand-in browser opens | 5 | pass |
+| no control character in the `.txt`, log, queue, notification | 4 | **fail** |
+| none printed by `ytq list`, `ytq status`, `sstr verify` | 3 | **fail** |
+| no forged row in the notes or in `sstr verify` | 5 | **fail** |
+| the MP4's tags: one chapter, lyrics and description whole, one-line tags | 6 | **fail** |
+| guards: a field is not cut short, a real row is not lost, the capture verifies | 7 | pass |
+
+Eighteen fail and twelve pass. The twelve were then run against a copy of
+the check that sabotaged its own evidence — a planted file, a deleted row, a
+truncated capture — and all thirty failed. A check that cannot fail is not
+evidence, and seven of these twelve pass today only because the defect they
+guard against has not been made yet.
 
 ## References
 
