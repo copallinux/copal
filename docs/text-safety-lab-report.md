@@ -1,0 +1,374 @@
+# Text Is Data: A Hostile-Input Review of ytq and Static Stream, and a Standard for Copal's Shell Scripts
+
+*Lab Report — IEEE Format*
+
+<!-- SPDX-License-Identifier: MIT -->
+Copyright (c) 2026 Paul Richeson. MIT licensed — see `LICENSE`. Copal Linux is
+an aggregation of Alpine Linux, not a derivative work of it; Alpine and its
+packages remain under their own licences.
+
+*Copal Linux, Alpine 3.24 aarch64 guest under UTM on a Mac: the "bench".
+29 September 2026. The review was done by the author with an AI coding
+assistant (Claude) in one terminal on the bench. Nothing was changed in either
+program during it; every defect here is an entry in `docs/backlog.md` [1], and
+this report is the reasoning those entries point back to.*
+
+---
+
+## Abstract
+
+ytq downloads a video and writes what the site said about it — title,
+description, tags, chapters, captions, comments — into a text file, into the
+MP4's own tags, and into a Static Stream capture's header. Every one of those
+words is chosen by a stranger. This report asks what a stranger can do with
+them. The real `ytq` was run against a stand-in yt-dlp whose every field
+carried an attack, in a throwaway home directory. **No field ran a command:**
+shell substitutions in a description created no file. But control characters
+pass through untouched, and four defects follow: a carriage return in a
+chapter title removed the transcript from the MP4's tags; escape sequences
+reach the terminal from four commands; a newline in a title forges a
+`License:` row in the notes and in `sstr verify`; and the file ytq tags,
+captures and removes is named by a line it does not check. The same method —
+measure first, with the tool rather than by eye — was then applied to Copal's
+346 shell scripts: `shellcheck`, installed on the bench but not part of
+`make lint`, reported 405 findings and one playbook that does not parse. The
+report ends with a standard of twenty short rules, each tied to the check that
+enforces it, and twenty backlog entries.
+
+## I. Objective
+
+1. Find every way text from a site can leave the role of data in ytq and
+   Static Stream: run a command, change a file it should not, alter the
+   terminal, or forge part of the record.
+2. Prove each finding by running it, and prove what is safe the same way.
+3. Find out why every ytq log carries yt-dlp's warning about a JavaScript
+   runtime, and what removes it on all three of Copal's architectures.
+4. Measure Copal's shell scripts against the same standard.
+5. Write the standard down as rules short enough to follow, and turn every
+   suggestion into a backlog entry that can be marked done.
+
+## II. Materials
+
+- **The bench**: ffmpeg 8.1.2, yt-dlp 2026.08.19 (the zipapp in
+  `/usr/local/bin`), Node 24.18.1, shellcheck 0.11.0, shfmt, Python 3.14.
+- **staticstream** at `75cbf7d`: `src/ytq/runner.rs` (2,107 lines),
+  `textwrap.rs`, `urls.rs`, `log.rs`, `term.rs`, `src/workspace/services.rs`,
+  `src/bin/sstr.rs`.
+- **copal** at `adb5664`: `copal-prep.sh`, `playbooks/`, `tools/`, `bin/`,
+  `utm/` — 346 `.sh` files, 62,658 lines.
+- **The stand-in yt-dlp** of `tests/standin/` [2], as the model for a hostile
+  one.
+
+## III. Method
+
+### A. Follow the text, not the code
+
+The review did not read files top to bottom. It followed one word from where
+it enters to everywhere it lands:
+
+| Enters as | Lands in |
+|---|---|
+| a URL on the clipboard or typed | yt-dlp's arguments, the browser's, the queue, the log |
+| `NOTES`, `META`, `TALK` lines from yt-dlp | the `.txt`, the MP4's tags, the capture's header, the queue |
+| a `.vtt` caption file | the `.txt`, the MP4's `lyrics` tag |
+| a `FILE` line from yt-dlp | the path ytq tags, captures and may remove |
+| any of the above, later | the terminal, a notification, a shell line in the Workspace |
+
+At each landing the question is the same: **what characters mean something
+here, and who escapes them?**
+
+### B. A hostile stand-in
+
+A copy of the stand-in yt-dlp was given attacks in place of its sample data:
+
+| Field | Carried |
+|---|---|
+| title | `ESC ] 0 ; …` (set the window title), `ESC [ 2 J` (clear the screen), a newline and a forged `License:` row |
+| uploader | a newline and a forged `URL:` row |
+| description | carriage returns followed by `artist=…`, `title=…`; `$(touch PWNED)`, backticks, `; touch` |
+| chapter title | a carriage return, then `[CHAPTER]` and its fields |
+| captions | an escape sequence, a NUL byte, U+2028 |
+| comment | `ESC ] 52 ; …` (write to the clipboard) |
+
+The real `target/release/ytq` was run against it with the harness's own rules
+[3]: a throwaway `HOME`, stubs first on `PATH`, the display variables unset.
+The outputs were read with `cat -v` and `ffprobe`, never on a live terminal.
+
+### C. The shell scripts, measured
+
+`shellcheck -f json` over all 346 files, counted by code and by file; `sh -n`
+over every playbook; and `grep` for five patterns no linter ranks: `eval`,
+a download piped into a shell, a fixed name in `/tmp`, a download with no
+checksum beside it, and `rm -rf` on a path built from variables.
+
+### D. The JavaScript runtime
+
+yt-dlp was run with `-v` against one real video three ways — as configured,
+with `--js-runtimes node`, with `--js-runtimes quickjs` — and its own source
+was unpacked from the zipapp to read how it starts each runtime. Alpine's
+package indexes for four architectures were read for which runtimes exist
+where.
+
+## IV. Results
+
+### A. What held
+
+| Attack | Result | Why |
+|---|---|---|
+| `$(touch PWNED)`, backticks, `; touch` in the description | no file created | every process is started with an argument list; no shell reads the text |
+| a title as a filename | `Up-Honest_title_HOSTILEAAAA.mp4` | `NAME_OPTS` keeps `A-Z a-z 0-9 - _` and nothing else |
+| a URL that is really an option (`--exec …`) | refused | `as_url()` accepts only `http://` and `https://` |
+| a newline in a title forging a `FILE` line | impossible | site text crosses the pipe as JSON (`%(…)j`), one line |
+| a quote or `$HOME` in a name sent to the Workspace's shell | one word | `services::quote`, already tested against a real `sh` |
+| deeply nested JSON | refused | the parser has a depth bound |
+| an escape sequence in the ytq window | shown as `^[` | the window draws through `term::printable` |
+
+### B. Defects
+
+| # | Severity | Defect | Evidence | Backlog |
+|---|---|---|---|---|
+| 1 | medium | `ffescape` escapes `= ; # \` and newline, not carriage return or NUL; ffmpeg ends a line at either | a chapter titled `one\r[CHAPTER]…` opened a section inside the `comment` tag: three chapters instead of one, and **no `lyrics` tag in the file**. A NUL in the captions cut `lyrics` at that byte | T-02 |
+| 2 | medium | raw control characters reach the terminal | `ytq list` printed `ESC ]0;PWNED-WINDOW-TITLE BEL ESC [2J`; `sstr verify` printed the same from the header; the `.txt` holds them and the Workspace's Text key runs `cat` on it | T-01, T-03 |
+| 3 | medium | a newline in a one-line field forges rows | the notes showed `License:    Creative Commons (FORGED ROW)` and `URL:        https://evil.example/forged`; `sstr verify` printed both under `note` | T-04 |
+| 4 | low | `FILE` and `NOTES` are read from one pipe carrying stdout and stderr, and the path is not checked to be inside `DIR` before it is tagged, captured and — with `OUTPUT=sstr` — removed | by reading; no working attack was found, because yt-dlp prints its own `FILE` line last | T-05 |
+| 5 | low | no `--` before the URL in four yt-dlp commands | safe today by `as_url()` alone | T-06 |
+
+Defect 2 in `sstr verify` is wider than ytq: it applies to any capture
+somebody hands over, since whoever made the file wrote its header.
+
+One suggestion made during the review was wrong and is corrected here.
+Clippy's `disallowed_methods` was proposed to forbid `Command::new("sh")`; it
+matches a method, not its argument, so it would forbid every process or none.
+A `grep` in `make check` that allows exactly the two known lines is the tool
+that does the job (T-08).
+
+### C. The shell scripts
+
+| Measure | Count |
+|---|---|
+| `.sh` files, lines | 346, 62,658 |
+| files that name their shell | 49 (39 `/bin/sh`, 10 bash) |
+| files that do not | 297, all playbooks |
+| files with `set -e` or `set -u` near the top | 20 |
+| shellcheck findings | 405: 302 errors, 47 warnings, 54 info, 2 style |
+| … of which "shell unknown" (SC2148) | 296 |
+| playbooks that fail `sh -n` | 1 |
+
+| Finding | Where | Backlog |
+|---|---|---|
+| **`playbooks/Code/radbeeper.sh` does not parse.** It ends inside a here-document, 31 lines into the 403 that `copal-prep.sh` holds. The cut is at the first `}` in column 0, which belongs to the init script being written, not to the function | `sh -n`: `unexpected end of file (expecting "}")`. `make lint` passes, because it parses `bin/` and `tools/` and only runs the playbooks' own checker over `playbooks/` | S-01, S-02 |
+| 297 playbooks name no shell; shellcheck says so of the 296 it can parse | SC2148 | S-03 |
+| shellcheck is on the bench and not in `make lint` | `Makefile:1040` | S-04 |
+| `/tmp/name.$$` written as root | 64 lines in 4 files; 112 more in the assembled `copal-prep.sh` | S-05 |
+| Brave is installed by `curl … \| sh` | `copal-prep.sh:6127` | S-06 |
+| 41 download lines, 13 lines that verify anything | by `grep`; each needs reading | S-07 |
+| `eval` on a string built from variables | `tools/copal-app-sweep.sh:26`, `tools/copal-answers.sh:371`, `tools/copal-store-bench.sh:138` | S-08 |
+| `rm -rf "$DEST$_t/bin"` with nothing to stop both being empty | `playbooks/Tools/ffconverter.sh:29` (SC2115) | S-09 |
+| `cd` with no `\|\| exit` | 7 places in 5 files (SC2164) | S-09 |
+| a command kept in a string and run unquoted | `playbooks/Stages/17-stage-hyprland.sh:1500` (SC2089, SC2090) | S-09 |
+| `A && B \|\| C` used as if/else | 10 places (SC2015) | S-09 |
+
+Two things the numbers overstate. The 24 SC1007 warnings are all
+`CDPATH= cd --`, a deliberate idiom; they want a directive, not a change. And
+`copal-prep.sh` is assembled from the playbooks, so a defect counted in both
+is fixed once, in the playbook, and carried over by `make sync-playbooks`.
+
+### D. The JavaScript runtime
+
+The warning appears 149 times in the current `ytq.log`.
+
+| Run | yt-dlp's own report | Warning |
+|---|---|---|
+| as configured | `JS runtimes: none` | yes |
+| `--js-runtimes node` | `JS runtimes: node-24.18.1` | **no** |
+| `--js-runtimes quickjs` | `JS runtimes: none` (not installed) | yes |
+
+The zipapp already carries its script component (`yt_dlp_ejs-0.8.0`); only a
+runtime is missing, and only deno is looked for unless another is named.
+
+| Runtime | On the bench | Alpine 3.24 | How yt-dlp starts it |
+|---|---|---|---|
+| node | yes | x86_64, aarch64, armv7, armhf | with `--permission`: no files, no network unless granted |
+| deno | no; 94 MiB | x86_64 and aarch64 only | with no permissions granted |
+| quickjs | no | all four | a script in a temporary file |
+
+Node is the one rule that holds on all three of Copal's targets, the Pi 2B
+included (C-01).
+
+## V. Discussion
+
+**The boundary is one place.** ytq's text comes in through four doors:
+`NOTES`, `META`, `TALK` and the caption file. It goes out through at least
+nine. Cleaning at the nine is nine chances to forget one — and `ffescape`,
+written with care, forgot two characters. Cleaning at the four means a control
+character never exists inside the program at all.
+
+**Escaping is still owed at every exit.** Cleaning removes what is never
+wanted. Escaping protects what is wanted but means something: `=` in a tag
+file, `'` in a shell line, `"` in JSON. Each format gets one function, and a
+test that runs the result through the real reader. `services::quote` was
+already built that way, and it is the part of the program that held.
+
+**What held was designed; what failed was assumed.** The argument lists, the
+filename alphabet, the JSON on the pipe and `printable` in the window were all
+decisions somebody made on purpose. The four defects are all places where a
+string was assumed to be one line of printable text because it usually is.
+
+**A linter that is installed is not a linter that runs.** shellcheck has been
+on the bench throughout. The radbeeper playbook would have failed the first
+time anything parsed it.
+
+**Measure, then rank.** 405 findings is not 405 problems. 296 are one missing
+line repeated; 24 are a false alarm; perhaps thirty need a person. The count
+is the start of the work, not its size.
+
+## VI. The standard
+
+Each rule is one sentence, and each names what enforces it. A rule with
+nothing to enforce it is a wish.
+
+### A. Text from outside (Rust)
+
+| # | Rule | Enforced by |
+|---|---|---|
+| T1 | Text from a site is cleaned once, where it enters: control characters dropped, except newline and tab | the hostile check |
+| T2 | A field that is one line has no newline in it | the hostile check: one `License:` row, one `URL:` row |
+| T3 | Every output format has one escaping function, tested against the real reader | unit tests; `ffprobe` in the hostile check |
+| T4 | A process is started with an argument list. A shell is used only where a person is meant to read and retype the line | `grep` for `Command::new("sh")` in `make check` |
+| T5 | `--` goes before any argument that came from outside | the run lines in `ytq.log` |
+| T6 | A path read back from a child is checked before it is written to or removed | unit test |
+| T7 | Anything printed to a terminal goes through `printable` | the hostile check: no byte below 0x20 but newline and tab |
+| T8 | A child's answers are read from stdout alone, as JSON | by reading; the hostile check |
+
+### B. Shell scripts
+
+| # | Rule | Enforced by |
+|---|---|---|
+| S1 | Every file names its shell: a `#!` line, or `# shellcheck shell=sh` in a file that is sourced | SC2148 |
+| S2 | A script that is run starts with `set -eu`. A playbook is sourced and inherits it | `grep` in `make lint` |
+| S3 | Every expansion is quoted: `"$var"`, `"$@"` | SC2086 |
+| S4 | A command is never kept in a string, and `eval` is never given data | SC2089, SC2090; `grep` |
+| S5 | `--` goes before operands that came from outside | review |
+| S6 | A temporary file comes from `mktemp` and is removed by a `trap` | `grep` for `/tmp/` |
+| S7 | `rm -rf` on a built path uses `"${var:?}"` | SC2115 |
+| S8 | `cd` is followed by `\|\| exit` | SC2164 |
+| S9 | `printf '%s\n' "$x"`, never a variable as the format | SC2059 |
+| S10 | `if … then … else`, not `A && B \|\| C` | SC2015 |
+| S11 | A download goes to a temporary name, is checked against a checksum or signature where one is published, and is then renamed. Nothing is piped into a shell | `grep`; review |
+| S12 | A here-document that holds code is quoted (`<<'EOF'`), and every file parses | `sh -n` over every file |
+
+### C. Written plainly
+
+The rules above can all be met by a script nobody can read. These three are
+for the reader, and only review enforces them:
+
+1. **One function, one job, named for the job.** If the name needs "and", it
+   is two functions.
+2. **A comment says why.** The code already says what.
+3. **The obvious form first.** A loop over a pipeline, an `if` over a chain of
+   `&&`, a name over a positional parameter.
+
+The same function, before and after:
+
+```sh
+# before
+cat > /tmp/conf.$$ <<EOF
+dir=$DIR
+EOF
+cd $DIR && install -m 644 /tmp/conf.$$ app.conf || warn "failed"
+rm -rf $DIR/$OLD
+```
+
+```sh
+# after
+write_conf() {
+    _tmp=$(mktemp) || return 1
+    trap 'rm -f "$_tmp"' EXIT
+    printf 'dir=%s\n' "$DIR" > "$_tmp"
+    if install -m 644 -- "$_tmp" "$DIR/app.conf"; then
+        note "wrote $DIR/app.conf"
+    else
+        warn "could not write $DIR/app.conf"
+    fi
+}
+
+remove_old() {
+    rm -rf -- "${DIR:?}/${OLD:?}"
+}
+```
+
+## VII. Procedures
+
+**Run the hostile check by hand**, until T-07 puts it in `make check`:
+
+```sh
+cd ~/code/staticstream && make build
+W=$(mktemp -d); mkdir -p "$W/stub" "$W/home/.config/ytq" "$W/home/out"
+cp tests/standin/yt-dlp "$W/stub/yt-dlp"      # then put the attacks of III.B in it
+printf 'DIR=%s/home/out\nOUTPUT=mp4\n' "$W" > "$W/home/.config/ytq/config"
+run() { env -u XDG_CONFIG_HOME -u XDG_DATA_HOME -u DISPLAY -u WAYLAND_DISPLAY \
+        HOME="$W/home" PATH="$W/stub:$PATH" target/release/ytq "$@"; }
+run add --no-run 'https://www.youtube.com/watch?v=HOSTILEAAAA'
+run run --quiet
+run list | cat -v                              # no ^[ may appear
+cat -v "$W"/home/out/*.txt
+ffprobe -v error -show_entries format_tags:chapter_tags=title -of json "$W"/home/out/*.mp4
+```
+
+**Measure the shell scripts:**
+
+```sh
+cd ~/code/copal
+find . -name '*.sh' -not -path './.git/*' -not -path './vendor/*' \
+       -not -path './build/*' -not -name '._*' > /tmp/sh-files
+xargs shellcheck -f gcc < /tmp/sh-files | sed 's/.*\[\(SC[0-9]*\)\]$/\1/' | sort | uniq -c | sort -rn
+for f in $(find playbooks -name '*.sh' -not -name '._*'); do sh -n "$f" || echo "$f"; done
+```
+
+**Ask yt-dlp which runtime it found:**
+
+```sh
+yt-dlp -v --simulate --js-runtimes node URL 2>&1 | grep 'JS runtimes'
+```
+
+**Work an entry.** Take the first entry under *Open* in `docs/backlog.md`.
+Make the change, run the check the entry names, and move the entry to *Done*
+with the date and the commit. An entry is not done because the change was
+made; it is done because its check passed.
+
+## VIII. Files touched
+
+| File | Change |
+|---|---|
+| `docs/text-safety-lab-report.md` | this report |
+| `docs/backlog.md` | new: twenty entries, all open |
+| `README.md` | two rows in the table of files |
+
+No program was changed.
+
+## References
+
+[1] Copal Linux, "Backlog," `docs/backlog.md`, 2026.
+
+[2] P. Richeson, "staticstream: the stand-in yt-dlp," `tests/standin/yt-dlp`,
+staticstream `75cbf7d`, 2026.
+
+[3] Copal Linux, "ytq and the Clipboard," `docs/ytq-clipboard-lab-report.md`,
+2026.
+
+[4] FFmpeg, "Metadata," `ffmpeg-formats(1)`, section *ffmetadata*, version
+8.1.2.
+
+[5] yt-dlp, "EJS," https://github.com/yt-dlp/yt-dlp/wiki/EJS, and
+`yt_dlp/extractor/youtube/jsc/_builtin/`, version 2026.08.19.
+
+[6] ShellCheck, "Checks," https://www.shellcheck.net/wiki/, version 0.11.0.
+
+[7] The Open Group, "Shell Command Language," IEEE Std 1003.1-2024.
+
+[8] OWASP, "OS Command Injection Defense Cheat Sheet" and "Injection
+Prevention Cheat Sheet," OWASP Cheat Sheet Series.
+
+[9] MITRE, "CWE-78: OS Command Injection," "CWE-150: Improper Neutralization
+of Escape, Meta, or Control Sequences," "CWE-93: CRLF Injection," "CWE-377:
+Insecure Temporary File."

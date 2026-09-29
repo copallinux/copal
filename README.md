@@ -2136,6 +2136,8 @@ bindings, the account model, the SD-card wear analysis — is in
 | `docs/fleet-m4-backlog.md` | **The next milestone, ready to resume.** The bus and the wall, broken into ten work items with acceptance tests, three blocking decisions, and the demo that closes it |
 | `docs/interface-report.md` | Interface simplification for the technically capable user — the design position, IEEE format |
 | `docs/terminal-guide-lab-report.md` | ([on the site](https://copallinux.org/terminal-guide-lab-report.html)) Writing the Terminal Guide against a running machine: the template, the checker, screen automation and review, and the installer defects the writing found. IEEE format |
+| `docs/text-safety-lab-report.md` | A hostile-input review of ytq and Static Stream, Copal's shell scripts measured with shellcheck, and the standard both are held to. IEEE format |
+| `docs/backlog.md` | **What is known and not yet done**, in order: twenty entries from the review, each with the check that closes it |
 
 ## Repository policy
 
