@@ -657,6 +657,74 @@ stopped there. Nothing was changed. But the test of an unguarded download
 made one, because a guard was assumed and not checked. The stand-in is now
 written first, tested to be there, and called by its whole path.
 
+## XV. Addendum: the folder, the setting and the signature (29 September 2026)
+
+### A. A folder of its own
+
+| | Before | After |
+|---|---|---|
+| files written by root under a name in `/tmp` that can be guessed | 121 uses | 0 |
+| `make lint` on a new one | passes | fails |
+
+One folder, made by `mktemp -d` when the installer starts and removed by
+the trap that already unmounts what it mounted. The names inside it are
+the names they were. What changed is that nobody else can put a file
+there first.
+
+**The failure that was designed out.** `"$COPAL_TMP/vimrc"` with the
+variable unset is `/vimrc`, and root can write that. Every use is
+`"${COPAL_TMP:?}/vimrc"`, which stops:
+
+```
+sh: COPAL_TMP: parameter not set or null
+```
+
+**One name could not move.** `/tmp/makewhatis.lock` is a lock, found by
+its name by two programs. It wants a folder that is root's, not a name
+nobody can guess. It is S-17.
+
+### B. The signature
+
+`copal -U` fetched the whole installer from a branch and checked that it
+was large, began with `#!` and parsed. Its own comment said so: *"There is
+no signature check … say so plainly rather than implying more."* It is now
+checked, where a machine has been told whom to trust:
+
+| The machine has | The file has | `copal -U` |
+|---|---|---|
+| no signers | anything | installs, and says it did not check |
+| signers | a good signature | installs |
+| signers | no signature | **refuses** |
+| signers | no signature, and `--unsigned` was given | installs, and says it is not signed |
+| signers | a signature, and one line more than was signed | **refuses** |
+| signers | a signature by a key it does not know | **refuses** |
+| signers | a signature by the right key, made for another purpose | **refuses** |
+
+Run with two throwaway keys and a stand-in for the server. **Nothing was
+signed with the author's key, and no key is in the repository.** That is
+the author's to do, and to decide: `make signers KEY=…` once, and
+`make sign KEY=…` when a release is tagged. Until then every machine is in
+the first row, which is where it was.
+
+**The order was changed with it.** The update used to take the installer
+out of the file, parse it, and then compare. It now asks who made the file
+before it reads anything in it.
+
+**The signers come from the card and from nowhere else.** An update
+cannot be allowed to say who may sign the next one.
+
+### C. Where the standard stands
+
+| Rule | Held by |
+|---|---|
+| T1–T8 | `make check` in staticstream: the hostile check, 36; the shell check; unit tests |
+| S1, S3, S4, S7–S10 | `make lint`: shellcheck, no error, no warning, no note |
+| S2 | `make lint`: a script that is run has `set -u` |
+| S6 | `make lint`: no `/tmp/name.$$`; S-17 for the lock |
+| S11 | `sha256_is`, `source_is`, the signature; by test, not by lint |
+| S12 | `make lint`: every playbook read by `sh -n`, no here-document left open |
+| S5 | review only |
+
 ## References
 
 [1] Copal Linux, "Backlog," `docs/backlog.md`, 2026.

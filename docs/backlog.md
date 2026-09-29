@@ -26,7 +26,7 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | C | configuration | `copal` |
 | S | shell scripts | `copal` |
 
-**Standing:** 3 open · 0 in progress · 22 done · 2 dropped. Written 29 September 2026.
+**Standing:** 1 open · 1 in progress · 24 done · 2 dropped. Written 29 September 2026.
 
 ---
 
@@ -36,15 +36,15 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 
 | ID | Entry | Rule | Check |
 |---|---|---|---|
-| S-05 | `mktemp` and a `trap` in place of `/tmp/name.$$`: 64 lines, in stages 4, 7 and 17 and `tools/release-walkthrough.sh` | S6 | `grep -rE '/tmp/[A-Za-z0-9._-]+\.\$\$' playbooks tools` finds nothing |
-| S-11 | `set -eu` in every script that is run and has none | S2 | `make lint` lists none |
-| S-16 | The installer fetches itself, to update a machine, from a branch of this repository, and checks its size, its first line and that it parses. Nothing says it is the file that was published. Sign a release with the key captures are signed with, and have the machine check the signature against a key it was installed with | S11 | a `copal-prep.sh` with one byte changed is refused |
+| S-17 | `/tmp/makewhatis.lock` is a lock two programs find by its name, so it cannot be one `mktemp` made. It is opened for writing by root, in a folder anybody can write to. It belongs in `/run`, which is root's; both programs that take it change together | S6 | `grep -rn '/tmp/makewhatis.lock'` finds nothing; two installs at once still wait for each other |
 
 ---
 
 ## In progress
 
-*Nothing.*
+| ID | Entry | Rule | Where it stands |
+|---|---|---|---|
+| S-16 | The installer fetching itself is checked against a signature. **The checking side is built, and does nothing until a machine has signers.** `copal -U` fetches `copal-prep.sh.sig` from beside the file and checks it with `ssh-keygen -Y verify` against `/etc/copal/allowed_signers`, which the card brings. With signers and no good signature it refuses, unless `--unsigned` is given. With no signers it installs as it always did and says it did not check. `tools/copal-sign.sh` and `make signers`, `make sign`, `make signed` are the other side. **Checked** with throwaway keys and a stand-in server, eight cases: no signers; a good signature; none published; none, with `--unsigned`; signed and then changed; signed by a key the machine does not know; signed by the right key for another purpose; nothing at that ref. **What is left is the author's:** `make signers KEY=…` once, `make sign KEY=…` when a release is tagged, and the decision to do either. Nothing was signed, and no key of anybody's is in the repository | S11 | `ecebfc1` |
 
 ## Done
 
@@ -67,6 +67,8 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | S-08 | Four `eval`s, not three. `copal-app-sweep.sh` put the checkout's path into the line it evaluated: from a folder named `re po $(touch X)`, it ran `touch`. Only the row's command line is code now; the path is expanded inside the `eval`, in quotes. `copal-answers.sh` parses the two functions it cuts from `copal-prep.sh` before it evaluates them. `copal-store-bench.sh env` prints its values in single quotes. `copal-app-probe.sh` holds what it evaluates to a hexadecimal address and four numbers. **Check:** the sweep from that folder runs nothing and passes the path as one word; a value with quotes, a `$` and backticks in it reads back the same | 29 September 2026 | `c7953b3` |
 | S-12 | The 57 notes, read one by one: 19 rewritten, 38 answered by 31 directives, each with its reason. `NOTES=0`, so the next note fails `make lint`. **One was a defect:** stage 3's closing message had `` `copal` `` in a here-document that expands, so printing it *ran* `copal` — on an installed machine, the installer itself. **Check:** with a stand-in `copal` on `PATH` the old message ran it and the new one does not; `copal-disk.sh self-test` passes its 59 checks with the same output; the four `printf` lines of `copal-fleet.sh` print the same bytes | 29 September 2026 | `c7953b3` |
 | S-07 | Every download read, and tabled in the lab report, section XIII: sixteen kinds, of which five are checked against a sum before use, one is checked when upstream gives a sum, and ten are not. What is to be done about the ten is S-06 and S-13 to S-16; two are left as they are, with the reason | 29 September 2026 | `c7953b3` |
+| S-05 | Every file the installer writes in `/tmp` before putting it in place is in a folder of its own, `COPAL_TMP`, made by `mktemp -d` when it starts and removed by its cleanup trap: 121 uses, in stages 4, 7 and 17 and in the installer's own part. Each is `"${COPAL_TMP:?}/name"`, so a stage run where the folder was never made stops, and does not write to `/name`. Three more outside the installer use `mktemp` themselves. `make lint` now fails on `/tmp/name.$$`. **Check:** none is left; none was inside a here-document, where the name would have been text for another program; an unset `COPAL_TMP` stops the line and writes nothing; the rule read into `mdev.conf` arrives as before. S-17 is what this left | 29 September 2026 | `ecebfc1` |
+| S-11 | `set -eu` in the 21 shortcuts of `bin/` that had none. `copal-app-sweep.sh` has `set -u` and says why not `-e`: a probe that fails is a verdict, and the sweep goes on. `lib-profile.sh` is read into the launchers and never run, so its first line names its shell and is not a `#!`. `make lint` fails on a script that is run and has no `set -u`. **Check:** a script with neither failed it | 29 September 2026 | `ecebfc1` |
 | S-13 | yt-dlp's zipapp is held to the sum its own release gives, by `sha256_is`, before it replaces the one in `/usr/local/bin`. **Check:** the real release installs; one with a byte changed is refused, and the yt-dlp that was there is as it was | 29 September 2026 | `43a7f32` |
 | S-15 | The theme is fetched at `c0e3eac`, the commit it was forked at, and held to a sum. Its `configs/` are the card's, byte for byte. **Check:** the real archive unpacks; one with a byte changed is refused and nothing is unpacked | 29 September 2026 | `43a7f32` |
 | S-14 | `pinned_sum`, one table of nine sums by the address each file is fetched from, and `source_is`, which holds a download to it. A version the table does not know is built, and said to be unverified. A copy from the card is not asked: the card is where the installer came from too. **Check:** all nine real files pass, and all nine addresses are found in the table; one with a byte changed is refused; an unknown version is built with the warning. **The sums are first-use:** what each address gave on 29 September 2026, the same twice. None could be set beside a sum its project publishes | 29 September 2026 | `43a7f32` |
