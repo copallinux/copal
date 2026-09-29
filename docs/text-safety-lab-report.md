@@ -782,6 +782,52 @@ of the installer's changes has run on a freshly built machine. Stages 2,
 3, 4, 7, 9, 10, 11, 12, 17 and 18 are changed. `make check` in copal, on the Mac, is
 the test of all of it.
 
+## XVII. Addendum: what running it found (29 September 2026)
+
+Until now every change had been run in a folder made for the purpose.
+Stages 10, 7 and 17 were then run on the bench itself, one at a time, with
+`make redeploy STAGES=N`, each log read before the next.
+
+**The changes of this report ran clean.** Stage 10 defined and ran the
+functions S-01 had restored; one of them wrote `/root/.config/copal/
+media.conf` "created once" — for the first time, on a machine installed
+weeks before. yt-dlp was held to its release's sum and reports
+`JS runtimes: node-24.18.1`. Stages 7 and 17 wrote twelve files through
+`COPAL_TMP` and left nothing in `/tmp`.
+
+**And four defects nobody had looked for were on the screen.**
+
+| Stage | What was seen | What it was |
+|---|---|---|
+| 7 | `have: not found` | a helper the installer calls and never defined (S-19) |
+| 7 | `claude: command not found` | a login shell that reads no profile (S-20) |
+| 17 | the bar gone from the desktop | root stopping a bar it could not start (S-21) |
+| all | `copal` dated 14 September, the theme tool 10 September | a redeploy that installs one file of four (S-18, S-22) |
+
+None is a defect of text or of quoting. Each is a program that was right
+where it was written and wrong where it was run: a helper borrowed from
+another script, a shell started another way, a process started by
+another user, a file installed from another place.
+
+**The standard gains one rule from it.**
+
+| # | Rule | Enforced by |
+|---|---|---|
+| S13 | What a script calls, it defines, or a program of that name is on the machine it runs on | `tools/copal-calls.py`, in `make lint` |
+
+Run on the installer from before S-01, that check names three of the four
+functions the open here-document had taken. `sh -n` passed that file.
+shellcheck passed it. The one check that would have caught the first
+defect of section IX was written because of the last.
+
+**Advice given, and wrong.** Stage 4 was said to be safe to run again on
+the bench, after stage 17. It is safe; it is not harmless. It sets the
+session to X11 and the theme to tokyo-night, which is what it is for, and
+the installer's own order runs 17 after it to have the last word. On a
+machine that is a Hyprland desktop, stage 4 is run as `4,17` or not at
+all. It was caught by reading the stage before it was run, and only
+because the bar had just gone.
+
 ## References
 
 [1] Copal Linux, "Backlog," `docs/backlog.md`, 2026.
