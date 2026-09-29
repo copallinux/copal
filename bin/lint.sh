@@ -13,5 +13,6 @@
 #
 #  It also checks that every shortcut in this folder still names a real make
 #  target, so bin/ cannot quietly rot into a list of things that used to work.
+set -eu
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 exec make lint "$@"

@@ -15,5 +15,6 @@
 #  it by opening the bundle itself, then run this again:
 #
 #      open -a UTM ~/Library/Containers/com.utmapp.UTM/Data/Documents/Copal-x86_64.utm
+set -eu
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 exec make utm-x86 "$@"

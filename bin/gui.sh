@@ -4,4 +4,5 @@
 # `make fleet-web` serves the same read model on a port; this opens a window,
 # which means it needs a display and cannot be run over ssh. DEMO=1 draws the
 # lab report's museum with no fleet at all.
+set -eu
 exec make fleet-gui "$@"

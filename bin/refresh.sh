@@ -9,5 +9,6 @@
 #  The rest of the card is left alone. Uses MODEL=vm unless told otherwise:
 #
 #      bin/refresh.sh MODEL=zero2
+set -eu
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 exec make refresh "$@"

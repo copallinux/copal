@@ -1,4 +1,4 @@
-#!/bin/sh
+# shellcheck shell=sh
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Paul Richeson
 #

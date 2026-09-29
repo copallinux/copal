@@ -9,5 +9,6 @@
 #  Removes nothing itself. Sizes are du and never ls, because the images are
 #  sparse: a 64 GB image occupies about 550 MB fresh and 15-25 GB after a
 #  full fifteen-stage run.
+set -eu
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 exec make space "$@"

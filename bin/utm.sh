@@ -12,5 +12,6 @@
 #  The machine lives in UTM's own container, not in this checkout: it survives
 #  clean, distclean, and deleting the repository. Removing it is
 #  utm/utm-vm.sh delete --target aarch64, which no make target does for you.
+set -eu
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 exec make utm "$@"

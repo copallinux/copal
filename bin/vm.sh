@@ -13,5 +13,6 @@
 #  bin/fresh.sh that you want.
 #
 #      bin/vm.sh MEM=4096 CPUS=4
+set -eu
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 exec make vm "$@"

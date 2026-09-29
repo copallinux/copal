@@ -11,6 +11,9 @@
 #
 # Detached like that it outlives the terminal it was started from. Progress:
 # tail -f ~/.cache/copal-gallery/sweep.log; verdicts also land in ~/copal-apps/log.txt.
+# -u and not -e: a probe that fails is a verdict, written down, and the
+# sweep goes on to the next row. A name that was never set is a mistake.
+set -u
 REPO=$(cd "$(dirname "$0")/.." && pwd) || exit 1
 LIST="${1:-$HOME/.cache/copal-gallery/gallery-list.txt}"
 export PATH="$HOME/.cache/copal-bin:$REPO/tools:$PATH"

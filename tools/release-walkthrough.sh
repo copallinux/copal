@@ -162,12 +162,13 @@ say "So this step does not ask you to take a picture. It takes them."
 # (the request is denied without a dialog and the denial is remembered).
 # QEMU's monitor sidesteps the whole question -- it is the hypervisor writing
 # a file, not an application reading somebody's screen.
-if screencapture -x -R 0,0,8,8 /tmp/copal-cap-probe.$$.png 2>/dev/null \
-   && [ -s /tmp/copal-cap-probe.$$.png ]; then
+_probe=$(mktemp -d /tmp/copal-cap-probe.XXXXXX) || exit 1
+if screencapture -x -R 0,0,8,8 "$_probe/probe.png" 2>/dev/null \
+   && [ -s "$_probe/probe.png" ]; then
     say "${D}(this terminal also has Screen Recording, so a UTM window could be${N}"
     say "${D} captured with screencapture if you would rather frame it by hand)${N}"
 fi
-rm -f /tmp/copal-cap-probe.$$.png
+rm -rf "$_probe"
 
 # Only worth attempting on an image with a desktop on it. The level recorded
 # on the boot partition is the best signal available from here -- the root is

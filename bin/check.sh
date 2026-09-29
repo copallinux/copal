@@ -9,5 +9,6 @@
 #  The transcript lands in build/copal-vm-check.log. This is the one to put
 #  in front of anything automated, since it is the only VM target whose exit
 #  status is worth believing.
+set -eu
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 exec make check "$@"

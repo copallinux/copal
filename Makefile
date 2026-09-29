@@ -1037,6 +1037,18 @@ define POSIX_PARSE_EMBEDDED
 	fi
 endef
 
+## signers, sign, signed: who may sign the installer; sign it; is it signed.
+## 'copal -U' on a machine refuses an update its card's signers did not sign.
+##   make signers KEY=~/.ssh/id_ed25519.pub     once
+##   make sign    KEY=~/.ssh/id_ed25519         when a release is tagged
+.PHONY: signers sign signed
+signers:
+	@sh tools/copal-sign.sh signers "$(KEY)"
+sign:
+	@sh tools/copal-sign.sh sign "$(KEY)"
+signed:
+	@sh tools/copal-sign.sh check
+
 ## shell-lint: shellcheck over every script -- no error, no warning, and no more notes than before
 .PHONY: shell-lint
 shell-lint:

@@ -17,5 +17,6 @@
 #  One caveat: the three `sudo fdisk -e` calls get no password this way, so
 #  the MBR type bytes stay unset. The image boots regardless, but it is not
 #  byte-identical to an attended build.
+set -eu
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 exec make auto "$@"

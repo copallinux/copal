@@ -8,5 +8,6 @@
 #
 #  The same thing `make` on its own prints. For what THIS folder holds, run
 #  bin/ls.sh or read bin/README.md.
+set -eu
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 exec make help "$@"

@@ -2492,6 +2492,14 @@ else
     warn "themes/ is missing; the target will have the editor theme only"
 fi
 
+# The keys 'copal -U' checks an update against, if this checkout has them
+# ('make signers KEY=...'). Without them the target installs what it is sent,
+# as it always has, and says that it did not check.
+if [ -f "$_here/copal.allowed_signers" ]; then
+    cp "$_here/copal.allowed_signers" "$MNT/copal.allowed_signers"
+    info "signers staged: the target will refuse an update they did not sign"
+fi
+
 info "Staging Mini vMac source and ROM on ${BOOT_LABEL}..."
 mkdir -p "$MNT/minivmac"
 
@@ -2892,8 +2900,13 @@ if [ "${FIRSTRUN_LOG_ACTIVE:-0}" != 1 ]; then
         printf '\n===== copal-init.sh: %s =====\n' "$(date 2>/dev/null || echo 'no clock')" >> "$LOG"
         FIRSTRUN_LOG_ACTIVE=1; export FIRSTRUN_LOG_ACTIVE
         # Preserve the real exit status: a pipeline reports tee's, not ours.
-        { sh "$0" "$@" 2>&1; echo $? > /tmp/copal.rc; } | tee -a "$LOG"
-        exit "$(cat /tmp/copal.rc 2>/dev/null || echo 1)"
+        # In a file mktemp named, not one whose name anybody could have
+        # guessed and put there first.
+        _rcfile=$(mktemp /tmp/copal-rc.XXXXXX) || exit 1
+        { sh "$0" "$@" 2>&1; echo $? > "$_rcfile"; } | tee -a "$LOG"
+        _rc=$(cat "$_rcfile" 2>/dev/null || echo 1)
+        rm -f "$_rcfile"
+        exit "$_rc"
     fi
     warn "cannot write $LOG (is $BOOT read-only?) -- continuing without a log"
 fi
@@ -2906,6 +2919,7 @@ cleanup() {
     trap - EXIT INT TERM
     umount /mnt/boot 2>/dev/null || true
     umount /mnt      2>/dev/null || true
+    [ -n "${COPAL_TMP:-}" ] && rm -rf "$COPAL_TMP"
     if [ "$rc" != 0 ]; then
         printf '\n\033[31mStopped (exit %s).\033[0m Full transcript: %s\n' "$rc" "$LOG"
         printf 'Nothing else was changed. Re-run this script to pick up where it left off.\n'
@@ -2914,6 +2928,14 @@ cleanup() {
     exit "$rc"
 }
 trap cleanup EXIT INT TERM
+
+# A FOLDER OF ITS OWN, for what a stage writes before it puts it in place: a
+# config, a key table, a theme unpacked. This script runs as root, and /tmp
+# is everybody's. A file called /tmp/vimrc.1234 can be guessed, and made
+# first, as a link to somewhere else; a folder mktemp made cannot, and is
+# root's alone. Every use is "${COPAL_TMP:?}/name", so that a stage run
+# where this line was not is stopped, and does not write to /name.
+COPAL_TMP=$(mktemp -d /tmp/copal.XXXXXX) || { echo "cannot make a folder in /tmp" >&2; exit 1; }
 
 # ------------------------------------------------------------- inspection ---
 root_fstype()  { awk '$2 == "/" { fs = $3 } END { print fs }' /proc/mounts; }
@@ -4774,7 +4796,7 @@ admin_shell_dotfiles() {
     say "Shell: tab completion, history and a prompt"
     add_optional bash-completion
 
-    cat > /tmp/bashrc.$$ <<'BASHRC'
+    cat > "${COPAL_TMP:?}/bashrc" <<'BASHRC'
 # ~/.bashrc -- written by Copal. Interactive settings only.
 # Sourced from ~/.profile, because on this machine nearly every shell is a
 # login shell and would otherwise never read this file at all.
@@ -4825,12 +4847,12 @@ alias df='df -h'
 # Yours. This file is rewritten when stage 4 runs; ~/.bashrc.local is not.
 [ -f "$HOME/.bashrc.local" ] && . "$HOME/.bashrc.local"
 BASHRC
-    install_home_file .bashrc /tmp/bashrc.$$; rm -f /tmp/bashrc.$$
+    install_home_file .bashrc "${COPAL_TMP:?}/bashrc"; rm -f "${COPAL_TMP:?}/bashrc"
 
     # readline's own settings, which are not bash's and are not set by any
     # package. The two that change the day: one Tab shows the choices instead
     # of demanding a second Tab, and completion stops caring about case.
-    cat > /tmp/inputrc.$$ <<'INPUTRC'
+    cat > "${COPAL_TMP:?}/inputrc" <<'INPUTRC'
 # ~/.inputrc -- written by Copal. Read by bash, and by anything else using
 # readline (python3, sqlite3, gdb, ftp).
 set show-all-if-ambiguous on   # one Tab lists the choices; no second press
@@ -4846,7 +4868,7 @@ set mark-symlinked-directories on
 "\e[A": history-search-backward
 "\e[B": history-search-forward
 INPUTRC
-    install_home_file .inputrc /tmp/inputrc.$$; rm -f /tmp/inputrc.$$
+    install_home_file .inputrc "${COPAL_TMP:?}/inputrc"; rm -f "${COPAL_TMP:?}/inputrc"
 
     # Two things appended to ~/.profile rather than written into it, because
     # it also carries the startx block, and guarded by a marker so that
@@ -6018,7 +6040,7 @@ register_default_browser() {  # <browser command>
     # Rewritten rather than appended, and only OUR four types: anything else
     # already in the file -- a mail handler, a PDF viewer, the claude-cli
     # scheme -- is somebody's decision and is carried across untouched.
-    _tmp=/tmp/mimeapps.$$
+    _tmp="${COPAL_TMP:?}/mimeapps"
     awk -v desk="$_desk" '
         BEGIN {
             n = split("text/html application/xhtml+xml " \
@@ -7309,7 +7331,7 @@ hypr_write_waybar() {
     say "Writing ~/.config/waybar/config and style.css"
     # JSON with comments is what waybar reads, and it is the only place in
     # this project that gets to have them, so they are used.
-    cat > /tmp/waybarcfg.$$ <<'WAYBARCFG'
+    cat > "${COPAL_TMP:?}/waybarcfg" <<'WAYBARCFG'
 {
   // Generated by copal-init.sh. The stand-in for the theme's quickshell bar.
   //
@@ -7483,8 +7505,8 @@ hypr_write_waybar() {
   "tray": { "spacing": 8 }
 }
 WAYBARCFG
-    install_home_file .config/waybar/config /tmp/waybarcfg.$$
-    rm -f /tmp/waybarcfg.$$
+    install_home_file .config/waybar/config "${COPAL_TMP:?}/waybarcfg"
+    rm -f "${COPAL_TMP:?}/waybarcfg"
 
     # The colours are @define-color tokens -- base, shadow, highlight, accent,
     # accent-dark, text-light, urgent, danger, warning, white -- imported from
@@ -7492,7 +7514,7 @@ WAYBARCFG
     # current theme's theme.conf. Antiquity's helios values (base #181818,
     # accent #fccf8a, ...) come from the theme's own Config.qml; see
     # docs/THEME.md. Switching theme rewrites colors.css and restarts the bar.
-    cat > /tmp/waybarcss.$$ <<'WAYBARCSS'
+    cat > "${COPAL_TMP:?}/waybarcss" <<'WAYBARCSS'
 @import url("../copal/current/colors.css");  /* the theme's tokens; copal-theme rewrites it */
 /* Generated by copal-init.sh. Linux Antiquity's helios palette, on waybar.
    The colours come from the theme's quickshell Config.qml so the bar and the
@@ -7600,8 +7622,8 @@ tooltip {
     color: @text-light;
 }
 WAYBARCSS
-    install_home_file .config/waybar/style.css /tmp/waybarcss.$$
-    rm -f /tmp/waybarcss.$$
+    install_home_file .config/waybar/style.css "${COPAL_TMP:?}/waybarcss"
+    rm -f "${COPAL_TMP:?}/waybarcss"
 
     # ----------------------------------------------------------------------
     # wofi's stylesheet, and it is here rather than anywhere else because the
@@ -7617,7 +7639,7 @@ WAYBARCSS
     #
     # Same colours as the bar, from the theme's Config.qml.
     say "Writing ~/.config/wofi/style.css (the launcher and the menu)"
-    cat > /tmp/woficss.$$ <<'WOFICSS'
+    cat > "${COPAL_TMP:?}/woficss" <<'WOFICSS'
 @import url("../copal/current/colors.css");  /* the theme's tokens; copal-theme rewrites it */
 /* Generated by copal-init.sh. Linux Antiquity's helios palette, on wofi.
    wofi is both the launcher (Super+D) and the menu copal-menu draws, so this
@@ -7674,8 +7696,8 @@ window {
     min-height: 54px;
 }
 WOFICSS
-    install_home_file .config/wofi/style.css /tmp/woficss.$$
-    rm -f /tmp/woficss.$$
+    install_home_file .config/wofi/style.css "${COPAL_TMP:?}/woficss"
+    rm -f "${COPAL_TMP:?}/woficss"
     # THE IMPORT MADE ABSOLUTE, per home. wofi parses its stylesheet as
     # anonymous <data>, so a relative url() resolves against wofi's working
     # directory and never finds the tokens: every @name is undefined, the
@@ -7734,7 +7756,7 @@ WOFICSS
     # the stacked layout possible: the big clock is one bar, the date and the
     # weather are a second one below it, and margin-top places each.
     say "Writing ~/.config/waybar/desktop.json (the widgets on the wallpaper)"
-    cat > /tmp/waybardesk.$$ <<'WAYBARDESK'
+    cat > "${COPAL_TMP:?}/waybardesk" <<'WAYBARDESK'
 [
   // Generated by copal-init.sh -- the desktop widgets, on the wallpaper.
   //
@@ -7794,15 +7816,15 @@ WOFICSS
   }
 ]
 WAYBARDESK
-    install_home_file .config/waybar/desktop.json /tmp/waybardesk.$$
-    rm -f /tmp/waybardesk.$$
+    install_home_file .config/waybar/desktop.json "${COPAL_TMP:?}/waybardesk"
+    rm -f "${COPAL_TMP:?}/waybardesk"
 
     # The type is the theme's, not the bar's. quickshell's ClockWidget.qml
     # draws the time at 104px in Boska, weight 500, in the accent gold with a
     # soft drop shadow; stage 17 installs Boska system-wide, so the same face
     # is available to waybar and this is as close as CSS gets. Where the fonts
     # did not install, the fallbacks are the bar's own and it still reads.
-    cat > /tmp/waybardeskcss.$$ <<'WAYBARDESKCSS'
+    cat > "${COPAL_TMP:?}/waybardeskcss" <<'WAYBARDESKCSS'
 @import url("../copal/current/colors.css");  /* the theme's tokens; copal-theme rewrites it */
 /* Generated by copal-init.sh -- the desktop widgets' type and colour.
    Boska is the theme's own display face, installed by stage 17 and the one
@@ -7846,8 +7868,8 @@ window#waybar.desktopinfo #custom-weather {
 /* The weather is the quieter of the two: the date is where the eye lands. */
 window#waybar.desktopinfo #custom-weather { color: @accent-dark; }
 WAYBARDESKCSS
-    install_home_file .config/waybar/desktop.css /tmp/waybardeskcss.$$
-    rm -f /tmp/waybardeskcss.$$
+    install_home_file .config/waybar/desktop.css "${COPAL_TMP:?}/waybardeskcss"
+    rm -f "${COPAL_TMP:?}/waybardeskcss"
 
     # ----------------------------------------------------------------------
     # copal-widgets -- the one command for both halves of the story.
@@ -11286,8 +11308,7 @@ trap cleanup_work EXIT HUP INT TERM
 build_parts() {
     [ "$QUIET" = 1 ] && return 0
     [ -n "$WORK" ] && return 0
-    WORK=$(mktemp -d 2>/dev/null) || WORK=/tmp/copal-morse.$$
-    mkdir -p "$WORK"
+    WORK=$(mktemp -d) || { echo "copal-morse: cannot make a folder in /tmp" >&2; exit 1; }
     # -r 8000 -c 1: 8 kHz mono is ample for a sine below 1 kHz and keeps the
     # concatenated file small enough not to matter on a card.
     sox -n -r 8000 -c 1 "$WORK/dot.wav"  synth "$(secs "$DOT_MS")"  sine "$FREQ" 2>/dev/null
@@ -12062,7 +12083,7 @@ dev_write_nvim_ui() {
     command -v nvim >/dev/null 2>&1 || return 0
 
     say "Writing ~/.config/nvim/theme.lua (follows the desktop theme)"
-    cat > /tmp/nvtheme.$$ <<'NVTHEME'
+    cat > "${COPAL_TMP:?}/nvtheme" <<'NVTHEME'
 -- Generated by copal-init.sh. The editor's half of the system theme.
 --
 -- Reads ~/.config/copal/current/theme/neovim.lua, which is a symlink into
@@ -12152,11 +12173,11 @@ end, {
 
 return M
 NVTHEME
-    install_home_file .config/nvim/theme.lua /tmp/nvtheme.$$
-    rm -f /tmp/nvtheme.$$
+    install_home_file .config/nvim/theme.lua "${COPAL_TMP:?}/nvtheme"
+    rm -f "${COPAL_TMP:?}/nvtheme"
 
     say "Writing ~/.config/nvim/keys.lua (the LazyVim key shape)"
-    cat > /tmp/nvkeys.$$ <<'NVKEYS'
+    cat > "${COPAL_TMP:?}/nvkeys" <<'NVKEYS'
 -- Generated by copal-init.sh. LazyVim's keys, on Neovim's built-ins.
 --
 -- Nothing here is required for the editor to work -- ~/.vimrc and lsp.lua are
@@ -12428,8 +12449,8 @@ map('n', '<leader>', show_menu, 'Show the key menu')
 map('n', '<leader>?', show_menu, 'Show the key menu')
 vim.api.nvim_create_user_command('Keys', show_menu, { desc = 'Show the key menu' })
 NVKEYS
-    install_home_file .config/nvim/keys.lua /tmp/nvkeys.$$
-    rm -f /tmp/nvkeys.$$
+    install_home_file .config/nvim/keys.lua "${COPAL_TMP:?}/nvkeys"
+    rm -f "${COPAL_TMP:?}/nvkeys"
     note "In nvim, press Space and wait -- or run :Keys -- for the key menu."
 }
 
@@ -12461,7 +12482,7 @@ dev_write_lsp_config() {
     }
     say "Configuring Neovim as an IDE (built-in LSP, no plugins)"
 
-    cat > /tmp/lsp.lua.$$ <<'LSPLUA'
+    cat > "${COPAL_TMP:?}/lsp.lua" <<'LSPLUA'
 -- Generated by copal-init.sh. Neovim's own LSP client -- no plugins.
 --
 -- Edit freely: nothing regenerates this file after the install.
@@ -12478,8 +12499,8 @@ end
 -- which is also where Kate's and Emacs's copies come from -- so adding a
 -- server is one row there and all three editors learn about it.
 LSPLUA
-    lsp_emit_nvim_servers >> /tmp/lsp.lua.$$
-    cat >> /tmp/lsp.lua.$$ <<'LSPLUA'
+    lsp_emit_nvim_servers >> "${COPAL_TMP:?}/lsp.lua"
+    cat >> "${COPAL_TMP:?}/lsp.lua" <<'LSPLUA'
 
 local enabled = {}
 for name, cfg in pairs(servers) do
@@ -12563,8 +12584,8 @@ vim.api.nvim_create_autocmd('LspAttach', {
   end,
 })
 LSPLUA
-    install_home_file .config/nvim/lsp.lua /tmp/lsp.lua.$$
-    rm -f /tmp/lsp.lua.$$
+    install_home_file .config/nvim/lsp.lua "${COPAL_TMP:?}/lsp.lua"
+    rm -f "${COPAL_TMP:?}/lsp.lua"
 
     _have=$(lsp_present)
     if [ -n "$_have" ]; then
@@ -12610,7 +12631,7 @@ dev_write_kate_config() {
     fi
     say "Configuring Kate as an IDE (LSP client, no plugins to install)"
 
-    cat > /tmp/katerc.$$ <<'KATERC'
+    cat > "${COPAL_TMP:?}/katerc" <<'KATERC'
 # Generated by copal-init.sh. Kate rewrites this file when it exits, which is
 # fine -- everything here is a starting position, not a setting to defend.
 [Kate Plugins]
@@ -12622,8 +12643,8 @@ Show Menu Bar=true
 Show Status Bar=true
 Show welcome view for new window=false
 KATERC
-    install_home_file .config/katerc /tmp/katerc.$$
-    rm -f /tmp/katerc.$$
+    install_home_file .config/katerc "${COPAL_TMP:?}/katerc"
+    rm -f "${COPAL_TMP:?}/katerc"
 
     # The clangd row, read out of the same table Neovim's config comes from.
     # grep and cut rather than a read loop, because a loop whose condition is
@@ -12636,7 +12657,7 @@ KATERC
     # The regex is Kate's own, copied from its defaults: C++ is a separate
     # entry that inherits this one with "use": "c", so getting this wrong would
     # take both languages down rather than one.
-    cat > /tmp/kate-lsp.$$ <<KATELSP
+    cat > "${COPAL_TMP:?}/kate-lsp" <<KATELSP
 {
     "servers": {
         "c": {
@@ -12647,8 +12668,8 @@ KATERC
     }
 }
 KATELSP
-    install_home_file .config/kate/lspclient/settings.json /tmp/kate-lsp.$$
-    rm -f /tmp/kate-lsp.$$
+    install_home_file .config/kate/lspclient/settings.json "${COPAL_TMP:?}/kate-lsp"
+    rm -f "${COPAL_TMP:?}/kate-lsp"
 
     note "Kate: LSP is on by default -- Settings -> Configure Kate -> LSP Client"
     note "The project side wants a git repository or a .kateproject file to find the root."
@@ -12683,7 +12704,7 @@ dev_write_emacs_config() {
     fi
     say "Configuring Emacs as an IDE (Eglot, built in -- no packages)"
 
-    cat > /tmp/initel.$$ <<'INITEL'
+    cat > "${COPAL_TMP:?}/initel" <<'INITEL'
 ;;; init.el --- Generated by copal-init.sh.  -*- lexical-binding: t; -*-
 ;;
 ;; Emacs as an IDE with no packages installed, using Eglot -- which has been
@@ -12722,10 +12743,10 @@ INITEL
             printf "               '((%s) . (%s)))\n" "$_modes" "$(lsp_quote_elisp "$_cmd" ' ')"
             printf '  (when (executable-find "%s")\n' "$_bin"
             printf "    (dolist (h '(%s)) (add-hook h #'eglot-ensure)))\n\n" "$_hooks"
-        } >> /tmp/initel.$$
+        } >> "${COPAL_TMP:?}/initel"
     done
 
-    cat >> /tmp/initel.$$ <<'INITEL'
+    cat >> "${COPAL_TMP:?}/initel" <<'INITEL'
   ;; The keys. Deliberately close to what the Neovim config binds, so the two
   ;; editors are not two sets of muscle memory:
   ;;
@@ -12794,10 +12815,10 @@ INITEL
                       [ -n "$_bin" ] && printf '"%s" ' "$_bin"
                   done | sed 's/ $//')"
         printf '  "Every language server Copal knows how to install.")\n'
-    } >> /tmp/initel.$$
+    } >> "${COPAL_TMP:?}/initel"
 
-    install_home_file .emacs.d/init.el /tmp/initel.$$
-    rm -f /tmp/initel.$$
+    install_home_file .emacs.d/init.el "${COPAL_TMP:?}/initel"
+    rm -f "${COPAL_TMP:?}/initel"
 
     note "Emacs: C-c l says which servers are installed and attached"
     note "'emacs -nw' runs the same editor in this terminal, with the same keys."
@@ -14226,7 +14247,7 @@ YTBRAVE
 #   sstr export DIR   a folder of captures back to the files they hold
 #   ytq --sstr URL    this one download kept as a capture, whatever the file says
 write_media_conf() {
-    cat > "/tmp/mediaconf.$$" <<'MEDIACONF'
+    cat > "${COPAL_TMP:?}/mediaconf" <<'MEDIACONF'
 # SPDX-License-Identifier: MIT
 # media.conf -- the settings sstr, ytq and the Static Stream Workspace share,
 # as KEY=VALUE, # for comments.
@@ -14266,8 +14287,8 @@ OUTPUT=mp4
 #PLAYER=mpv
 #SERVE=127.0.0.1:8080
 MEDIACONF
-    install_home_once .config/copal/media.conf "/tmp/mediaconf.$$"
-    rm -f "/tmp/mediaconf.$$"
+    install_home_once .config/copal/media.conf "${COPAL_TMP:?}/mediaconf"
+    rm -f "${COPAL_TMP:?}/mediaconf"
 }
 
 # ------------------------------------------- stage 10: the Geiger counter ---
@@ -16402,13 +16423,16 @@ iio_usb_access() {
     note "'$PI_USER' is in the usb group -- log out and in again for it to count"
 
     if ! grep -q 'DEVTYPE=usb_device' /etc/mdev.conf 2>/dev/null; then
-        printf 'SUBSYSTEM=usb;DEVTYPE=usb_device;.*\troot:usb 0660 */lib/mdev/usbdev\n' > /tmp/copal-usb-rule
+        # What is read into mdev.conf is a rule mdev runs as root, so the
+        # file it is read from is in the installer's own folder.
+        _rule="${COPAL_TMP:?}/usb-rule"
+        printf 'SUBSYSTEM=usb;DEVTYPE=usb_device;.*\troot:usb 0660 */lib/mdev/usbdev\n' > "$_rule"
         if grep -q '^# load drivers for usb devices' /etc/mdev.conf 2>/dev/null; then
-            sed -i '/^# load drivers for usb devices/r /tmp/copal-usb-rule' /etc/mdev.conf
+            sed -i "/^# load drivers for usb devices/r $_rule" /etc/mdev.conf
         else
-            cat /tmp/copal-usb-rule >> /etc/mdev.conf
+            cat "$_rule" >> /etc/mdev.conf
         fi
-        rm -f /tmp/copal-usb-rule
+        rm -f "$_rule"
         note "mdev.conf: USB devices are root:usb 0660 from now on"
     else
         note "mdev.conf already hands USB devices to a group"
@@ -21643,7 +21667,7 @@ XORGKMS
     fi
 
     say "Writing ~/.xinitrc"
-    cat > /tmp/xinitrc.$$ <<'XINIT'
+    cat > "${COPAL_TMP:?}/xinitrc" <<'XINIT'
 [ -f "$HOME/.Xresources" ] && xrdb -merge "$HOME/.Xresources"
 # The session half of the shared clipboard. Guarded twice: the binary may not
 # be installed (a Pi, or a VM offering no channel), and the port may not exist
@@ -21696,7 +21720,7 @@ command -v xsetroot >/dev/null && xsetroot -solid '#1a1b26'
 command -v copal-audio-start >/dev/null 2>&1 && copal-audio-start
 exec i3
 XINIT
-    install_home_file .xinitrc /tmp/xinitrc.$$; rm -f /tmp/xinitrc.$$
+    install_home_file .xinitrc "${COPAL_TMP:?}/xinitrc"; rm -f "${COPAL_TMP:?}/xinitrc"
 
     # i3 would otherwise run its config wizard on first launch and block on a
     # question. Writing the config skips that and pins Super as the modifier,
@@ -22063,7 +22087,7 @@ bar {
         }
 }
 I3B
-    } > /tmp/i3cfg.$$
+    } > "${COPAL_TMP:?}/i3cfg"
 
     # ----------------------------------------------------------------------
     # THE CTRL+ALT TWINS, generated rather than written.
@@ -22131,21 +22155,21 @@ I3B
             seen[twin] = 1
             printf "bindsym %-26s %s\n", twin, rest
         }
-    ' /tmp/i3cfg.$$ > /tmp/i3alt.$$
+    ' "${COPAL_TMP:?}/i3cfg" > "${COPAL_TMP:?}/i3alt"
     {
         printf '\n# ---- Ctrl+Alt twins, generated from the Super bindings above ----\n'
         printf '# One rule: where Super is eaten by the Mac, press Ctrl+Alt. Where the\n'
         printf '# binding already has Ctrl in it, press Ctrl+Alt+Shift. Delete this\n'
         printf '# whole block on a machine that is not a guest; nothing depends on it.\n'
-        cat /tmp/i3alt.$$
+        cat "${COPAL_TMP:?}/i3alt"
         printf 'bindsym Ctrl+Mod1+Shift+b  splitv\n'
-    } >> /tmp/i3cfg.$$
-    rm -f /tmp/i3alt.$$
+    } >> "${COPAL_TMP:?}/i3cfg"
+    rm -f "${COPAL_TMP:?}/i3alt"
     # Loud, because a collision report inside a generated file is a comment
     # nobody will ever open the file to read.
-    if grep -q '^# SKIPPED' /tmp/i3cfg.$$; then
+    if grep -q '^# SKIPPED' "${COPAL_TMP:?}/i3cfg"; then
         warn "some Ctrl+Alt twins collided and were skipped:"
-        grep '^# SKIPPED' /tmp/i3cfg.$$ | sed 's/^/      /'
+        grep '^# SKIPPED' "${COPAL_TMP:?}/i3cfg" | sed 's/^/      /'
     fi
     # AFTER the twins, deliberately. Each of these would collide with a twin
     # the block above already generated (Super+Ctrl+Space's twin is
@@ -22165,7 +22189,7 @@ I3B
         printf '# Everything above is rewritten whenever stage 4 runs; local.conf is not.\n'
         printf '# Included last, so it wins.\n'
         printf 'include ~/.config/i3/local.conf\n'
-    } >> /tmp/i3cfg.$$
+    } >> "${COPAL_TMP:?}/i3cfg"
 
     # $helpcmd holds a command line, and it is built here rather than left as
     # "$term -title ..." for i3 to expand.
@@ -22181,9 +22205,9 @@ I3B
     # that order, urxvt installed, and the same command run by hand works.
     # Rather than depend on the ordering rules of somebody else's parser for
     # something we already know the value of, put the value in.
-    sed -i "s|TERMEMU_PLACEHOLDER|$TERMEMU|" /tmp/i3cfg.$$
-    install_home_file .config/i3/config /tmp/i3cfg.$$; rm -f /tmp/i3cfg.$$
-    cat > /tmp/i3local.$$ <<'I3LOCAL'
+    sed -i "s|TERMEMU_PLACEHOLDER|$TERMEMU|" "${COPAL_TMP:?}/i3cfg"
+    install_home_file .config/i3/config "${COPAL_TMP:?}/i3cfg"; rm -f "${COPAL_TMP:?}/i3cfg"
+    cat > "${COPAL_TMP:?}/i3local" <<'I3LOCAL'
 # ~/.config/i3/local.conf -- yours.
 #
 # Copal created this file empty, once, and will not write to it again.
@@ -22193,8 +22217,8 @@ I3B
 #
 #   bindsym $mod+Shift+F8 exec foo
 I3LOCAL
-    install_home_once .config/i3/local.conf /tmp/i3local.$$
-    rm -f /tmp/i3local.$$
+    install_home_once .config/i3/local.conf "${COPAL_TMP:?}/i3local"
+    rm -f "${COPAL_TMP:?}/i3local"
 
     # The cheat sheet. i3 has no menus, no icons and no discoverable UI at
     # all, so without this the desktop is a grey rectangle that ignores you.
@@ -25309,7 +25333,7 @@ COPALGPU
     # Grouped and worded after Omarchy's keybinding guide -- the useful idea
     # there is that the guide is organised by INTENT (start something, move
     # something, arrange something) rather than by modifier key.
-    cat > /tmp/keys.$$ <<'KEYS'
+    cat > "${COPAL_TMP:?}/keys" <<'KEYS'
  ======================================================================
    Copal Linux -- key bindings
  ======================================================================
@@ -25561,7 +25585,7 @@ KEYS
     # code change, same rule as the catalogue.
     say "Writing the guides"
     mkdir -p /usr/local/share/copal/guides
-    cp /tmp/keys.$$ /usr/local/share/copal/guides/i3-keys.txt
+    cp "${COPAL_TMP:?}/keys" /usr/local/share/copal/guides/i3-keys.txt
 
     cat > /usr/local/share/copal/guides/small-web.txt <<'GUIDE'
  THE SMALL WEB -- Gopher and Gemini on this machine
@@ -26087,10 +26111,10 @@ COPALGUIDE
 
     # Into both homes, and only now delete the temporary copy -- the guides
     # directory above reads it too.
-    install_home_file .config/i3/keys.txt /tmp/keys.$$; rm -f /tmp/keys.$$
+    install_home_file .config/i3/keys.txt "${COPAL_TMP:?}/keys"; rm -f "${COPAL_TMP:?}/keys"
 
     say "Writing ~/.config/i3status/config"
-    cat > /tmp/i3status.$$ <<'I3S'
+    cat > "${COPAL_TMP:?}/i3status" <<'I3S'
 general {
         colors = true
         color_good = "#9ece6a"
@@ -26158,8 +26182,8 @@ I3S
     if command -v i3status >/dev/null 2>&1 && command -v timeout >/dev/null 2>&1; then
         # The 'if' wrapper is required, not stylistic: under 'set -e' a bare
         # command that exits non-zero would abort the stage before $? is read.
-        if timeout -s KILL 3 i3status -c /tmp/i3status.$$ \
-                >/dev/null 2>/tmp/i3status.err.$$; then
+        if timeout -s KILL 3 i3status -c "${COPAL_TMP:?}/i3status" \
+                >/dev/null 2>"${COPAL_TMP:?}/i3status.err"; then
             _rc=0
         else
             _rc=$?
@@ -26167,16 +26191,16 @@ I3S
         case "$_rc" in
             0|124|137) note "i3status config parses (ran until stopped at 3s)" ;;
             *)     warn "the generated i3status config does not parse (exit $_rc):"
-                   sed 's/^/      /' /tmp/i3status.err.$$ >&2 ;;
+                   sed 's/^/      /' "${COPAL_TMP:?}/i3status.err" >&2 ;;
         esac
-        rm -f /tmp/i3status.err.$$
+        rm -f "${COPAL_TMP:?}/i3status.err"
     fi
-    install_home_file .config/i3status/config /tmp/i3status.$$; rm -f /tmp/i3status.$$
+    install_home_file .config/i3status/config "${COPAL_TMP:?}/i3status"; rm -f "${COPAL_TMP:?}/i3status"
 
     # A readable terminal. Without a font package xterm falls back to a bitmap
     # that is painful at this resolution.
     say "Writing ~/.Xresources"
-    cat > /tmp/xres.$$ <<'XRES'
+    cat > "${COPAL_TMP:?}/xres" <<'XRES'
 ! Tokyo Night
 *background:           #1a1b26
 *foreground:           #c0caf5
@@ -26207,7 +26231,7 @@ URxvt*saveLines:       4096
 URxvt*scrollBar:       false
 URxvt*internalBorder:  2
 XRES
-    install_home_file .Xresources /tmp/xres.$$; rm -f /tmp/xres.$$
+    install_home_file .Xresources "${COPAL_TMP:?}/xres"; rm -f "${COPAL_TMP:?}/xres"
 
     # The desktop's theme on every terminal, opaque. Linux Antiquity's
     # terminal is a pane of glass -- kitty at 20 % opacity over a blurred
@@ -26656,7 +26680,7 @@ MSG
     # --- editor configuration ---------------------------------------------
     # One config, sourced by both vim and nvim, so the two never drift.
     say "Writing the editor configuration"
-    cat > /tmp/vimrc.$$ <<'VIMRC'
+    cat > "${COPAL_TMP:?}/vimrc" <<'VIMRC'
 " Generated by copal-init.sh. Deliberately plugin-free: on this board every
 " plugin is startup latency and RAM, and the built-ins cover the workflow.
 set nocompatible
@@ -26790,14 +26814,14 @@ augroup END
 " it is read last, so a setting there wins over the same setting above.
 silent! source ~/.vimrc.local
 VIMRC
-    install_home_file .vimrc /tmp/vimrc.$$
+    install_home_file .vimrc "${COPAL_TMP:?}/vimrc"
 
     # Neovim reads init.vim, not .vimrc -- source the same file from it, so the
     # two editors never drift, and then load the Lua that vim cannot use. The
     # LSP client, the completion and the call hierarchy are Neovim-only; vim
     # keeps the editing, building and Termdebug half, which is all of it that
     # does not need a language server.
-    cat > /tmp/initvim.$$ <<'INITVIM'
+    cat > "${COPAL_TMP:?}/initvim" <<'INITVIM'
 " Generated by copal-init.sh.
 "
 " THE LOAD ORDER, and it is not arbitrary. Omarchy's Neovim is LazyVim plus a
@@ -26831,8 +26855,8 @@ for s:f in ['theme', 'keys', 'lsp', 'local']
   endif
 endfor
 INITVIM
-    install_home_file .config/nvim/init.vim /tmp/initvim.$$
-    rm -f /tmp/vimrc.$$ /tmp/initvim.$$
+    install_home_file .config/nvim/init.vim "${COPAL_TMP:?}/initvim"
+    rm -f "${COPAL_TMP:?}/vimrc" "${COPAL_TMP:?}/initvim"
 
     copal_write_themes
     dev_write_nvim_ui
@@ -26850,7 +26874,7 @@ INITVIM
 
     # --- gdb ---------------------------------------------------------------
     say "Writing the gdb configuration"
-    cat > /tmp/gdbinit.$$ <<'GDBINIT'
+    cat > "${COPAL_TMP:?}/gdbinit" <<'GDBINIT'
 # Generated by copal-init.sh.
 set confirm off
 set pagination off
@@ -26861,11 +26885,11 @@ set disassembly-flavor att
 # 'layout src' or Ctrl-X A gives a source view with the current line marked --
 # a visual debugger without needing one.
 GDBINIT
-    install_home_file .gdbinit /tmp/gdbinit.$$; rm -f /tmp/gdbinit.$$
+    install_home_file .gdbinit "${COPAL_TMP:?}/gdbinit"; rm -f "${COPAL_TMP:?}/gdbinit"
 
     # --- a project that proves the whole chain works -----------------------
     say "Writing a sample project at ~/dev/hello"
-    cat > /tmp/main.c.$$ <<'CSRC'
+    cat > "${COPAL_TMP:?}/main.c" <<'CSRC'
 #include <stdio.h>
 
 static int accumulate(int n)
@@ -26883,7 +26907,7 @@ int main(void)
     return 0;
 }
 CSRC
-    cat > /tmp/Makefile.$$ <<'MAKEFILE'
+    cat > "${COPAL_TMP:?}/Makefile" <<'MAKEFILE'
 # -g keeps the debug symbols gdb needs; -O0 stops the optimiser reordering
 # lines out from under the debugger.
 CC      := cc
@@ -26905,9 +26929,9 @@ clean:
 
 .PHONY: run debug clean
 MAKEFILE
-    install_home_file dev/hello/main.c   /tmp/main.c.$$
-    install_home_file dev/hello/Makefile /tmp/Makefile.$$
-    rm -f /tmp/main.c.$$ /tmp/Makefile.$$
+    install_home_file dev/hello/main.c   "${COPAL_TMP:?}/main.c"
+    install_home_file dev/hello/Makefile "${COPAL_TMP:?}/Makefile"
+    rm -f "${COPAL_TMP:?}/main.c" "${COPAL_TMP:?}/Makefile"
 
     dev_code_checkouts
     install_manuals
@@ -28656,7 +28680,7 @@ stage_hyprland() {
     # The sum is of GitHub's archive of that commit.
     _theme_at=c0e3eac816e36124610fd557be4d2f87dd1f558a
     _theme_sum=52594bd0c8449530a9011ae28c2206e2b4dc0d9a513acc03015f4547a5a11aed
-    _tdir="/tmp/antiquity.$$"
+    _tdir="${COPAL_TMP:?}/antiquity"
     rm -rf "$_tdir"; mkdir -p "$_tdir"
     if [ -n "$_theme_tgz" ]; then
         tar -xzf "$_theme_tgz" -C "$_tdir" || { warn "could not unpack $_theme_tgz"; return 1; }
@@ -28676,7 +28700,7 @@ stage_hyprland() {
     # The staged tarball unpacks to configs/; the GitHub one to
     # linux-antiquity-COMMIT/configs. Point at whichever appeared.
     [ -d "$_tdir/configs" ] || _tdir="$_tdir/linux-antiquity-$_theme_at"
-    [ -d "$_tdir/configs" ] || { warn "no configs/ in the theme archive -- corrupt download?"; rm -rf "/tmp/antiquity.$$"; return 1; }
+    [ -d "$_tdir/configs" ] || { warn "no configs/ in the theme archive -- corrupt download?"; rm -rf "${COPAL_TMP:?}/antiquity"; return 1; }
 
     # The copy is upstream install.sh's behaviour, kept because its simplicity
     # is the point: each config directory goes to ~/.config/<name> whole, and
@@ -28736,7 +28760,7 @@ stage_hyprland() {
             && chown -R "$_own" "$_h/.config" "$_bak" 2>/dev/null || true
         note "$_h/.config -- hypr, kitty, mako, quickshell"
     done
-    rm -rf "/tmp/antiquity.$$"
+    rm -rf "${COPAL_TMP:?}/antiquity"
 
     # The editor follows the desktop. Stage 7 wrote both theme directories and
     # pointed the symlink at tokyo-night, which is stage 4's palette; this
@@ -29131,7 +29155,7 @@ ANTIQWALL
     #                 power key end the day through copal-halt, exactly as
     #                 they do in i3 -- one habit, both desktops.
     say "Writing ~/.config/hypr/hyprland.conf (the Alpine translation)"
-    cat > /tmp/hyprconf.$$ <<'ANTIQHYPR'
+    cat > "${COPAL_TMP:?}/hyprconf" <<'ANTIQHYPR'
 # hyprland.conf -- generated by copal-init.sh (stage 17).
 # A translation of Linux Antiquity's hyprland.lua (upstream: diinki, MIT) for
 # the Hyprland Alpine packages -- 0.54 reads only this dialect. The original
@@ -29712,7 +29736,7 @@ GUIDE
     # expand, for the same reason as stage 4's TERMEMU_PLACEHOLDER.
     _fm=pcmanfm
     command -v nemo >/dev/null 2>&1 && _fm=nemo
-    sed -i "s|FILEMGR_PLACEHOLDER|$_fm|" /tmp/hyprconf.$$
+    sed -i "s|FILEMGR_PLACEHOLDER|$_fm|" "${COPAL_TMP:?}/hyprconf"
 
     # ----------------------------------------------------------------------
     # THE CTRL+ALT TWINS -- the Wayland half of what stage 4 does to the i3
@@ -29770,17 +29794,17 @@ GUIDE
             from[chord] = mods
             printf "%s %s%s\n", head, twin, tail
         }
-    ' /tmp/hyprconf.$$ > /tmp/hypralt.$$
+    ' "${COPAL_TMP:?}/hyprconf" > "${COPAL_TMP:?}/hypralt"
     {
         printf '\n# ---- Ctrl+Alt twins, generated from the Super binds above ----\n'
         printf '# Where Super is eaten by the Mac, press Ctrl+Alt. Where the bind also\n'
         printf '# has Ctrl in it, press Ctrl+Alt+Shift. Delete this block on hardware.\n'
-        cat /tmp/hypralt.$$
-    } >> /tmp/hyprconf.$$
-    rm -f /tmp/hypralt.$$
-    if grep -q '^# SKIPPED' /tmp/hyprconf.$$; then
+        cat "${COPAL_TMP:?}/hypralt"
+    } >> "${COPAL_TMP:?}/hyprconf"
+    rm -f "${COPAL_TMP:?}/hypralt"
+    if grep -q '^# SKIPPED' "${COPAL_TMP:?}/hyprconf"; then
         warn "some Ctrl+Alt twins collided and were skipped:"
-        grep '^# SKIPPED' /tmp/hyprconf.$$ | sed 's/^/      /'
+        grep '^# SKIPPED' "${COPAL_TMP:?}/hyprconf" | sed 's/^/      /'
     fi
     # AFTER the twins, deliberately, and for the same reason stage 4 does it:
     # Super+Shift+T's twin is Super+Ctrl+T's, and Super+Ctrl+Space's is
@@ -29790,7 +29814,7 @@ GUIDE
     # And local.conf LAST of all, after the twins, so that "sourced last, so
     # it wins" stays true of the whole file rather than of the part above the
     # generated block.
-    cat >> /tmp/hyprconf.$$ <<'ANTIQDOORS'
+    cat >> "${COPAL_TMP:?}/hyprconf" <<'ANTIQDOORS'
 
 # ---- more doors ---------------------------------------------------------
 # The theme picker. Two themes today, and a picker over two is still the
@@ -29815,8 +29839,8 @@ source = ~/.config/hypr/copal-theme.conf
 source = ~/.config/hypr/local.conf
 ANTIQDOORS
 
-    install_home_file .config/hypr/hyprland.conf /tmp/hyprconf.$$
-    cat > /tmp/hyprlocal.$$ <<'HYPRLOCAL'
+    install_home_file .config/hypr/hyprland.conf "${COPAL_TMP:?}/hyprconf"
+    cat > "${COPAL_TMP:?}/hyprlocal" <<'HYPRLOCAL'
 # ~/.config/hypr/local.conf -- yours.
 #
 # Copal created this file empty, once, and will not write to it again.
@@ -29828,16 +29852,16 @@ ANTIQDOORS
 #   bind = $mainMod SHIFT, F8, exec, foo      a binding of your own
 #   exec-once = copal-desk                    the desk, laid out at login
 HYPRLOCAL
-    install_home_once .config/hypr/local.conf /tmp/hyprlocal.$$
-    rm -f /tmp/hyprlocal.$$
-    rm -f /tmp/hyprconf.$$
+    install_home_once .config/hypr/local.conf "${COPAL_TMP:?}/hyprlocal"
+    rm -f "${COPAL_TMP:?}/hyprlocal"
+    rm -f "${COPAL_TMP:?}/hyprconf"
 
     # hyprpaper.conf named the author's two monitors. An empty monitor field
     # means every monitor, which is the only shape that survives contact with
     # other people's hardware. Only read if hyprpaper ever appears -- swaybg
     # takes its orders from copal-wallpaper -- but corrected now, once.
     say "Writing ~/.config/hypr/hyprpaper.conf (all monitors)"
-    cat > /tmp/hyprpaper.$$ <<'ANTIQPAPER'
+    cat > "${COPAL_TMP:?}/hyprpaper" <<'ANTIQPAPER'
 # hyprpaper.conf -- rewritten by copal-init.sh (stage 17); upstream's file
 # named the author's DP-2 and DP-4. Empty monitor = every monitor.
 wallpaper {
@@ -29847,8 +29871,8 @@ wallpaper {
 }
 splash = false
 ANTIQPAPER
-    install_home_file .config/hypr/hyprpaper.conf /tmp/hyprpaper.$$
-    rm -f /tmp/hyprpaper.$$
+    install_home_file .config/hypr/hyprpaper.conf "${COPAL_TMP:?}/hyprpaper"
+    rm -f "${COPAL_TMP:?}/hyprpaper"
 
     # foot.ini -- the theme's palette, on the terminal this desktop opens.
     #
@@ -29866,7 +29890,7 @@ ANTIQPAPER
     # invention: it is hades.conf's own selection_foreground, the colour the
     # theme already puts on top of #eaeaea. Everything else is upstream's.
     say "Writing ~/.config/foot/foot.ini (font, padding, keys; the palette follows the theme)"
-    cat > /tmp/footini.$$ <<'ANTIQFOOT'
+    cat > "${COPAL_TMP:?}/footini" <<'ANTIQFOOT'
 # foot.ini -- written by copal-init.sh (stage 17).
 #
 # foot is the terminal this desktop opens because it renders on the CPU:
@@ -29898,8 +29922,8 @@ lines=3000
 font-increase=Control+plus
 font-decrease=Control+Shift+minus
 ANTIQFOOT
-    install_home_file .config/foot/foot.ini /tmp/footini.$$
-    rm -f /tmp/footini.$$
+    install_home_file .config/foot/foot.ini "${COPAL_TMP:?}/footini"
+    rm -f "${COPAL_TMP:?}/footini"
 
     # The theme's kitty.conf asks for Maple Mono, which Alpine does not
     # package. kitty falls back to its default monospace without complaint,
@@ -34208,7 +34232,7 @@ tui_begin() {
     # into (see auto_run), so what scrolls there is the real apk and make output
     # rather than a summary of it. /tmp, not the boot partition: this is written
     # to on every line and the card should not be.
-    TUI_OUTFILE=/tmp/copal-tui-out.$$
+    TUI_OUTFILE="${COPAL_TMP:?}/copal-tui-out"
     : > "$TUI_OUTFILE"
     tui_hide
     # Paint the whole screen blue once. Everything after this addresses cells.
@@ -35120,9 +35144,24 @@ fi
 # on the Mac, checks the result parses, and only then replaces the installed
 # copy. A truncated download or an HTML error page cannot survive `sh -n`.
 #
-# There is no signature check. The transport is TLS to raw.githubusercontent.com
-# and that is the whole of the trust model; say so plainly rather than implying
-# more. Anyone who wants better can point COPAL_REPO at their own fork.
+# THE SIGNATURE. copal-prep.sh is the whole installer and runs as root, so
+# "is this the file that was published" is worth more than TLS to
+# raw.githubusercontent.com can say. Beside it in the repository there may be
+# copal-prep.sh.sig, made by 'make sign' with an SSH key, and on this machine
+# there may be /etc/copal/allowed_signers, which the card brought. Then:
+#
+#   signers here, a good signature      installed
+#   signers here, none or a bad one     REFUSED -- unless --unsigned is given,
+#                                       which is how a branch between releases
+#                                       is installed, by somebody who meant to
+#   no signers here                     installed as it always was, and said
+#                                       to be unchecked: TLS is the whole of
+#                                       the trust model on such a machine
+#
+# A signature is made when a release is tagged. A commit after it changes
+# the file and not the signature, so 'main' is unsigned most days and a tag
+# is what 'copal -U' is given. --from is not checked: a file already on this
+# disk was put there by whoever could have replaced this command.
 # WRITTEN TO A TEMPORARY NAME AND RENAMED, never `cat >` over the path.
 # Stage 3 leaves a copy of THIS WHOLE SCRIPT at /usr/local/bin/copal, and the
 # next `copal` on that machine runs it from there. A `cat >` onto the file
@@ -35147,6 +35186,14 @@ set -eu
 
 REPO="${COPAL_REPO:-copallinux/copal}"
 VERFILE=/etc/copal/version
+SIGNERS="${COPAL_SIGNERS:-/etc/copal/allowed_signers}"
+# Who signs, and what for: the two words a signature is checked against, and
+# the two tools/copal-sign.sh signs with. A signature made for anything else
+# by the same key is not a signature of the installer.
+SIGN_AS=installer@copal
+SIGN_FOR=copal-installer
+UNSIGNED=0
+SIGNED=unchecked
 
 have() { command -v "$1" >/dev/null 2>&1; }
 die()  { printf 'copal: %s\n' "$*" >&2; exit 1; }
@@ -35172,6 +35219,11 @@ copal -- Copal Alpine Linux, on the machine itself.
   copal -U [ref]        update from the repository (default branch: main).
                         'ref' may be any branch, tag or commit SHA, which is
                         how you pin a version or go back to an older one.
+                        On a machine with /etc/copal/allowed_signers, only
+                        a copal-prep.sh signed by a key in it is installed.
+  copal -U --unsigned [ref]
+                        install one that is not signed: a branch, between
+                        releases.
   copal -U --from PATH  update from a checkout on THIS machine instead of the
                         network: a directory holding copal-prep.sh, the file
                         itself, or an already-extracted copal-init.sh. This is
@@ -35251,9 +35303,28 @@ local_init() {  # <path> <destination>
     fi
 }
 
-# Fetch and extract, into $2. Prints the temporary source path on success.
-fetch_init() {  # <ref> <destination>
-    _ref="$1"; _dest="$2"
+# Was it signed by a key this machine trusts?  signed_here <file> <its url>
+# Says why not, on standard error, when it was not.
+signed_here() {
+    have ssh-keygen || { printf 'ssh-keygen is not installed (apk add openssh-keygen), so no signature can be checked\n' >&2; return 1; }
+    _sig=$(mktemp /tmp/copal-sig.XXXXXX) || return 1
+    if ! curl -fsSL --retry 3 -o "$_sig" "$2.sig" 2>/dev/null; then
+        rm -f "$_sig"
+        printf 'no signature is published beside it: %s.sig\n' "$2" >&2
+        return 1
+    fi
+    if ssh-keygen -Y verify -f "$SIGNERS" -I "$SIGN_AS" -n "$SIGN_FOR" -s "$_sig" < "$1" >/dev/null 2>&1; then
+        rm -f "$_sig"
+        return 0
+    fi
+    rm -f "$_sig"
+    printf 'the signature beside it does not hold: the file is not the one that was signed, or the key is not in %s\n' "$SIGNERS" >&2
+    return 1
+}
+
+# Fetch copal-prep.sh at a ref. Prints the path of what came, on success.
+fetch_prep() {  # <ref>
+    _ref="$1"
     have curl || die "curl is not installed -- apk add curl"
     _url="https://raw.githubusercontent.com/$REPO/$_ref/copal-prep.sh"
     _src=$(mktemp /tmp/copal-prep.XXXXXX) || die "cannot write to /tmp"
@@ -35269,14 +35340,25 @@ fetch_init() {  # <ref> <destination>
     [ "$_sz" -gt 100000 ] || { rm -f "$_src"; die "downloaded $_sz bytes -- that is not copal-prep.sh"; }
     head -1 "$_src" | grep -q '^#!/bin/bash' || { rm -f "$_src"; die "downloaded file is not a shell script"; }
 
-    _rc=0; extract_init "$_src" "$_dest" || _rc=$?
-    case "$_rc" in
-        0) : ;;
-        1) rm -f "$_src"; die "no copal-init.sh inside that copal-prep.sh" ;;
-        *) rm -f "$_src"; die "the extracted copal-init.sh does not parse -- refusing to install it" ;;
-    esac
-
     echo "$_src"
+}
+
+# WHO MADE IT, asked before anything in it is read.  Sets SIGNED.
+# Returns 1 when the file is to be refused.
+check_signature() {  # <copal-prep.sh> <ref>
+    _url="https://raw.githubusercontent.com/$REPO/$2/copal-prep.sh"
+    if [ ! -f "$SIGNERS" ]; then
+        printf 'Not checked: there is no %s on this machine to check a signature against.\n' "$SIGNERS" >&2
+        SIGNED=unchecked
+    elif signed_here "$1" "$_url"; then
+        printf 'Signed by %s, a key this machine trusts.\n' "$SIGN_AS" >&2
+        SIGNED="by $SIGN_AS"
+    elif [ "$UNSIGNED" = 1 ]; then
+        printf 'NOT SIGNED. Going on, because --unsigned was given.\n' >&2
+        SIGNED="no: installed with --unsigned"
+    else
+        return 1
+    fi
 }
 
 sha() { sha256sum "$1" 2>/dev/null | cut -d' ' -f1; }
@@ -35294,8 +35376,21 @@ cmd_update() {  # <ref-or-path> <check-only 0|1> <from-a-checkout 0|1>
         local_init "$_ref" "$_new"
         _label="${INIT_SOURCE:-$_ref}"
     else
-        _src=$(fetch_init "$_ref" "$_new")
+        # Four steps, in the order that reads least of a file nobody has
+        # vouched for: fetch it, ask who made it, take the installer out of
+        # it, and only then compare.
+        _src=$(fetch_prep "$_ref") || { rm -f "$_new"; exit 1; }
         _label="$REPO@$_ref"
+        if ! check_signature "$_src" "$_ref"; then
+            rm -f "$_new" "$_src"
+            die "that copal-prep.sh is not signed by a key this machine trusts -- refusing it. A tagged release is signed: 'copal -U TAG'. To install this one all the same: 'copal -U --unsigned $_ref'."
+        fi
+        _rc=0; extract_init "$_src" "$_new" || _rc=$?
+        case "$_rc" in
+            0) : ;;
+            1) rm -f "$_new" "$_src"; die "no copal-init.sh inside that copal-prep.sh" ;;
+            *) rm -f "$_new" "$_src"; die "the extracted copal-init.sh does not parse -- refusing to install it" ;;
+        esac
     fi
     # The network path leaves a downloaded copal-prep.sh behind; the checkout
     # path leaves nothing, and rm with an empty argument is an error on
@@ -35343,8 +35438,8 @@ cmd_update() {  # <ref-or-path> <check-only 0|1> <from-a-checkout 0|1>
     fi
 
     mkdir -p /etc/copal 2>/dev/null || true
-    { printf 'source=%s\nsha256=%s\nupdated=%s\n' \
-             "$_label" "$(sha "$_cur")" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    { printf 'source=%s\nsha256=%s\nupdated=%s\nsigned=%s\n' \
+             "$_label" "$(sha "$_cur")" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$SIGNED"
     } > "$VERFILE" 2>/dev/null || true
 
     [ "$_remounted" = 1 ] && mount -o remount,ro "$_mnt" 2>/dev/null || true
@@ -35378,8 +35473,12 @@ cmd_version() {
 # -U and --check take either a git ref or "--from PATH", never both: one names
 # a place on the network and the other a place on this disk, and a command that
 # accepted both would have to decide which wins.
-update_args() {  # <check-only 0|1> [ref | --from PATH]
+update_args() {  # <check-only 0|1> [--unsigned] [ref | --from PATH]
     _co="$1"; shift
+    if [ "${1:-}" = --unsigned ]; then
+        UNSIGNED=1
+        shift
+    fi
     case "${1:-}" in
         --from|-f)
             shift
@@ -35416,6 +35515,14 @@ esac
 COPALCMD
     chmod 0755 /usr/local/bin/copal.new
     mv -f /usr/local/bin/copal.new /usr/local/bin/copal
+
+    # The keys an update is checked against, if the card brought them. From
+    # the card and from nowhere else: it is where this script came from, and
+    # an update cannot be allowed to say who may sign the next one.
+    if [ -f "${BOOT:-/boot}/copal.allowed_signers" ]; then
+        mkdir -p /etc/copal
+        install -m 0644 "${BOOT:-/boot}/copal.allowed_signers" /etc/copal/allowed_signers
+    fi
 }
 
 # The log tools, written beside the front door and for the same reason: they
@@ -36530,16 +36637,17 @@ case "$_posix_sh" in
     *)       _parse="$_posix_sh -n" ;;
 esac
 if [ -n "$_parse" ]; then
-    if $_parse "$MNT/copal-init.sh" 2>/tmp/copalparse.$$; then
+    _said=$(mktemp) || exit 1
+    if $_parse "$MNT/copal-init.sh" 2>"$_said"; then
         printf '    ok      copal-init.sh parses (%s)\n' "$_parse"
     else
         printf '    BROKEN  copal-init.sh does not parse under %s:\n' "$_parse"
-        sed 's/^/            /' /tmp/copalparse.$$
+        sed 's/^/            /' "$_said"
         printf '            The target runs busybox ash, which parses the same way.\n'
         printf '            This card would boot to that error and install nothing.\n'
         MISSING=1
     fi
-    rm -f /tmp/copalparse.$$
+    rm -f "$_said"
 else
     if sh -n "$MNT/copal-init.sh" 2>/dev/null; then
         printf '    ok      copal-init.sh parses (bash -n -- no POSIX shell here)\n'

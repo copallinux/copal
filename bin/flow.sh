@@ -7,5 +7,6 @@
 #  Print the flow chart alone.
 #
 #  The same chart bin/menu.sh opens with, without the menu around it.
+set -eu
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)" || exit 1
 exec make flow "$@"

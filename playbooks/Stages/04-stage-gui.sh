@@ -263,7 +263,7 @@ XORGKMS
     fi
 
     say "Writing ~/.xinitrc"
-    cat > /tmp/xinitrc.$$ <<'XINIT'
+    cat > "${COPAL_TMP:?}/xinitrc" <<'XINIT'
 [ -f "$HOME/.Xresources" ] && xrdb -merge "$HOME/.Xresources"
 # The session half of the shared clipboard. Guarded twice: the binary may not
 # be installed (a Pi, or a VM offering no channel), and the port may not exist
@@ -316,7 +316,7 @@ command -v xsetroot >/dev/null && xsetroot -solid '#1a1b26'
 command -v copal-audio-start >/dev/null 2>&1 && copal-audio-start
 exec i3
 XINIT
-    install_home_file .xinitrc /tmp/xinitrc.$$; rm -f /tmp/xinitrc.$$
+    install_home_file .xinitrc "${COPAL_TMP:?}/xinitrc"; rm -f "${COPAL_TMP:?}/xinitrc"
 
     # i3 would otherwise run its config wizard on first launch and block on a
     # question. Writing the config skips that and pins Super as the modifier,
@@ -683,7 +683,7 @@ bar {
         }
 }
 I3B
-    } > /tmp/i3cfg.$$
+    } > "${COPAL_TMP:?}/i3cfg"
 
     # ----------------------------------------------------------------------
     # THE CTRL+ALT TWINS, generated rather than written.
@@ -751,21 +751,21 @@ I3B
             seen[twin] = 1
             printf "bindsym %-26s %s\n", twin, rest
         }
-    ' /tmp/i3cfg.$$ > /tmp/i3alt.$$
+    ' "${COPAL_TMP:?}/i3cfg" > "${COPAL_TMP:?}/i3alt"
     {
         printf '\n# ---- Ctrl+Alt twins, generated from the Super bindings above ----\n'
         printf '# One rule: where Super is eaten by the Mac, press Ctrl+Alt. Where the\n'
         printf '# binding already has Ctrl in it, press Ctrl+Alt+Shift. Delete this\n'
         printf '# whole block on a machine that is not a guest; nothing depends on it.\n'
-        cat /tmp/i3alt.$$
+        cat "${COPAL_TMP:?}/i3alt"
         printf 'bindsym Ctrl+Mod1+Shift+b  splitv\n'
-    } >> /tmp/i3cfg.$$
-    rm -f /tmp/i3alt.$$
+    } >> "${COPAL_TMP:?}/i3cfg"
+    rm -f "${COPAL_TMP:?}/i3alt"
     # Loud, because a collision report inside a generated file is a comment
     # nobody will ever open the file to read.
-    if grep -q '^# SKIPPED' /tmp/i3cfg.$$; then
+    if grep -q '^# SKIPPED' "${COPAL_TMP:?}/i3cfg"; then
         warn "some Ctrl+Alt twins collided and were skipped:"
-        grep '^# SKIPPED' /tmp/i3cfg.$$ | sed 's/^/      /'
+        grep '^# SKIPPED' "${COPAL_TMP:?}/i3cfg" | sed 's/^/      /'
     fi
     # AFTER the twins, deliberately. Each of these would collide with a twin
     # the block above already generated (Super+Ctrl+Space's twin is
@@ -785,7 +785,7 @@ I3B
         printf '# Everything above is rewritten whenever stage 4 runs; local.conf is not.\n'
         printf '# Included last, so it wins.\n'
         printf 'include ~/.config/i3/local.conf\n'
-    } >> /tmp/i3cfg.$$
+    } >> "${COPAL_TMP:?}/i3cfg"
 
     # $helpcmd holds a command line, and it is built here rather than left as
     # "$term -title ..." for i3 to expand.
@@ -801,9 +801,9 @@ I3B
     # that order, urxvt installed, and the same command run by hand works.
     # Rather than depend on the ordering rules of somebody else's parser for
     # something we already know the value of, put the value in.
-    sed -i "s|TERMEMU_PLACEHOLDER|$TERMEMU|" /tmp/i3cfg.$$
-    install_home_file .config/i3/config /tmp/i3cfg.$$; rm -f /tmp/i3cfg.$$
-    cat > /tmp/i3local.$$ <<'I3LOCAL'
+    sed -i "s|TERMEMU_PLACEHOLDER|$TERMEMU|" "${COPAL_TMP:?}/i3cfg"
+    install_home_file .config/i3/config "${COPAL_TMP:?}/i3cfg"; rm -f "${COPAL_TMP:?}/i3cfg"
+    cat > "${COPAL_TMP:?}/i3local" <<'I3LOCAL'
 # ~/.config/i3/local.conf -- yours.
 #
 # Copal created this file empty, once, and will not write to it again.
@@ -813,8 +813,8 @@ I3B
 #
 #   bindsym $mod+Shift+F8 exec foo
 I3LOCAL
-    install_home_once .config/i3/local.conf /tmp/i3local.$$
-    rm -f /tmp/i3local.$$
+    install_home_once .config/i3/local.conf "${COPAL_TMP:?}/i3local"
+    rm -f "${COPAL_TMP:?}/i3local"
 
     # The cheat sheet. i3 has no menus, no icons and no discoverable UI at
     # all, so without this the desktop is a grey rectangle that ignores you.
@@ -3929,7 +3929,7 @@ COPALGPU
     # Grouped and worded after Omarchy's keybinding guide -- the useful idea
     # there is that the guide is organised by INTENT (start something, move
     # something, arrange something) rather than by modifier key.
-    cat > /tmp/keys.$$ <<'KEYS'
+    cat > "${COPAL_TMP:?}/keys" <<'KEYS'
  ======================================================================
    Copal Linux -- key bindings
  ======================================================================
@@ -4181,7 +4181,7 @@ KEYS
     # code change, same rule as the catalogue.
     say "Writing the guides"
     mkdir -p /usr/local/share/copal/guides
-    cp /tmp/keys.$$ /usr/local/share/copal/guides/i3-keys.txt
+    cp "${COPAL_TMP:?}/keys" /usr/local/share/copal/guides/i3-keys.txt
 
     cat > /usr/local/share/copal/guides/small-web.txt <<'GUIDE'
  THE SMALL WEB -- Gopher and Gemini on this machine
@@ -4707,10 +4707,10 @@ COPALGUIDE
 
     # Into both homes, and only now delete the temporary copy -- the guides
     # directory above reads it too.
-    install_home_file .config/i3/keys.txt /tmp/keys.$$; rm -f /tmp/keys.$$
+    install_home_file .config/i3/keys.txt "${COPAL_TMP:?}/keys"; rm -f "${COPAL_TMP:?}/keys"
 
     say "Writing ~/.config/i3status/config"
-    cat > /tmp/i3status.$$ <<'I3S'
+    cat > "${COPAL_TMP:?}/i3status" <<'I3S'
 general {
         colors = true
         color_good = "#9ece6a"
@@ -4778,8 +4778,8 @@ I3S
     if command -v i3status >/dev/null 2>&1 && command -v timeout >/dev/null 2>&1; then
         # The 'if' wrapper is required, not stylistic: under 'set -e' a bare
         # command that exits non-zero would abort the stage before $? is read.
-        if timeout -s KILL 3 i3status -c /tmp/i3status.$$ \
-                >/dev/null 2>/tmp/i3status.err.$$; then
+        if timeout -s KILL 3 i3status -c "${COPAL_TMP:?}/i3status" \
+                >/dev/null 2>"${COPAL_TMP:?}/i3status.err"; then
             _rc=0
         else
             _rc=$?
@@ -4787,16 +4787,16 @@ I3S
         case "$_rc" in
             0|124|137) note "i3status config parses (ran until stopped at 3s)" ;;
             *)     warn "the generated i3status config does not parse (exit $_rc):"
-                   sed 's/^/      /' /tmp/i3status.err.$$ >&2 ;;
+                   sed 's/^/      /' "${COPAL_TMP:?}/i3status.err" >&2 ;;
         esac
-        rm -f /tmp/i3status.err.$$
+        rm -f "${COPAL_TMP:?}/i3status.err"
     fi
-    install_home_file .config/i3status/config /tmp/i3status.$$; rm -f /tmp/i3status.$$
+    install_home_file .config/i3status/config "${COPAL_TMP:?}/i3status"; rm -f "${COPAL_TMP:?}/i3status"
 
     # A readable terminal. Without a font package xterm falls back to a bitmap
     # that is painful at this resolution.
     say "Writing ~/.Xresources"
-    cat > /tmp/xres.$$ <<'XRES'
+    cat > "${COPAL_TMP:?}/xres" <<'XRES'
 ! Tokyo Night
 *background:           #1a1b26
 *foreground:           #c0caf5
@@ -4827,7 +4827,7 @@ URxvt*saveLines:       4096
 URxvt*scrollBar:       false
 URxvt*internalBorder:  2
 XRES
-    install_home_file .Xresources /tmp/xres.$$; rm -f /tmp/xres.$$
+    install_home_file .Xresources "${COPAL_TMP:?}/xres"; rm -f "${COPAL_TMP:?}/xres"
 
     # The desktop's theme on every terminal, opaque. Linux Antiquity's
     # terminal is a pane of glass -- kitty at 20 % opacity over a blurred
