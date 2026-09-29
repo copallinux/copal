@@ -521,6 +521,100 @@ Rules S1, S7, S8 and S12 are now held by `make lint`. S3, S9 and S10 are
 held as far as warnings go, and wait on S-12 for the rest. S2, S4, S5, S6
 and S11 wait on S-05 to S-08 and S-11.
 
+## XIII. Addendum: the notes, the evals and the downloads (29 September 2026)
+
+### A. The notes
+
+| | |
+|---|---|
+| notes, before | 57 |
+| rewritten | 19 |
+| answered, by 31 directives, each with its reason | 38 |
+| notes, after | 0 — and `NOTES=0`, so the next one fails `make lint` |
+
+**A note was the one that ran the installer.** shellcheck's SC2006 is a
+matter of style: write `$(…)`, not backticks. It was raised once, in stage
+3, on a line of a message:
+
+```
+takes effect. (`copal` on its own also works -- a copy was installed
+```
+
+The message is a here-document that expands, because it names `$PI_USER`.
+So the backticks were not quotation marks. Printing the message ran `copal`
+and put what it printed in the sentence. On the card, before the first
+reboot, there is no `copal` to run and the sentence lost a word. On an
+installed machine `copal` is the installer.
+
+| | The line as printed | Ran |
+|---|---|---|
+| before | `(RAN-THE-INSTALLER on its own also works` | the stand-in `copal` |
+| after | `('copal' on its own also works` | nothing |
+
+This is the defect of section IV over again, in the project's own text: a
+character that means something where it lands. Rule S12 asked that a
+here-document holding code be quoted. One holding prose needs the same
+care, and the linter is what gave it.
+
+**A directive is for what is meant.** Thirty-eight notes were about lines that split a list into words,
+or list files whose names the project chose, or print a `$` for i3 to read.
+Each says so after the directive. Three of them were one fact said three
+times, and became one function, `verb_list`, that says it once.
+
+### B. The evals
+
+There were four, not three. One was a defect: `copal-app-sweep.sh` built
+the line it evaluated with the checkout's path already in it.
+
+| Checkout in | Before | After |
+|---|---|---|
+| `re po $(touch X)/` | `X` was made; the probe was not found | nothing was made; the probe ran, the path one word |
+
+Only the row's own command line is code, as it has to be: it is written
+as a person would type it, and a shell is what reads that.
+
+### C. The downloads
+
+| What | From | Checked against | |
+|---|---|---|---|
+| Alpine's payload | Alpine's mirror | the `.sha256` beside it | checked |
+| the UEFI bootloader ISO | Alpine's mirror | the `.sha256` beside it | checked |
+| store recipes, 94 calls in 39 playbooks | GitHub and others | **a sha256 pinned in the playbook** | checked |
+| streamripper | SourceForge | a sha256 pinned in the installer | checked |
+| wxMaxima, the latest | GitHub | the `.sha256` beside it, if there is one | checked, or says it is not |
+| Notepad++, for Wine | GitHub | the release's checksums file | checked |
+| 7-Zip, for Wine | 7-zip.org | nothing: none is published | **not**, and says so |
+| the installer itself, fetched to update a machine | this repository, at a branch | its size, its first line, and that it parses; no sum and no signature | **not** — S-16 |
+| yt-dlp, the latest | GitHub | nothing | **not** — S-13 |
+| PianoBooster, at a pinned commit | GitHub | nothing | **not** — S-14 |
+| Mini vMac, VICE | gryphel.com, SourceForge | nothing | **not** — S-14 |
+| five IIO sources, at pinned tags | GitHub | nothing | **not** — S-14 |
+| kicad-templates, the latest of a series | GitLab | nothing | **not** — S-14 |
+| the desktop theme | GitHub, `refs/heads/main` | nothing, and the branch moves | **not** — S-15 |
+| Brave's installer | dl.brave.com | nothing; piped into `sh` as root | **not** — S-06 |
+| wallpapers | GitHub, `main` | nothing | **not**; pictures, resized and kept |
+
+**Two kinds of sum, and only one proves where a file came from.** A
+`.sha256` fetched from beside the file proves the transfer: whoever can
+change the file can change the sum. A sum written in this repository
+proves the file is the one somebody here read. The store's recipes are the
+second kind, all of them. The installer's own downloads are the first kind
+or none, and they are the ones that run as root.
+
+**The table was nearly wrong about the one that matters most.** A search
+for `sha256sum` near each download marked the installer's own update as
+checked. It is not: a function called `sha` stands a few lines below it,
+for something else. Reading the function found that. Sixteen kinds of
+download are in the table; five are checked before use, one is checked
+when it can be, and ten are not.
+
+**Left as they are, on purpose.** 7-Zip publishes no sum, and the installer
+says so when it fetches it. The wallpapers are pictures from a branch that
+moves; they are not run, and pinning them would mean nobody gets a new one.
+
+Rules S4 and S3, S9, S10 are now held by `make lint` at zero notes. S11
+waits on S-06 and S-13 to S-16; S2, S5 and S6 on S-11 and S-05.
+
 ## References
 
 [1] Copal Linux, "Backlog," `docs/backlog.md`, 2026.
