@@ -26,7 +26,7 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | C | configuration | `copal` |
 | S | shell scripts | `copal` |
 
-**Standing:** 7 open · 0 in progress · 18 done · 2 dropped. Written 29 September 2026.
+**Standing:** 3 open · 0 in progress · 22 done · 2 dropped. Written 29 September 2026.
 
 ---
 
@@ -37,11 +37,7 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | ID | Entry | Rule | Check |
 |---|---|---|---|
 | S-05 | `mktemp` and a `trap` in place of `/tmp/name.$$`: 64 lines, in stages 4, 7 and 17 and `tools/release-walkthrough.sh` | S6 | `grep -rE '/tmp/[A-Za-z0-9._-]+\.\$\$' playbooks tools` finds nothing |
-| S-06 | Brave's installer is downloaded to a file, shown, then run — not piped into `sh` | S11 | `grep -E 'curl[^#]*\| *sh' copal-prep.sh` finds only comments |
 | S-11 | `set -eu` in every script that is run and has none | S2 | `make lint` lists none |
-| S-13 | yt-dlp's zipapp is checked against the `SHA2-256SUMS` of the release it came from, before it replaces the one in `/usr/local/bin`. It is the latest, so no sum can be pinned here; the release's own is what there is | S11 | a zipapp with one byte changed is refused, and the old one stays |
-| S-14 | A pinned sha256 for each source that is fetched by version and built as root: PianoBooster, Mini vMac, VICE, the five IIO sources, kicad-templates. A version given on the command line has no pinned sum, and the installer says it is building unverified, as wxMaxima's does | S11 | each refuses an archive with one byte changed |
-| S-15 | The desktop theme is fetched from `refs/heads/main`, a branch that moves, and unpacked as root. Pin it to a commit and a sha256, as `PIANOBOOSTER_REF` is pinned | S11 | the URL names a commit; a changed archive is refused |
 | S-16 | The installer fetches itself, to update a machine, from a branch of this repository, and checks its size, its first line and that it parses. Nothing says it is the file that was published. Sign a release with the key captures are signed with, and have the machine check the signature against a key it was installed with | S11 | a `copal-prep.sh` with one byte changed is refused |
 
 ---
@@ -71,6 +67,10 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | S-08 | Four `eval`s, not three. `copal-app-sweep.sh` put the checkout's path into the line it evaluated: from a folder named `re po $(touch X)`, it ran `touch`. Only the row's command line is code now; the path is expanded inside the `eval`, in quotes. `copal-answers.sh` parses the two functions it cuts from `copal-prep.sh` before it evaluates them. `copal-store-bench.sh env` prints its values in single quotes. `copal-app-probe.sh` holds what it evaluates to a hexadecimal address and four numbers. **Check:** the sweep from that folder runs nothing and passes the path as one word; a value with quotes, a `$` and backticks in it reads back the same | 29 September 2026 | `c7953b3` |
 | S-12 | The 57 notes, read one by one: 19 rewritten, 38 answered by 31 directives, each with its reason. `NOTES=0`, so the next note fails `make lint`. **One was a defect:** stage 3's closing message had `` `copal` `` in a here-document that expands, so printing it *ran* `copal` — on an installed machine, the installer itself. **Check:** with a stand-in `copal` on `PATH` the old message ran it and the new one does not; `copal-disk.sh self-test` passes its 59 checks with the same output; the four `printf` lines of `copal-fleet.sh` print the same bytes | 29 September 2026 | `c7953b3` |
 | S-07 | Every download read, and tabled in the lab report, section XIII: sixteen kinds, of which five are checked against a sum before use, one is checked when upstream gives a sum, and ten are not. What is to be done about the ten is S-06 and S-13 to S-16; two are left as they are, with the reason | 29 September 2026 | `c7953b3` |
+| S-13 | yt-dlp's zipapp is held to the sum its own release gives, by `sha256_is`, before it replaces the one in `/usr/local/bin`. **Check:** the real release installs; one with a byte changed is refused, and the yt-dlp that was there is as it was | 29 September 2026 | `43a7f32` |
+| S-15 | The theme is fetched at `c0e3eac`, the commit it was forked at, and held to a sum. Its `configs/` are the card's, byte for byte. **Check:** the real archive unpacks; one with a byte changed is refused and nothing is unpacked | 29 September 2026 | `43a7f32` |
+| S-14 | `pinned_sum`, one table of nine sums by the address each file is fetched from, and `source_is`, which holds a download to it. A version the table does not know is built, and said to be unverified. A copy from the card is not asked: the card is where the installer came from too. **Check:** all nine real files pass, and all nine addresses are found in the table; one with a byte changed is refused; an unknown version is built with the warning. **The sums are first-use:** what each address gave on 29 September 2026, the same twice. None could be set beside a sum its project publishes | 29 September 2026 | `43a7f32` |
+| S-06 | Brave's installer is fetched to a file, its size and sha256 written to the log, and then run. **Check:** with a connection that drops after the first line, the pipe ran that line as root would have; the file ran nothing | 29 September 2026 | `43a7f32` |
 | S-01 | `playbooks/Code/radbeeper.sh` was cut short inside a here-document, and the cut was worse in `copal-prep.sh` than in the playbook: the here-document stayed open for 403 lines and took in `staticstream_post`, `install_ytbrave`, `write_media_conf` and `grub_default_lts`, so a fresh install defined none of them. The 196 lines left behind are back in the playbook and gone from where they were stranded. The cut was made by hand when the function was split out in `df8f98e`, not by `tools/copal-playbooks.py`, which reads a body whole. **Check:** `sh -n` passes on all 297 playbooks; a shell that reads the region defines all five functions, where it defined one; `radbeeper_pre` is line for line the function of before the split | 29 September 2026 | `e1300c5` |
 
 ## Dropped

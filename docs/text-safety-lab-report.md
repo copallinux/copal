@@ -615,6 +615,48 @@ moves; they are not run, and pinning them would mean nobody gets a new one.
 Rules S4 and S3, S9, S10 are now held by `make lint` at zero notes. S11
 waits on S-06 and S-13 to S-16; S2, S5 and S6 on S-11 and S-05.
 
+## XIV. Addendum: the downloads are held to a sum (29 September 2026)
+
+| Entry | What is fetched | Held to | A byte changed |
+|---|---|---|---|
+| S-13 | yt-dlp, the latest | the release's own `SHA2-256SUMS` | refused; the old yt-dlp stays |
+| S-14 | nine sources built as root | a sum in `pinned_sum`, by address | refused |
+| S-15 | the theme | a sum, at the commit it was forked at | refused; nothing unpacked |
+| S-06 | Brave's installer | nothing: none is published | — |
+
+Of the ten kinds of download section XIII found unchecked, six are now
+checked, Brave's is run whole or not at all, and two are left as they
+were, on purpose. One remains: the installer fetching itself, S-16.
+
+**A sum taken today proves tomorrow, not yesterday.** The nine sums of S-14
+are what nine addresses gave on one day, fetched twice. No project among
+them publishes a sum for these files, and Alpine packages none of them at
+these versions, so there was nothing to set them beside. They say a file
+has not changed since somebody here first fetched it. They do not say it
+was right then. The table in the installer says so where the sums are.
+
+**The pipe, measured.** Brave's instruction is `curl … | sh`. With a server
+that sends the first line of a script and half of the second, and then
+drops the connection:
+
+| | Ran |
+|---|---|
+| piped into `sh` | the first line, and then `ech: not found` |
+| fetched to a file, then run | nothing: `it could not be fetched` |
+
+A script that is cut short at `rm -rf /tmp/brave` and one cut at
+`rm -rf /` differ by where the connection dropped.
+
+**A mistake in the testing, recorded because it is the subject.** The test
+for S-06 put a stand-in `curl` first on `PATH`. The line that wrote the
+stand-in came after another in a chain of `&&`, that one failed, and the
+stand-in was never written. The test then ran `curl … | sh` with the real
+`curl`: Brave's real installer, once, on the bench, as the user and not as
+root. Its first act is to ask for glibc's version; Alpine has none, and it
+stopped there. Nothing was changed. But the test of an unguarded download
+made one, because a guard was assumed and not checked. The stand-in is now
+written first, tested to be there, and called by its whole path.
+
 ## References
 
 [1] Copal Linux, "Backlog," `docs/backlog.md`, 2026.
