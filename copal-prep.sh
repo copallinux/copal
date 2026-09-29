@@ -3733,9 +3733,20 @@ MAN_DOC_CAP_KB=32768
 # /tmp/makewhatis.lock; a second makewhatis beside it, unlocked, leaves
 # mandoc.db corrupt -- "Invalid number of macros" from every man. So wait
 # for the trigger's run on the same lock, then rebuild once more.
+#
+# THE NAME IS ALPINE'S, so it stays where Alpine put it: a lock two programs
+# find by its name is no lock if one of them looks somewhere else. But /tmp
+# is everybody's, and this runs as root, so two things are done that the
+# trigger does not do. A link by that name is refused. And the file is
+# opened to add to, not to write: '9>' empties whatever the name leads to
+# before anything has looked at it, and '9>>' changes nothing.
 makewhatis_locked() {
     command -v makewhatis >/dev/null 2>&1 || return 0
-    ( flock 9 && makewhatis -T utf8 ) 9>/tmp/makewhatis.lock >/dev/null 2>&1 || true
+    if [ -L /tmp/makewhatis.lock ]; then
+        warn "/tmp/makewhatis.lock is a link, to $(readlink /tmp/makewhatis.lock) -- not taking it; apropos is not rebuilt"
+        return 0
+    fi
+    ( flock 9 && makewhatis -T utf8 ) 9>>/tmp/makewhatis.lock >/dev/null 2>&1 || true
 }
 man_core_commands() {
     echo "apk doas rc-service rc-update rc-status openrc lbu setup-alpine busybox mkinitfs
@@ -30855,8 +30866,12 @@ man_pages_for() {  # <apk names...>
         END { if (n != "") print n (u ? "" : "@testing") }')
     apk add -q $_md >/dev/null 2>&1 && note "man page: $(echo $_md)"
     # Under the lock mandoc-apropos's trigger takes: it rebuilds in the
-    # background, and two unlocked writers corrupt mandoc.db.
-    have makewhatis && { ( flock 9 && makewhatis -T utf8 ) 9>/tmp/makewhatis.lock >/dev/null 2>&1 || true; }
+    # background, and two unlocked writers corrupt mandoc.db. The name is
+    # Alpine's. A link by that name is not taken, and the file is opened to
+    # add to, 9>>, so that nothing the name leads to is emptied.
+    if have makewhatis && [ ! -L /tmp/makewhatis.lock ]; then
+        ( flock 9 && makewhatis -T utf8 ) 9>>/tmp/makewhatis.lock >/dev/null 2>&1 || true
+    fi
 }
 
 # ------------------------------------------------------------ recipes: kit ---
