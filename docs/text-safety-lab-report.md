@@ -238,7 +238,7 @@ nothing to enforce it is a wish.
 | T5 | `--` goes before any argument that came from outside | the run lines in `ytq.log` |
 | T6 | A path read back from a child is checked before it is written to or removed | unit test |
 | T7 | Anything printed to a terminal goes through `printable` | the hostile check: no byte below 0x20 but newline and tab |
-| T8 | A child's answers are read from stdout alone, as JSON | by reading; the hostile check |
+| T8 | A child's answer is checked before it is acted on: text is cleaned, and a path is held to the folder and the name it should have | the hostile check, *path*; unit test |
 
 ### B. Shell scripts
 
@@ -434,7 +434,56 @@ lines. It is applied line by line.
 | T3 | `ffescape` and its unit test; hostile check, *tags* |
 | T7 | `term::printable`; hostile check, *terminal* |
 
-T4, T5, T6 and T8 wait on T-05, T-06 and T-08.
+T4, T5, T6 and T8 waited on T-05, T-06 and T-08: section XI.
+
+## XI. Addendum: hardening, and the runtime (29 September 2026)
+
+**The defect rated low was the worst of the five.** Section IV called the
+unchecked `FILE` line hardening, "no working attack found". T-05's check
+gave a stand-in yt-dlp one more line to print, last: `FILE` and somebody
+else's path. Against the ytq of `425ba64`, with `OUTPUT=sstr`:
+
+| The line named | What ytq did |
+|---|---|
+| a file outside the folder | rewrote it with this video's tags, captured it as `precious.sstr`, and **removed it** |
+| another video in the folder | the same |
+
+How a site would get that line printed is still not known. What follows
+once it is, is no longer a guess. `own_path` now holds the path to the
+folder, to ytq's alphabet and, on YouTube, to the id the URL gave; both
+files are untouched, and the log says what was refused and why.
+
+**Rule T8 was wrong as written, and is changed.** "Read from stdout alone"
+could not be built without losing the order of the log, which is compared
+line for line with the Python ytq's — and would not have helped, since
+yt-dlp quotes the site on standard output as well. The rule that can be
+held is the one T-05 implements: an answer is checked, not believed.
+
+**A severity is a guess until somebody tries.** The five defects were rated
+by reading. Four were rated medium and did what was expected. The one rated
+low deleted files. The rating followed how likely the way in seemed, and
+said nothing of what lay behind it.
+
+| Entry | Check | Before | After |
+|---|---|---|---|
+| T-05 | hostile check, *path* | 0 of 4 | 4 of 4 |
+| T-06 | hostile check, *operand* | 0 of 15 commands | 15 of 15 |
+| T-08 | `make shell-check`, given a fifth shell | — | fails, and names the line |
+| C-01 | yt-dlp's own report, with the written file | `JS runtimes: none`, a warning | `node-24.18.1`, none |
+
+`make check` in staticstream: 436 checks, 150 unit tests and the shell
+check, exit 0.
+
+**C-01 chose less than the backlog asked.** The entry said node; section
+IV-D had shown quickjs runs on every architecture, the Pi Zero included,
+where node does not. It was not chosen. yt-dlp runs deno with no
+permissions and node with `--permission`, and hands quickjs the site's
+script with no limits at all. A warning and fewer formats is the better
+default on the one board that has no confined runtime, and the installer
+says how to choose otherwise.
+
+All eight T rules are now held by a check. Of the S rules, S12 is held for
+one file, by hand; the rest wait on S-02 to S-11.
 
 ## References
 

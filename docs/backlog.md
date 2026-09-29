@@ -26,25 +26,11 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | C | configuration | `copal` |
 | S | shell scripts | `copal` |
 
-**Standing:** 14 open · 0 in progress · 6 done · 1 dropped. Written 29 September 2026.
+**Standing:** 10 open · 0 in progress · 10 done · 2 dropped. Written 29 September 2026.
 
 ---
 
 ## Open
-
-### Hardening
-
-| ID | Entry | Rule | Check |
-|---|---|---|---|
-| T-05 | The path on a `FILE` line is accepted only inside `DIR`; yt-dlp's stderr goes to its own pipe | T6, T8 | unit test: a `FILE` line naming a path outside `DIR` is refused and logged |
-| T-06 | `--` before the URL in the four yt-dlp commands, and through `yt-brave` | T5 | the `run:` lines in `ytq.log` show `-- https://…`; `make check` still passes |
-| T-08 | `make check` fails if `Command::new("sh")` appears anywhere but the two Workspace lines | T4 | add a third and watch it fail |
-
-### The JavaScript runtime
-
-| ID | Entry | Rule | Check |
-|---|---|---|---|
-| C-01 | `--js-runtimes node` in the `/etc/yt-dlp.conf` that `copal-prep.sh` writes, and stage 10 installs `nodejs` | — | `yt-dlp -v --simulate URL` reports `JS runtimes: node-…`; a new `ytq.log` has no runtime warning |
 
 ### The shell scripts
 
@@ -76,10 +62,15 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | T-03 | `printable()` on what `ytq list`, `ytq status` and a runner print, on every line of the log, on a notification line by line, on the `stream`, `source`, `license`, `note` and `key` rows of `sstr verify`, and on the line the Workspace shows before it runs it. **Check:** with T-02 and this, 15 failures became 8 — and `sstr verify` lost its forged rows too, a newline being `^J` | 29 September 2026 | staticstream `425ba64` |
 | T-01 | `src/ytq/clean.rs`: `clean`, used on `NOTES`, `META` and the comments as they are parsed, on every line yt-dlp writes, on the check's title, and on a caption's words after its entities are undone. A URL with a control character in it is refused. **Check:** 8 failures became 5, the five forged-row checks | 29 September 2026 | staticstream `425ba64` |
 | T-04 | `one_line`: every string of yt-dlp's info is one line, but the description and a comment's text. **Check:** 5 failures became none; `make check` passes, 431 checks and 149 unit tests, the crosschecks against the Python ytq agreeing as before | 29 September 2026 | staticstream `425ba64` |
+| T-06 | `--` before the URL in all four yt-dlp commands. `yt-brave` passes it through, as its own comment says it does. **Check:** hostile check, *operand*: 15 of 15 logged commands end ` -- 'https://…'`, where none of 15 did; the crosschecks set the `--` aside, the Python ytq giving none | 29 September 2026 | staticstream `6b626c4` |
+| T-05 | `own_path`: a `FILE` or `STEM` line is believed only if the path is in `DIR` itself, in ytq's alphabet and, for a YouTube video, ends in the id the URL gave. **The defect was real, not only possible:** against `425ba64`, a forged last `FILE` line had ytq capture and *remove* a file outside the folder and another video inside it. **Check:** hostile check, *path*, 4 checks, all failing before and passing after; a unit test of 15 cases. The second half of the entry, a pipe of its own for yt-dlp's errors, was not done — see Dropped | 29 September 2026 | staticstream `6b626c4` |
+| T-08 | `tests/shell-check.sh`, as `make shell-check` and in `make check`: `Command::new("sh")` and its kin may appear in three files, four times, and nowhere else. **Check:** a fifth, added to a scratch file, failed it and named the line | 29 September 2026 | staticstream `6b626c4` |
+| C-01 | `install_js_runtime` and `node_runs` in `copal-prep.sh`: stage 10 offers nodejs (49 MiB) where there is no node, and `/etc/yt-dlp.conf` gains `--js-runtimes node` only where node runs — Node does not run on ARMv6, and is packaged for it all the same. quickjs is named to the person and not chosen for them: yt-dlp confines node and deno and does not confine it. **Check:** the three cases run from the installer's own functions; with the file they write, yt-dlp 2026.08.19 reports `JS runtimes: node-24.18.1` and no warning, and names the file as before. **Not yet on the bench:** `/etc/yt-dlp.conf` is root's, and changes when stage 10 next runs | 29 September 2026 | `99d8df8` |
 | S-01 | `playbooks/Code/radbeeper.sh` was cut short inside a here-document, and the cut was worse in `copal-prep.sh` than in the playbook: the here-document stayed open for 403 lines and took in `staticstream_post`, `install_ytbrave`, `write_media_conf` and `grub_default_lts`, so a fresh install defined none of them. The 196 lines left behind are back in the playbook and gone from where they were stranded. The cut was made by hand when the function was split out in `df8f98e`, not by `tools/copal-playbooks.py`, which reads a body whole. **Check:** `sh -n` passes on all 297 playbooks; a shell that reads the region defines all five functions, where it defined one; `radbeeper_pre` is line for line the function of before the split | 29 September 2026 | `e1300c5` |
 
 ## Dropped
 
 | ID | Entry | Why |
 |---|---|---|
+| T-05, in part | A pipe of its own for yt-dlp's standard error, so that answers are read from standard output alone | two reasons. The log is compared line for line with the Python ytq's, and two pipes lose the order the lines were written in. And yt-dlp quotes the site on standard output too, so the split would not have closed what it was for. `own_path` checks the line instead of trusting where it came from |
 | — | Clippy's `disallowed_methods` to forbid `Command::new("sh")` | it matches a method, not its argument. T-08 does the job with `grep` |
