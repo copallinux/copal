@@ -13086,25 +13086,27 @@ write_ytdlp_conf() {
 #
 # Author-Title_id in A-Z a-z 0-9 - _ only, then the extension:
 #   'Rick Astley', 'Café Tour: Part 2/3 [4K]'
-#     ->  Rick-Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.mp4
-# The author is the first run of A-Z a-z 0-9 in the uploader's name (or the
-# channel's), after #S; none, and the name starts at the title.
-# %(title)#S is --restrict-filenames for that one field (é to e); the regexes
-# keep only the alphabet, squeeze ' - ' and the like into one _, cut at 120
-# and trim. The id gets only a regex: #S would trim a YouTube id's leading -
+#     ->  RickAstley-Cafe_Tour_Part_2_3_4K_dQw4w9WgXcQ.mp4
+# The author is up to the first three runs of A-Z a-z 0-9 in the uploader's
+# name (or the channel's), after #S, run together; none, and the name starts
+# at the title. %(title)#S is --restrict-filenames for that one field (é to
+# e); the regexes keep only the alphabet and squeeze ' - ' and the like into
+# one _. Author-Title is cut at 140, so a long name shortens the title, and
+# trimmed. The id gets only a regex: #S would trim a YouTube id's leading -
 # or _. ytq passes the same options itself (NAME_OPTS in staticstream's ytq).
 # The name is not a citation: the id at its end is what finds the video again.
 --parse-metadata '%(uploader,channel|)#S:(?s)(?P<safe_author>.+)'
 --replace-in-metadata safe_author '^[^A-Za-z0-9]+' ''
---replace-in-metadata safe_author '(?s)[^A-Za-z0-9].*' ''
+--replace-in-metadata safe_author '(?s)^([A-Za-z0-9]+)(?:[^A-Za-z0-9]+([A-Za-z0-9]+))?(?:[^A-Za-z0-9]+([A-Za-z0-9]+))?.*' '\1\2\3'
 --parse-metadata '%(title)#S:(?s)(?P<safe_title>.+)'
 --replace-in-metadata safe_title '[^A-Za-z0-9_-]+' _
 --replace-in-metadata safe_title '[-_]*_[-_]*' _
---replace-in-metadata safe_title '(?<=^.{120}).+' ''
---replace-in-metadata safe_title '^[-_]+|[-_]+$' ''
+--parse-metadata '%(safe_author&{}-|)s%(safe_title|)s:(?s)(?P<safe_head>.+)'
+--replace-in-metadata safe_head '(?<=^.{140}).+' ''
+--replace-in-metadata safe_head '^[-_]+|[-_]+$' ''
 --parse-metadata 'id:(?s)(?P<safe_id>.+)'
 --replace-in-metadata safe_id '[^A-Za-z0-9_-]+' _
--o '%(safe_author&{}-|)s%(safe_title&{}_|)s%(safe_id)s.%(ext)s'
+-o '%(safe_head&{}_|)s%(safe_id)s.%(ext)s'
 CONF
     chmod 0644 /etc/yt-dlp.conf
     note "yt-dlp names files Author-Title_ID.ext in A-Z a-z 0-9 - _ only  (/etc/yt-dlp.conf)"
