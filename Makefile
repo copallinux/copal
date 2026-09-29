@@ -1073,6 +1073,7 @@ lint: | $(BUILDDIR)
 	@for _s in tools/*.sh; do sh -n "$$_s" || exit 1; done; \
 	    printf '  ok      tools/*.sh (%s programs)\n' "$$(ls tools/*.sh | wc -l | xargs)"
 	@sh tools/shell-lint.sh
+	@python3 tools/copal-calls.py $(PREP)
 	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal_nkeys.py \
 	    && printf '  ok      tools/copal_nkeys.py\n'
 	@python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" tools/copal_nats.py \
@@ -1384,6 +1385,7 @@ redeploy: lint
 	@if [ -f $(STOPFILE) ]; then rm -f $(STOPFILE); exit 0; fi; \
 	if command -v copal >/dev/null 2>&1; then \
 	    $(DOAS) copal -U --from "$(CURDIR)" || exit 1; \
+	    $(DOAS) sh tools/redeploy-staged.sh || exit 1; \
 	    if [ -n "$(STAGES)" ]; then \
 	        printf '\n  Running stage(s) %s, unattended.\n\n' '$(STAGES)'; \
 	        exec $(DOAS) copal --stage "$(STAGES)" --auto; \
@@ -1396,6 +1398,7 @@ redeploy: lint
 	    sed -n "/^cat > .*copal-init\.sh\" <<.COPALINIT.$$/,/^COPALINIT$$/p" $(PREP) \
 	        | sed '1d;$$d' > /tmp/copal-init.redeploy.sh; \
 	    test -s /tmp/copal-init.redeploy.sh || { printf '\033[31merror:\033[0m extraction failed\n'; exit 1; }; \
+	    $(DOAS) sh tools/redeploy-staged.sh || exit 1; \
 	    if [ -n "$(STAGES)" ]; then \
 	        exec $(DOAS) sh /tmp/copal-init.redeploy.sh --stage "$(STAGES)" --auto; \
 	    else \

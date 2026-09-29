@@ -2855,6 +2855,24 @@ ask() {
 }
 confirm() { ask "$1 [y/N]"; case "$REPLY" in [Yy]*) return 0 ;; *) return 1 ;; esac; }
 
+# Is this program here? Sixteen of the scripts this one writes define 'have'
+# for themselves, and for a long time this one did not: a stage that asked
+# 'have chromium' was told "have: not found", took that for a no, and went
+# on as if Chromium had failed to install.
+have() { command -v "$1" >/dev/null 2>&1; }
+
+# AS THE PERSON, WITH THE PERSON'S PATH.  as_user 'command line'
+#
+# 'su - USER -c ...' starts bash as a login shell with a command to run, and
+# Alpine's bash reads /etc/profile for a login shell only when it is one a
+# person types into. So the command ran with su's own PATH: no
+# ~/.npm-global/bin, and "claude: command not found" straight after
+# installing it. /etc/profile is read by name here. ~/.profile is not: it
+# starts the desktop on the first console, which is where an install runs.
+as_user() {
+    su - "$PI_USER" -c ". /etc/profile >/dev/null 2>&1; $1"
+}
+
 # A question that cannot be answered with a default, because no default can be
 # right: your name, your email address. 'y' is not an email address, and a git
 # history full of 'y@y' is worse than one with no identity at all.
@@ -9785,7 +9803,7 @@ NPMG
     # The checkup Claude Code ships with. Non-interactive, prints its
     # findings and exits; run as the user so it looks at the user's install.
     say "claude doctor"
-    su - "$PI_USER" -c 'claude doctor' 2>&1 | sed 's/^/    /' || true
+    as_user 'claude doctor' 2>&1 | sed 's/^/    /' || true
 
     # The rust-analyzer plugin, at the FULL level. Claude Code offers it
     # itself the first time it opens a .rs file, which is an interruption on
@@ -9798,9 +9816,9 @@ NPMG
     # rest of this function. Neither failing is a reason to stop.
     if [ "$(copal_profile)" = full ]; then
         say "Claude Code plugin: rust-analyzer-lsp"
-        su - "$PI_USER" -c 'claude plugin marketplace add anthropics/claude-plugins-official >/dev/null 2>&1; claude plugin install rust-analyzer-lsp@claude-plugins-official' 2>&1 \
+        as_user 'claude plugin marketplace add anthropics/claude-plugins-official >/dev/null 2>&1; claude plugin install rust-analyzer-lsp@claude-plugins-official' 2>&1 \
             | sed 's/^/    /'
-        su - "$PI_USER" -c 'claude plugin list' 2>/dev/null | grep -q rust-analyzer-lsp \
+        as_user 'claude plugin list' 2>/dev/null | grep -q rust-analyzer-lsp \
             || note "not installed -- later, as $PI_USER: claude plugin install rust-analyzer-lsp@claude-plugins-official"
         install_claude_in_chrome
     fi
@@ -13174,6 +13192,7 @@ MSG
                && sha256_is /usr/local/bin/.yt-dlp.new "$_sum"; then
                 chmod 0755 /usr/local/bin/.yt-dlp.new
                 mv /usr/local/bin/.yt-dlp.new /usr/local/bin/yt-dlp
+                note "it is the file its release holds: sha256 $(printf '%s' "$_sum" | cut -c1-16)..."
                 note "installed: $(/usr/local/bin/yt-dlp --version 2>/dev/null || echo 'installed, but it did not report a version')"
                 note "update it later with:  yt-dlp -U"
             else
@@ -20744,7 +20763,7 @@ stage_verify() {
     _cl="$(user_home)/.npm-global/bin/claude"
     [ -x "$_cl" ] || _cl=$(command -v claude 2>/dev/null)
     if [ -n "$_cl" ]; then
-        note "  Claude Code     : $("$_cl" --version 2>/dev/null | head -1) at $_cl; doctor: $(su - "$PI_USER" -c 'claude doctor' 2>/dev/null | grep -c 'warning found\|error' | sed 's/^0$/clean/; s/^[1-9].*/see: claude doctor/')"
+        note "  Claude Code     : $("$_cl" --version 2>/dev/null | head -1) at $_cl; doctor: $(as_user 'claude doctor' 2>/dev/null | grep -c 'warning found\|error' | sed 's/^0$/clean/; s/^[1-9].*/see: claude doctor/')"
     else
         note "  Claude Code     : not installed (stage 7)"
     fi
@@ -35003,131 +35022,6 @@ run_stages() {  # <list> ...
     return "$_rc_all"
 }
 
-case "${1:-}" in
-    --auto|-a) auto_run; exit 0 ;;
-    --stage|-s)
-        shift
-        [ $# -gt 0 ] || { echo "usage: copal-init.sh --stage N[,N...] [--auto]" >&2; exit 2; }
-        # --auto here means "and do not ask me anything", which is the same
-        # AUTO the unattended install uses: every question answers itself. It
-        # is what a redeploy from a Makefile wants and the wrong default for a
-        # person at a terminal, so it is a word you type.
-        _stages=""
-        for _a in "$@"; do
-            case "$_a" in
-                --auto|-a) AUTO=1 ;;
-                *) _stages="$_stages $_a" ;;
-            esac
-        done
-        run_stages $_stages
-        exit $? ;;
-    --help|-h)
-        echo "usage: copal [--auto] [--stage N[,N...] [--auto]]"
-        echo "  --auto         run every stage unattended, resuming across reboots"
-        echo "  --stage N,...  run only those stages, in that order. Add --auto"
-        echo "                 to answer their questions automatically."
-        echo
-        echo "The 'copal' command itself has more: -U to update from the"
-        echo "repository or from a checkout, --check, --version. Run: copal --help"
-        exit 0 ;;
-esac
-
-guided_install() {
-    say "GUIDED INSTALL -- pick a level, or take the menu"
-    cat <<MSG
-
-    Every Copal install moves through the same three acts:
-
-      SETTLE    stages 1-3   answers applied, packages made persistent, the
-                             root filesystem moved onto the card. Everything
-                             else needs these; stage 3 reboots once.
-      FURNISH   stages 4-12  a desktop, zram, SSH, toolchain, emulators,
-                             media, the application catalogue.
-      HARDEN    stage 13     root locked, '$PI_USER' + doas from then on.
-
-    The levels only differ in how much furniture act two brings in:
-
-      s) SERVER      no screen attached: settle, zram, SSH, grow the
-                     partition, harden. Nothing graphical is installed.
-      m) MEDIUM      the X desktop -- X.Org on the framebuffer, i3, the
-                     catalogue, emulators, workshop. The ceiling for a
-                     Pi Zero, and the whole install as it always was.
-      f) FULL MONTY  everything medium installs, then stage 17 on top:
-                     Hyprland on Wayland with the Linux Antiquity theme --
-                     kitty, mako, the star-chart look. Takes the session;
-                     X stays installed as the fallback. Needs aarch64 or
-                     x86_64 -- on a Pi Zero this level declines itself and
-                     lands exactly where medium does.
-
-    X and Hyprland cannot own the screen at once, so the desktop at boot is
-    one word in /etc/copal/session -- stage 4 writes 'x11', stage 17 writes
-    'wayland', re-running either flips it. Nothing is ever uninstalled.
-
-    Enter takes you to the menu instead: every stage by hand, in any order,
-    re-runnable -- the levels above are only bundles of the same stages.
-MSG
-    ask "Level [s/m/f, Enter for the menu]:"
-    case "$REPLY" in
-        s|S) _prof=server ;;
-        m|M) _prof=medium ;;
-        f|F) _prof=full ;;
-        *)   _prof=custom ;;
-    esac
-    mount -o remount,rw "$BOOT" 2>/dev/null || true
-    printf '%s\n' "$_prof" > "$BOOT/copal-profile" 2>/dev/null \
-        || warn "could not record the level on $BOOT -- a resume after reboot will run the full manifest"
-    # The return value is the answer to "did an install just run?", which is
-    # what the caller needs to decide between exiting and showing the menu.
-    # 'custom' is not a failure -- it is somebody asking for the menu -- so it
-    # returns non-zero to mean "carry on", not to mean "something went wrong".
-    case "$_prof" in
-        custom) note "No level chosen -- the menu it is."; return 1 ;;
-        *)      auto_run; return 0 ;;
-    esac
-}
-
-if auto_state_load; then
-    say "An automatic install was interrupted"
-    note "already attempted:$AUTO_DONE"
-    note "the marker is $AUTOFILE -- delete it to stop resuming"
-    if confirm_yes "Carry on with the automatic install?"; then
-        auto_run; exit 0
-    fi
-    warn "leaving the marker in place; the menu is below"
-elif ! apkovl_exists && is_diskless; then
-    # Only offered on a machine that has not been set up yet. Asking this on
-    # a system already half-built would be inviting it to redo work.
-    cat <<'MSG'
-
-    ======================================================================
-      THIS CARD HAS NOT BEEN SET UP YET
-    ======================================================================
-
-    Copal can do the whole thing by itself -- every stage, resuming on its
-    own across the reboot in the middle. Choose how far it should go.
-
-    Early on it asks who you are -- a name and email for git commits, with
-    whatever the Mac that wrote this card uses offered as the default -- and
-    which repositories to check out into ~/code, and then for a ROOT
-    PASSWORD, which setup-alpine has no way to be told in advance. After
-    those you can walk away.
-
-MSG
-    # HOW MUCH, not just whether. This used to be one yes/no question, which
-    # asked the wrong thing: "everything, for hours" and "nothing, here is a
-    # menu of sixteen" are not the only two answers anybody wants, and a
-    # machine with no screen attached has no business installing a desktop
-    # either way. guided_install describes the flow and offers three levels --
-    # server, medium, full monty -- each a computed subset of the same
-    # manifest, and Enter still falls through to the menu.
-    #
-    # It is called HERE rather than nearer the menu because this block is the
-    # one that actually runs on a virgin machine: it is guarded on no apkovl
-    # and a tmpfs root, which is precisely "nothing has been installed yet".
-    if guided_install; then exit 0; fi
-    note "Manual it is. The menu is below; stages can be run in any order."
-fi
-
 # ---------------------------------------------------------- the front door ---
 #
 # --help above has said "usage: copal [--auto]" for a long time, and there has
@@ -36430,6 +36324,143 @@ COPALLOGS
     chmod 0755 /usr/local/bin/copal-logs
 }
 
+# ON EVERY RUN, as the front door's own first lines say -- and until now on
+# a run from the menu only. '--stage' and '--auto' left by the case below,
+# which stood above these two functions: a machine that was only ever
+# redeployed kept the 'copal' it was first given, and the tools that read
+# its logs. Asking for help writes nothing.
+case "${1:-}" in
+    --help|-h) ;;
+    *) install_frontdoor
+       install_log_tools ;;
+esac
+
+case "${1:-}" in
+    --auto|-a) auto_run; exit 0 ;;
+    --stage|-s)
+        shift
+        [ $# -gt 0 ] || { echo "usage: copal-init.sh --stage N[,N...] [--auto]" >&2; exit 2; }
+        # --auto here means "and do not ask me anything", which is the same
+        # AUTO the unattended install uses: every question answers itself. It
+        # is what a redeploy from a Makefile wants and the wrong default for a
+        # person at a terminal, so it is a word you type.
+        _stages=""
+        for _a in "$@"; do
+            case "$_a" in
+                --auto|-a) AUTO=1 ;;
+                *) _stages="$_stages $_a" ;;
+            esac
+        done
+        run_stages $_stages
+        exit $? ;;
+    --help|-h)
+        echo "usage: copal [--auto] [--stage N[,N...] [--auto]]"
+        echo "  --auto         run every stage unattended, resuming across reboots"
+        echo "  --stage N,...  run only those stages, in that order. Add --auto"
+        echo "                 to answer their questions automatically."
+        echo
+        echo "The 'copal' command itself has more: -U to update from the"
+        echo "repository or from a checkout, --check, --version. Run: copal --help"
+        exit 0 ;;
+esac
+
+guided_install() {
+    say "GUIDED INSTALL -- pick a level, or take the menu"
+    cat <<MSG
+
+    Every Copal install moves through the same three acts:
+
+      SETTLE    stages 1-3   answers applied, packages made persistent, the
+                             root filesystem moved onto the card. Everything
+                             else needs these; stage 3 reboots once.
+      FURNISH   stages 4-12  a desktop, zram, SSH, toolchain, emulators,
+                             media, the application catalogue.
+      HARDEN    stage 13     root locked, '$PI_USER' + doas from then on.
+
+    The levels only differ in how much furniture act two brings in:
+
+      s) SERVER      no screen attached: settle, zram, SSH, grow the
+                     partition, harden. Nothing graphical is installed.
+      m) MEDIUM      the X desktop -- X.Org on the framebuffer, i3, the
+                     catalogue, emulators, workshop. The ceiling for a
+                     Pi Zero, and the whole install as it always was.
+      f) FULL MONTY  everything medium installs, then stage 17 on top:
+                     Hyprland on Wayland with the Linux Antiquity theme --
+                     kitty, mako, the star-chart look. Takes the session;
+                     X stays installed as the fallback. Needs aarch64 or
+                     x86_64 -- on a Pi Zero this level declines itself and
+                     lands exactly where medium does.
+
+    X and Hyprland cannot own the screen at once, so the desktop at boot is
+    one word in /etc/copal/session -- stage 4 writes 'x11', stage 17 writes
+    'wayland', re-running either flips it. Nothing is ever uninstalled.
+
+    Enter takes you to the menu instead: every stage by hand, in any order,
+    re-runnable -- the levels above are only bundles of the same stages.
+MSG
+    ask "Level [s/m/f, Enter for the menu]:"
+    case "$REPLY" in
+        s|S) _prof=server ;;
+        m|M) _prof=medium ;;
+        f|F) _prof=full ;;
+        *)   _prof=custom ;;
+    esac
+    mount -o remount,rw "$BOOT" 2>/dev/null || true
+    printf '%s\n' "$_prof" > "$BOOT/copal-profile" 2>/dev/null \
+        || warn "could not record the level on $BOOT -- a resume after reboot will run the full manifest"
+    # The return value is the answer to "did an install just run?", which is
+    # what the caller needs to decide between exiting and showing the menu.
+    # 'custom' is not a failure -- it is somebody asking for the menu -- so it
+    # returns non-zero to mean "carry on", not to mean "something went wrong".
+    case "$_prof" in
+        custom) note "No level chosen -- the menu it is."; return 1 ;;
+        *)      auto_run; return 0 ;;
+    esac
+}
+
+if auto_state_load; then
+    say "An automatic install was interrupted"
+    note "already attempted:$AUTO_DONE"
+    note "the marker is $AUTOFILE -- delete it to stop resuming"
+    if confirm_yes "Carry on with the automatic install?"; then
+        auto_run; exit 0
+    fi
+    warn "leaving the marker in place; the menu is below"
+elif ! apkovl_exists && is_diskless; then
+    # Only offered on a machine that has not been set up yet. Asking this on
+    # a system already half-built would be inviting it to redo work.
+    cat <<'MSG'
+
+    ======================================================================
+      THIS CARD HAS NOT BEEN SET UP YET
+    ======================================================================
+
+    Copal can do the whole thing by itself -- every stage, resuming on its
+    own across the reboot in the middle. Choose how far it should go.
+
+    Early on it asks who you are -- a name and email for git commits, with
+    whatever the Mac that wrote this card uses offered as the default -- and
+    which repositories to check out into ~/code, and then for a ROOT
+    PASSWORD, which setup-alpine has no way to be told in advance. After
+    those you can walk away.
+
+MSG
+    # HOW MUCH, not just whether. This used to be one yes/no question, which
+    # asked the wrong thing: "everything, for hours" and "nothing, here is a
+    # menu of sixteen" are not the only two answers anybody wants, and a
+    # machine with no screen attached has no business installing a desktop
+    # either way. guided_install describes the flow and offers three levels --
+    # server, medium, full monty -- each a computed subset of the same
+    # manifest, and Enter still falls through to the menu.
+    #
+    # It is called HERE rather than nearer the menu because this block is the
+    # one that actually runs on a virgin machine: it is guarded on no apkovl
+    # and a tmpfs root, which is precisely "nothing has been installed yet".
+    if guided_install; then exit 0; fi
+    note "Manual it is. The menu is below; stages can be run in any order."
+fi
+
+
 # ------------------------------------------------------- guided install ----
 #
 # The menu below is sixteen numbered stages, and the first question every new
@@ -36442,8 +36473,6 @@ COPALLOGS
 # 'custom', so the offer is made exactly once and the menu is the answer
 # from then on.
 
-install_frontdoor
-install_log_tools
 
 
 while :; do

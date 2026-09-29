@@ -157,11 +157,21 @@ step_css() {
     # D-Bus assertion in 0.15 while the second waybar -- the desktop widgets
     # -- holds the application name, and the bar dies. copal-bar is what the
     # session started, so it is what comes back, both bars included.
-    if pgrep -x waybar >/dev/null 2>&1 && have copal-bar; then
-        pkill -x waybar 2>/dev/null; (setsid copal-bar >/dev/null 2>&1 </dev/null &)
-        say "bar: restarted (copal-bar)"
-    else
+    #
+    # ONLY FROM INSIDE THE SESSION THE BAR IS IN, and only a bar that is this
+    # user's. The installer runs this as root, for somebody else's home: it
+    # stopped their bar, and then could not start one, having no display to
+    # start it on. A desktop with no bar, after a stage that reported no
+    # error. So from anywhere else the file is written and the bar is left
+    # running; it takes the colours when it is next started.
+    if ! pgrep -x -U "$(id -u)" waybar >/dev/null 2>&1 || ! have copal-bar; then
         say "bar and launcher: colors.css"
+    elif [ -z "${WAYLAND_DISPLAY:-}" ]; then
+        say "bar: colors.css written; not restarted from outside its session"
+    else
+        pkill -x -U "$(id -u)" waybar 2>/dev/null
+        (setsid copal-bar >/dev/null 2>&1 </dev/null &)
+        say "bar: restarted (copal-bar)"
     fi
 }
 step_mako() {
