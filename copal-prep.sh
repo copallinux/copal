@@ -13665,6 +13665,202 @@ depend() {
 	need localmount
 }
 
+start_pre() {
+	checkpath -d -m 0755 /var/log/radbeeper
+	# 2775: setgid, so every file created here belongs to dialout whoever
+	# creates it -- the service as root, or a person running `radbeeper watch`.
+	# With umask=002 above, that is what makes the one log writable by both.
+	checkpath -d -m 2775 -o root:dialout /var/lib/radbeeper
+	if /usr/local/bin/radbeeper probe >/dev/null 2>&1; then
+		return 0
+	fi
+	# Record the reason where a person will find it, then decline to start.
+	/usr/local/bin/radbeeper service >/dev/null 2>&1 || true
+	einfo "No Geiger counter on USB -- radbeeper stays dormant."
+	einfo "Why, in detail: cat /var/lib/radbeeper/status"
+	einfo "It looks again at the next boot, or: rc-service radbeeper start"
+	return 1
+}
+RADBEEPERRC
+    chmod 0755 /etc/init.d/radbeeper
+    rc-update add radbeeper default >/dev/null 2>&1 \
+        && note "radbeeper added to the default runlevel" \
+        || warn "could not add radbeeper to the default runlevel"
+
+    # HANDING THE COUNTER OVER WITHOUT A PASSWORD. Only one program can hold
+    # the serial port, so watching the counter yourself means stopping the
+    # logger first, and `radbeeper --wait watch` waits in the other window
+    # until it can have it. That handover is the one administrative act this
+    # machine performs several times an evening, and a password prompt in the
+    # middle of it is why people leave the service stopped instead -- which
+    # costs the log every hour they are not watching.
+    #
+    # Named zz- because doas takes the LAST matching rule, and wheel.conf's
+    # 'permit persist' would otherwise win on a plain alphabetical read of
+    # /etc/doas.d. Same reason zz-copal-halt.conf is named that way.
+    #
+    # BOTH SPELLINGS, because doas matches 'cmd' against the command as typed
+    # and not against what it resolves to -- the same trap copal-halt documents
+    # for /sbin/poweroff. radbeeper's own error message and its README both say
+    # `doas rc-service radbeeper stop`, and somebody who types the absolute
+    # path instead should not be asked for a password for being more precise.
+    # 'args' is matched in full, so these four lines permit exactly two verbs
+    # on exactly one service and nothing else.
+    if [ -d /etc/doas.d ] || mkdir -p /etc/doas.d; then
+        cat > /etc/doas.d/zz-radbeeper.conf <<'RADBEEPERDOAS'
+# Written by Copal stage 10: handing the counter between the logger and the
+# monitor needs no password. Two verbs, one service, nothing else.
+permit nopass :wheel cmd rc-service args radbeeper stop
+permit nopass :wheel cmd rc-service args radbeeper start
+permit nopass :wheel cmd /sbin/rc-service args radbeeper stop
+permit nopass :wheel cmd /sbin/rc-service args radbeeper start
+RADBEEPERDOAS
+        chown root:root /etc/doas.d/zz-radbeeper.conf 2>/dev/null || true
+        # doas refuses to read a config file anyone but root can write.
+        chmod 0640 /etc/doas.d/zz-radbeeper.conf
+        if doas -C /etc/doas.d/zz-radbeeper.conf >/dev/null 2>&1; then
+            note "doas: rc-service radbeeper stop|start needs no password"
+        else
+            rm -f /etc/doas.d/zz-radbeeper.conf
+            warn "doas rejected the radbeeper rule -- removed it rather than"
+            warn "leave a file that makes doas refuse everything"
+        fi
+    fi
+
+    # THE FILES AN EARLIER INSTALL ALREADY WROTE. umask=002 fixes every log
+    # made from here on; it cannot reach the ones the service created under
+    # root's default 022, which are rw-r--r-- and which `radbeeper watch`
+    # therefore cannot append to. On a first install there is nothing here.
+    if [ -d /var/lib/radbeeper ]; then
+        chgrp dialout /var/lib/radbeeper 2>/dev/null || true
+        chmod 2775 /var/lib/radbeeper 2>/dev/null || true
+        for _f in /var/lib/radbeeper/*.tsv /var/lib/radbeeper/*.hex \
+                  /var/lib/radbeeper/status; do
+            [ -f "$_f" ] || continue
+            chgrp dialout "$_f" 2>/dev/null || true
+            chmod g+w "$_f" 2>/dev/null || true
+        done
+        note "/var/lib/radbeeper: the service and the monitor share the log"
+    fi
+
+    # Plugging a counter into a RUNNING machine. Two things should happen and
+    # they want different privileges, so they are two mechanisms:
+    #
+    #   the log     a udev rule, as root, starting the service -- the counting
+    #               begins whether or not anybody is logged in
+    #   the window  `radbeeper hotplug` on the desktop autostart line, in the
+    #               session, where the display and the person both are
+    #
+    # The rule deliberately does NOT try to open a window. udev fires as root
+    # with no WAYLAND_DISPLAY, no session bus and no way to tell which of
+    # several logged-in people a window would belong to; guessing at that is
+    # how you get a monitor on the wrong screen, or none at all and nothing in
+    # any log to say why. Starting a daemon asks none of those questions.
+    cat > /usr/local/bin/radbeeper-plugged <<'RADBEEPERPLUG'
+#!/bin/sh
+# radbeeper-plugged -- what the udev rule runs when a counter appears.
+#
+# udev kills a RUN child that outlives its event, so nothing here may run in
+# the foreground: the service is started by a detached shell udev has stopped
+# caring about.
+#
+# THE SIX SECONDS ARE DELIBERATE, and they are two things at once.
+#
+# The first is the node's group: the device is root:root for a moment before
+# udev's own tty rules hand it to dialout, and a probe landing in that moment
+# gets EACCES and gives up.
+#
+# The second is who gets the port. Only one program can read a serial device
+# sensibly -- two readers share the bytes between them and neither is told, so
+# both undercount plausibly -- and radbeeper locks the port to make sure of it.
+# The session's `radbeeper hotplug` opens its window about two seconds after a
+# node appears. Waiting longer here means that when somebody IS logged in, the
+# window they plugged the counter in to see is the thing that gets it, and this
+# service waits and picks the log up the moment they close it. When nobody is
+# logged in there is no window to lose to and the six seconds cost nothing.
+[ -x /usr/local/bin/radbeeper ] || exit 0
+setsid /bin/sh -c 'sleep 6
+    rc-service radbeeper status >/dev/null 2>&1 && exit 0
+    rc-service radbeeper start >/dev/null 2>&1' >/dev/null 2>&1 </dev/null &
+exit 0
+RADBEEPERPLUG
+    chmod 0755 /usr/local/bin/radbeeper-plugged
+
+    if [ -d /etc/udev/rules.d ]; then
+        cat > /etc/udev/rules.d/60-radbeeper.rules <<'RADBEEPERUDEV'
+# Start the Geiger logger when a counter is plugged into a running machine.
+# Written by Copal stage 10. The window is the session's half, not this one:
+# see /usr/local/bin/radbeeper-plugged for why udev does not open one.
+#
+# The three USB-serial bridges GQ has shipped behind: CH340 (1a86:7523, which
+# is the GMC-320), CP210x (10c4:ea60) and PL2303 (067b:2303). Matching a
+# little wide is safe here -- a rule that fires for some other CH340 cable
+# costs one probe, which finds no counter, writes down why and stops. That is
+# the dormant path working exactly as designed, not a failure.
+ACTION=="add", SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", RUN+="/usr/local/bin/radbeeper-plugged"
+ACTION=="add", SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", RUN+="/usr/local/bin/radbeeper-plugged"
+ACTION=="add", SUBSYSTEM=="tty", ATTRS{idVendor}=="067b", ATTRS{idProduct}=="2303", RUN+="/usr/local/bin/radbeeper-plugged"
+RADBEEPERUDEV
+        udevadm control --reload >/dev/null 2>&1 || true
+        note "udev rule: plugging a counter in starts the logger"
+    else
+        warn "no /etc/udev/rules.d -- plugging a counter in will not start the"
+        warn "logger by itself. Install eudev, or start it by hand:"
+        warn "    rc-service radbeeper start"
+    fi
+
+    # Say what this machine can actually do, now, rather than at the next
+    # reboot when nobody is reading.
+    if radbeeper probe >/dev/null 2>&1; then
+        note "a counter is present:"
+        radbeeper probe 2>&1 | sed 's/^/      /'
+        rc-service radbeeper start >/dev/null 2>&1 \
+            && note "the monitor is running -- log: /var/lib/radbeeper/cpm-<serial>-YYYY-MM.tsv" || true
+    else
+        warn "no counter is visible from here. radbeeper says why:"
+        radbeeper probe 2>&1 | sed 's/^/      /'
+        note "That is not an error in the install -- the service stays dormant"
+        note "and looks again at the next boot."
+    fi
+    # DID THE SHARED LOG COME OUT SHARED? This failure is silent where it
+    # happens. The service logs perfectly well as root; the hole only appears
+    # on the evening somebody opens the monitor, and then only in a file
+    # nobody reads until the page is rebuilt. So it is checked here, once, on
+    # the thing that actually has to be true: the person who runs `radbeeper
+    # watch` can append to the file the service writes.
+    #
+    # TWO WAYS THAT IS TRUE, and a backfill alternates between them. Filling
+    # the log's gaps writes a temp file and renames it over the original
+    # (radbeeper src/log.rs), so the file is remade by whoever ran the
+    # backfill, under their umask: root:dialout rw-rw-r-- from the service,
+    # $PI_USER:dialout rw-r--r-- from `radbeeper watch`. Both are writable by
+    # both, because one of the two writers is always root and the other is
+    # always the owner. Testing only the group bit calls the second one broken.
+    if [ -d /var/lib/radbeeper ]; then
+        _log=$(ls -1t /var/lib/radbeeper/cpm-*.tsv 2>/dev/null | head -1)
+        if [ -z "$_log" ]; then
+            note "no log written yet -- the first one will be group-writable"
+        elif [ "$(stat -c %U "$_log" 2>/dev/null)" = "${PI_USER:-}" ] \
+          || { [ "$(stat -c %G "$_log" 2>/dev/null)" = dialout ] \
+            && [ "$(stat -c %A "$_log" 2>/dev/null | cut -c6)" = w ]; }; then
+            note "the log is dialout and group-writable, so the monitor logs"
+            note "while it holds the counter:  $(basename "$_log")"
+        else
+            warn "$(basename "$_log") is $(stat -c '%A %U:%G' "$_log" 2>/dev/null)"
+            warn "'radbeeper watch' cannot append to that -- it will come up"
+            warn "saying NOT LOGGING, and the log will have a hole for as long"
+            warn "as the monitor is open. umask=002 in /etc/init.d/radbeeper"
+            warn "covers files made from now on; this one predates it:"
+            warn "    chmod g+w $_log"
+        fi
+    fi
+
+    note "the monitor:   radbeeper watch          (Super+C -> Instruments)"
+    note "busy port:     radbeeper --wait watch   (takes it when the service"
+    note "               lets go; doas rc-service radbeeper stop, no password)"
+    note "no hardware:   radbeeper --source sim --sim-cpm 400 watch"
+}
+
 # ---- playbooks/Code/staticstream.sh
 # ytq: a queue in front of yt-dlp, fed by the clipboard.
 #
@@ -14018,202 +14214,6 @@ grub_default_lts() {
     fi
 }
 
-
-start_pre() {
-	checkpath -d -m 0755 /var/log/radbeeper
-	# 2775: setgid, so every file created here belongs to dialout whoever
-	# creates it -- the service as root, or a person running `radbeeper watch`.
-	# With umask=002 above, that is what makes the one log writable by both.
-	checkpath -d -m 2775 -o root:dialout /var/lib/radbeeper
-	if /usr/local/bin/radbeeper probe >/dev/null 2>&1; then
-		return 0
-	fi
-	# Record the reason where a person will find it, then decline to start.
-	/usr/local/bin/radbeeper service >/dev/null 2>&1 || true
-	einfo "No Geiger counter on USB -- radbeeper stays dormant."
-	einfo "Why, in detail: cat /var/lib/radbeeper/status"
-	einfo "It looks again at the next boot, or: rc-service radbeeper start"
-	return 1
-}
-RADBEEPERRC
-    chmod 0755 /etc/init.d/radbeeper
-    rc-update add radbeeper default >/dev/null 2>&1 \
-        && note "radbeeper added to the default runlevel" \
-        || warn "could not add radbeeper to the default runlevel"
-
-    # HANDING THE COUNTER OVER WITHOUT A PASSWORD. Only one program can hold
-    # the serial port, so watching the counter yourself means stopping the
-    # logger first, and `radbeeper --wait watch` waits in the other window
-    # until it can have it. That handover is the one administrative act this
-    # machine performs several times an evening, and a password prompt in the
-    # middle of it is why people leave the service stopped instead -- which
-    # costs the log every hour they are not watching.
-    #
-    # Named zz- because doas takes the LAST matching rule, and wheel.conf's
-    # 'permit persist' would otherwise win on a plain alphabetical read of
-    # /etc/doas.d. Same reason zz-copal-halt.conf is named that way.
-    #
-    # BOTH SPELLINGS, because doas matches 'cmd' against the command as typed
-    # and not against what it resolves to -- the same trap copal-halt documents
-    # for /sbin/poweroff. radbeeper's own error message and its README both say
-    # `doas rc-service radbeeper stop`, and somebody who types the absolute
-    # path instead should not be asked for a password for being more precise.
-    # 'args' is matched in full, so these four lines permit exactly two verbs
-    # on exactly one service and nothing else.
-    if [ -d /etc/doas.d ] || mkdir -p /etc/doas.d; then
-        cat > /etc/doas.d/zz-radbeeper.conf <<'RADBEEPERDOAS'
-# Written by Copal stage 10: handing the counter between the logger and the
-# monitor needs no password. Two verbs, one service, nothing else.
-permit nopass :wheel cmd rc-service args radbeeper stop
-permit nopass :wheel cmd rc-service args radbeeper start
-permit nopass :wheel cmd /sbin/rc-service args radbeeper stop
-permit nopass :wheel cmd /sbin/rc-service args radbeeper start
-RADBEEPERDOAS
-        chown root:root /etc/doas.d/zz-radbeeper.conf 2>/dev/null || true
-        # doas refuses to read a config file anyone but root can write.
-        chmod 0640 /etc/doas.d/zz-radbeeper.conf
-        if doas -C /etc/doas.d/zz-radbeeper.conf >/dev/null 2>&1; then
-            note "doas: rc-service radbeeper stop|start needs no password"
-        else
-            rm -f /etc/doas.d/zz-radbeeper.conf
-            warn "doas rejected the radbeeper rule -- removed it rather than"
-            warn "leave a file that makes doas refuse everything"
-        fi
-    fi
-
-    # THE FILES AN EARLIER INSTALL ALREADY WROTE. umask=002 fixes every log
-    # made from here on; it cannot reach the ones the service created under
-    # root's default 022, which are rw-r--r-- and which `radbeeper watch`
-    # therefore cannot append to. On a first install there is nothing here.
-    if [ -d /var/lib/radbeeper ]; then
-        chgrp dialout /var/lib/radbeeper 2>/dev/null || true
-        chmod 2775 /var/lib/radbeeper 2>/dev/null || true
-        for _f in /var/lib/radbeeper/*.tsv /var/lib/radbeeper/*.hex \
-                  /var/lib/radbeeper/status; do
-            [ -f "$_f" ] || continue
-            chgrp dialout "$_f" 2>/dev/null || true
-            chmod g+w "$_f" 2>/dev/null || true
-        done
-        note "/var/lib/radbeeper: the service and the monitor share the log"
-    fi
-
-    # Plugging a counter into a RUNNING machine. Two things should happen and
-    # they want different privileges, so they are two mechanisms:
-    #
-    #   the log     a udev rule, as root, starting the service -- the counting
-    #               begins whether or not anybody is logged in
-    #   the window  `radbeeper hotplug` on the desktop autostart line, in the
-    #               session, where the display and the person both are
-    #
-    # The rule deliberately does NOT try to open a window. udev fires as root
-    # with no WAYLAND_DISPLAY, no session bus and no way to tell which of
-    # several logged-in people a window would belong to; guessing at that is
-    # how you get a monitor on the wrong screen, or none at all and nothing in
-    # any log to say why. Starting a daemon asks none of those questions.
-    cat > /usr/local/bin/radbeeper-plugged <<'RADBEEPERPLUG'
-#!/bin/sh
-# radbeeper-plugged -- what the udev rule runs when a counter appears.
-#
-# udev kills a RUN child that outlives its event, so nothing here may run in
-# the foreground: the service is started by a detached shell udev has stopped
-# caring about.
-#
-# THE SIX SECONDS ARE DELIBERATE, and they are two things at once.
-#
-# The first is the node's group: the device is root:root for a moment before
-# udev's own tty rules hand it to dialout, and a probe landing in that moment
-# gets EACCES and gives up.
-#
-# The second is who gets the port. Only one program can read a serial device
-# sensibly -- two readers share the bytes between them and neither is told, so
-# both undercount plausibly -- and radbeeper locks the port to make sure of it.
-# The session's `radbeeper hotplug` opens its window about two seconds after a
-# node appears. Waiting longer here means that when somebody IS logged in, the
-# window they plugged the counter in to see is the thing that gets it, and this
-# service waits and picks the log up the moment they close it. When nobody is
-# logged in there is no window to lose to and the six seconds cost nothing.
-[ -x /usr/local/bin/radbeeper ] || exit 0
-setsid /bin/sh -c 'sleep 6
-    rc-service radbeeper status >/dev/null 2>&1 && exit 0
-    rc-service radbeeper start >/dev/null 2>&1' >/dev/null 2>&1 </dev/null &
-exit 0
-RADBEEPERPLUG
-    chmod 0755 /usr/local/bin/radbeeper-plugged
-
-    if [ -d /etc/udev/rules.d ]; then
-        cat > /etc/udev/rules.d/60-radbeeper.rules <<'RADBEEPERUDEV'
-# Start the Geiger logger when a counter is plugged into a running machine.
-# Written by Copal stage 10. The window is the session's half, not this one:
-# see /usr/local/bin/radbeeper-plugged for why udev does not open one.
-#
-# The three USB-serial bridges GQ has shipped behind: CH340 (1a86:7523, which
-# is the GMC-320), CP210x (10c4:ea60) and PL2303 (067b:2303). Matching a
-# little wide is safe here -- a rule that fires for some other CH340 cable
-# costs one probe, which finds no counter, writes down why and stops. That is
-# the dormant path working exactly as designed, not a failure.
-ACTION=="add", SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", RUN+="/usr/local/bin/radbeeper-plugged"
-ACTION=="add", SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", RUN+="/usr/local/bin/radbeeper-plugged"
-ACTION=="add", SUBSYSTEM=="tty", ATTRS{idVendor}=="067b", ATTRS{idProduct}=="2303", RUN+="/usr/local/bin/radbeeper-plugged"
-RADBEEPERUDEV
-        udevadm control --reload >/dev/null 2>&1 || true
-        note "udev rule: plugging a counter in starts the logger"
-    else
-        warn "no /etc/udev/rules.d -- plugging a counter in will not start the"
-        warn "logger by itself. Install eudev, or start it by hand:"
-        warn "    rc-service radbeeper start"
-    fi
-
-    # Say what this machine can actually do, now, rather than at the next
-    # reboot when nobody is reading.
-    if radbeeper probe >/dev/null 2>&1; then
-        note "a counter is present:"
-        radbeeper probe 2>&1 | sed 's/^/      /'
-        rc-service radbeeper start >/dev/null 2>&1 \
-            && note "the monitor is running -- log: /var/lib/radbeeper/cpm-<serial>-YYYY-MM.tsv" || true
-    else
-        warn "no counter is visible from here. radbeeper says why:"
-        radbeeper probe 2>&1 | sed 's/^/      /'
-        note "That is not an error in the install -- the service stays dormant"
-        note "and looks again at the next boot."
-    fi
-    # DID THE SHARED LOG COME OUT SHARED? This failure is silent where it
-    # happens. The service logs perfectly well as root; the hole only appears
-    # on the evening somebody opens the monitor, and then only in a file
-    # nobody reads until the page is rebuilt. So it is checked here, once, on
-    # the thing that actually has to be true: the person who runs `radbeeper
-    # watch` can append to the file the service writes.
-    #
-    # TWO WAYS THAT IS TRUE, and a backfill alternates between them. Filling
-    # the log's gaps writes a temp file and renames it over the original
-    # (radbeeper src/log.rs), so the file is remade by whoever ran the
-    # backfill, under their umask: root:dialout rw-rw-r-- from the service,
-    # $PI_USER:dialout rw-r--r-- from `radbeeper watch`. Both are writable by
-    # both, because one of the two writers is always root and the other is
-    # always the owner. Testing only the group bit calls the second one broken.
-    if [ -d /var/lib/radbeeper ]; then
-        _log=$(ls -1t /var/lib/radbeeper/cpm-*.tsv 2>/dev/null | head -1)
-        if [ -z "$_log" ]; then
-            note "no log written yet -- the first one will be group-writable"
-        elif [ "$(stat -c %U "$_log" 2>/dev/null)" = "${PI_USER:-}" ] \
-          || { [ "$(stat -c %G "$_log" 2>/dev/null)" = dialout ] \
-            && [ "$(stat -c %A "$_log" 2>/dev/null | cut -c6)" = w ]; }; then
-            note "the log is dialout and group-writable, so the monitor logs"
-            note "while it holds the counter:  $(basename "$_log")"
-        else
-            warn "$(basename "$_log") is $(stat -c '%A %U:%G' "$_log" 2>/dev/null)"
-            warn "'radbeeper watch' cannot append to that -- it will come up"
-            warn "saying NOT LOGGING, and the log will have a hole for as long"
-            warn "as the monitor is open. umask=002 in /etc/init.d/radbeeper"
-            warn "covers files made from now on; this one predates it:"
-            warn "    chmod g+w $_log"
-        fi
-    fi
-
-    note "the monitor:   radbeeper watch          (Super+C -> Instruments)"
-    note "busy port:     radbeeper --wait watch   (takes it when the service"
-    note "               lets go; doas rc-service radbeeper stop, no password)"
-    note "no hardware:   radbeeper --source sim --sim-cpm 400 watch"
-}
 
 
 # ---------------------------------------- stage 9: retro emulators ---------
