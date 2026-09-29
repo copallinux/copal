@@ -485,6 +485,42 @@ says how to choose otherwise.
 All eight T rules are now held by a check. Of the S rules, S12 is held for
 one file, by hand; the rest wait on S-02 to S-11.
 
+## XII. Addendum: the linter runs (29 September 2026)
+
+| | Before | After |
+|---|---|---|
+| playbooks that name their shell | 0 of 297 | 297 |
+| playbooks a shell cannot read | 1, unnoticed | 0, and `make lint` fails on one |
+| shellcheck errors | 302 | 0 |
+| shellcheck warnings | 47 | 0 |
+| shellcheck notes | 56 | 57, and may only go down |
+| shellcheck in `make lint` | no | yes |
+
+**Of 349 errors and warnings, 15 were changes to code.** 296 were one
+missing line, 24 were one idiom spelled the way shellcheck prefers, 11
+were the installer's own globals, which a playbook read by itself cannot
+see, and 3 were the radbeeper playbook of section IX. That leaves
+fifteen, among them a `cd` that could fail unnoticed in seven
+places, an `rm -rf` that two empty variables would have pointed at `/bin`,
+and a loop that split a string to get two arguments where four plain lines
+say the same. None was a defect that had bitten. All were the kind that
+does.
+
+**A directive carries its reason or it is not written.** Eleven were added,
+each with a few words after it: `# read by ask(), in the installer`. Where
+the code could be written so that no directive was needed — `CDPATH=''` —
+it was.
+
+**The notes are not done, and the lint says so.** Fifty-seven remain, in
+the disk tool, the fleet console and the VM wrapper among others. They are
+not warnings because shellcheck is not sure, and neither is a reader who
+has not run the code. They are entry S-12, and until it is worked the
+number in `tools/shell-lint.sh` holds them where they are.
+
+Rules S1, S7, S8 and S12 are now held by `make lint`. S3, S9 and S10 are
+held as far as warnings go, and wait on S-12 for the rest. S2, S4, S5, S6
+and S11 wait on S-05 to S-08 and S-11.
+
 ## References
 
 [1] Copal Linux, "Backlog," `docs/backlog.md`, 2026.
