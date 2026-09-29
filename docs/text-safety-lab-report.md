@@ -828,6 +828,29 @@ machine that is a Hyprland desktop, stage 4 is run as `4,17` or not at
 all. It was caught by reading the stage before it was run, and only
 because the bar had just gone.
 
+## XVIII. Addendum: the checks are checked (29 September 2026)
+
+staticstream's `make check` is eight scripts, and they are what says the
+program is right. None had been read by shellcheck.
+
+| | Before | After |
+|---|---|---|
+| scripts | 12, and a stand-in | 13, with the lint itself |
+| warnings | 12 | 0 |
+| notes | 70 | 0 |
+| in `make check` | no | yes, and a note fails it |
+
+Forty-eight of the notes were one thing: text in single quotes that is
+meant for something else to read — a stand-in script being written out, or
+a condition handed to `eval` — which shellcheck takes for a variable that
+forgot to expand. That is said once, at the top of each of four files.
+Five were `$YTQ`, which is two words by default and is meant to be. Six
+were `A && ok || bad`, which are `if` and `else` now.
+
+**What was not changed is the evidence.** Every count in `make check` is
+what it was: 44, 26, 32, 51, 34, 133, 80 and 36. A script that tests is
+held to the rule that its own rewriting must not change what it finds.
+
 ## References
 
 [1] Copal Linux, "Backlog," `docs/backlog.md`, 2026.
