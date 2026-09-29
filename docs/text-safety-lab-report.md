@@ -725,6 +725,63 @@ cannot be allowed to say who may sign the next one.
 | S12 | `make lint`: every playbook read by `sh -n`, no here-document left open |
 | S5 | review only |
 
+## XVI. Addendum: a lock that is somebody else's (29 September 2026)
+
+S-17 said to move `/tmp/makewhatis.lock` to `/run`. Reading why the lock
+is taken showed that it cannot move:
+
+```
+nohup nice sh -c "( flock 9 && /usr/sbin/makewhatis -T utf8 ) 9>/tmp/makewhatis.lock" …
+```
+
+That is Alpine's own trigger for `mandoc-apropos`, run by `apk` after
+every install. The installer takes the same lock to wait for it. A lock
+two programs find by name is no lock if one of them looks elsewhere.
+
+So the name stays, and the harm goes:
+
+| A link named `makewhatis.lock`, to a file of 25 bytes | The file, after | `makewhatis` |
+|---|---|---|
+| `9>`, as it was | **0 bytes** | ran |
+| `9>>`, and a link refused | 25 bytes | did not run, and said why |
+
+On the bench the kernel would have refused the old line first:
+`fs.protected_symlinks` is 1, and root may not follow another's link in
+`/tmp`. That is a setting, and the installer does not depend on it now.
+
+Alpine's trigger has the same `9>`. That is Alpine's to change, and worth
+telling them.
+
+**The backlog was wrong three times, and each time by not reading far
+enough.** It blamed a tool for a cut made by hand (S-01). It asked for a
+pipe that would have lost the log's order (T-05). It asked for a lock to
+be moved away from the program it was shared with (S-17). Each entry was
+written from what a line looked like. Each was corrected by reading what
+the line was for. An entry is a guess until the work begins, and the
+Dropped list is where the guesses that were wrong are kept.
+
+### Where it ends
+
+| | |
+|---|---|
+| entries | 26 |
+| done | 25 |
+| in progress | 1: S-16, which waits on a signature only the author can make |
+| open | 0 |
+| dropped, with the reason | 3: two were halves of entries that were done another way, and one was never an entry |
+
+| What was found | Count |
+|---|---|
+| defects in ytq and Static Stream, from hostile input | 5, one of which removed files |
+| defects in the installer, found by a linter that was installed and not run | a playbook cut in half, and four functions never defined |
+| defects found by reading what the linter only noted | a message that ran the installer; an `eval` that ran a path |
+| downloads used by root with nothing to check them | 10: 6 are now checked, 1 will be once a release is signed, 1 is run whole or not at all, and 2 are left as they are |
+
+**Not yet done, and not in the backlog because it is not a change:** none
+of the installer's changes has run on a freshly built machine. Stages 2,
+3, 4, 7, 9, 10, 11, 12, 17 and 18 are changed. `make check` in copal, on the Mac, is
+the test of all of it.
+
 ## References
 
 [1] Copal Linux, "Backlog," `docs/backlog.md`, 2026.
