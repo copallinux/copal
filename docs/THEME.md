@@ -133,7 +133,10 @@ its absence has a specific failure:
 4. **GPU userspace**: Mesa *drivers* are dlopen'd, not linked, so apk's
    shared-object resolver never pulls them; `mesa-dri-gallium`, `mesa-egl`,
    `mesa-gles`, `mesa-gbm` are added explicitly (each optional — the set of
-   valid names shifts across Alpine releases).
+   valid names shifts across Alpine releases). `mesa-vulkan-swrast` too:
+   lavapipe, Vulkan on the CPU, the only Vulkan a UTM guest gets (Venus
+   needs blob resources UTM does not offer), and what a wgpu program such
+   as a Bevy game needs to open a window at all.
 5. **Xwayland**, so every X11 program stage 4/12 installed keeps running
    inside the compositor.
 6. **Session start** (no display manager): tty1 autologin (busybox getty

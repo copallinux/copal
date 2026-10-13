@@ -101,6 +101,15 @@ stage_hyprland() {
     add_optional mesa-egl
     add_optional mesa-gles
     add_optional mesa-gbm
+    # Vulkan on the CPU (lavapipe). The GL drivers above are what the
+    # compositor and X programs load; anything built on wgpu -- a Bevy
+    # game, a Rust GPU program -- asks the Vulkan loader for a device
+    # and, with no ICD under /usr/share/vulkan/icd.d/, panics "unable
+    # to find a GPU" (treadcore's BUILD.md, 12 October 2026). Alpine's
+    # Venus driver (mesa-vulkan-virtio) needs RESOURCE_BLOB and
+    # CONTEXT_INIT, which UTM does not offer, so the software one is the
+    # one that works here: every pixel is the CPU's, as with llvmpipe.
+    add_optional mesa-vulkan-swrast
 
     # Everything else the theme names, each surviving its own absence.
     # xwayland keeps stage 4's and stage 12's X programs runnable inside the
