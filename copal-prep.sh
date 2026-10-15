@@ -13317,6 +13317,7 @@ install_js_runtime() {
 # /etc/yt-dlp.conf is yt-dlp's system configuration, read on every run after
 # the user's own. A file there that Copal did not write is left alone.
 write_ytdlp_conf() {
+    write_ytdlp_plugins
     if [ -f /etc/yt-dlp.conf ] && ! grep -qs 'written by Copal' /etc/yt-dlp.conf; then
         warn "/etc/yt-dlp.conf is not Copal's -- leaving it, and yt-dlp's filenames with it"
         return 0
@@ -13363,6 +13364,212 @@ CONF
     fi
     chmod 0644 /etc/yt-dlp.conf
     note "yt-dlp names files Author-Title_ID.ext in A-Z a-z 0-9 - _ only  (/etc/yt-dlp.conf)"
+}
+
+# yt-dlp's plugins, for every run on the machine: /etc/yt-dlp/plugins is the
+# system directory yt-dlp looks in, after the user's ~/.config/yt-dlp/plugins.
+#
+# copal_reddit: Reddit gives its .json API only to a signed-in account now, and
+# yt-dlp's Reddit extractor reads nothing else, so every post failed with
+# "Account authentication is required" unless the browser yt-dlp was handed
+# was signed in. The post's own page is public, and carries the video, the
+# captions, the post's details and the first comments; this reads it, after
+# the stock extractor has asked and been refused. Rewritten on every run; a
+# file there that Copal did not write is left alone.
+write_ytdlp_plugins() {
+    _plugin=/etc/yt-dlp/plugins/copal/yt_dlp_plugins/extractor/copal_reddit.py
+    if [ -f "$_plugin" ] && ! grep -qs 'Copyright (c) 2026 Paul Richeson' "$_plugin"; then
+        warn "$_plugin is not Copal's -- leaving it"
+        return 0
+    fi
+    mkdir -p "${_plugin%/*}"
+    cat > "$_plugin" <<'PY'
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson
+#
+# Reddit, read from the page when its API wants an account.
+#
+# yt-dlp's Reddit extractor reads https://www.reddit.com/<post>/.json. Since
+# 2026 Reddit answers that only to a signed-in account: anyone else gets an
+# HTML page, and yt-dlp says "Account authentication is required". The post's
+# own page is still public. It is behind a small JavaScript challenge -- a
+# number the page computes and submits to itself -- and once that is answered
+# it carries everything the .json did: the video's HLS playlist, the caption
+# file, title, author, time, score, subreddit, and the first comments.
+#
+# So this replaces RedditIE in place (plugin_name): the stock extractor runs
+# first, as before, and only its "Account authentication is required" sends
+# the post to the page. A signed-in run, a quarantined or private subreddit,
+# and every other error are the stock extractor's, unchanged.
+#
+# It also gives Reddit comments, which the stock extractor never had: those
+# the first page holds (the top of the thread, about 25, with their first
+# replies), as yt-dlp's usual comment dicts.
+
+import re
+
+from yt_dlp.extractor.reddit import RedditIE
+from yt_dlp.utils import (
+    ExtractorError,
+    clean_html,
+    extract_attributes,
+    get_element_by_id,
+    int_or_none,
+    parse_iso8601,
+    truncate_string,
+    unescapeHTML,
+    url_or_none,
+)
+
+
+class CopalRedditPageIE(RedditIE, plugin_name='copal'):
+    def _real_extract(self, url):
+        try:
+            return super()._real_extract(url)
+        except ExtractorError as e:
+            if 'Account authentication is required' not in str(e) or self._is_logged_in:
+                raise
+        slug, post_id = self._match_valid_url(url).group('slug', 'id')
+        self.to_screen(f'{post_id}: Reddit gives its API only to an account; reading the post\'s page instead')
+        # The address with the title in it: Reddit sends the post only there.
+        # Without the title, the page is a shell that names the full address,
+        # which is then fetched.
+        title_part = self._search_regex(rf'/{re.escape(slug)}/([A-Za-z0-9_]+)', url, 'title part', default=None)
+        page = self._page(f'https://www.reddit.com/{slug}/{title_part + "/" if title_part else ""}', post_id)
+        if '<shreddit-post' not in page:
+            title_part = self._search_regex(rf'/{re.escape(slug)}/([A-Za-z0-9_]+)/', page, 'title part', default=None)
+            if title_part:
+                page = self._page(f'https://www.reddit.com/{slug}/{title_part}/', post_id)
+
+        post = self._tag(page, 'shreddit-post')
+        if not post:
+            raise ExtractorError('Reddit\'s page has no post in it; the page may have changed', expected=True)
+        title = unescapeHTML(post.get('post-title') or '')
+        info = {
+            'title': truncate_string(title, left=72),
+            'alt_title': title or None,
+            'description': clean_html(self._search_regex(
+                r'(?s)<div[^>]+slot="text-body"[^>]*>(.+?)</div>\s*</div>', page, 'text', default=None)) or None,
+            'timestamp': parse_iso8601(post.get('created-timestamp')),
+            'uploader': post.get('author'),
+            'channel_id': post.get('subreddit-name') or (post.get('subreddit-prefixed-name') or '').removeprefix('r/') or None,
+            'like_count': int_or_none(post.get('score')),
+            'comment_count': int_or_none(post.get('comment-count')),
+            'age_limit': 18 if 'nsfw' in post else 0,
+            'webpage_url': f'https://www.reddit.com/{slug}/{title_part + "/" if title_part else ""}',
+            '__post_extractor': self.extract_comments(page),
+        }
+
+        player = self._tag(page, 'shreddit-player-2') or self._tag(page, 'shreddit-player')
+        hls = url_or_none(unescapeHTML((player or {}).get('src') or ''))
+        if not hls:
+            href = url_or_none(post.get('content-href'))
+            if href and 'reddit.com' not in href and 'v.redd.it' not in href:
+                # A link post: what it links to is someone else's video.
+                return {**info, 'id': post_id, 'display_id': post_id, '_type': 'url_transparent', 'url': href}
+            self.raise_no_formats('No video in this post', expected=True, video_id=post_id)
+            return {**info, 'id': post_id, 'display_id': post_id}
+
+        video_id = self._search_regex(r'https?://v\.redd\.it/([^/?#&]+)', hls, 'video id', default=post_id)
+        formats, subtitles = self._extract_m3u8_formats_and_subtitles(hls, post_id, 'mp4', m3u8_id='hls', fatal=False)
+        dash, dash_subs = self._extract_mpd_formats_and_subtitles(
+            f'https://v.redd.it/{video_id}/DASHPlaylist.mpd', post_id, mpd_id='dash', fatal=False)
+        formats.extend(dash)
+        self._merge_subtitles(dash_subs, target=subtitles)
+        caption = url_or_none(unescapeHTML(player.get('caption-url') or ''))
+        vtt = caption and self._download_webpage(caption, post_id, 'Downloading the captions', fatal=False)
+        if vtt:
+            subtitles = {'en': [{'data': self._one_cue_a_line(vtt), 'ext': 'vtt'}]}
+        elif caption and not subtitles:
+            subtitles = {'en': [{'url': caption, 'ext': 'vtt'}]}
+        poster = url_or_none(unescapeHTML(player.get('poster') or ''))
+        return {
+            **info,
+            'id': video_id,
+            'display_id': post_id,
+            'formats': formats,
+            'subtitles': subtitles,
+            # The poster's address ends in .png and asks for format=pjpg: it
+            # is a JPEG, and named .png it fails ffmpeg's conversion.
+            'thumbnails': [{
+                'url': poster, 'http_headers': {'Accept': '*/*'},
+                'ext': 'jpg' if 'format=pjpg' in poster or 'format=jpg' in poster else None,
+            }] if poster else [],
+            'duration': int_or_none(player.get('duration')),
+        }
+
+    def _page(self, url, post_id):
+        """The post's page, with Reddit's JavaScript challenge answered."""
+        page = self._download_webpage(url, post_id, 'Downloading the post\'s page')
+        # A real page names js_challenge in its scripts too; the challenge
+        # page is the one with no post in it.
+        if '<shreddit-post' in page or 'name="jsc_token"' not in page:
+            return page
+        form = {
+            name: unescapeHTML(value)
+            for name, value in re.findall(r'<input[^>]+name="(\w+)"[^>]+value="([^"]*)"', page)
+        }
+        # The page computes the answer with `(async e=>e+e)("<hex>")`: the
+        # string written twice. If that expression changes, say so rather
+        # than send a wrong answer.
+        seed = self._search_regex(r'\(async e=>e\+e\)\("([0-9a-f]+)"\)', page, 'challenge', default=None)
+        if not seed or 'jsc_token' not in form:
+            raise ExtractorError('Reddit\'s page challenge is not the one this plugin knows how to answer', expected=True)
+        page = self._download_webpage(
+            url, post_id, 'Answering the page\'s challenge',
+            query={'solution': seed + seed, 'js_challenge': '1', 'jsc_token': form['jsc_token'], 'jsc_orig_r': form.get('jsc_orig_r', '')})
+        if '<shreddit-post' not in page and 'name="jsc_token"' in page:
+            raise ExtractorError('Reddit did not accept the answer to its page challenge', expected=True)
+        return page
+
+    @staticmethod
+    def _one_cue_a_line(vtt):
+        """Reddit's captions are karaoke: one cue a WORD, each repeating the
+        whole line with that word underlined. A transcript made of them says
+        every line once per word in it. Cues that read the same once the
+        markup is gone become one cue, from the first's start to the last's
+        end."""
+        cues = []
+        for block in re.split(r'\n\s*\n', vtt.replace('\r\n', '\n').strip()):
+            lines = block.split('\n')
+            at = next((i for i, line in enumerate(lines) if '-->' in line), None)
+            if at is None:
+                continue
+            start, _, end = lines[at].partition('-->')
+            text = '\n'.join(re.sub(r'<[^>]+>', '', line).strip() for line in lines[at + 1:]).strip()
+            if not text:
+                continue
+            if cues and cues[-1][2] == text:
+                cues[-1][1] = end.strip().split()[0]
+            else:
+                cues.append([start.strip(), end.strip().split()[0], text])
+        return 'WEBVTT\n\n' + ''.join(f'{a} --> {b}\n{t}\n\n' for a, b, t in cues)
+
+    @staticmethod
+    def _tag(page, name):
+        m = re.search(rf'<{name}\s[^>]*>', page)
+        return extract_attributes(m.group(0)) if m else None
+
+    def _get_comments(self, page):
+        for m in re.finditer(r'<shreddit-comment\s[^>]*>', page):
+            c = extract_attributes(m.group(0))
+            thing = c.get('thingid') or c.get('thingId')
+            if not thing:
+                continue
+            body = get_element_by_id(f'{thing}-comment-rtjson-content', page)
+            depth = int_or_none(c.get('depth')) or 0
+            yield {
+                'id': thing.removeprefix('t1_'),
+                'parent': 'root' if depth == 0 else (c.get('parentid') or c.get('parentId') or 'root').removeprefix('t1_'),
+                'author': c.get('author'),
+                'author_id': c.get('author'),
+                'timestamp': parse_iso8601(c.get('created')),
+                'like_count': int_or_none(c.get('score')),
+                'text': clean_html(body) if body else '',
+            }
+PY
+    chmod 0644 "$_plugin"
+    note "yt-dlp reads a Reddit post's page when Reddit wants an account for its API  ($_plugin)"
 }
 
 # The cookies question, written down once so nobody has to find it again.
