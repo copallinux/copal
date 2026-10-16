@@ -1,0 +1,47 @@
+# copal-zap-gui -- the window: dials, the plan as a strip, a button per step.
+#
+# A SEPARATE CRATE, AND DELIBERATELY NOT A WORKSPACE MEMBER, as radbeeper-gui
+# is beside radbeeper. copal-zap has no dependencies and means it; iced brings
+# several hundred crates, which is the right price for a window and the wrong
+# one to put on the part that burns. The empty [workspace] keeps cargo from
+# folding the two together.
+#
+# Nothing here runs xorriso itself or knows a disc format. Every step is a call
+# into the copal-zap library, on a thread, with its progress sent back here.
+[workspace]
+
+[package]
+name = "copal-zap-gui"
+version = "0.1.0"
+edition = "2021"
+authors = ["Paul Richeson <paulr@sdf.org>"]
+rust-version = "1.85"
+description = "The copal-zap window: a folder cut into discs, with dials"
+license = "MIT"
+repository = "https://github.com/copallinux/copal"
+
+[[bin]]
+name = "copal-zap-gui"
+path = "src/main.rs"
+
+[dependencies]
+copal-zap = { path = ".." }
+
+# The same iced, features and renderers as radbeeper-gui, for the same reasons:
+# wgpu where there is a GPU, tiny-skia in the VM where there is not, and one
+# binary right in both. Keeping them identical also lets the two share
+# compiled crates in a shared CARGO_TARGET_DIR.
+[dependencies.iced]
+version = "0.14"
+default-features = false
+features = ["wgpu", "tiny-skia", "canvas", "wayland", "x11", "linux-theme-detection", "thread-pool"]
+
+# No debug info in the dev profile: it is most of what made radbeeper-gui's
+# debug build 5.8 GB, and this guest has a few GB to spare, not ten.
+[profile.dev]
+debug = false
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true

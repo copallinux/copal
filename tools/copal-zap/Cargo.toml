@@ -1,0 +1,29 @@
+# copal-zap -- split a folder across blank discs, burn each one straight from
+# the source with xorriso (no image file), verify it, and retire the originals.
+#
+# No dependencies. The window (gui/, iced) is a separate crate on top of this
+# one, as radbeeper-gui is on radbeeper, so the price of a GPU toolkit is never
+# put on the part that does the burning.
+[package]
+name = "copal-zap"
+version = "0.1.0"
+edition = "2021"
+authors = ["Paul Richeson <paulr@sdf.org>"]
+rust-version = "1.85"
+description = "Split a folder across blank discs, burn with xorriso, verify, retire"
+license = "MIT"
+repository = "https://github.com/copallinux/copal"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "copal-zap"
+path = "src/main.rs"
+
+[dependencies]
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true

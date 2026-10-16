@@ -1,0 +1,6 @@
+# Linked dynamically, this crate only. On musl (Alpine) Rust defaults to a
+# static binary, and a static binary cannot dlopen libwayland-client: the
+# window dies with `WaylandError(Connection(NoWaylandLib))`, which reads like a
+# missing library and is not one. See radbeeper/gui/.cargo/config.toml.
+[build]
+rustflags = ["-C", "target-feature=-crt-static"]
