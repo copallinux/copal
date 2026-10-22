@@ -447,6 +447,137 @@ it. That is a cosmetic change and is left as an open item.
 *Pending: whether the Flatpak install completes, and how far the rest of the
 run gets.*
 
+### G. Attempt 6 — a machine with five drives and no network
+
+**Setting.** The stick was rewritten and booted on a PC with several hard
+drives. The stick came up as `sdf`, so `sda`–`sde` are other disks. The
+operator reported a failure and brought the stick back to the Mac.
+
+**What the stick says.**
+
+| Evidence | Reading |
+|---|---|
+| `copal.log`: `udhcpc failed to get a DHCP lease`, `ntpd: bad address 'pool.ntp.org'`, `wget: bad address 'mirrors.alpinelinux.org'`, `Warning! No mirror found` | No network. setup-alpine configured no remote mirror |
+| `saskatchewan.apkovl.tar.gz` present; `lbu.conf` has `LBU_MEDIA=usb` | **Stage 1 completed and saved: the attempt 4 fix works** |
+| `fstab` in the apkovl: `UUID=0cc9f010-… /media/sdf2 ext4` | Stage 2 formatted the stick's p2 as ext4. `e2fsprogs` came from the boot medium's own repository, with no network needed |
+| `copal-auto`: `DONE= 1 2 3`; `copal-timings`: `START 3` with no `END` | Stage 3 began and never finished |
+| `boot/grub/grub.cfg.bak` written at 16:25, identical to `grub.cfg` | Stage 3 got past its network check to the backup, the step just before `mkfs.ext4` and `setup-disk` |
+| On the Mac, the stick's p2 no longer mounts and has lost its name | Consistent with ext4 on it now |
+
+The progress screen's output is not in `copal.log`. Nothing was written to
+the stick after 16:25, so the wrapper's copy-on-failure never ran. The run
+was most likely ended by switching the machine off at the failure screen.
+
+**Fault: the network check passes with no network.** `require_network`
+was `apk update`, and that succeeds if *any* repository answers. The boot
+medium's `apks/` is one, so on a machine with no cable it reported "ok".
+Stage 3 then reformatted p2 and ran `setup-disk`, which installs
+`linux-lts` from a mirror that did not exist. Stage 3 is the destructive
+stage, so a false "ok" there is the worst place for one.
+
+**Fix.** `require_network` takes each `http(s)://` line in
+`/etc/apk/repositories`, asks it for `APKINDEX.tar.gz` (`wget --spider`,
+15-second timeout), and passes only if one answers and `apk update`
+succeeds. With no remote line at all, it says so, and names
+`setup-apkrepos -1` as the repair.
+
+**The other drives.** Copal derives the disk it writes to from the boot
+medium (`BOOTDEV` → `DISKDEV` → `P1`/`P2`), never from a list of disks, so
+`sda`–`sde` are outside its reach by construction. But the log could not
+*show* that, because nothing recorded which disks were present. `log_disks`
+now writes every block device to the log at the start of each automatic
+install: name, size, removable flag and model, with the boot medium marked
+as the only disk Copal writes to. It reads `/sys` and needs nothing beyond
+busybox.
+
+**Not proven from the Mac.** That the ext4 UUID on the stick's p2 is
+`0cc9f010…`. macOS would not let an unprivileged read of `/dev/rdisk4s2`
+check it. The stick's p2 losing its FAT filesystem is the strong evidence.
+
+**Next.** Fix the cable, rewrite the stick, and start clean. A resume would
+skip stages 1–3, which are marked attempted, and stage 1's missing mirror
+would stay missing.
+
+### H. Design — root on one of the PC's own disks
+
+**Why.** Until now a Copal PC was the stick: root on its p2, the PC's own disks
+never touched. The machine in attempt 6 has seven disks. The operator's
+Windows screenshot shows them: Disk 0, 1863 GB, holding Windows (EFI, `C:`
+about 160 GB used, Recovery), and six NTFS data volumes that are effectively
+empty (119, 1907, 119, 1863, 931 and 3726 GB). They asked for an install that
+can use them: the first disk should be the NVMe/M.2, ZFS and Btrfs
+(especially mirrored) pushed down, existing volumes mounted at the end,
+warnings for a wrong choice, root taking a whole disk, a smaller disk offered
+for swap, and boot files that survive a disk swap.
+
+**Decisions put to the operator** (2026-10-22):
+
+| Question | Answer |
+|---|---|
+| A disk holding an operating system (Windows on Disk 0) | Treat it like any disk. It is marked "Windows boots from here", and erasing it still needs the typed confirmation |
+| Where the boot files live when root is on an internal disk | Copy them to an EFI partition on the root disk, so the PC boots without the stick |
+| How the root disk is chosen in full-automatic mode | Asked at the PC; the stick is the default |
+| Existing filesystems on the other disks | Data read-write, OS volumes read-only; ZFS and RAID members listed, not mounted |
+
+**As built.** New helpers in `copal-prep.sh`, outside the generated stages
+region: `choose_root_target`, `root_candidates`, `disk_survey`,
+`prepare_root_disk`, `prepare_swap_disk`, `register_efi_boot` and
+`mount_existing_volumes`. Stage 3's playbook
+(`playbooks/Stages/03-stage-sys-install.sh`) calls them, and is synced into
+`copal-prep.sh` with `make sync-playbooks`.
+
+1. **Survey.** Each whole disk in `/sys/block`, except the stick, loop, zram
+   and md devices, is classed NVMe, SSD/eMMC, HDD or USB, and probed with
+   util-linux `blkid -p`. That reads the device, not a cache, and recognises
+   `zfs_member` and `linux_raid_member`. Its presence is checked by
+   `blkid -V`, because busybox's blkid accepts `-p` and silently ignores it,
+   which would make a ZFS member read "empty". An EFI partition is mounted
+   read-only to see whether Windows Boot Manager is on it.
+2. **Order.** Unmarked disks first, NVMe, then SSD, then HDD, then USB, and
+   smallest first within each. Disks holding ZFS, RAID, LVM, LUKS, bcache or
+   Btrfs are marked `!!` and sorted below them. Disks under 16 GiB are listed
+   but cannot be chosen. The stick is the default, `s`.
+3. **The question** is read from `/dev/tty`, past `ask()`, so full-automatic
+   mode cannot answer it. With no terminal, or no other disks, root stays on
+   the stick.
+4. **Warnings.** Typing a partition (`sdb1`, `nvme0n1p2`) gets "root takes a
+   whole disk here -- choose sdb". Choosing a disk shows its partitions and
+   warns, as they apply, that everything on it is destroyed, that it belongs
+   to a pool or array, that Windows boots from it, that it is a spinning disk
+   while an SSD is free, that it is the largest disk (usually the data disk),
+   or that it is USB. The erase needs the disk's name typed back.
+5. **Root disk layout.** `wipefs`, then a GPT laid out by `sfdisk`: p1 a 2 GiB
+   EFI partition (FAT32, `COPALBOOT`), p2 ext4 (`COPALROOT`) for the rest.
+   The stick's p1 holds 457 MB, so 2 GiB leaves room for kernels. GPT, not
+   MBR, because one of these disks is 3.7 TB.
+6. **Boot.** The stick's boot partition is copied onto the new p1: GRUB, the
+   diskless payload, `answers.txt` and the install's state. `P1`/`P2` are then
+   repointed at the new disk, so the rest of stage 3 is the same code as
+   before: `setup-disk`, `root=UUID=` in the new p1's `grub.cfg`, the checks.
+   `efibootmgr` puts a "Copal Linux" entry first in the boot order. The stick
+   is never changed, so it still boots the diskless system if anything fails.
+7. **Swap.** The smallest unmarked internal disk left over is offered: one
+   swap partition the size of RAM (2–32 GiB), the rest unallocated, with
+   `pri=10` so zram is used first.
+8. **Existing volumes.** Every other filesystem gets an fstab line under
+   `/mnt/disks/<label>`, always `nofail`. NTFS goes through the kernel's
+   `ntfs3`, read-write and owned by the admin user, except read-only where
+   `Windows/System32` exists, or where it cannot be read (often Windows Fast
+   Startup's hibernation). EFI partitions, swap, ZFS, RAID, LVM, LUKS and
+   multi-device Btrfs are listed and left alone. Nothing is written to any
+   of them.
+
+**Checked so far.** `make lint`: the generated `copal-init.sh` parses under
+dash and defines every helper it calls, and the playbooks are in step. The
+partition-to-disk mapping, the swap pick, the "faster disk" hint, the
+largest-disk test, label sanitising and the table layout were run against
+sample data. Not yet run on real disks.
+
+**Note for the operator.** The firmware's Secure Boot keys are already
+cleared (III-B). If Windows on Disk 0 is kept and Copal goes elsewhere, the
+"Copal Linux" entry goes first in the boot order, and Windows Boot Manager
+stays reachable from the firmware's boot menu.
+
 ## IV. Results so far
 
 | Attempt | Stage reached | Result |
@@ -456,7 +587,9 @@ run gets.*
 | 2 | Mac, writing | Mount point not found. `copal-disk.sh` fixed |
 | 3 | PC initramfs | Stick detected, never attached as a disk: no `sd_mod`. Initramfs taken from `alpine-standard`. Fixed on the Mac |
 | 4 | Stage 1, `lbu commit` | **Booted.** Stage 1 failed at its last step: `LBU_MEDIA=sda1` while the stick was at `/media/usb`. Fixed, with the failure path made visible |
-| 5 | Desktop phase, Brave | **Stage 1 fixed: the System phase completed.** Brave's glibc error is expected; the Flatpak fallback ran. In progress |
+| 5 | Desktop phase, Brave | **Stage 1 fixed: the System phase completed.** Brave's glibc error is expected; the Flatpak fallback ran |
+| 6 | Stage 3, `setup-disk` | Five-drive PC, no network. The network check passed on the stick's own repository. Fixed, and a disk list is now logged |
+| 7 | — | *Pending: cable fixed, stick rewritten, root offered on an internal disk (III-H)* |
 
 ## V. Discussion
 
