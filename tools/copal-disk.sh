@@ -104,7 +104,11 @@ macos_unmount()     { diskutil unmount "$(macos_part "$1" "$2")" >/dev/null 2>&1
 macos_mount() {
     _p=$(macos_part "$1" "$2")
     diskutil mount "$_p" >/dev/null 2>&1 || true
-    _m=$(df "/dev/$_p" 2>/dev/null | awk 'NR==2 {sub(/^[^ ]+ +([0-9]+ +){4}[0-9]+% +/, ""); print}')
+    # diskutil, not df: df's columns are not fixed on macOS (iused, ifree and
+    # %iused follow Capacity, and FSKit's FAT prints "-" for %iused), so a
+    # regex over them returned the whole line. "Mount Point:" is one field,
+    # spaces in the path included.
+    _m=$(diskutil info "/dev/$_p" 2>/dev/null | sed -n 's/^ *Mount Point: *//p')
     [ -n "$_m" ] || die "mounted /dev/$_p but could not find where"
     printf '%s\n' "$_m"
 }
@@ -240,7 +244,7 @@ linux_probe_map() {
     printf 'ejectable=%s\n'      "$([ "$_hot" = 1 ] && echo Yes || echo No)"
     printf 'internal=%s\n'       "$([ "$_hot" = 1 ] && echo External || echo Internal)"
     printf 'virtual=%s\n'        "$([ "$_type" = loop ] && echo Yes || echo No)"
-    printf 'whole=%s\n'          "$(case "$_type" in disk|loop) echo Yes ;; *) echo No ;; esac)"
+    printf 'whole=%s\n'          "$(case "$_type" in (disk|loop) echo Yes ;; (*) echo No ;; esac)"
     printf 'protocol=%s\n'       "${_proto:-unknown}"
     # NO LINUX EQUIVALENT, AND NOT GUESSED. Mapping this to "No" would retire
     # one of the four soft signals without saying so; "unknown" is read as no

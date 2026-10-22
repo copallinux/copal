@@ -744,6 +744,15 @@ There is no `alpine-pc` tarball because there is nothing to publish: the netboot
 tarball has the identical `boot/` layout (`vmlinuz-*`, `initramfs-*`,
 `modloop-*`) and simply carries no bootloader. So Copal supplies one.
 
+**Except that its lts initramfs cannot read a disk.** Netboot's initramfs is
+built to fetch its root over the network, so it carries no `sd_mod`, `ahci` or
+`nvme`. On real hardware the stick is detected and never attached, and the boot
+ends at `Mounting boot media: failed`. Copal therefore takes `initramfs-lts`
+and `modloop-lts` from `alpine-standard-*.iso`, after checking that its
+`vmlinuz-lts` is byte-identical to netboot's and that the initramfs holds
+`usb-storage`, `sd_mod` and `vfat`. That is one more verified download, about
+370 MB. The `virt` files stay netboot's. See `docs/pc-install-lab-report.md`.
+
 **The bootloader is Alpine's own GRUB**, taken from `efi/boot/bootx64.efi` inside
 `alpine-virt-*.iso` — the smallest ISO Alpine publishes, of which exactly one
 850 kB file is used. It is verified against the published SHA256, then checked to

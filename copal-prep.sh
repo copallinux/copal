@@ -1200,6 +1200,7 @@ fetch_payload() {
     COPYFILE_DISABLE=1 tar -xzf "$archive" -C "$dest" \
         || die "extraction failed"
     [ "$PLATFORM" = pc ] && fetch_bootloader "$dest"
+    [ "$PLATFORM" = pc ] && fetch_disk_initramfs "$dest"
     printf '%s\n' "$dest"
 }
 
@@ -1304,6 +1305,79 @@ fetch_bootloader() {  # <payload dir>
        repository on the card would be unreadable to apk."
     # shellcheck disable=SC2012  # counted, not read; apk names its packages
     info "Repository: apks/$ARCH ($(ls "$_dest/apks/$ARCH"/*.apk 2>/dev/null | wc -l | xargs) packages, $(du -sh "$_dest/apks" | awk '{print $1}'))"
+}
+
+# The lts initramfs and modloop, from alpine-standard, because the netboot ones
+# cannot read the card they boot from. Called only for PLATFORM=pc.
+#
+# alpine-netboot's initramfs-lts is built to fetch its root over the network
+# and carries no local-disk drivers at all: no sd_mod, no ahci, no nvme. On a
+# real PC the stick is found -- xhci, usb-storage and the SCSI core are all
+# there -- and then nothing claims it as a disk, so there is no /dev/sda and
+# the boot ends at
+#
+#     scsi 0:0:0:0: Direct-Access     MUSHKIN  MKNUFDVP64GB ...
+#     Mounting boot media: failed.
+#
+# The x86_64 VM never met this: its disk is virtio_blk, which netboot does
+# carry. See docs/pc-install-lab-report.md, attempt 3.
+#
+# alpine-standard's initramfs-lts is built for booting from local media and has
+# all three. Its kernel is the same build as netboot's, which is checked below
+# rather than assumed: an initramfs whose modules do not match the kernel
+# loads none of them. The modloop comes from the same ISO because the
+# initramfs carries the key its modloop is verified against, and the two are
+# only promised to agree when they were built together. initramfs-virt and
+# modloop-virt stay netboot's -- the VM entries are the ones that work.
+DISK_INITRAMFS_ISO="alpine-standard-${ALPINE_VER}-${ARCH}.iso"
+DISK_INITRAMFS_URL="${MIRROR}/${BRANCH}/releases/${ARCH}/${DISK_INITRAMFS_ISO}"
+
+fetch_disk_initramfs() {  # <payload dir>
+    _dest="$1"
+    _iso="$CACHEDIR/$DISK_INITRAMFS_ISO"
+    _sum="$CACHEDIR/${DISK_INITRAMFS_ISO}.sha256"
+
+    info "Disk initramfs: initramfs-lts and modloop-lts, from $DISK_INITRAMFS_ISO"
+    curl -fsSL -o "$_sum" "${DISK_INITRAMFS_URL}.sha256" \
+        || die "could not download the checksum from ${DISK_INITRAMFS_URL}.sha256"
+    if [ -f "$_iso" ] && ! (cd "$CACHEDIR" && disk sha256-check "${DISK_INITRAMFS_ISO}.sha256" >/dev/null 2>&1); then
+        warn "existing $DISK_INITRAMFS_ISO failed verification; re-downloading"
+        rm -f "$_iso"
+    fi
+    if [ ! -f "$_iso" ]; then
+        info "Downloading $DISK_INITRAMFS_ISO (~290-370 MB; two files are used from it)..."
+        curl -fL -C - -o "$_iso" "$DISK_INITRAMFS_URL" || die "download failed: $DISK_INITRAMFS_URL"
+    fi
+    (cd "$CACHEDIR" && disk sha256-check "${DISK_INITRAMFS_ISO}.sha256") \
+        || die "CHECKSUM MISMATCH on $DISK_INITRAMFS_ISO -- refusing to take an initramfs from it."
+
+    _tmp="$CACHEDIR/.disk-initramfs.$$"
+    rm -rf "$_tmp"
+    mkdir -p "$_tmp"
+    bsdtar -xf "$_iso" -C "$_tmp" boot/vmlinuz-lts boot/initramfs-lts boot/modloop-lts 2>/dev/null \
+        || { rm -rf "$_tmp"; die "could not extract the lts boot files from $DISK_INITRAMFS_ISO"; }
+
+    # The same kernel, byte for byte, or the swap is refused.
+    if ! cmp -s "$_tmp/boot/vmlinuz-lts" "$_dest/boot/vmlinuz-lts"; then
+        rm -rf "$_tmp"
+        die "vmlinuz-lts in $DISK_INITRAMFS_ISO is not the netboot kernel.
+       Its initramfs would carry modules for a different build. Refusing."
+    fi
+
+    # The drivers a USB boot needs, checked in the file that will be written.
+    # This is the check that would have caught attempt 3 on the Mac.
+    _mods=$(gzip -dc "$_tmp/boot/initramfs-lts" 2>/dev/null | cpio -it 2>/dev/null)
+    for _m in usb-storage sd_mod vfat; do
+        printf '%s\n' "$_mods" | grep -q "/$_m\.ko" || {
+            rm -rf "$_tmp"
+            die "initramfs-lts from $DISK_INITRAMFS_ISO has no $_m -- a PC could not read the card."
+        }
+    done
+
+    mv -f "$_tmp/boot/initramfs-lts" "$_dest/boot/initramfs-lts"
+    mv -f "$_tmp/boot/modloop-lts" "$_dest/boot/modloop-lts"
+    rm -rf "$_tmp"
+    info "Disk initramfs: initramfs-lts has usb-storage, sd_mod and vfat; same kernel as netboot"
 }
 
 # --------------------------------------------------------------- cache only ---
@@ -2772,7 +2846,11 @@ warn() { if [ "${TUI:-0}" = 1 ]; then tui_warn "$*"
 # die is deliberately NOT hooked: it is the last thing printed before the script
 # exits, and it has to be readable on a screen that may be mid-repaint. It puts
 # the terminal back first.
-die()  { [ "${TUI:-0}" = 1 ] && tui_end
+# tui_capture_off as well as tui_end: while the progress screen is up, stdout
+# goes to the Output pane's file, and an error printed there is an error
+# nobody sees. On the first real PC the reason stage 1 stopped went into that
+# file, and the screen showed only the wrapper's complaint about it.
+die()  { [ "${TUI:-0}" = 1 ] && { tui_capture_off; tui_end; }
          printf '\n\033[31merror:\033[0m %s\n' "$*"; exit 1; }
 
 # Prompts go straight to the terminal rather than down the tee pipe, so a
@@ -2924,6 +3002,33 @@ if [ "${FIRSTRUN_LOG_ACTIVE:-0}" != 1 ]; then
         { sh "$0" "$@" 2>&1; echo $? > "$_rcfile"; } | tee -a "$LOG"
         _rc=$(cat "$_rcfile" 2>/dev/null || echo 1)
         rm -f "$_rcfile"
+        # While the progress screen is up, the stages print into its Output
+        # file under /tmp, and only a run that finishes copies that into the
+        # log. A run that dies or is killed left it in RAM, so the one part
+        # of the transcript that said why was the part a reboot threw away.
+        # A successful run has already copied and removed it, so whatever is
+        # still here belongs to a run that did not finish.
+        if [ "$_rc" != 0 ]; then
+            for _out in /tmp/copal.*/copal-tui-out; do
+                [ -s "$_out" ] || continue
+                {
+                    printf '\n===== the progress screen'"'"'s output, kept because the run stopped =====\n'
+                    cat "$_out"
+                } >> "$LOG" 2>/dev/null || true
+                printf '\nThe last of what the progress screen showed:\n' >&2
+                tail -n 25 "$_out" >&2
+                rm -f "$_out"
+            done
+        fi
+        # An empty status means the run never reached the echo above: it was
+        # killed, or the file could not be written. 'exit ""' turned that
+        # into "exit: Illegal number:", which hid the failure behind its own.
+        case "$_rc" in
+            ''|*[!0-9]*)
+                printf '\n\033[31merror:\033[0m the installer ended without reporting a status (killed?).\n' >&2
+                printf 'The full transcript is %s -- read its last lines.\n' "$LOG" >&2
+                exit 1 ;;
+        esac
         exit "$_rc"
     fi
     warn "cannot write $LOG (is $BOOT read-only?) -- continuing without a log"
@@ -5167,7 +5272,23 @@ lbu_fix_media() {
         note "lbu is not in use -- / is persistent, so there is no apkovl to write"
         return 0
     fi
-    _want=$(basename "$(boot_device 2>/dev/null || true)" 2>/dev/null || true)
+    # The name lbu wants is the one under /media, NOT the device's. lbu works
+    # on /media/$LBU_MEDIA, and the two names only agree when nothing renamed
+    # the mount: mmcblk0p1 on a Pi, vda1 in a VM. A USB stick on a PC does
+    # not agree. Alpine's initramfs moves the boot medium to the mount point
+    # its fstab gives for it, and Alpine's fstab says /dev/usbdisk /media/usb,
+    # so the stick is /media/usb while its device is sda1. LBU_MEDIA=sda1
+    # sent lbu to a /media/sda1 that was never mounted, and stage 1 died at
+    # its commit. See docs/pc-install-lab-report.md, attempt 4.
+    #
+    # /media/copal-boot is find_boot's own temporary mount, which is in no
+    # fstab, so lbu could not mount it again after a reboot. That one keeps
+    # the device name, as before.
+    case "$BOOT" in
+        /media/copal-boot) _want=$(basename "$(boot_device 2>/dev/null || true)" 2>/dev/null || true) ;;
+        /media/?*)         _want=${BOOT#/media/}; _want=${_want%%/*} ;;
+        *)                 _want=$(basename "$(boot_device 2>/dev/null || true)" 2>/dev/null || true) ;;
+    esac
     [ -n "$_want" ] || { warn "cannot tell which device \$BOOT is on -- leaving lbu alone"; return 0; }
     [ -f /etc/lbu/lbu.conf ] || { mkdir -p /etc/lbu; : > /etc/lbu/lbu.conf; }
     _have=$(sed -n 's/^LBU_MEDIA=//p' /etc/lbu/lbu.conf | tail -n1)
@@ -5678,6 +5799,16 @@ configure_9p_share() {
     # installed before the test below has a chance to return.
     write_share_retry
 
+    # Real hardware has no host to share with. The 9p test below is not
+    # enough to tell: the lts kernel a PC boots carries 9p too, so on the first
+    # real PC this step ran, reported "mounted: /mnt/share" and linked ~/Shared
+    # to an empty directory. The boot-time retry above stays installed, and it
+    # is quiet where there is nothing.
+    if ! is_vm; then
+        note "not a virtual machine -- no host to share a folder with"
+        return 0
+    fi
+
     # 9p and 9pnet_virtio are separate modules and neither is loaded by default.
     modprobe 9pnet_virtio 2>/dev/null || true
     modprobe 9p          2>/dev/null || true
@@ -5735,8 +5866,14 @@ configure_9p_share() {
         warn "autofs is not installable here -- falling back to an fstab line"
         mkdir -p /mnt/share
         share_fstab_write /etc/fstab
-        mount /mnt/share 2>/dev/null && note "mounted: /mnt/share" \
-            || note "no folder is being shared with this machine yet"
+        # Asked of the mount table, not of mount's exit status: with nofail on
+        # the line, mount can succeed at mounting nothing.
+        mount /mnt/share 2>/dev/null || true
+        if mountpoint -q /mnt/share 2>/dev/null; then
+            note "mounted: /mnt/share"
+        else
+            note "no folder is being shared with this machine yet"
+        fi
     fi
 
     # Ownership: try it, say what happened. See the note above the function.
@@ -5850,7 +5987,7 @@ GFX
 # the handler at copal-halt without -y and get the nagbar, but a dialog nobody
 # is sitting in front of is worse than none.
 configure_power_button() {
-    say "The power button, and UTM's Request Power Down"
+    say "The power button"
 
     if ! command -v acpid >/dev/null 2>&1; then
         add_optional acpid || {
@@ -5899,6 +6036,7 @@ ACPIHANDLER
         warn "acpid did not start -- 'rc-service acpid start' to see why"
     fi
 
+    if is_vm; then
     cat <<'PWRMSG'
 
     UTM's "Request Power Down" now shuts this machine down cleanly, and so
@@ -5907,6 +6045,15 @@ ACPIHANDLER
     power outright -- that is the hypervisor pulling the plug and nothing in
     here can soften it.
 PWRMSG
+    else
+    cat <<'PWRMSG'
+
+    A press of the power button now shuts this machine down cleanly: it goes
+    through copal-halt, so the boot medium is synced first. Holding the
+    button down still cuts the power outright -- that is the firmware, and
+    nothing in here can soften it.
+PWRMSG
+    fi
 }
 
 # setup-alpine APPENDS its mirror lines rather than replacing them, so every
