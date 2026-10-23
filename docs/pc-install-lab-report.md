@@ -16,7 +16,7 @@ Apple Silicon Mac. This report records its first runs on physical hardware: a
 64-bit Intel PC booted from a USB stick written by `make sd-pc`. It is kept as
 a log, one attempt at a time, because each fix uncovered the next fault.
 
-Five faults have been found so far, two of them on the Mac:
+Six faults have been found so far, two of them on the Mac:
 
 1. The checkout's `origin` had been pointed at the wrong repository, and a
    pull plus a rebase replaced Copal with copal-tm.
@@ -35,13 +35,19 @@ Five faults have been found so far, two of them on the Mac:
    also hidden: the progress screen captured the error into a file in RAM,
    and the wrapper turned an empty exit status into
    `exit: line 337: Illegal number:`.
+6. On a second PC, with an NVIDIA RTX 4060 Ti, the whole install finished. The
+   new disk choice put root on an NVMe drive and left Windows read-only. Then
+   Hyprland aborted in a loop. The cause: nouveau draws OpenGL on this card
+   through NVK, Mesa's Vulkan driver, and stage 17 never installs a hardware
+   Vulkan driver. That was found over SSH, from the Mac.
 
-All five are fixed. For fault 4, Copal now takes `initramfs-lts` and
+All six are fixed in the installer. For fault 4, Copal now takes `initramfs-lts` and
 `modloop-lts` from Alpine's *standard* ISO, which is built to boot from local
 disks. For fault 5, `lbu` is pointed at the medium's real mount point, and a
 failed run now keeps its screen output in `copal.log` on the stick. One
 detail of attempt 4 is still unexplained: why the exit status was empty and
-not 1. Attempt 5, the boot that tests these fixes, is pending.
+not 1. For fault 6, stage 17 now installs the Vulkan driver that matches the
+card's PCI vendor.
 
 ## I. Objective
 
@@ -60,7 +66,7 @@ not 1. Attempt 5, the boot that tests these fixes, is pending.
 | Payload | `alpine-netboot-3.24.1-x86_64.tar.gz`, kernel `6.18.35-0-lts` |
 | Bootloader | Alpine's GRUB, `efi/boot/bootx64.efi` from `alpine-virt-3.24.1-x86_64.iso`, 847,872 bytes, PE32+ |
 | PC (attempts 1–6) | 64-bit Intel, UEFI, Intel xHCI at `0000:00:14.0`. *Make and model not yet recorded*. Seven disks: Windows on Disk 0, six empty NTFS volumes |
-| PC (attempt 7) | *A different computer. Not yet recorded* |
+| PC (attempt 7) | MSI US Desktop Aegis RS, PRO B760-VC WIFI (MS-7D98). NVIDIA RTX 4060 Ti `10de:2805`. Seven drives: 3 NVMe, 4 SATA, Windows on the WD (`sda`). Alpine 3.24.3 after upgrade, kernel `6.18.58-0-lts`, Mesa 26.1.6, Hyprland v0.54.3 |
 | Firmware | AMI Aptio Setup, version 2.22.1287 (2024) |
 | Disk initramfs | `initramfs-lts` and `modloop-lts` from `alpine-standard-3.24.1-x86_64.iso` (369,098,752 bytes, SHA-256 `f4dd6132…f51dd26`). From attempt 4 on |
 | Peripherals seen at boot | USB keyboard `04D9:A0CD`, Razer DeathAdder Essential mouse `1532:0071` |
@@ -588,11 +594,90 @@ this the first run of the new code on real disks, and also the first time
 the stick meets a second, unrelated set of PC hardware: firmware, network
 adapter, graphics and disk controllers.
 
-*To record:* the machine's make and model, its firmware and Secure Boot
-state, its disks as `log_disks` lists them, the disk choice stage 3 offered
-and the one taken, whether the network came up, and how far the run got.
-`copal.log` on the stick will hold the disk list and, if the run stops, the
-progress screen's output.
+**The machine.** An MSI "US Desktop Aegis RS" with a PRO B760-VC WIFI
+(MS-7D98) board, and an NVIDIA GeForce RTX 4060 Ti (PCI `10de:2805`, AD106)
+driving an LG 34-inch WQHD monitor on DisplayPort. It has seven drives: three
+NVMe (Samsung 980 PRO 2 TB, Samsung 980 PRO 1 TB, Crucial P3 4 TB) and four
+SATA (WD 2 TB holding Windows, Team 2 TB, two Transcend 128 GB). Their sizes
+match the seven disks in the first PC's Disk Management view (III-G). Whether
+the drives moved between machines is still to be confirmed.
+
+**The disk choice worked (III-H, first run on real disks).** Stage 3 offered
+the NVMe drives first. Root went on the empty 2 TB Samsung (`nvme0n1`: a
+2 GiB `COPALBOOT` EFI partition and ext4 root). The operator took the offered
+swap on a 128 GB Transcend: `sdb`, a 32 GiB partition sized to RAM, typed back
+as `sdb` to confirm. The other volumes were mounted under `/mnt/disks` with
+`nofail`. Windows' `sda3` was read-only because it holds `Windows/System32`.
+The five empty NTFS volumes were read-write. The network came up and the full
+install finished: "last install: 20m 43s", build `ecec76f0`.
+
+**Then the desktop would not start.** After every login, Hyprland quit
+during startup. Copal's session restarted it every seven seconds: 35 runtime
+directories in six minutes. On screen, the last thing Hyprland printed was
+"Creating the AsyncResourceGatherer", and then `start-hyprland` pointed to a
+crash report:
+
+![Hyprland's startup on the console, ending at "Creating the AsyncResourceGatherer", then start-hyprland reporting the exit and a crash report, and Copal's "starting the desktop in 5 seconds"](media/pc-hyprland-egl-loop.jpg)
+
+The operator's first guess was NVIDIA. The screen also offered a setting:
+"BEFORE SENDING THIS LOG, ENABLE THEM. Use `debug:disable_logs = false`". That
+setting only turns on Hyprland's own detailed log. It is not a fix.
+
+**Reading the machine over SSH.** Trying to sign Claude Code in on the PC led
+to a better route. The sign-in URL on the console was too long to copy
+reliably from a photo, but the PC turned out to be on the Mac's subnet
+(`192.168.8.235`), and Copal's sshd accepted the Mac's key. Everything below
+was read over SSH, with no more photos:
+
+1. `nouveau` has claimed the card. `/dev/dri/card0` and `renderD128` exist.
+   DP-3 is connected and reports the monitor's EDID. `linux-firmware-nvidia`
+   is installed, with `ad106` among its directories. **The driver and firmware
+   theory was wrong.**
+2. The real log is `$XDG_RUNTIME_DIR/hypr/*/hyprland.log`. It shows Aquamarine
+   finding the card, then failing to create a renderer on it:
+
+```
+DEBUG from aquamarine ]: CDRMRenderer(drm): Using device /dev/dri/card0
+ERR from aquamarine ]: [EGL] Command eglInitialize errored out with EGL_NOT_INITIALIZED (0x12289): DRI2: failed to create screen
+ERR from aquamarine ]: [EGL] Command eglInitialize errored out with EGL_NOT_INITIALIZED (0x12289): DRI2: failed to load driver
+ERR from aquamarine ]: CDRMRenderer: fail, eglInitialize failed
+ERR from aquamarine ]: drm: initMgpu: no renderer
+ERR from aquamarine ]: drm: Failed to initialize renderer state for /dev/dri/card0
+```
+
+   The crash report (`~/.cache/hyprland/hyprlandCrashReport*.txt`) names
+   signal 6, which is an abort, in Hyprland v0.54.3.
+3. Installed Mesa is 26.1.6, with `mesa-dri-gallium`, `mesa-egl`, `mesa-gles`
+   and `mesa-gbm`. The only Vulkan driver installed was `mesa-vulkan-swrast`
+   (`lvp_icd.x86_64.json`).
+
+**Cause.** Since Mesa 25.1, nouveau draws OpenGL on Turing and later GPUs
+(RTX 20 series onward) through **zink, on top of NVK**, Mesa's Vulkan driver
+for NVIDIA. NVK is packaged separately as `mesa-vulkan-nouveau`. Stage 17
+installs the GL drivers and the software Vulkan driver, never a hardware
+Vulkan driver. In the VMs it was written for, the software driver was the
+only one that worked. So on this card, EGL has nothing to build a screen on,
+and Hyprland aborts. The stage was tested only on virtual GPUs, and this is
+the first real GPU it has met.
+
+**Fix.** Stage 17 now reads each DRM card's PCI vendor. It adds
+`linux-firmware-nvidia` and `mesa-vulkan-nouveau` for NVIDIA (`0x10de`),
+`mesa-vulkan-intel` for Intel (`0x8086`), and `mesa-vulkan-ati` for AMD
+(`0x1002`). On this machine, the remedy is one command at the console:
+`doas apk add mesa-vulkan-nouveau`. Copal's session retries within seven
+seconds. `doas` asks for the password, so it could not be run over SSH.
+
+**Result.** The operator ran the command at the console. On the next retry,
+Hyprland stayed up, and its log named the GPU:
+
+```
+DEBUG from aquamarine ]: Renderer: zink Vulkan 1.4(NVIDIA GeForce RTX 4060 Ti (NVK AD106) (MESA_NVK))
+DEBUG from aquamarine ]: drm: Modesetting DP-3 with 3440x1440@99.98Hz
+```
+
+That is OpenGL through zink on NVK, on the real card, at the monitor's native
+3440×1440 and 100 Hz. The same process was still running on a later check,
+with no new runtime directories. **Attempt 7 reached the desktop.**
 
 ## IV. Results so far
 
@@ -605,7 +690,7 @@ progress screen's output.
 | 4 | Stage 1, `lbu commit` | **Booted.** Stage 1 failed at its last step: `LBU_MEDIA=sda1` while the stick was at `/media/usb`. Fixed, with the failure path made visible |
 | 5 | Desktop phase, Brave | **Stage 1 fixed: the System phase completed.** Brave's glibc error is expected; the Flatpak fallback ran |
 | 6 | Stage 3, `setup-disk` | Five-drive PC, no network. The network check passed on the stick's own repository. Fixed, and a disk list is now logged |
-| 7 | — | *Pending: a different computer; first run of the disk choice (III-H) on real disks* |
+| 7 | Desktop, Hyprland | **Full install completed** on a second PC. The disk choice worked on real disks: root on NVMe, swap on a small SSD, Windows read-only. Hyprland aborts in a loop on an RTX 4060 Ti: no NVK, so no EGL. Stage 17 fixed. After one `apk add`: **desktop on the GPU** (zink on NVK), 3440×1440 at 100 Hz |
 
 ## V. Discussion
 
@@ -668,6 +753,16 @@ on the Mac, before any PC was involved.
    install does not print `Error:` (III-F).
 7. Optional: a Secure Boot route using sbctl and a signed UKI (V-A). It would
    go into the PK/KEK/`db` that are empty now.
+8. Done on the attempt 7 PC: `mesa-vulkan-nouveau` brought the desktop up on
+   NVK. Still to do: write a stick with the fixed stage 17 and confirm a fresh
+   install needs no manual step. `copal-gpu` will report this renderer as "on
+   the GPU": it flags only `llvmpipe`, `softpipe` and `swrast`.
+9. `copal-session` restarts a failing compositor forever. After a few quick
+   failures, it should stop and print the last `ERR` line from
+   `hyprland.log`, instead of scrolling it away every seven seconds.
+10. Cosmetic: a volume labelled "New Volume" was mounted as
+    `/mnt/disks/New__Volume`. Check how `mount_existing_volumes` cleans up
+    labels.
 
 ## VII. Conclusion, so far
 
