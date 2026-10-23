@@ -59,7 +59,8 @@ not 1. Attempt 5, the boot that tests these fixes, is pending.
 | Stick | Mushkin `MKNUFDVP64GB`, USB, 63.3 GB, `/dev/disk4` on the Mac |
 | Payload | `alpine-netboot-3.24.1-x86_64.tar.gz`, kernel `6.18.35-0-lts` |
 | Bootloader | Alpine's GRUB, `efi/boot/bootx64.efi` from `alpine-virt-3.24.1-x86_64.iso`, 847,872 bytes, PE32+ |
-| PC | 64-bit Intel, UEFI, Intel xHCI at `0000:00:14.0`. *Make and model not yet recorded* |
+| PC (attempts 1–6) | 64-bit Intel, UEFI, Intel xHCI at `0000:00:14.0`. *Make and model not yet recorded*. Seven disks: Windows on Disk 0, six empty NTFS volumes |
+| PC (attempt 7) | *A different computer. Not yet recorded* |
 | Firmware | AMI Aptio Setup, version 2.22.1287 (2024) |
 | Disk initramfs | `initramfs-lts` and `modloop-lts` from `alpine-standard-3.24.1-x86_64.iso` (369,098,752 bytes, SHA-256 `f4dd6132…f51dd26`). From attempt 4 on |
 | Peripherals seen at boot | USB keyboard `04D9:A0CD`, Razer DeathAdder Essential mouse `1532:0071` |
@@ -578,6 +579,21 @@ cleared (III-B). If Windows on Disk 0 is kept and Copal goes elsewhere, the
 "Copal Linux" entry goes first in the boot order, and Windows Boot Manager
 stays reachable from the firmware's boot menu.
 
+### I. Attempt 7 — a different computer
+
+**Setting.** The stick is rewritten from `d68cf16`, which has the disk
+choice (III-H) and the network check that needs a remote mirror (III-G). It
+is being booted on a **different computer** from attempts 1–6. That makes
+this the first run of the new code on real disks, and also the first time
+the stick meets a second, unrelated set of PC hardware: firmware, network
+adapter, graphics and disk controllers.
+
+*To record:* the machine's make and model, its firmware and Secure Boot
+state, its disks as `log_disks` lists them, the disk choice stage 3 offered
+and the one taken, whether the network came up, and how far the run got.
+`copal.log` on the stick will hold the disk list and, if the run stops, the
+progress screen's output.
+
 ## IV. Results so far
 
 | Attempt | Stage reached | Result |
@@ -589,7 +605,7 @@ stays reachable from the firmware's boot menu.
 | 4 | Stage 1, `lbu commit` | **Booted.** Stage 1 failed at its last step: `LBU_MEDIA=sda1` while the stick was at `/media/usb`. Fixed, with the failure path made visible |
 | 5 | Desktop phase, Brave | **Stage 1 fixed: the System phase completed.** Brave's glibc error is expected; the Flatpak fallback ran |
 | 6 | Stage 3, `setup-disk` | Five-drive PC, no network. The network check passed on the stick's own repository. Fixed, and a disk list is now logged |
-| 7 | — | *Pending: cable fixed, stick rewritten, root offered on an internal disk (III-H)* |
+| 7 | — | *Pending: a different computer; first run of the disk choice (III-H) on real disks* |
 
 ## V. Discussion
 
