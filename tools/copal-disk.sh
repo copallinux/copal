@@ -334,14 +334,13 @@ linux_mount() {
         # written from Linux by a non-root user). macOS mounts a card as the
         # person who plugged it in, which is why it never showed there. So a
         # FAT partition is mounted owned by whoever runs this; other
-        # filesystems keep their own owners and take no uid= option.
-        _fs=$(lsblk -n -o FSTYPE "/dev/$_p" 2>/dev/null | head -n1 | xargs || true)
-        case "$_fs" in
-            vfat|fat|msdos|exfat)
-                priv mount -o "uid=$(id -u),gid=$(id -g)" "/dev/$_p" "$_m" \
-                    || die "could not mount /dev/$_p at $_m" ;;
-            *)  priv mount "/dev/$_p" "$_m" || die "could not mount /dev/$_p at $_m" ;;
-        esac
+        # filesystems keep their own owners and refuse a uid= option, so the
+        # owned mount is tried first and a plain one if it is refused. Tried
+        # rather than asked: lsblk reports no FSTYPE to a non-root user on a
+        # system without udev (Alpine with mdev), which is where this runs.
+        priv mount -o "uid=$(id -u),gid=$(id -g)" "/dev/$_p" "$_m" 2>/dev/null \
+            || priv mount "/dev/$_p" "$_m" \
+            || die "could not mount /dev/$_p at $_m"
     fi
     printf '%s\n' "$_m"
 }
