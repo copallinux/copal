@@ -616,6 +616,35 @@ kernel 7.0.0-30, took 10.0.2.15 by DHCP, and began "Trying to download and
 mount https://releases.ubuntu.com/26.04.1/ubuntu-26.04.1-live-server-amd64.iso",
 4% and about eight minutes to go when the test was stopped.
 
+**The links**, for an iPXE server, netboot.xyz's iPXE shell, or a browser:
+
+| | Ubuntu 26.04 LTS | Ubuntu 24.04 LTS (GTX 1080 / 1080 Ti + CUDA) |
+| --- | --- | --- |
+| Release page | <https://releases.ubuntu.com/26.04/> | <https://releases.ubuntu.com/24.04/> |
+| Netboot files | <https://releases.ubuntu.com/26.04/netboot/amd64/> | <https://releases.ubuntu.com/24.04/netboot/amd64/> |
+| Kernel | <https://releases.ubuntu.com/26.04/netboot/amd64/linux> | <https://releases.ubuntu.com/24.04/netboot/amd64/linux> |
+| Initrd | <https://releases.ubuntu.com/26.04/netboot/amd64/initrd> | <https://releases.ubuntu.com/24.04/netboot/amd64/initrd> |
+| UEFI network boot loader | <https://releases.ubuntu.com/26.04/netboot/amd64/bootx64.efi> | in the netboot folder above |
+| Live server ISO (what netboot fetches) | <https://releases.ubuntu.com/26.04.1/ubuntu-26.04.1-live-server-amd64.iso> | <https://releases.ubuntu.com/24.04.5/ubuntu-24.04.5-live-server-amd64.iso> |
+| Live desktop ISO | <https://releases.ubuntu.com/26.04/ubuntu-26.04.1-desktop-amd64.iso> | on the release page (file name not checked) |
+| Checksums (ISOs only) | <https://releases.ubuntu.com/26.04/SHA256SUMS> | <https://releases.ubuntu.com/24.04/SHA256SUMS> |
+| NVIDIA CUDA apt repository | <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2604/x86_64/> (CUDA 13 only) | <https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/> (driver 580, CUDA 12.9) |
+
+netboot.xyz: <https://netboot.xyz>, releases at
+<https://github.com/netbootxyz/netboot.xyz/releases> (3.0.3 on the stick);
+Ubuntu is under "Linux Network Installs".
+
+An iPXE script, the command line of Ubuntu's own `pxelinux.cfg` (for 26.04,
+`26.04` in both paths and `26.04.1/ubuntu-26.04.1-live-server-amd64.iso`):
+
+```
+#!ipxe
+dhcp
+kernel https://releases.ubuntu.com/24.04/netboot/amd64/linux root=/dev/ram0 ramdisk_size=1500000 ip=dhcp iso-url=https://releases.ubuntu.com/24.04.5/ubuntu-24.04.5-live-server-amd64.iso ---
+initrd https://releases.ubuntu.com/24.04/netboot/amd64/initrd
+boot
+```
+
 **Then, over SSH** (next): tick "Install OpenSSH server" in Ubuntu's
 installer; from the Mac, `ssh-copy-id` to it; on 24.04, NVIDIA's `cuda-keyring`,
 `cuda-drivers-580` and `cuda-toolkit-12-9`, `nouveau` blacklisted, and
