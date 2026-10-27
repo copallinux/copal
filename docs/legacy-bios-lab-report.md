@@ -246,7 +246,7 @@ every check that asks "has stage 1 run?" still answers correctly.
 | hostname draw harness | a different river each run; 254 of 298 names in 600 draws; fallbacks work; the card's file unchanged |
 | fresh `./copal build pc --auto` | built; `fdisk` shows partition 1 active (`*`) at 2048; `core.img` read back identical; `copal-first.apkovl.tar.gz` holds the four files, root-owned; `waters.txt` 298 lines; the card's `answers.txt` reads `COPAL_RANDOM_WATER` |
 | SeaBIOS, the fresh image as a USB stick | **boots to the login prompt.** GRUB from sector 0, its menu, the kernel, "Mounting boot media" ok, modloop, mdev, hardware drivers and every default service started (so `.default_boot_services` worked), then the starter's `/etc/issue`: "Copal Linux on Alpine 6.18.35-0-lts (/dev/tty1) / Not set up yet. Log in as root -- there is no password until setup." |
-| the message after logging in as root | not captured yet: QEMU's monitor socket stopped answering after the first run's key presses; a second run was in progress at this commit |
+| the message after logging in as root | the banner, then "Copal: this machine is not set up yet. ... Look at them first: `less /media/sda1/answers.txt` ... Then start the install (as root): `sh /media/sda1/copal-init.sh`". QEMU's initramfs mounted the stick as `/media/sda1`; on the PCs of `pc-install-lab-report.md` it was `/media/usb`, which is why the script finds the path rather than naming it. (A first run's monitor socket stopped answering after the key presses; the second, sending every command over one connection, worked.) |
 
 `shellcheck` was not run: it is not installed on this Mac (`make shell-lint`
 needs it).
