@@ -440,7 +440,152 @@ To check any stick by hand, from the repository (sudo on a real card):
 sh tools/copal-disk.sh biosboot-check disk4 vendor/grub-i386-pc && echo ok
 ```
 
-## IX. Trying it on the target PC
+## IX. One stick, two firmwares: the layout
+
+### A. The concept
+
+A UEFI firmware and a legacy BIOS look for different things on a disk, and
+neither looks where the other does. UEFI reads a **file**: it opens the FAT
+partition and runs `\EFI\BOOT\BOOTX64.EFI`. A BIOS reads **sectors**: it loads
+sector 0 and runs whatever code is in its first 440 bytes. So one stick can
+carry both boot loaders side by side. The UEFI GRUB lives as a file inside
+partition 1; the BIOS GRUB lives in the space no partition uses, sector 0 and
+the 1 MiB gap before partition 1. Both GRUBs then read the same `grub.cfg`, so
+from the menu on, the two boots are one.
+
+```
+ byte/sector map of a Copal PC stick (MBR, 512-byte sectors)
+
+ sector 0  (the MBR, 512 bytes)
+ +----------------------------------+------+------------------------+------+
+ | GRUB boot.img                    | disk | partition table        | 55AA |
+ | bytes 0-439                      | sig. | 4 x 16 bytes, 446-509  |      |
+ |  0x5C kernel sector = 1          | 440- |  p1: 0x80 active,      | 510- |
+ |  0x64 boot drive    = 0xFF       | 445  |      FAT32, at 2048    | 511  |
+ |  0x66 drive check   = 90 90      |      |  p2: Linux/ext4        |      |
+ +----------------------------------+------+------------------------+------+
+   written by biosboot                kept   kept (only the active     kept
+                                             byte is set)
+
+ sectors 1 - 2047  (the "MBR gap": belongs to no partition)
+ +-----------------------------------------+------------------------------+
+ | GRUB core.img, sectors 1-299            | unused, 300-2047             |
+ |  first sector ends in a blocklist:      |                              |
+ |  "the rest of me is sectors 2-299"      |                              |
+ |  prefix (,msdos1)/boot/grub             |                              |
+ +-----------------------------------------+------------------------------+
+   written by biosboot
+
+ sector 2048 onward: partition 1, FAT32 "COPALBOOT", 4 GiB, active
+ +--------------------------------------------------------------------------+
+ | EFI/BOOT/BOOTX64.EFI     the UEFI GRUB (a file)                          |
+ | boot/grub/grub.cfg       THE menu, read by both GRUBs                    |
+ | boot/vmlinuz-lts, initramfs-lts, modloop-lts    the kernel and drivers   |
+ | boot/grub/bios/          boot.img + core.img again, for stage 3          |
+ | answers.txt, waters.txt, copal-init.sh, copal-first.apkovl.tar.gz, ...   |
+ +--------------------------------------------------------------------------+
+   copied as files by copal-prep.sh
+
+ then partition 2, "COPALROOT": ext4 after stage 2 (the apk cache)
+```
+
+```mermaid
+flowchart TD
+    PWR[power on] --> FW{firmware}
+    FW -- UEFI --> U1["open the FAT partition<br/>run \EFI\BOOT\BOOTX64.EFI"]
+    FW -- legacy BIOS --> B1["load sector 0<br/>run boot.img, 440 bytes"]
+    B1 --> B2["boot.img loads core.img<br/>from sector 1"]
+    B2 --> B3["core.img loads the rest of itself<br/>sectors 2 to 299, by its blocklist"]
+    B3 --> G["GRUB reads (,msdos1)/boot/grub/grub.cfg"]
+    U1 --> G
+    G --> K["menu, then vmlinuz-lts + initramfs-lts"]
+    K --> A[Alpine diskless, then Copal]
+```
+
+### B. Why it works
+
+1. **The two paths never touch.** UEFI never runs sector 0, and a BIOS never
+   reads a file. Writing the BIOS code changes nothing the UEFI path reads,
+   which is why a UEFI machine boots the stick as before.
+2. **The partition table survives.** `biosboot` writes `boot.img`'s first 440
+   bytes only, then copies the disk's own bytes 440 to 511 (disk signature,
+   partition table, `55AA`) back unchanged, setting one byte: partition 1's
+   active flag.
+3. **The gap is free by convention.** Both `diskutil` and `sfdisk` start
+   partition 1 at sector 2048 (1 MiB, for alignment), leaving 2047 sectors no
+   partition owns. `core.img` needs 299 of them. `biosboot` checks the start on
+   every disk and refuses if it is smaller.
+4. **The bytes are position-fixed.** `boot.img` loads from sector 1, and
+   `core.img`'s blocklist says sectors 2 to 299, whatever the disk; its
+   prefix names partition 1 of the boot disk, not a UUID. So the same two
+   files are right for every Copal stick and every disk stage 3 makes, and
+   writing them needs only `dd`.
+5. **GPT has no such gap.** On GPT, sectors 1 to 33 hold the partition table
+   itself, so this layout is MBR only (section VII); `biosboot` refuses a GPT
+   disk by name.
+
+## X. Lessons: macOS and removable disks
+
+**1. Unmounting is not a state, it is a moment.** Disk Arbitration mounts
+every volume it recognises, and keeps doing so: a volume unmounted a second
+ago is mounted again when the disk is touched. On this Mac (macOS 26, Darwin
+25.6) a FAT volume is mounted through FSKit (`mount` shows `msdos, ... fskit`), with the same
+behaviour. Any step that needs the disk unmounted has to unmount immediately
+before it acts, and every time it retries.
+
+**2. Something else may be holding the volume.** Spotlight indexes a new
+volume as soon as it appears, and a Finder window holds it open. `diskutil
+unmountDisk` then fails and names the holder: "Dissenter parent PPID ...". On
+a disk the build has just partitioned and owns, `diskutil unmountDisk force`
+is the right call. On a disk somebody might be using, it is not.
+
+**3. macOS protects sector 0 of a disk with a mounted volume.** A write to the
+partition table area is refused while any partition is mounted; a write to
+sectors 1 onward is not. So a half-done result is possible: `core.img`
+written and `boot.img` not. Linux has no such rule, and stage 3 relies on
+that.
+
+**4. `/dev/rdiskN`, not `/dev/diskN`, for raw writes.** The `r` device is
+unbuffered and takes whole sectors only: a write of part of a sector is
+refused, so `core.img` is padded to 512-byte sectors first.
+
+**5. Who may write the device.** A real stick's node is `root:operator`, mode
+`crw-r-----`: reads and writes need sudo, and even `fdisk /dev/disk4` answers
+"Permission denied" without it. An image attached with `hdiutil` belongs to the
+user who attached it, which is why the unattended image builds could write it
+with no password, and why they did not show problem 2.
+
+**6. Eject is unmount, then let go, and it can fail at the first half.**
+`diskutil eject` fails if a volume cannot be unmounted. After `sync` the data
+is on the stick, so a forced unmount then an eject is safe; before `sync` it
+is not, and a stick pulled early can hold files that look copied and are
+truncated.
+
+**7. A warning is not a check.** The refused write printed one warning in a
+hundred lines and the build said it was done. What the user needed was a
+read-back: the build now reads the boot code back (`biosboot-check`), writes
+it again if it is not there, and if it still is not, ends with a box that
+cannot be scrolled past.
+
+## XI. Practice: what this work did, and should keep doing
+
+These are the IEEE habits the work followed, and the places it fell short of
+them.
+
+| Practice | Where it showed | Where it fell short |
+| --- | --- | --- |
+| **State the objective and the conditions first** | section I; the materials table names every machine, version and image | — |
+| **Find the cause before the fix** | the hostname: the picker was read and ruled out before its callers were blamed (III.A) | — |
+| **Use a control** | the old image failed the same way under UEFI as under BIOS, which showed its failure was not the BIOS path (III.B.5) | — |
+| **Test in the conditions of use** | QEMU with `usb-storage` on xHCI, as the PC sees a stick; busybox `sh` on Alpine, as stage 3 runs | images are not remounted or indexed like a real stick, so problem X.2 reached Paul's PC first |
+| **Reproduce a field failure before fixing it** | the UEFI-only stick was reproduced on an image with a file held open, then fixed and re-run there (VIII) | — |
+| **Verify after write; read back, do not trust the exit status** | `biosboot-check`, now in the build | added only after a stick failed; the first version trusted `dd` |
+| **Fail loudly** | `biosboot` refuses GPT, a small gap and a missing `55AA`, by name | the build first carried on after a refused write with one warning |
+| **Change one thing at a time; keep what works** | every BIOS change is gated on `firmware_mode`, so UEFI machines take the old path ("the old way worked") | — |
+| **Record results as measured, failures included** | "No bootable device", the bash login loop and the UEFI-only stick are in this report with their causes | the login message was committed as "not captured yet" before it was |
+| **Name what is not tested** | section IV and the backlog say a whole BIOS install is untested | — |
+
+## XII. Trying it on the target PC
 
 1. `git pull`, then write the stick as before (`make sd-pc` or `./copal build
    pc`). The build log says "Writing GRUB's legacy-BIOS boot code".
@@ -457,7 +602,7 @@ If it stops before the GRUB menu, a photo of the screen says where: a blinking
 cursor means sector 0 ran but `core.img` did not load; "GRUB" and an error
 means `core.img` ran but could not read partition 1.
 
-## X. Open items
+## XIII. Open items
 
 1. Stage 3 on a BIOS machine: done (section VIII); a whole install on the
    PC still to confirm.

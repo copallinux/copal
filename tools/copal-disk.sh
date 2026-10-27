@@ -131,7 +131,7 @@ shared_biosboot() {  # <raw device> <dir> <disk name, for unmount-all>
     done
     # ON macOS EVERY TRY UNMOUNTS THE WHOLE DISK FIRST. macOS refuses a write to
     # sector 0 -- the partition table -- while any partition of the disk is
-    # mounted, and Disk Arbitration (FSKit, for FAT, since macOS 15) mounts
+    # mounted, and Disk Arbitration (through FSKit, for FAT, on macOS 26) mounts
     # both partitions again within seconds of being told to unmount them. On
     # a real stick on 27 October every one of five tries was refused this
     # way, with both volumes back under /Volumes; on an attached image the
