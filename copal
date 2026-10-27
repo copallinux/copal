@@ -137,7 +137,7 @@ menu() {
     say "  ${C}Raspberry Pi${Z} ${D}-- SD card, booted by the GPU firmware${Z}"
     i=1
     while [ "$i" -le 9 ]; do
-        [ "$i" = 6 ] && { say ""; say "  ${C}PC${Z} ${D}-- UEFI only. Legacy BIOS is not supported; see 'w' below${Z}"; }
+        [ "$i" = 6 ] && { say ""; say "  ${C}PC${Z} ${D}-- UEFI or legacy BIOS from one stick; see 'w' below${Z}"; }
         [ "$i" = 8 ] && { say ""; say "  ${C}Virtual machine${Z} ${D}-- UTM on this Mac, no hardware at all${Z}"; }
         k=$(target_key "$i")
         if target_ready "$k"; then
@@ -152,7 +152,7 @@ menu() {
     say ""
     say "  ${B}f${Z}) Show the flow chart again"
     say "  ${B}r${Z}) What can this Mac build?  ${D}(requirements check -- writes nothing)${Z}"
-    say "  ${B}w${Z}) Why UEFI only, and other things worth knowing first"
+    say "  ${B}w${Z}) UEFI and legacy BIOS, and other things worth knowing first"
     say "  ${B}q${Z}) Quit"
     say ""
 }
@@ -239,11 +239,11 @@ detail() {
         say "    - ~400 MB free on this Mac ${D}(the netboot payload carries every"
         say "      module, and the GRUB ISO is another 66 MB)${Z}"
         say ""
-        say "  ${R}Legacy BIOS is not supported${Z}, and that is a limit of the"
-        say "  writing machine rather than a preference. A BIOS boot needs"
-        say "  syslinux or grub-install to write a boot sector, and both are"
-        say "  Linux tools that do not exist on macOS. There is no honest way"
-        say "  to fake it, so this refuses instead of writing a dead card."
+        say "  ${C}UEFI and legacy BIOS${Z}, from the same stick. UEFI runs"
+        say "  \\EFI\\BOOT\\BOOTX64.EFI; a BIOS runs GRUB's boot code in sector 0,"
+        say "  built once on Alpine and written by dd (docs/legacy-bios-lab-report.md)."
+        say "  On a BIOS machine Copal runs from the stick; installing to its own"
+        say "  disk (stage 3) is still UEFI only."
         say ""
         say "  ${C}Expected use case${Z}"
         say "    Bringing an old laptop back as something useful, with a system"
@@ -455,8 +455,8 @@ worth_knowing() {
     say "  stage 3 exists to fix. Until stage 3 has run, treat anything you"
     say "  install as temporary."
     say ""
-    say "  ${C}UEFI only on anything that is not a Pi.${Z} A legacy-BIOS boot"
-    say "  needs Linux tools that do not exist on macOS."
+    say "  ${C}A PC stick boots UEFI or legacy BIOS.${Z} Stage 3, the install to"
+    say "  the PC's own disk, is UEFI only for now."
     say ""
     say "  ${C}The stages are optional and re-runnable.${Z} Fifteen of them. Run"
     say "  one, run four, run all of them unattended. Nothing is a point of no"

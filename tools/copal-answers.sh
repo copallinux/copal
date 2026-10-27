@@ -355,29 +355,13 @@ if [ -n "$NODE" ]; then
     exit 0
 fi
 
-# The hostname pool -- 300 oceans, seas, lakes and rivers -- lives in
-# copal-prep.sh, and is LIFTED from there rather than copied. Two copies of a
-# 300-word list is two lists that drift, and the reason the pool exists at all
-# is that a fixed default stops being unique the moment there is a second
-# machine on the network. Sourcing copal-prep.sh outright is not an option: it
-# would run a disk-writing script to ask a question. So the two functions are
-# cut out by name and evaluated on their own.
-#
-# If that extraction ever fails -- the functions renamed, copal-prep.sh moved
-# -- the fallback is a fixed name and a note saying so, not a broken prompt.
-PREP="$ROOT/copal-prep.sh"
-if [ -r "$PREP" ] \
-   && _pool=$(sed -n '/^hostname_pool() {/,/^}/p;/^random_hostname() {/,/^}/p' "$PREP") \
-   && [ -n "$_pool" ] \
-   && printf '%s\n' "$_pool" | sh -n 2>/dev/null; then
-    # What is evaluated is this repository's own code, cut at the first } in
-    # column 0 -- the cut that once left a playbook half a function. So it is
-    # parsed before it is believed: a bad cut takes the fallback below.
-    eval "$_pool"
-else
-    random_hostname() { printf 'copal\n'; }
-    note "could not read the hostname pool from copal-prep.sh -- using 'copal'"
-fi
+# The hostname. 'random', the default, is not a name: it means a river drawn
+# on the machine itself when stage 1 runs, so every install gets its own --
+# including several machines installed from one card. This used to offer a
+# river drawn HERE and save it, which made the first draw permanent: every
+# later `make answers` offered the saved name back, and every card built from
+# the file carried it (four machines called saskatchewan, 27 October). A fleet
+# card is still named fleet-NN, and a name typed here is still used as typed.
 
 ask() {  # <prompt> <default> <variable name>
     local _p="$1" _d="$2" _v="$3" _r=""
@@ -394,9 +378,8 @@ ask() {  # <prompt> <default> <variable name>
 printf '\n\033[1mCopal -- answers for an unattended install\033[0m\n\n'
 note "Anything answered here stops being a question during the install."
 note "Enter alone keeps the value in brackets."
-note "The hostname offered is picked at random from 300 oceans, seas, lakes"
-note "and rivers -- a fixed name stops being unique at the second machine."
-note "Once answers.txt exists its own hostname is the default, not a new one."
+note "Hostname 'random' draws one of 300 oceans, seas, lakes and rivers on each"
+note "machine as it installs; type a name instead to fix it."
 printf '\n'
 
 # Identity. The git config on this Mac is the best guess available, offered
@@ -582,7 +565,7 @@ printf '\n'
 if [ -n "$COPAL_FLEET" ]; then
     ask "Hostname"           "$COPAL_HOSTNAME"                       COPAL_HOSTNAME
 else
-    ask "Hostname"           "${COPAL_HOSTNAME:-$(random_hostname)}" COPAL_HOSTNAME
+    ask "Hostname"           "${COPAL_HOSTNAME:-random}"             COPAL_HOSTNAME
 fi
 ask "Timezone"               "${COPAL_TIMEZONE:-US/Pacific}" COPAL_TIMEZONE
 ask "Keymap"                 "${COPAL_KEYMAP:-us us}"     COPAL_KEYMAP

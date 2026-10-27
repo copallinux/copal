@@ -570,7 +570,19 @@ random_hostname() {
     while [ "$pick" -ge "$limit" ]; do pick=$RANDOM; done
     printf '%s\n' "$names" | sed -n "$(( pick % count + 1 ))p"
 }
-CFG_HOSTNAME="${CFG_HOSTNAME:-$(random_hostname)}"
+# 'random' (and an unset hostname) is not a name: it is drawn on the machine
+# at stage 1 from waters.txt, which this writes onto the card, so one card
+# installs any number of machines under different names. The card's
+# answers.txt carries COPAL_RANDOM_WATER where the name goes; stage 1 puts the
+# drawn river in its place, in a copy, never in the card's own file.
+CFG_HOSTNAME="${CFG_HOSTNAME:-random}"
+if [ "$CFG_HOSTNAME" = random ]; then
+    CARD_HOSTNAME=COPAL_RANDOM_WATER
+    HOSTNAME_SHOWN="a river drawn at install"
+else
+    CARD_HOSTNAME=$CFG_HOSTNAME
+    HOSTNAME_SHOWN=$CFG_HOSTNAME
+fi
 CFG_TIMEZONE="${CFG_TIMEZONE:-US/Pacific}"
 CFG_IFACE="${CFG_IFACE:-eth0}"
 # Whether this was chosen by the caller or is merely the fallback. The prompt
@@ -744,9 +756,9 @@ if [ -z "$MODEL" ] && [ -z "${ARCH:-}" ] && [ -t 0 ]; then
     printf '    3) Pi Zero 2 W / Pi 3 / CM3 / 2B v1.2 (BCM2710, A53)     aarch64\n'
     printf '    4) Pi 4 / 400 / CM4                   (BCM2711, A72)     aarch64\n'
     printf '    5) Pi 5                               (BCM2712, A76)     aarch64\n'
-    printf '  PC (UEFI only -- see the note after you choose):\n'
-    printf '    6) PC / laptop / Mac, 64-bit          (UEFI)             x86_64\n'
-    printf '    7) PC, 32-bit                         (UEFI)             x86\n'
+    printf '  PC (UEFI or legacy BIOS -- see the note after you choose):\n'
+    printf '    6) PC / laptop / Mac, 64-bit          (UEFI or BIOS)     x86_64\n'
+    printf '    7) PC, 32-bit                         (UEFI or BIOS)     x86\n'
     printf '  Virtual machine (pair either with --image):\n'
     printf '    8) UTM / QEMU on Apple Silicon        (UEFI)             aarch64\n'
     printf '       Native speed on an M-series Mac, and the same code path a\n'
@@ -934,14 +946,15 @@ esac
 # architecture-independent, so all fifteen stages, the catalogue and the
 # desktop work the same once the kernel is running.
 #
-# UEFI ONLY, and this is a limitation of the writing machine rather than a
-# preference. Copal writes cards from macOS. A legacy-BIOS boot needs syslinux
-# or grub-install to write a boot sector and patch a stage-1.5 loader onto the
-# filesystem, and both are Linux tools that do not exist on macOS -- there is
-# no honest way to fake it. UEFI needs no installer at all: the firmware reads
-# a FAT partition and executes \EFI\BOOT\BOOTX64.EFI, which is a file copy.
-# So Copal supports UEFI, which is every PC since roughly 2012 and every Intel
-# Mac, and says so plainly instead of writing a card that will not boot.
+# UEFI AND LEGACY BIOS. UEFI needs no installer at all: the firmware reads a
+# FAT partition and executes \EFI\BOOT\BOOTX64.EFI, which is a file copy. A
+# BIOS needs boot code in sector 0 and the gap before p1, which grub-install
+# writes and macOS cannot run -- this used to be why Copal was UEFI only. But
+# for an MBR card with p1 at sector 2048 those are the same bytes every time,
+# so they are built once on Alpine (tools/grub-bios-build.sh), kept in
+# vendor/grub-i386-pc, and written by dd (copal-disk.sh biosboot; see
+# docs/legacy-bios-lab-report.md). Stage 3's install to a PC's own disk is
+# still UEFI only.
 # VM has to be tested before ARCH, not folded into it: a VM is aarch64, and
 # aarch64 otherwise means a Pi. Take the UEFI path for anything that is not a
 # board with GPU firmware on it.
@@ -1958,6 +1971,28 @@ info "Marking partition 1 bootable..."
 disk bootflag "$DISK" 1 \
     || warn "could not set the bootable flag (usually harmless; continuing)"
 
+# LEGACY BIOS, on the same card as UEFI. A BIOS runs sector 0, not a file, so
+# a card with only \EFI\BOOT boots nothing on a machine without UEFI (or with
+# it switched to legacy). This goes after the boot flag on purpose: that
+# flag's macOS form is fdisk -e, which rewrites sector 0, so this writes last. GRUB's boot code goes into sector 0 and the gap
+# before p1, and that GRUB reads the same boot/grub/grub.cfg the UEFI one
+# does. biosboot also marks partition 1 active, which some BIOSes need before
+# they will treat a USB stick as a disk at all; UEFI ignores the flag.
+#
+# What is written and why it is only dd: tools/grub-bios-build.sh, which made
+# vendor/grub-i386-pc. x86 only -- an aarch64 VM has no BIOS.
+BIOSBOOT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/vendor/grub-i386-pc"
+if [ "$PLATFORM" = pc ] && { [ "$ARCH" = x86_64 ] || [ "$ARCH" = x86 ]; }; then
+    if [ -f "$BIOSBOOT_DIR/core.img" ]; then
+        info "Writing GRUB's legacy-BIOS boot code (sector 0 and the gap before p1)..."
+        disk unmount-all "$DISK"
+        disk biosboot "$DISK" "$BIOSBOOT_DIR" \
+            || warn "could not write the BIOS boot code -- this card boots UEFI only"
+    else
+        warn "no $BIOSBOOT_DIR/core.img -- this card boots UEFI only (tools/grub-bios-build.sh makes it)"
+    fi
+fi
+
 sleep 2
 # WHERE, not whether. macOS mounts by label wherever it likes and Linux mounts
 # where it is told, so the mount point is what the disk layer reports back --
@@ -2000,7 +2035,7 @@ step "Write the answer file, firmware settings and first-run script" \
     "Writes three files to the boot partition:" \
     "" \
     "  answers.txt   setup-alpine answers -- keymap ${CFG_KEYMAP}, host" \
-    "                ${CFG_HOSTNAME}, ${CFG_TIMEZONE}, ${CFG_IFACE}/dhcp, disk=none" \
+    "                ${HOSTNAME_SHOWN}, ${CFG_TIMEZONE}, ${CFG_IFACE}/dhcp, disk=none" \
     "  usercfg.txt   firmware settings (gpu_mem=16, enable_uart=1); config.txt" \
     "                includes it last and is itself overwritten on upgrade" \
     "  copal-init.sh   the one command to run on the Pi -- a re-runnable menu" \
@@ -2028,14 +2063,14 @@ cat > "$MNT/answers.txt" <<ANSWERS
 # Apply with:  setup-alpine -f /media/mmcblk0p1/answers.txt
 
 KEYMAPOPTS="${CFG_KEYMAP}"
-HOSTNAMEOPTS="-n ${CFG_HOSTNAME}"
+HOSTNAMEOPTS="-n ${CARD_HOSTNAME}"
 
 INTERFACESOPTS="auto lo
 iface lo inet loopback
 
 auto ${CFG_IFACE}
 iface ${CFG_IFACE} inet dhcp
-    hostname ${CFG_HOSTNAME}
+    hostname ${CARD_HOSTNAME}
 "
 
 TIMEZONEOPTS="-z ${CFG_TIMEZONE}"
@@ -2167,6 +2202,79 @@ COPAL_FLEET_PSK='${CFG_FLEET_PSK}'
 # Single use, this card only, burned the first time this machine is signed.
 COPAL_FLEET_TOKEN='${CFG_FLEET_TOKEN}'
 ANSWERS
+
+# The pool stage 1 draws a hostname from when answers.txt says 'random': one
+# name a line, the same 300 random_hostname picks from.
+hostname_pool | tr -s ' \n' '\n\n' | grep -v '^$' > "$MNT/waters.txt"
+
+# THE FIRST LOGIN'S MESSAGE, and every login's until the install is done. A
+# fresh card has no saved configuration, so a stock Alpine boots and its login
+# says only "Welcome to Alpine!". The message rides in a starter overlay,
+# copal-first.apkovl.tar.gz, which the initramfs unpacks over / at boot like
+# any apkovl:
+#
+#   etc/issue                    before the login prompt: log in as root
+#   etc/motd                     a one-line banner
+#   etc/profile.d/copal-setup.sh after login: look at answers.txt and run
+#                                copal-init.sh; after stage 1, how to carry
+#                                on. Silent while the auto-resume block (in
+#                                .profile) is doing the same job.
+#   etc/.default_boot_services   EMPTY, AND NOT OPTIONAL. The initramfs adds
+#                                Alpine's default boot services only when
+#                                there is no overlay or the overlay carries
+#                                this file; without it the machine boots with
+#                                no mdev, no hwdrivers and no network.
+#
+# Stage 1 deletes the starter before its lbu commit: with two overlays on one
+# medium the initramfs loads only the first it finds (head -n 1 of nlplug's
+# list, mkinitfs 3.24), which could be the starter, and the saved
+# configuration would be passed over. What the starter put in /etc is
+# by then part of the running system, so the commit carries it forward, and
+# copal-init.sh removes copal-setup.sh when the last stage is done.
+info "Writing copal-first.apkovl.tar.gz (the login message until Copal is set up)..."
+_seed=$(mktemp -d)
+mkdir -p "$_seed/etc/profile.d"
+: > "$_seed/etc/.default_boot_services"
+cat > "$_seed/etc/issue" <<'ISSUE'
+Copal Linux on Alpine \r (\l)
+
+  Not set up yet. Log in as root -- there is no password until setup.
+
+ISSUE
+cat > "$_seed/etc/motd" <<'MOTDTEXT'
+
+  Copal Linux -- https://copallinux.org
+
+MOTDTEXT
+cat > "$_seed/etc/profile.d/copal-setup.sh" <<'SETUPMSG'
+# Copal: what to do next, at every login until the install is finished.
+# From the card's starter overlay (copal-prep.sh); copal-init.sh removes it
+# when the last stage is done. Delete it to stop the message.
+_cb=''
+for _cd in /boot /media/*; do
+    [ -f "$_cd/copal-init.sh" ] && { _cb=$_cd; break; }
+done
+if [ -n "$_cb" ] && ! ls "$_cb"/copal-auto >/dev/null 2>&1; then
+    if [ "$(id -u)" = 0 ]; then _cr="sh $_cb/copal-init.sh"; else _cr="doas sh $_cb/copal-init.sh"; fi
+    if ls "$_cb"/*.apkovl.tar.gz 2>/dev/null | grep -qv '/copal-first\.apkovl\.tar\.gz$'; then
+        printf '\n  Copal: the install is not finished. To carry on where it stopped:\n\n'
+        printf '      %s\n\n' "$_cr"
+    else
+        printf '\n  Copal: this machine is not set up yet.\n\n'
+        printf '  The answers for the install are on the boot medium. Look at them first:\n\n'
+        printf '      less %s/answers.txt\n\n' "$_cb"
+        printf '  Then start the install (as root):\n\n'
+        printf '      %s\n\n' "$_cr"
+    fi
+fi
+unset _cb _cd _cr
+SETUPMSG
+chmod 0644 "$_seed/etc/issue" "$_seed/etc/motd" "$_seed/etc/profile.d/copal-setup.sh" "$_seed/etc/.default_boot_services"
+# Owned by root on the machine, whoever wrote the card; no macOS metadata.
+COPYFILE_DISABLE=1 tar -czf "$MNT/copal-first.apkovl.tar.gz" --uid 0 --gid 0 -C "$_seed" \
+    etc/.default_boot_services etc/issue etc/motd etc/profile.d/copal-setup.sh \
+    || die "could not write copal-first.apkovl.tar.gz"
+rm -rf "$_seed"
 
 # THE BOOT CONFIGURATION, which is the one part of this script that is genuinely
 # different per platform. A Pi gets firmware directives; a PC gets a GRUB menu.
@@ -3392,7 +3500,9 @@ fstype_of()    { blkid "$1" 2>/dev/null | sed -n 's/.*[[:space:]]TYPE="\([^"]*\)
 # keeps this from matching PARTUUID=.
 uuid_of()      { blkid "$1" 2>/dev/null | sed -n 's/.*[[:space:]]UUID="\([^"]*\)".*/\1/p'; }
 is_mounted()   { awk -v m="$1" '$2 == m { found = 1 } END { exit !found }' /proc/mounts; }
-apkovl_exists() { ls "$BOOT"/*.apkovl.tar.gz >/dev/null 2>&1; }
+# The starter overlay (copal-first, the login message) is not a saved
+# configuration; stage 1 deletes it.
+apkovl_exists() { ls "$BOOT"/*.apkovl.tar.gz 2>/dev/null | grep -qv '/copal-first\.apkovl\.tar\.gz$'; }
 # "has stage 3 already run" -- the boot configuration carries a root= once it
 # has. Two different files, because two different bootloaders.
 sys_installed() {
@@ -6108,6 +6218,44 @@ MSG
 # it back is a grep rather than a `.` of the whole file: answers.txt is
 # setup-alpine's, sourcing it here would set thirty of its variables in this
 # shell as a side effect, and only one line is wanted.
+# A river from waters.txt beside answers.txt, uniform: /dev/urandom gives 16
+# bits, and the tail that would favour the front of the list is drawn again.
+# No waters.txt (a card older than the pool) gives copal-XXXX instead.
+draw_water() {
+    _pool="$(dirname "$ANSWERS")/waters.txt"
+    # grep -c prints 0 AND fails on an empty file, so the fallback is an
+    # assignment, not a second number appended to the first.
+    _n=$(grep -c . "$_pool" 2>/dev/null) || _n=0
+    if [ "$_n" -gt 0 ]; then
+        _lim=$(( 65536 - 65536 % _n ))
+        while :; do
+            _r=$(od -An -N2 -tu2 /dev/urandom | tr -d ' ')
+            [ "$_r" -lt "$_lim" ] && break
+        done
+        sed -n "$(( _r % _n + 1 ))p" "$_pool"
+    else
+        printf 'copal-%s\n' "$(od -An -N2 -tx1 /dev/urandom | tr -d ' \n')"
+    fi
+}
+
+# SETUP_ANSWERS: the answer file setup-alpine is given. The card's own when it
+# names the host; otherwise a copy in /tmp with the name filled in, so the card
+# keeps saying 'random' for the next machine. A machine that has been set up
+# before keeps the name it has.
+setup_answers() {
+    SETUP_ANSWERS=$ANSWERS
+    grep -q COPAL_RANDOM_WATER "$ANSWERS" || return 0
+    if apkovl_exists && [ -n "$(hostname 2>/dev/null)" ] && [ "$(hostname)" != localhost ]; then
+        _water=$(hostname)
+        note "Hostname: $_water, kept from this machine's saved configuration."
+    else
+        _water=$(draw_water)
+        note "Hostname: $_water, drawn at random for this machine (answers.txt says random)."
+    fi
+    SETUP_ANSWERS=/tmp/copal-setup-answers.txt
+    sed "s/COPAL_RANDOM_WATER/$_water/g" "$ANSWERS" > "$SETUP_ANSWERS"
+}
+
 answers_pw_hash() {
     [ -f "$ANSWERS" ] || return 1
     # Quote-agnostic: the card is written with single quotes, but a file
@@ -21742,6 +21890,7 @@ stage_base_config() {
     note "commits, and the repositories to check out into ~/code. They are"
     note "saved on the card and acted on by stage 7, which is why that stage"
     note "does not stop to ask an hour and a half from now."
+    setup_answers
     note "Then keymap, hostname, network, timezone, mirror, sshd and user come"
     note "from answers.txt."
     if answers_pw_hash >/dev/null 2>&1; then
@@ -21791,7 +21940,7 @@ stage_base_config() {
         tui_suspend
         printf '%s\n%s\n%s\n%s\n' \
             "$_throwaway" "$_throwaway" "$_throwaway" "$_throwaway" \
-            | setup-alpine -f "$ANSWERS"
+            | setup-alpine -f "$SETUP_ANSWERS"
         tui_resume
         _throwaway=""
         apply_answers_password "$_pw_hash" || true
@@ -21803,7 +21952,7 @@ stage_base_config() {
             "Run 'make answers' on the Mac to stop being asked at all." \
             ''
         tui_suspend
-        setup-alpine -f "$ANSWERS"
+        setup-alpine -f "$SETUP_ANSWERS"
         tui_resume
     fi
 
@@ -21850,6 +21999,15 @@ stage_base_config() {
     # after having done all of its real work.
     if is_diskless; then
         say "Committing the configuration to the boot partition"
+        # The starter overlay goes first: with two apkovls on one medium the
+        # initramfs loads only the first it finds, which could be the starter,
+        # and this configuration would be passed over at the next boot. What
+        # the starter carried is in /etc now, so this commit keeps it.
+        if [ -f "$BOOT/copal-first.apkovl.tar.gz" ]; then
+            mount -o remount,rw "$BOOT" 2>/dev/null || true
+            rm -f "$BOOT/copal-first.apkovl.tar.gz" \
+                || die "could not remove $BOOT/copal-first.apkovl.tar.gz -- with two overlays the next boot may load the wrong one"
+        fi
         # Without this, nothing at all survives a reboot on a diskless system.
         lbu commit -d || die "lbu commit failed -- see above. Nothing will persist until this works."
         ls -l "$BOOT"/*.apkovl.tar.gz
@@ -21992,18 +22150,7 @@ MSG
     # confirmed by typing the disk's name -- see choose_root_target.
     TGT_DISK=''; SWAP_DISK=''; SWAP_DEV=''
     STICK_DISK=$DISKDEV
-    if ! is_pi_boot; then
-        rm -f "${COPAL_TMP:?}/disks"
-        while :; do
-            choose_root_target
-            _gate=0; removable_root_gate || _gate=$?
-            case "$_gate" in
-                0) break ;;
-                2) TGT_DISK=''; SWAP_DISK=''; SWAP_GIB=0 ;;
-                *) return 0 ;;
-            esac
-        done
-    fi
+    is_pi_boot || choose_root_target
 
     if [ -z "$TGT_DISK" ]; then
         [ -b "$P2" ] || die "$P2 not found"
@@ -35667,6 +35814,7 @@ auto_timing_report() {
 
 auto_finish() {
     rm -f "$AUTOFILE" 2>/dev/null || true
+    rm -f /etc/profile.d/copal-setup.sh /mnt/etc/profile.d/copal-setup.sh 2>/dev/null || true
     # Take the resume hook off the new root as well, so a later login is a
     # plain login again. Both accounts, and both roots -- the running one and
     # the one at /mnt if this is called while stage 3's is still mounted.
@@ -37490,6 +37638,10 @@ while :; do
     elif p2_growable;                          then SUGGEST=8
     else                                            SUGGEST=v
     fi
+    # Every stage done: the login message has nothing left to say.
+    if [ "${SUGGEST%% *}" = v ] && [ -f /etc/profile.d/copal-setup.sh ]; then
+        rm -f /etc/profile.d/copal-setup.sh 2>/dev/null || true
+    fi
 
     # A BANNER RATHER THAN A SUGGESTION LINE. "Suggested next" is one line at
     # the bottom of a screen of sixteen options, and it is easy to read past
@@ -37950,7 +38102,7 @@ ON THE PI -- there is only one command to run
        report at the end shows what actually landed.
 
     1) Base configuration   'setup-alpine -f answers.txt' -- keymap
-       ${CFG_KEYMAP}, hostname ${CFG_HOSTNAME}, ${CFG_IFACE}/dhcp, ${CFG_TIMEZONE},
+       ${CFG_KEYMAP}, hostname ${HOSTNAME_SHOWN}, ${CFG_IFACE}/dhcp, ${CFG_TIMEZONE},
        fastest mirror, openssh, user '${CFG_USER}', disk=none, lbu on
        mmcblk0p1 -- then 'lbu commit -d'.
 

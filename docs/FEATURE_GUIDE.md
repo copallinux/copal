@@ -82,7 +82,7 @@ The screen says "316 apps"; the README's stage menu says 329. The counts come fr
 *`./copal`, after Enter. Live.*
 
 1. Raspberry Pi targets: an SD card, booted by the GPU firmware. Five boards, three architectures (armhf, armv7, aarch64).
-2. PC targets: UEFI only, x86_64 and 32-bit x86. Legacy BIOS is not supported; `w` explains why.
+2. PC targets: x86_64 and 32-bit x86, UEFI or legacy BIOS from one stick (stage 3's install to the PC's own disk is UEFI only for now); `w` explains.
 3. Virtual machines under UTM on an Apple Silicon Mac. Target 8 is the README's advice for newcomers: the same aarch64 payload, GRUB and `copal-init.sh` that a Pi Zero 2 W boots.
 4. `r` is the requirements check (`./copal --check`): what this host can build. It writes nothing.
 

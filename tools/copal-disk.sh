@@ -32,6 +32,7 @@
 #   copal-disk.sh partition DISK BL BS RL RS    MBR: FAT32 boot + root
 #   copal-disk.sh type DISK N HEX          set the MBR type byte
 #   copal-disk.sh bootflag DISK N          mark partition N active
+#   copal-disk.sh biosboot DISK DIR        GRUB's BIOS boot code from DIR, p1 active
 #   copal-disk.sh eject DISK               flush and let go of it
 #   copal-disk.sh image-attach PATH        attach a raw image, PRINT the device
 #   copal-disk.sh image-detach DEV         let go of it
@@ -45,7 +46,7 @@ die() { printf 'copal-disk: %s\n' "$*" >&2; exit 2; }
 # The whole surface. Adding a line here without adding both functions is what
 # self-test exists to catch.
 VERBS='list show probe part unmount-all unmount mount partition type bootflag
-eject image-attach image-detach image-attached sha256-check'
+biosboot eject image-attach image-detach image-attached sha256-check'
 
 # The verbs, one to a line. VERBS is a list of words, and this is the one
 # place that splits it into them.
@@ -77,6 +78,60 @@ priv() {
 }
 
 # ------------------------------------------------------------------ shared ---
+
+# Legacy BIOS boot: GRUB's boot.img into the first 440 bytes of sector 0 and
+# its core.img into sector 1 onward, from DIR (vendor/grub-i386-pc, built by
+# tools/grub-bios-build.sh, which explains why this is all grub-install does
+# on an MBR disk). Host-independent: each backend only names the raw device.
+#
+# Bytes 440 to 511 of sector 0 -- the disk signature and the partition table
+# -- are read back and kept, so this goes after `partition` and changes
+# nothing a later `type` or `bootflag` touches. It refuses, rather than
+# overwrite partition 1, a disk whose partition 1 starts too early to hold
+# core.img (an old 63-sector layout), and a sector 0 with no 0x55AA.
+#
+# od reads the start sector in host byte order; both hosts Copal builds on
+# (arm64 and x86) are little-endian, as the MBR is.
+shared_biosboot() {  # <raw device> <dir>
+    [ -f "$2/boot.img" ] && [ -f "$2/core.img" ] || die "no boot.img and core.img in $2"
+    _w=$(mktemp -d) || die "mktemp failed"
+    # A raw device takes whole sectors only, so core.img is padded to them.
+    _cs=$(( ($(wc -c < "$2/core.img") + 511) / 512 ))
+    dd if="$2/core.img" of="$_w/core" bs=512 conv=sync 2>/dev/null
+    # <device> <dd operands...>: as this user if the device is writable
+    # (an attached image usually is), through priv if not (a real card).
+    _dd() { _dv=$1; shift; if [ -w "$_dv" ]; then dd "$@" 2>/dev/null; else priv dd "$@" 2>/dev/null; fi; }
+    _rd() { if [ -r "$1" ]; then dd if="$1" of="$2" bs=512 count=1 2>/dev/null; else priv dd if="$1" of="$2" bs=512 count=1 2>/dev/null; fi; }
+    _rd "$1" "$_w/mbr" || { rm -rf "$_w"; die "could not read sector 0 of $1"; }
+    [ "$(od -An -tx1 -j 510 -N 2 "$_w/mbr" | tr -d ' \n')" = 55aa ] \
+        || { rm -rf "$_w"; die "$1 has no MBR (no 0x55AA) -- partition it first"; }
+    _p1=$(od -An -tu4 -j 454 -N 4 "$_w/mbr" | tr -d ' ')
+    [ "$_p1" -gt "$_cs" ] \
+        || { rm -rf "$_w"; die "partition 1 starts at sector $_p1; GRUB's core needs sectors 1 to $_cs free"; }
+    head -c 440 "$2/boot.img" > "$_w/new"
+    tail -c 72 "$_w/mbr" >> "$_w/new"
+    # grub-bios-setup's patch for a hard disk: NOP the drive-check jump.
+    printf '\220\220' | dd of="$_w/new" bs=1 seek=102 conv=notrunc 2>/dev/null
+    # Partition 1 active (0x80), the other three not: some BIOSes will not
+    # treat a USB stick as bootable without it, and UEFI ignores it. Done in
+    # this same write rather than by `bootflag`, whose macOS form is fdisk -e
+    # behind sudo and rewrites sector 0 itself.
+    printf '\200' | dd of="$_w/new" bs=1 seek=446 conv=notrunc 2>/dev/null
+    for _o in 462 478 494; do
+        printf '\000' | dd of="$_w/new" bs=1 seek="$_o" conv=notrunc 2>/dev/null
+    done
+    # Five tries a second apart: on macOS a disk just attached or just
+    # partitioned is still being probed by Disk Arbitration, and the first
+    # write to sector 0 was refused once in testing and accepted at once on
+    # the next try.
+    _try() { _t=0; until "$@"; do _t=$((_t+1)); [ "$_t" -lt 5 ] || return 1; sleep 1; done; }
+    _try _dd "$1" if="$_w/core" of="$1" bs=512 seek=1 conv=notrunc \
+        || { rm -rf "$_w"; die "could not write core.img to $1"; }
+    _try _dd "$1" if="$_w/new" of="$1" bs=512 count=1 conv=notrunc \
+        || { rm -rf "$_w"; die "could not write the boot sector to $1"; }
+    sync 2>/dev/null || true
+    rm -rf "$_w"
+}
 
 # Bytes to something a human reads, without bc and without locale. Deliberately
 # the same rounding on both backends so the two reports can be compared.
@@ -150,6 +205,9 @@ macos_partition() {
 macos_type()     { printf 't %s\n%s\nw\ny\nq\n' "$2" "$3" | priv fdisk -e "/dev/$1" >/dev/null 2>&1; }
 macos_bootflag() { printf 'f %s\nw\ny\nq\n' "$2" | priv fdisk -e "/dev/$1" >/dev/null 2>&1; }
 macos_eject()    { diskutil eject "/dev/$1"; }
+# The r-device: unbuffered, and the only one dd may write sector 0 of while
+# diskutil still holds the disk.
+macos_biosboot() { shared_biosboot "/dev/r$1" "$2"; }
 
 # CRawDiskImage: a bare sector image with no header, which is what a card is
 # and what QEMU expects back. Without it hdiutil looks for a UDIF structure and
@@ -293,6 +351,7 @@ linux_partition() {
 
 linux_type()     { priv sfdisk --quiet --part-type "/dev/$1" "$2" "$3" >/dev/null 2>&1; }
 linux_bootflag() { priv sfdisk --quiet --activate "/dev/$1" "$2" >/dev/null 2>&1; }
+linux_biosboot() { shared_biosboot "/dev/$1" "$2"; }
 
 linux_eject() {
     sync 2>/dev/null || true
