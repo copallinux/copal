@@ -338,7 +338,9 @@ linux_mount() {
         # owned mount is tried first and a plain one if it is refused. Tried
         # rather than asked: lsblk reports no FSTYPE to a non-root user on a
         # system without udev (Alpine with mdev), which is where this runs.
-        priv mount -o "uid=$(id -u),gid=$(id -g)" "/dev/$_p" "$_m" 2>/dev/null \
+        # COPAL_OWNER (uid:gid) when copal-prep.sh runs this through doas.
+        _own="${COPAL_OWNER:-$(id -u):$(id -g)}"
+        priv mount -o "uid=${_own%%:*},gid=${_own##*:}" "/dev/$_p" "$_m" 2>/dev/null \
             || priv mount "/dev/$_p" "$_m" \
             || die "could not mount /dev/$_p at $_m"
     fi

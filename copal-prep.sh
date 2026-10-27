@@ -85,7 +85,24 @@ disk() {
         printf '       Cards are written through tools/copal-disk.sh. This\n' >&2
         printf '       checkout does not have it.\n' >&2
         exit 1; }
-    sh "$DISKSH" "$@"
+    # ON LINUX, ONE PASSWORD, NOT ONE A STEP. The disk layer asks doas for
+    # root inside each verb, and OpenDoas remembers a password ('persist')
+    # per PARENT process, not per terminal: every verb is a new sh, so every
+    # doas inside it asked again -- about ten times for one card
+    # (saskatchewan, 27 October). Run the whole verb through doas from here
+    # instead: its parent is this script, the same for the whole build, so
+    # persist covers them all. Inside it runs as root, so who is building and
+    # where their mounts go are handed in (COPAL_OWNER for the FAT mount's
+    # owner, COPAL_MOUNT_ROOT for ~/.copal/mnt), or the stick would be
+    # mounted root's, under /root. macOS is unchanged: sudo remembers per
+    # terminal, so it asks once there already.
+    if [ "$(uname -s)" = Linux ] && [ "$(id -u)" != 0 ] && command -v doas >/dev/null 2>&1; then
+        doas env COPAL_OWNER="$(id -u):$(id -g)" \
+            COPAL_MOUNT_ROOT="${COPAL_MOUNT_ROOT:-$HOME/.copal/mnt}" \
+            sh "$DISKSH" "$@"
+    else
+        sh "$DISKSH" "$@"
+    fi
 }
 
 BOOT_LABEL="COPALBOOT"

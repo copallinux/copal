@@ -791,6 +791,20 @@ write-protect switch and otherwise to use another stick. Checked with an image
 attached read-only (`read_only=Yes`) and writable (`No`), and in the
 self-test with a fixture of the worn stick (66 checks).
 
+**9. Writing a card from Linux, the first time (saskatchewan).** Two things
+the Mac had never shown. *The FAT partition was root's:* the disk layer
+mounted it as root, FAT keeps no owners, and the build (run as the person)
+was refused when it copied the payload, twice leaving a stick partitioned
+and empty. It is now mounted `uid=`/`gid=` of the person, tried first and
+a plain mount if the filesystem refuses (on Alpine with mdev, `lsblk` shows
+a non-root user no FSTYPE to decide by). *The password, about ten times:*
+OpenDoas remembers a password (`persist`, which Copal sets for `:wheel`)
+per parent process, not per terminal, and every disk step was a new `sh`.
+The build now runs each step through `doas` from its own process, the same
+for the whole build, so one password covers them; who is building and
+where their mounts go are handed in (`COPAL_OWNER`, `COPAL_MOUNT_ROOT`).
+The Mac is unchanged: `sudo` remembers per terminal there.
+
 ## XI. Practice: what this work did, and should keep doing
 
 These are the IEEE habits the work followed, and the places it fell short of
