@@ -124,7 +124,7 @@ default), put partition 1 at sector 2048, leaving 2047 free sectors.
 | kernel sector | `boot.img` 0x5C, 8 bytes | 1 | load `core.img` from sector 1 |
 | boot drive | `boot.img` 0x64 | 0xFF | use the drive the BIOS booted from |
 | drive check | `boot.img` 0x66, 2 bytes | `EB 05` (a jump) | `grub-bios-setup` writes `90 90` here for a hard disk |
-| blocklist | `core.img` bytes 500 to 511 | start 2, length 298, segment 0x0820 | the rest of `core.img` is sectors 2 to 299 |
+| blocklist | `core.img` bytes 500 to 511 | start 2, length 301, segment 0x0820 | the rest of `core.img` is sectors 2 to 302 |
 
 `grub-mkimage` already ends the first sector of `core.img` with the blocklist
 for "embedded at sector 1". So the only patch `grub-bios-setup` would make is
@@ -140,7 +140,7 @@ signature segment's complaint is harmless), and `grub-mkimage` runs from the
 unpacked tree (`ldd` showed its libraries already present). Every module
 `grub.cfg` needs is built into `core.img` (`biosdisk part_msdos fat normal
 linux echo test search search_label search_fs_uuid configfile ls minicmd cat
-halt reboot`, 152,900 bytes, 299 sectors), because the card carries no
+halt reboot`, 152,900 bytes, 299 sectors; with `linux16` and `search_fs_file` added for the network boot entry, 154,511 bytes, 302 sectors), because the card carries no
 `i386-pc/` module directory. `tools/grub-bios-build.sh` does all of this and
 checks the two facts above, so a GRUB that ever changes them fails at build
 time instead of at a black screen.
@@ -311,7 +311,7 @@ reads of a real disk need sudo (`fdisk /dev/disk4` alone answers
 | --- | --- | --- | --- |
 | partition 1 active, at 2048 | `sudo fdisk /dev/disk4 \| sed -n 6p` | `*1: 0B ... [      2048 - ...] Win95 FAT-32` | the `*` is set only by `biosboot` (or `bootflag`); 2048 leaves room for GRUB |
 | GRUB's boot code in sector 0 | `sudo dd if=/dev/rdisk4 bs=512 count=1 2>/dev/null \| od -An -tx1 -j 92 -N 12` | `01 00 00 00 00 00 00 00 ff fa 90 90` | `01`: load the core from sector 1; `ff`: use the BIOS's drive; `90 90`: the drive-check patch |
-| GRUB's core after it | `sudo dd if=/dev/rdisk4 bs=512 skip=1 count=299 2>/dev/null \| head -c 152900 \| cmp - vendor/grub-i386-pc/core.img && echo core ok` | `core ok` | sectors 1 to 299 hold exactly the built `core.img` |
+| GRUB's core after it | `sudo dd if=/dev/rdisk4 bs=512 skip=1 count=302 2>/dev/null \| head -c 154511 \| cmp - vendor/grub-i386-pc/core.img && echo core ok` (the sizes of the current `core.img`; `biosboot-check` works them out itself) | `core ok` | sectors 1 to 302 hold exactly the built `core.img` |
 
 A sector 0 with no GRUB code reads all zeros in the second check (a fresh
 `diskutil` MBR) or other bytes (another boot loader). Then `diskutil eject
@@ -495,6 +495,53 @@ to previous menu". The UEFI GRUB the cards carry has `search`,
 `search_fs_file` and `configfile` (read from the binary). Not yet tested: the
 reset itself, which runs at the end of a real stage 3.
 
+### Fallbacks from the boot menu: network boot and a rescue system
+
+Paul asked for fallback options in the boot menus: a way to format and
+manage disks, installers for other systems, ideally over the network, and a
+local copy for when there is no stick. The first two, built here:
+
+**1. Network boot, netboot.xyz 3.0.3** (Apache-2.0), on every PC stick and
+copied to every installed disk. One entry, "Network boot: netboot.xyz
+(Alpine, BSD, Clonezilla, GParted ...)", starts iPXE, which takes an address
+by DHCP and downloads netboot.xyz's menu: Linux and BSD network installs,
+live CDs (Clonezilla, GParted, SystemRescue), utilities, an iPXE shell.
+
+| Firmware | How GRUB starts it | What that needed |
+| --- | --- | --- |
+| legacy BIOS | `linux16 /boot/netboot/netboot.xyz.lkrn` | `linux16` (and `search_fs_file`) built into `vendor/grub-i386-pc/core.img`, rebuilt by `tools/grub-bios-build.sh`: 154,511 bytes, 302 sectors |
+| UEFI | `insmod chain; chainloader /boot/netboot/netboot.xyz.efi` | Alpine's UEFI GRUB has no `chainloader` built in but loads modules from `$prefix/x86_64-efi/`; `tools/grub-efi-mods-build.sh` takes `chain.mod` and its six dependencies from the same GRUB (Alpine `grub-efi` 2.14-r0; the image's own strings name grub-2.14) into `vendor/grub-x86_64-efi/`, and the card carries them in `boot/grub/x86_64-efi/`. The UEFI boot loader itself is unchanged |
+
+The two files are downloaded at build time, cached, and checked against the
+sums the release publishes (pinned in `copal-prep.sh`); on a mismatch or no
+network the card is written without the entry, and the build says so.
+
+**2. A rescue system on the installed disk.** Stage 3 already copies the
+stick's boot partition, live system included, onto the disk's. The disk's
+menu now has "Copal rescue, from this disk (live, no saved settings)": that
+live system with `apkovl=none`. In Alpine's initramfs (`prepare_apkovl`) a
+value that is not `device:path` is taken as the overlay's path, and a path
+that does not exist means no overlay, so the rescue boots a clean Alpine in
+RAM, with root and no password at the console, whatever state the
+installed system is in.
+
+**The build's verifier caught the first card.** It reads every kernel named
+in `grub.cfg` and checks it is on the card; `linux16 /boot/...` matched its
+pattern for `linux` and read as a kernel called "16", and the card was
+refused, correctly. The pattern now requires a space after the command and
+takes `linux`, `linux16` and `chainloader` (with `sed -E`: macOS's `sed` has
+no `\|` in basic expressions, and this check runs on the Mac).
+
+**Tested in QEMU:**
+
+| Test | Result |
+| --- | --- |
+| SeaBIOS, the stick's netboot entry, QEMU's user network | the netboot.xyz 3.0.3 menu, "next-server: 10.0.2.2", signature checks enabled |
+| EDK2 (UEFI), the stick's default entry | Copal's login prompt with the first-login message; `efivarfs` mounted: the UEFI path as before |
+| SeaBIOS, the stick's live system with `apkovl=none` | "Welcome to Alpine Linux 3.24": the starter overlay ignored, as the rescue entry needs |
+| EDK2, the netboot entry | UEFI_NETBOOT_RESULT |
+| the build's verifier | `grub.cfg -> /boot/netboot/netboot.xyz.efi`, `.lkrn`, both kernels ok; legacy BIOS read back ok |
+
 ## IX. One stick, two firmwares: the layout
 
 ### A. The concept
@@ -524,9 +571,9 @@ from the menu on, the two boots are one.
 
  sectors 1 - 2047  (the "MBR gap": belongs to no partition)
  +-----------------------------------------+------------------------------+
- | GRUB core.img, sectors 1-299            | unused, 300-2047             |
+ | GRUB core.img, sectors 1-302            | unused, 303-2047             |
  |  first sector ends in a blocklist:      |                              |
- |  "the rest of me is sectors 2-299"      |                              |
+ |  "the rest of me is sectors 2-302"      |                              |
  |  prefix (,msdos1)/boot/grub             |                              |
  +-----------------------------------------+------------------------------+
    written by biosboot
@@ -550,7 +597,7 @@ flowchart TD
     FW -- UEFI --> U1["open the FAT partition<br/>run \EFI\BOOT\BOOTX64.EFI"]
     FW -- legacy BIOS --> B1["load sector 0<br/>run boot.img, 440 bytes"]
     B1 --> B2["boot.img loads core.img<br/>from sector 1"]
-    B2 --> B3["core.img loads the rest of itself<br/>sectors 2 to 299, by its blocklist"]
+    B2 --> B3["core.img loads the rest of itself<br/>sectors 2 to 302, by its blocklist"]
     B3 --> G["GRUB reads (,msdos1)/boot/grub/grub.cfg"]
     U1 --> G
     G --> K["menu, then vmlinuz-lts + initramfs-lts"]
@@ -568,10 +615,10 @@ flowchart TD
    active flag.
 3. **The gap is free by convention.** Both `diskutil` and `sfdisk` start
    partition 1 at sector 2048 (1 MiB, for alignment), leaving 2047 sectors no
-   partition owns. `core.img` needs 299 of them. `biosboot` checks the start on
+   partition owns. `core.img` needs 302 of them. `biosboot` checks the start on
    every disk and refuses if it is smaller.
 4. **The bytes are position-fixed.** `boot.img` loads from sector 1, and
-   `core.img`'s blocklist says sectors 2 to 299, whatever the disk; its
+   `core.img`'s blocklist says sectors 2 to 302, whatever the disk; its
    prefix names partition 1 of the boot disk, not a UUID. So the same two
    files are right for every Copal stick and every disk stage 3 makes, and
    writing them needs only `dd`.

@@ -1,7 +1,7 @@
 GRUB 2.14-r0 (Alpine packages grub and grub-bios, 3.24.3 x86_64),
 built by tools/grub-bios-build.sh on 2026-10-27.
 grub-mkimage -O i386-pc -p '(,msdos1)/boot/grub'
-  biosdisk part_msdos fat normal linux echo test search search_label search_fs_uuid configfile ls minicmd cat halt reboot
+  biosdisk part_msdos fat normal linux linux16 echo test search search_label search_fs_uuid search_fs_file configfile ls minicmd cat halt reboot
 
 GRUB is free software under the GNU General Public License, version 3 or
 later. Its corresponding source is Alpine's: the aports recipe

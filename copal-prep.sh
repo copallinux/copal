@@ -2222,6 +2222,50 @@ if [ "$PLATFORM" = pc ] && [ -f "$BIOSBOOT_DIR/core.img" ]; then
     cp "$BIOSBOOT_DIR/boot.img" "$BIOSBOOT_DIR/core.img" "$MNT/boot/grub/bios/"
 fi
 
+# NETWORK BOOT: netboot.xyz, a 400 kB to 1.2 MB iPXE build that fetches a menu
+# of installers and live systems over the network -- Alpine, Debian, FreeBSD,
+# OpenBSD, Clonezilla, GParted, SystemRescue and more. The fallback for
+# anything the card cannot do itself: format a disk, image one, or install
+# something else. Apache-2.0. Pinned by version and by the sums its release
+# publishes (netboot.xyz-sha256-checksums.txt, 3.0.3), cached, and refused on
+# a mismatch: then the card is written without the entry, and says so.
+#
+#   netboot.xyz.lkrn  for a BIOS: GRUB starts it with linux16 (built into
+#                     vendor/grub-i386-pc's core.img for this)
+#   netboot.xyz.efi   for UEFI: GRUB starts it with chainloader, from
+#                     chain.mod (vendor/grub-x86_64-efi, loaded by the entry;
+#                     the UEFI GRUB itself is Alpine's, unchanged)
+NETBOOT_VER=3.0.3
+NETBOOT_URL="https://github.com/netbootxyz/netboot.xyz/releases/download/$NETBOOT_VER"
+NETBOOT_SUMS='b8934c4f4a651959915123edfe57436faf79a0a2f38c88c3bc38ed6930b165d9  netboot.xyz.lkrn
+56bb21e9f6d79eadb947e7031a088c9afcc48aa1eb99b2502d161f0b1c586a82  netboot.xyz.efi'
+NETBOOT_OK=0
+if [ "$PLATFORM" = pc ] && { [ "$ARCH" = x86_64 ] || [ "$ARCH" = x86 ]; }; then
+    _nb="$CACHEDIR/netboot.xyz-$NETBOOT_VER"
+    mkdir -p "$_nb"
+    printf '%s\n' "$NETBOOT_SUMS" > "$_nb/SHA256SUMS"
+    if ! (cd "$_nb" && disk sha256-check SHA256SUMS >/dev/null 2>&1); then
+        info "Downloading netboot.xyz $NETBOOT_VER (the network boot entry)..."
+        for _f in netboot.xyz.lkrn netboot.xyz.efi; do
+            curl -fsSL -o "$_nb/$_f" "$NETBOOT_URL/$_f" || warn "could not download $_f"
+        done
+    fi
+    if (cd "$_nb" && disk sha256-check SHA256SUMS >/dev/null 2>&1); then
+        mkdir -p "$MNT/boot/netboot"
+        cp "$_nb/netboot.xyz.lkrn" "$_nb/netboot.xyz.efi" "$MNT/boot/netboot/"
+        _em="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/vendor/grub-x86_64-efi"
+        if [ -f "$_em/chain.mod" ]; then
+            mkdir -p "$MNT/boot/grub/x86_64-efi"
+            cp "$_em"/*.mod "$MNT/boot/grub/x86_64-efi/"
+        fi
+        NETBOOT_OK=1
+        info "netboot.xyz $NETBOOT_VER on the card (boot/netboot/), sums checked"
+    else
+        rm -f "$_nb/netboot.xyz.lkrn" "$_nb/netboot.xyz.efi"
+        warn "netboot.xyz did not download or did not match its published sums -- this card has no network boot entry"
+    fi
+fi
+
 # THE FIRST LOGIN'S MESSAGE, and every login's until the install is done. A
 # fresh card has no saved configuration, so a stock Alpine boots and its login
 # says only "Welcome to Alpine!". The message rides in a starter overlay,
@@ -2454,6 +2498,22 @@ menuentry "Copal installed on this computer's disk" {
     fi
 }
 GRUBCFG
+if [ "$NETBOOT_OK" = 1 ]; then
+    cat >> "$MNT/boot/grub/grub.cfg" <<'GRUBCFG'
+
+# Tools and rescue, over the network: netboot.xyz's menu of installers and
+# live systems (Alpine, Debian, FreeBSD, OpenBSD, Clonezilla, GParted, ...).
+# Needs a wired network with DHCP. Secure Boot must be off, as for Copal.
+menuentry "Network boot: netboot.xyz (Alpine, BSD, Clonezilla, GParted ...)" {
+    if [ "$grub_platform" = efi ]; then
+        insmod chain
+        chainloader /boot/netboot/netboot.xyz.efi
+    else
+        linux16 /boot/netboot/netboot.xyz.lkrn
+    fi
+}
+GRUBCFG
+fi
 
 # The virt entry only where that flavour exists, which is not everywhere.
 #
@@ -22412,7 +22472,30 @@ menuentry "Copal live, from a USB stick (if one is in)" {
         echo "No Copal USB stick found."
     fi
 }
+
+# The local fallback: the stick's live system, copied onto this disk's boot
+# partition by stage 3, booted with no saved settings (apkovl=none names no
+# file, so the initramfs loads no overlay): a clean Alpine in RAM, root with
+# no password at this console, for repairing this disk without the stick.
+menuentry "Copal rescue, from this disk (live, no saved settings)" {
+    linux /boot/vmlinuz-lts modules=loop,squashfs,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=tmpfs apkovl=none console=tty0
+    initrd /boot/initramfs-lts
+}
 EOF
+        # The network boot, if the stick carried it (stage 3 copied it here).
+        if [ -f /mnt/boot/boot/netboot/netboot.xyz.lkrn ]; then
+            cat >> "$BOOTCFG" <<'EOF'
+
+menuentry "Network boot: netboot.xyz (Alpine, BSD, Clonezilla, GParted ...)" {
+    if [ "$grub_platform" = efi ]; then
+        insmod chain
+        chainloader /boot/netboot/netboot.xyz.efi
+    else
+        linux16 /boot/netboot/netboot.xyz.lkrn
+    fi
+}
+EOF
+        fi
         note "kernel  /$KPATH"
         note "initrd  /$IPATH"
         note "root    $_root"
@@ -38004,7 +38087,10 @@ if [ "$PLATFORM" = pc ]; then
         MISSING=1
     fi
     # shellcheck disable=SC2013  # kernel paths from grub.cfg, one word each
-    for _k in $(sed -n 's/^[[:space:]]*linux[[:space:]]*\([^ ]*\).*/\1/p' "$MNT/boot/grub/grub.cfg" 2>/dev/null | sort -u); do
+    # linux, linux16 and chainloader each name a file; the space after the
+    # command is required, or "linux16 /boot/x" reads as a kernel called "16"
+    # (which is how the netboot entry was first refused, correctly).
+    for _k in $(sed -nE 's/^[[:space:]]*(linux|linux16|chainloader)[[:space:]]+([^ ]*).*/\2/p' "$MNT/boot/grub/grub.cfg" 2>/dev/null | sort -u); do
         if [ -e "$MNT$_k" ]; then
             printf '    ok      grub.cfg -> %s\n' "$_k"
         else

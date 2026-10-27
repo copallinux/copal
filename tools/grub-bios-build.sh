@@ -38,8 +38,9 @@
 set -eu
 
 OUT="${1:-vendor/grub-i386-pc}"
-MODULES='biosdisk part_msdos fat normal linux echo test search search_label
-search_fs_uuid configfile ls minicmd cat halt reboot'
+# linux16: the network boot entry starts netboot.xyz's .lkrn with it.
+MODULES='biosdisk part_msdos fat normal linux linux16 echo test search search_label
+search_fs_uuid search_fs_file configfile ls minicmd cat halt reboot'
 
 command -v apk >/dev/null 2>&1 || { echo "grub-bios-build: needs Alpine (apk)" >&2; exit 2; }
 

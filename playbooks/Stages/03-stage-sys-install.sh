@@ -267,7 +267,30 @@ menuentry "Copal live, from a USB stick (if one is in)" {
         echo "No Copal USB stick found."
     fi
 }
+
+# The local fallback: the stick's live system, copied onto this disk's boot
+# partition by stage 3, booted with no saved settings (apkovl=none names no
+# file, so the initramfs loads no overlay): a clean Alpine in RAM, root with
+# no password at this console, for repairing this disk without the stick.
+menuentry "Copal rescue, from this disk (live, no saved settings)" {
+    linux /boot/vmlinuz-lts modules=loop,squashfs,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=tmpfs apkovl=none console=tty0
+    initrd /boot/initramfs-lts
+}
 EOF
+        # The network boot, if the stick carried it (stage 3 copied it here).
+        if [ -f /mnt/boot/boot/netboot/netboot.xyz.lkrn ]; then
+            cat >> "$BOOTCFG" <<'EOF'
+
+menuentry "Network boot: netboot.xyz (Alpine, BSD, Clonezilla, GParted ...)" {
+    if [ "$grub_platform" = efi ]; then
+        insmod chain
+        chainloader /boot/netboot/netboot.xyz.efi
+    else
+        linux16 /boot/netboot/netboot.xyz.lkrn
+    fi
+}
+EOF
+        fi
         note "kernel  /$KPATH"
         note "initrd  /$IPATH"
         note "root    $_root"
