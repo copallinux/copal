@@ -2207,6 +2207,16 @@ ANSWERS
 # name a line, the same 300 random_hostname picks from.
 hostname_pool | tr -s ' \n' '\n\n' | grep -v '^$' > "$MNT/waters.txt"
 
+# GRUB's BIOS boot code, again, as files: stage 3 writes it to a PC's own disk
+# when that PC booted in legacy BIOS (with tools/copal-disk.sh, staged above).
+# The card's sector 0 already holds it; this is for the disk the install makes.
+# (Named again here: a --refresh skips the block that first set it.)
+BIOSBOOT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/vendor/grub-i386-pc"
+if [ "$PLATFORM" = pc ] && [ -f "$BIOSBOOT_DIR/core.img" ]; then
+    mkdir -p "$MNT/boot/grub/bios"
+    cp "$BIOSBOOT_DIR/boot.img" "$BIOSBOOT_DIR/core.img" "$MNT/boot/grub/bios/"
+fi
+
 # THE FIRST LOGIN'S MESSAGE, and every login's until the install is done. A
 # fresh card has no saved configuration, so a stock Alpine boots and its login
 # says only "Welcome to Alpine!". The message rides in a starter overlay,
@@ -2661,7 +2671,7 @@ info "Staging tools/ and themes/ on ${BOOT_LABEL}..."
 _here="$(cd "$(dirname "$0")" && pwd)"
 rm -rf "$MNT/tools" "$MNT/themes"
 mkdir -p "$MNT/tools" "$MNT/themes"
-for _t in copal-terminal-theme copal-theme; do
+for _t in copal-terminal-theme copal-theme copal-disk.sh; do
     if ! { [ -f "$_here/tools/$_t" ] && cp "$_here/tools/$_t" "$MNT/tools/"; }; then
         warn "tools/$_t is missing; the target will do without it"
     fi
@@ -5086,7 +5096,8 @@ MSG
         "$(disk_kind "$STICK_DISK")" "$(disk_model "$STICK_DISK")" "the medium Copal booted from"
     echo
     note "!! = part of a ZFS pool, RAID array, LVM, LUKS or Btrfs: erasing it breaks the set it belongs to"
-    note "firmware: $(firmware_mode). The boot loader (GRUB, \\EFI\\BOOT\\BOOT*.EFI) goes on p1 of the"
+    if [ "$(firmware_mode)" = UEFI ]; then _bl='GRUB, \EFI\BOOT\BOOT*.EFI on p1'; else _bl='GRUB, in sector 0 of an MBR disk'; fi
+    note "firmware: $(firmware_mode). The boot loader ($_bl) goes on the"
     note "disk chosen here, so the PC needs that disk -- and only that disk -- to start."
     [ -n "$_rec" ] && note "recommended: ${_rec%% *} (${_rec#* }) -- the fastest unmarked disk"
 
@@ -5256,10 +5267,21 @@ wait_for_dev() {  # <device> -- mdev makes the node; give it a moment
     [ -b "$1" ]
 }
 
-prepare_root_disk() {  # <disk> -> TGT_P1 (EFI, 2 GiB), TGT_P2 (ext4, the rest)
+# On a machine booted in legacy BIOS the disk is MBR, not GPT: a BIOS runs
+# sector 0, and the boot code Copal writes there (stage 3, copal-disk.sh
+# biosboot) needs the sectors GPT keeps its table in. p1 is FAT32 (0x0C) and
+# active, at 2048 as on the card, so the card's own GRUB core finds its
+# grub.cfg at (,msdos1)/boot/grub on this disk too. A UEFI machine gets GPT,
+# exactly as before.
+prepare_root_disk() {  # <disk> -> TGT_P1 (boot, 2 GiB), TGT_P2 (ext4, the rest)
     wipe_disk "$1" || return 1
-    printf 'label: gpt\nsize=2GiB, type=U, name="COPALBOOT"\ntype=L, name="COPALROOT"\n' \
-        | sfdisk -q --wipe always "/dev/$1" || return 1
+    if [ "$(firmware_mode)" = UEFI ]; then
+        printf 'label: gpt\nsize=2GiB, type=U, name="COPALBOOT"\ntype=L, name="COPALROOT"\n' \
+            | sfdisk -q --wipe always "/dev/$1" || return 1
+    else
+        printf 'label: dos\nsize=2GiB, type=c, bootable\ntype=83\n' \
+            | sfdisk -q --wipe always "/dev/$1" || return 1
+    fi
     TGT_P1=$(part_of "$1" 1); TGT_P2=$(part_of "$1" 2)
     wait_for_dev "$TGT_P1" && wait_for_dev "$TGT_P2" || return 1
     mkfs.vfat -F 32 -n COPALBOOT "$TGT_P1" >/dev/null || return 1
@@ -21999,6 +22021,12 @@ stage_base_config() {
     # after having done all of its real work.
     if is_diskless; then
         say "Committing the configuration to the boot partition"
+        # The starter's /etc/issue says "Not set up yet"; from here it is set
+        # up, so the login prompt says only what it is (seen on a legacy PC,
+        # 27 October, still saying it after the install).
+        if grep -q 'Not set up yet' /etc/issue 2>/dev/null; then
+            printf 'Copal Linux on Alpine \\r (\\l)\n\n' > /etc/issue
+        fi
         # The starter overlay goes first: with two apkovls on one medium the
         # initramfs loads only the first it finds, which could be the starter,
         # and this configuration would be passed over at the next boot. What
@@ -22159,7 +22187,11 @@ MSG
         ask "Type yes to proceed:"
         [ "$REPLY" = "yes" ] || { note "Aborted; nothing was erased."; return 0; }
     else
-        say "Partitioning /dev/$TGT_DISK: 2 GiB EFI, the rest ext4"
+        if [ "$(firmware_mode)" = UEFI ]; then
+            say "Partitioning /dev/$TGT_DISK: GPT, 2 GiB EFI, the rest ext4"
+        else
+            say "Partitioning /dev/$TGT_DISK: MBR (legacy BIOS), 2 GiB FAT32 boot, the rest ext4"
+        fi
         prepare_root_disk "$TGT_DISK" \
             || die "could not partition /dev/$TGT_DISK -- nothing else was changed; the stick still boots as before"
         note "boot  $TGT_P1 (FAT32, COPALBOOT)"
@@ -22352,6 +22384,19 @@ EOF
         note "kernel  /$KPATH"
         note "initrd  /$IPATH"
         note "root    $_root"
+        # A PC that booted in legacy BIOS cannot run \EFI\BOOT\: its disk was
+        # made MBR (prepare_root_disk), and here it gets the same GRUB boot
+        # code as the card, from the card's copy now on the new p1. That GRUB
+        # reads (,msdos1)/boot/grub/grub.cfg, the file rewritten just above.
+        # UEFI machines are untouched.
+        if [ -n "$TGT_DISK" ] && [ "$(firmware_mode)" != UEFI ]; then
+            say "Writing GRUB's legacy-BIOS boot code to /dev/$TGT_DISK"
+            [ -f /mnt/boot/boot/grub/bios/core.img ] && [ -f "$BOOT/tools/copal-disk.sh" ] \
+                || die "this card has no BIOS boot code for the disk (a card written before 27 October) -- rewrite it with copal-prep.sh; the stick still boots as before"
+            sh "$BOOT/tools/copal-disk.sh" biosboot "$TGT_DISK" /mnt/boot/boot/grub/bios \
+                || die "could not write the BIOS boot code to /dev/$TGT_DISK -- it would not start; the stick still boots as before"
+            note "sector 0 and the gap before p1 of /dev/$TGT_DISK: GRUB, p1 active"
+        fi
     fi
 
     # ---- flash-friendly fstab ---------------------------------------------

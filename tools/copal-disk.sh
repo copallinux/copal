@@ -128,14 +128,14 @@ shared_biosboot() {  # <raw device> <dir> <disk name, for unmount-all>
     for _o in 462 478 494; do
         printf '\000' | dd of="$_w/new" bs=1 seek="$_o" conv=notrunc 2>/dev/null
     done
-    # EVERY TRY UNMOUNTS THE WHOLE DISK FIRST. macOS refuses a write to
+    # ON macOS EVERY TRY UNMOUNTS THE WHOLE DISK FIRST. macOS refuses a write to
     # sector 0 -- the partition table -- while any partition of the disk is
     # mounted, and Disk Arbitration (FSKit, for FAT, since macOS 15) mounts
     # both partitions again within seconds of being told to unmount them. On
     # a real stick on 27 October every one of five tries was refused this
     # way, with both volumes back under /Volumes; on an attached image the
     # first try was. So: unmount, write at once, five tries a second apart.
-    _try() { _t=0; until "${BACKEND}_unmount_all" "$_bdisk" && "$@"; do
+    _try() { _t=0; until "${BACKEND}_biosboot_quiesce" "$_bdisk" && "$@"; do
         _t=$((_t+1)); [ "$_t" -lt 5 ] || return 1; sleep 1; done; }
     _try _dd "$1" if="$_w/core" of="$1" bs=512 seek=1 conv=notrunc \
         || { _e=$(cat "$_w/err"); rm -rf "$_w"; die "could not write core.img to $1: $_e"; }
@@ -220,6 +220,7 @@ macos_eject()    { diskutil eject "/dev/$1"; }
 # The r-device: unbuffered, and the only one dd may write sector 0 of while
 # diskutil still holds the disk.
 macos_biosboot() { shared_biosboot "/dev/r$1" "$2" "$1"; }
+macos_biosboot_quiesce() { macos_unmount_all "$1"; }
 
 # CRawDiskImage: a bare sector image with no header, which is what a card is
 # and what QEMU expects back. Without it hdiutil looks for a UDIF structure and
@@ -364,6 +365,9 @@ linux_partition() {
 linux_type()     { priv sfdisk --quiet --part-type "/dev/$1" "$2" "$3" >/dev/null 2>&1; }
 linux_bootflag() { priv sfdisk --quiet --activate "/dev/$1" "$2" >/dev/null 2>&1; }
 linux_biosboot() { shared_biosboot "/dev/$1" "$2" "$1"; }
+# Linux writes sector 0 of a disk whose partitions are mounted, and stage 3
+# needs exactly that: the new disk is mounted at /mnt when its boot code goes on.
+linux_biosboot_quiesce() { :; }
 
 linux_eject() {
     sync 2>/dev/null || true

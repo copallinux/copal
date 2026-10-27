@@ -348,7 +348,68 @@ for a BIOS machine (section V), it will run on Linux and can use
 `grub-install --target=i386-pc` directly: MBR for a BIOS-only machine, or GPT
 with a `bios_grub` partition.
 
-## VIII. Trying it on the target PC
+## VIII. The first test on the legacy PC, and stage 3 for a BIOS machine
+
+**What happened (27 October, Paul's legacy PC, the stick from section VI).**
+The stick booted under the BIOS, the hostname was drawn (`frome`, one of the
+298), stage 1 ran, and the install was pointed at the PC's own disk (`sda`).
+Stage 3 rebooted, and the PC said "No bootable device -- insert boot disk and
+press any key". It then fell back to the stick, which booted, and every login
+(root and `user`) ended in `login: can't execute '/bin/bash': No such file or
+directory`, back at the prompt, which still said "Not set up yet".
+
+**Three causes.**
+
+1. **Stage 3 wrote a UEFI-only disk.** `prepare_root_disk` laid out GPT with
+   an EFI partition and GRUB at `\EFI\BOOT\`; a BIOS runs sector 0, which
+   held nothing. This was open item 1 of this report, met on the first try.
+2. **A diskless boot after stage 1 cannot log in.** Stage 1 switches root and
+   the user to `/bin/bash`, which exists only as a package installed into RAM.
+   A diskless boot reinstalls the saved package list from the boot medium,
+   and bash was not among what it could reach (the apk cache is on the
+   stick's p2, which the initramfs does not mount), so `/etc/passwd` named a
+   shell that was not there. The UEFI path never boots diskless after stage
+   1 (stage 3 reboots into the installed disk, which has bash), which is why
+   it has not been seen. Not changed here, so as not to change the UEFI path;
+   open item 5.
+3. **`/etc/issue` was never put back.** The starter's "Not set up yet" was
+   committed by stage 1 with the rest of `/etc`.
+
+**The fixes, each only on a machine booted in legacy BIOS** (`firmware_mode`
+reads `/sys/firmware/efi`); a UEFI machine takes exactly the path it took
+before:
+
+| Where | UEFI (unchanged) | Legacy BIOS (new) |
+| --- | --- | --- |
+| `prepare_root_disk` | GPT: 2 GiB EFI, the rest ext4 | MBR: 2 GiB FAT32 (`0x0C`), active, at 2048; the rest ext4 (`0x83`) |
+| stage 3, after `grub.cfg` | nothing more | `copal-disk.sh biosboot` writes the card's GRUB boot code to the new disk; dies, leaving the stick bootable, if it cannot |
+| the card | — | carries the boot code as files (`boot/grub/bios/`) and `tools/copal-disk.sh` |
+
+The same `core.img` serves the installed disk: its prefix is
+`(,msdos1)/boot/grub` on whichever disk the BIOS started, and stage 3 copies
+the stick's p1 onto the new p1 and rewrites `boot/grub/grub.cfg` there, so
+the BIOS-booted GRUB reads the installed system's menu.
+
+On Linux, `biosboot` writes sector 0 with the disk's partitions mounted
+(Linux allows it, and stage 3 has the new disk mounted at `/mnt`), so the
+unmount before each try is macOS's alone (`macos_biosboot_quiesce`).
+
+Stage 1 now writes a plain `/etc/issue` ("Copal Linux on Alpine \r (\l)")
+before its commit when the starter's is still there.
+
+**Tested on saskatchewan, under busybox `sh`** (what runs on the target):
+`sfdisk` with the BIOS script on a 3 GiB image gave `t.img1 * 2048 ... c W95
+FAT32 (LBA)` and `t.img2 ... 83 Linux`; `shared_biosboot` with the Linux
+backend wrote it, `od` read `01 00 00 00 00 00 00 00 ff fa 90 90`, `core.img`
+compared equal, and the partition table was unchanged. Not yet tested: a
+whole stage 3 on a BIOS machine, which is the next test on the PC.
+
+**To recover the PC as it is now.** The stick cannot log in (cause 2) and
+the disk will not start (cause 1). Rewrite the stick from this commit (`make
+sd-pc`) and run the install again, choosing `sda` as before; stage 3 wipes
+and lays out `sda` again, MBR this time.
+
+## IX. Trying it on the target PC
 
 1. `git pull`, then write the stick as before (`make sd-pc` or `./copal build
    pc`). The build log says "Writing GRUB's legacy-BIOS boot code".
@@ -365,10 +426,13 @@ If it stops before the GRUB menu, a photo of the screen says where: a blinking
 cursor means sector 0 ran but `core.img` did not load; "GRUB" and an error
 means `core.img` ran but could not read partition 1.
 
-## IX. Open items
+## X. Open items
 
-1. Stage 3 on a BIOS machine: MBR or `bios_grub`, and `grub-install
-   --target=i386-pc`.
+1. Stage 3 on a BIOS machine: done (section VIII); a whole install on the
+   PC still to confirm.
 2. A hybrid ISO for DVD and stick (`xorriso`).
 3. `shellcheck` over the changed scripts on a machine that has it.
 4. The first test on Paul's target PC.
+5. A diskless boot after stage 1 names `/bin/bash` as the login shell
+   without being able to install it (section VIII, cause 2): set bash only
+   once the root is persistent, or make the initramfs reach the apk cache.

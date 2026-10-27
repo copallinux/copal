@@ -66,7 +66,11 @@ MSG
         ask "Type yes to proceed:"
         [ "$REPLY" = "yes" ] || { note "Aborted; nothing was erased."; return 0; }
     else
-        say "Partitioning /dev/$TGT_DISK: 2 GiB EFI, the rest ext4"
+        if [ "$(firmware_mode)" = UEFI ]; then
+            say "Partitioning /dev/$TGT_DISK: GPT, 2 GiB EFI, the rest ext4"
+        else
+            say "Partitioning /dev/$TGT_DISK: MBR (legacy BIOS), 2 GiB FAT32 boot, the rest ext4"
+        fi
         prepare_root_disk "$TGT_DISK" \
             || die "could not partition /dev/$TGT_DISK -- nothing else was changed; the stick still boots as before"
         note "boot  $TGT_P1 (FAT32, COPALBOOT)"
@@ -259,6 +263,19 @@ EOF
         note "kernel  /$KPATH"
         note "initrd  /$IPATH"
         note "root    $_root"
+        # A PC that booted in legacy BIOS cannot run \EFI\BOOT\: its disk was
+        # made MBR (prepare_root_disk), and here it gets the same GRUB boot
+        # code as the card, from the card's copy now on the new p1. That GRUB
+        # reads (,msdos1)/boot/grub/grub.cfg, the file rewritten just above.
+        # UEFI machines are untouched.
+        if [ -n "$TGT_DISK" ] && [ "$(firmware_mode)" != UEFI ]; then
+            say "Writing GRUB's legacy-BIOS boot code to /dev/$TGT_DISK"
+            [ -f /mnt/boot/boot/grub/bios/core.img ] && [ -f "$BOOT/tools/copal-disk.sh" ] \
+                || die "this card has no BIOS boot code for the disk (a card written before 27 October) -- rewrite it with copal-prep.sh; the stick still boots as before"
+            sh "$BOOT/tools/copal-disk.sh" biosboot "$TGT_DISK" /mnt/boot/boot/grub/bios \
+                || die "could not write the BIOS boot code to /dev/$TGT_DISK -- it would not start; the stick still boots as before"
+            note "sector 0 and the gap before p1 of /dev/$TGT_DISK: GRUB, p1 active"
+        fi
     fi
 
     # ---- flash-friendly fstab ---------------------------------------------

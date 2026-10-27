@@ -136,6 +136,12 @@ stage_base_config() {
     # after having done all of its real work.
     if is_diskless; then
         say "Committing the configuration to the boot partition"
+        # The starter's /etc/issue says "Not set up yet"; from here it is set
+        # up, so the login prompt says only what it is (seen on a legacy PC,
+        # 27 October, still saying it after the install).
+        if grep -q 'Not set up yet' /etc/issue 2>/dev/null; then
+            printf 'Copal Linux on Alpine \\r (\\l)\n\n' > /etc/issue
+        fi
         # The starter overlay goes first: with two apkovls on one medium the
         # initramfs loads only the first it finds, which could be the starter,
         # and this configuration would be passed over at the next boot. What
