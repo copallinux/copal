@@ -113,6 +113,21 @@ disk() {
     fi
 }
 
+# disk_to VAR VERB ARGS...: a disk verb run in THIS process, its output put in
+# VAR. VAR=$(disk VERB) would run it in a subshell, and OpenDoas remembers a
+# password per parent process (its timestamp is /run/doas/PPID-...), so every
+# $(...) asked again: more prompts than ever on saskatchewan, 27 October.
+# The status is the verb's.
+disk_to() {
+    _dt_var=$1; shift
+    _dt_tmp=$(mktemp "${TMPDIR:-/tmp}/copal-disk.XXXXXX") || return 1
+    _dt_rc=0
+    disk "$@" > "$_dt_tmp" || _dt_rc=$?
+    printf -v "$_dt_var" '%s' "$(cat "$_dt_tmp")"
+    rm -f "$_dt_tmp"
+    return "$_dt_rc"
+}
+
 BOOT_LABEL="COPALBOOT"
 # WHY THE LABEL BEING A CONSTANT IS A HAZARD, and what is done about it.
 #
@@ -1722,7 +1737,7 @@ attach_image() {
     # Attached as a bare sector image -- no header, no UDIF, no partition
     # scanning skipped. Both backends die rather than return empty, so a
     # device name that arrives here is a device name.
-    IMAGE_DEV=$(disk image-attach "$IMAGE_PATH")
+    disk_to IMAGE_DEV image-attach "$IMAGE_PATH"
     DISK="${IMAGE_DEV#/dev/}"
     info "Attached: $IMAGE_DEV"
 }
@@ -1893,7 +1908,7 @@ DISK_FINGERPRINT="${MEDIANAME}|${DISK_BYTES}|$(get uuid)"
 # ---------------------------------------------------------------- format ---
 if [ "$REFRESH" -eq 1 ]; then
     # Refresh: mount the existing boot partition and leave everything else be.
-    MNT=$(disk mount "$DISK" 1) \
+    disk_to MNT mount "$DISK" 1 \
         || die "could not mount partition 1 of /dev/$DISK -- is this a card written by copal-prep.sh?"
     [ -d "$MNT" ] || die "could not mount partition 1 of /dev/$DISK at $MNT"
     assert_mount_is "$MNT" "$DISK"
@@ -2052,7 +2067,7 @@ sleep 2
 # the /Volumes/$BOOT_LABEL constant that used to be here could only ever be
 # right on one of the two hosts, and was quietly wrong on a Mac with two
 # builds running anyway.
-MNT=$(disk mount "$DISK" 1) \
+disk_to MNT mount "$DISK" 1 \
     || die "could not mount partition 1 of /dev/$DISK after formatting"
 [ -d "$MNT" ] || die "expected $MNT to be mounted after formatting"
 assert_mount_is "$MNT" "$DISK"
@@ -38389,7 +38404,7 @@ if [ "$PLATFORM" = pc ] && { [ "$ARCH" = x86_64 ] || [ "$ARCH" = x86 ]; } \
     else
         warn "the legacy-BIOS boot code is not on the card; writing it again"
         disk biosboot "$DISK" "$BIOSBOOT_DIR" || true
-        if _why=$(disk biosboot-check "$DISK" "$BIOSBOOT_DIR" 2>&1); then
+        if disk_to _why biosboot-check "$DISK" "$BIOSBOOT_DIR"; then
             printf '    ok      legacy BIOS: written on the second try\n'
         else
             BIOSBOOT_MISSING=1

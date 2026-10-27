@@ -187,6 +187,27 @@ A scan of the host-side build for other macOS-only commands (`sed -i ''`,
 `stat -f`, `diskutil`, `hdiutil`, `date -j`, `xattr`, ...) found only
 `bsdtar` for reading ISOs, which saskatchewan has (the Extract step passed).
 
+## VI-B. More passwords than ever: `$(...)` is a new parent
+
+After `36dece9` Paul typed the password more often, not less. Alpine's
+`doas` (OpenDoas 6.8.2) does support `persist`, and its strings show the key
+it remembers a password by: `/run/doas/%d-%d-%d-%llu-%d`, the parent's
+PID, session, tty, start time and user. `36dece9` ran every verb through
+`doas` from `copal-prep.sh`, but several were called as `VAR=$(disk ...)`
+(`mount`, twice; `image-attach`; the boot-code read-back), and a command
+substitution is a subshell: a new parent each time, so a new prompt each
+time, and more verbs than before went through `doas`. Two changes:
+
+- **Only device verbs through `doas`** (`a480dbc`, VI-A).
+- **`disk_to VAR VERB ...`**: the verb runs in the build's own process and
+  its output comes back through a temporary file, so the four that need
+  root and return output share the build's PID with the rest. Checked on
+  the Mac: an image build attached, mounted, wrote and read back the boot
+  code through it.
+
+What one run should now ask for: one password, again only if more than
+`persist`'s five minutes pass between device verbs.
+
 ## VII. Next
 
 Run 6 on saskatchewan. Expect one password and a whole card, with both
