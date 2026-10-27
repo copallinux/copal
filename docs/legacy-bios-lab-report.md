@@ -290,7 +290,65 @@ project would rather keep no GPL binaries, the alternative is to run
 already reads one `grub.cfg` for UEFI; a second boot loader with a second
 configuration is two menus to keep in step. GRUB for both keeps one.
 
-## VI. Trying it on the target PC
+## VI. Verifying a written stick, and adding the boot code to one
+
+A stick written before this change, or one whose sector-0 write was refused
+(section III.B.4), needs only the boot code, not a rewrite. From the
+repository, with the stick in (find its `diskN` with `diskutil list external
+physical`; on 27 October it was `disk4`, "MKNUFDVP64GB", partitions
+`COPALBOOT` and `COPALROOT`):
+
+```
+sh tools/copal-disk.sh biosboot disk4 vendor/grub-i386-pc
+```
+
+It asks for the sudo password unless sudo is cached, and prints nothing when
+it succeeds. Then three checks, each read without changing anything. Raw
+reads of a real disk need sudo (`fdisk /dev/disk4` alone answers
+"Permission denied"); an image file does not.
+
+| Check | Command | Expect | What it proves |
+| --- | --- | --- | --- |
+| partition 1 active, at 2048 | `sudo fdisk /dev/disk4 \| sed -n 6p` | `*1: 0B ... [      2048 - ...] Win95 FAT-32` | the `*` is set only by `biosboot` (or `bootflag`); 2048 leaves room for GRUB |
+| GRUB's boot code in sector 0 | `sudo dd if=/dev/rdisk4 bs=512 count=1 2>/dev/null \| od -An -tx1 -j 92 -N 12` | `01 00 00 00 00 00 00 00 ff fa 90 90` | `01`: load the core from sector 1; `ff`: use the BIOS's drive; `90 90`: the drive-check patch |
+| GRUB's core after it | `sudo dd if=/dev/rdisk4 bs=512 skip=1 count=299 2>/dev/null \| head -c 152900 \| cmp - vendor/grub-i386-pc/core.img && echo core ok` | `core ok` | sectors 1 to 299 hold exactly the built `core.img` |
+
+A sector 0 with no GRUB code reads all zeros in the second check (a fresh
+`diskutil` MBR) or other bytes (another boot loader). Then `diskutil eject
+disk4` before unplugging it.
+
+Confirmed on Paul's stick, 27 October: `biosboot` silent, then `*1: 0B ...
+[      2048 -    7812504] Win95 FAT-32`.
+
+## VII. MBR and GPT
+
+**The boot code is for MBR disks only, and `biosboot` refuses a GPT disk by
+name.** On GPT, sector 0 is only a protective MBR, one entry of type `0xEE`
+covering the disk, and sectors 1 to 33 hold the GPT header and partition
+table: exactly where `core.img` goes. Writing it there would destroy the
+partition table. `biosboot` reads the first entry's type and stops:
+"is a GPT disk; this boot code is for MBR disks only". Tested on a GPT image
+made by `diskutil partitionDisk ... GPT`: refused, exit 2, nothing written.
+(Before this check, the start-sector check already refused it, as "partition
+1 starts at sector 1", but did not say why.)
+
+BIOS boot from GPT is possible, and is what Linux installers do: a 1 MiB
+"BIOS boot partition" (type `21686148-6E49-6F68-744E-656564454649`) holds
+`core.img`, and `grub-install` writes its blocklist to point there. The
+images in `vendor/grub-i386-pc/` always load from sector 2, so they cannot.
+
+| Disk | UEFI | Legacy BIOS |
+| --- | --- | --- |
+| Copal card or stick (MBR, written by `copal-prep.sh`) | yes | yes, with `biosboot` |
+| GPT disk | yes | no: needs a `bios_grub` partition and `grub-install` on Linux |
+| a PC's own disk after stage 3 (GPT today) | yes | not yet (open item 1) |
+
+So every card Copal writes boots both ways. When stage 3 learns to install
+for a BIOS machine (section V), it will run on Linux and can use
+`grub-install --target=i386-pc` directly: MBR for a BIOS-only machine, or GPT
+with a `bios_grub` partition.
+
+## VIII. Trying it on the target PC
 
 1. `git pull`, then write the stick as before (`make sd-pc` or `./copal build
    pc`). The build log says "Writing GRUB's legacy-BIOS boot code".
@@ -307,7 +365,7 @@ If it stops before the GRUB menu, a photo of the screen says where: a blinking
 cursor means sector 0 ran but `core.img` did not load; "GRUB" and an error
 means `core.img` ran but could not read partition 1.
 
-## VII. Open items
+## IX. Open items
 
 1. Stage 3 on a BIOS machine: MBR or `bios_grub`, and `grub-install
    --target=i386-pc`.

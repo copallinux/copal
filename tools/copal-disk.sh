@@ -107,6 +107,12 @@ shared_biosboot() {  # <raw device> <dir> <disk name, for unmount-all>
     _rd "$1" "$_w/mbr" || { rm -rf "$_w"; die "could not read sector 0 of $1"; }
     [ "$(od -An -tx1 -j 510 -N 2 "$_w/mbr" | tr -d ' \n')" = 55aa ] \
         || { rm -rf "$_w"; die "$1 has no MBR (no 0x55AA) -- partition it first"; }
+    # GPT: sector 0 is only a protective MBR (one entry of type 0xEE) and
+    # sectors 1 to 33 hold the GPT itself, exactly where core.img would go.
+    # BIOS boot from GPT needs a bios_grub partition and grub-install aiming
+    # core.img at it, which these fixed images cannot do. Copal cards are MBR.
+    [ "$(od -An -tx1 -j 450 -N 1 "$_w/mbr" | tr -d ' \n')" != ee ] \
+        || { rm -rf "$_w"; die "$1 is a GPT disk; this boot code is for MBR disks only (a Copal card is MBR -- rewrite it with copal-prep.sh)"; }
     _p1=$(od -An -tu4 -j 454 -N 4 "$_w/mbr" | tr -d ' ')
     [ "$_p1" -gt "$_cs" ] \
         || { rm -rf "$_w"; die "partition 1 starts at sector $_p1; GRUB's core needs sectors 1 to $_cs free"; }
