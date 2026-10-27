@@ -2140,6 +2140,7 @@ bindings, the account model, the SD-card wear analysis — is in
 | `docs/interface-report.md` | Interface simplification for the technically capable user — the design position, IEEE format |
 | `docs/terminal-guide-lab-report.md` | ([on the site](https://copallinux.org/terminal-guide-lab-report.html)) Writing the Terminal Guide against a running machine: the template, the checker, screen automation and review, and the installer defects the writing found. IEEE format |
 | `docs/text-safety-lab-report.md` | A hostile-input review of ytq and Static Stream, Copal's shell scripts measured with shellcheck, and the standard both are held to. IEEE format |
+| `docs/console-wrong-screen-lab-report.md` | A two-GPU laptop whose console went to a VGA port with nothing on it, and finishing the install over SSH. IEEE format |
 | `docs/legacy-bios-lab-report.md` | Legacy BIOS boot written from a Mac (GRUB's boot code by `dd`), the hostname drawn at each install, and the first login's message. IEEE format |
 | `docs/system-hardening-lab-report.md` | Update and lock-down review of the bench: PHP, Node and Python against upstream advisories, sshd, every enabled and dormant service, an eighteen-step checklist and suggested removals. IEEE format |
 | `docs/FEATURE_GUIDE.md` | **A tour in pictures**: the process from the front door to the first login, each feature, why it exists and how it fits. Pictures in `docs/features/`, made by `tools/feature-guide.py` |
