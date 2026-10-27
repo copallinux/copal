@@ -37987,10 +37987,44 @@ echo
 info "Space used on boot partition:"
 df -h "$MNT" | tail -n1
 
+# LEGACY BIOS, READ BACK. The write in the boot-flag step can be refused
+# (macOS will not write sector 0 while the card's volumes are mounted), and a
+# refusal there is only a warning -- which on 27 October scrolled past and
+# left a stick that booted UEFI only. So it is read back here, written again
+# if it is not there, and said loudly if it still is not.
+BIOSBOOT_MISSING=0
+if [ "$PLATFORM" = pc ] && { [ "$ARCH" = x86_64 ] || [ "$ARCH" = x86 ]; } \
+   && [ -f "$BIOSBOOT_DIR/core.img" ]; then
+    info "Checking GRUB's legacy-BIOS boot code on the card..."
+    sync
+    if disk biosboot-check "$DISK" "$BIOSBOOT_DIR" >/dev/null 2>&1; then
+        printf '    ok      legacy BIOS: sector 0, p1 active, core.img\n'
+    else
+        warn "the legacy-BIOS boot code is not on the card; writing it again"
+        disk biosboot "$DISK" "$BIOSBOOT_DIR" || true
+        if _why=$(disk biosboot-check "$DISK" "$BIOSBOOT_DIR" 2>&1); then
+            printf '    ok      legacy BIOS: written on the second try\n'
+        else
+            BIOSBOOT_MISSING=1
+            printf '    MISSING legacy BIOS: %s\n' "$_why"
+        fi
+    fi
+fi
+
 info "Flushing writes (this can take a while)..."
 sync
 # 'eject' on an attached image detaches it, so there is no special case here.
 disk eject "$DISK"
+if [ "$BIOSBOOT_MISSING" -eq 1 ]; then
+    printf '\n'
+    warn "================================================================"
+    warn "THIS CARD BOOTS UEFI ONLY. The legacy-BIOS boot code could not be"
+    warn "written. Put the card back in and, from this folder, run:"
+    warn "    sh tools/copal-disk.sh biosboot $DISK vendor/grub-i386-pc"
+    warn "    sh tools/copal-disk.sh biosboot-check $DISK vendor/grub-i386-pc"
+    warn "(the disk name may differ: diskutil list external physical)"
+    warn "================================================================"
+fi
 
 # An image is finished at this point, and what you need next is the command to
 # boot it -- not two pages about SD card partitions. Print that instead and

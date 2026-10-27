@@ -409,6 +409,37 @@ the disk will not start (cause 1). Rewrite the stick from this commit (`make
 sd-pc`) and run the install again, choosing `sda` as before; stage 3 wipes
 and lays out `sda` again, MBR this time.
 
+### The rewrite that came out UEFI only
+
+The stick rewritten for the second try did not boot the legacy PC. `make
+sd-pc` had ended in `Unmount of disk4 failed: at least one volume could not be
+unmounted` and `make: *** [sd-pc] Error 1`, and its boot-flag step took 45
+seconds where it had taken 2. Something on the Mac held a file open on the new
+volumes (Spotlight indexing them, or a Finder window). A plain `diskutil
+unmountDisk` gives up then, so each of `biosboot`'s five writes to sector 0 was
+refused, and the build went on with one warning that scrolled past: a stick
+that boots UEFI only.
+
+Reproduced on an image, with both volumes mounted and `tail -f` holding a file
+on the boot partition open: `diskutil unmountDisk` refused ("Dissenter parent
+... /bin/zsh"), and the check below said "sector 0 does not hold GRUB's BIOS
+boot code".
+
+Three changes, each tested on that image:
+
+| Change | Result |
+| --- | --- |
+| `biosboot` on macOS unmounts with `diskutil unmountDisk force` before each write (the build owns the disk then) | written with the file still held open |
+| a new verb, `copal-disk.sh biosboot-check DISK DIR`: the boot sector's bytes 92 to 103, partition 1 active, `core.img` in sectors 1 on; says which is missing, exit 0 only if all are there | rc 1 before the write, 0 after |
+| the build's verify step runs the check, writes again if it fails, and prints a boxed "THIS CARD BOOTS UEFI ONLY" with the commands if it still fails | — |
+| `eject` on macOS falls back to a forced unmount after the flush | "Disk /dev/disk4 ejected" with the file still open |
+
+To check any stick by hand, from the repository (sudo on a real card):
+
+```
+sh tools/copal-disk.sh biosboot-check disk4 vendor/grub-i386-pc && echo ok
+```
+
 ## IX. Trying it on the target PC
 
 1. `git pull`, then write the stick as before (`make sd-pc` or `./copal build

@@ -33,6 +33,7 @@
 #   copal-disk.sh type DISK N HEX          set the MBR type byte
 #   copal-disk.sh bootflag DISK N          mark partition N active
 #   copal-disk.sh biosboot DISK DIR        GRUB's BIOS boot code from DIR, p1 active
+#   copal-disk.sh biosboot-check DISK DIR  is it there? (exit 0 if so)
 #   copal-disk.sh eject DISK               flush and let go of it
 #   copal-disk.sh image-attach PATH        attach a raw image, PRINT the device
 #   copal-disk.sh image-detach DEV         let go of it
@@ -46,7 +47,7 @@ die() { printf 'copal-disk: %s\n' "$*" >&2; exit 2; }
 # The whole surface. Adding a line here without adding both functions is what
 # self-test exists to catch.
 VERBS='list show probe part unmount-all unmount mount partition type bootflag
-biosboot eject image-attach image-detach image-attached sha256-check'
+biosboot biosboot-check eject image-attach image-detach image-attached sha256-check'
 
 # The verbs, one to a line. VERBS is a list of words, and this is the one
 # place that splits it into them.
@@ -145,6 +146,32 @@ shared_biosboot() {  # <raw device> <dir> <disk name, for unmount-all>
     rm -rf "$_w"
 }
 
+# Is GRUB's BIOS boot code on the disk? The three facts `biosboot` writes,
+# read back: the boot sector's kernel sector, boot drive and drive-check
+# patch (bytes 92 to 103), partition 1 active, and core.img in sectors 1 on.
+# Says which is missing; exit 0 only if all three are there.
+shared_biosboot_check() {  # <raw device> <dir>
+    [ -f "$2/core.img" ] || die "no core.img in $2"
+    _w=$(mktemp -d) || die "mktemp failed"
+    _cs=$(( ($(wc -c < "$2/core.img") + 511) / 512 ))
+    if [ -r "$1" ]; then _rdr=''; else _rdr=priv; fi
+    $_rdr dd if="$1" of="$_w/head" bs=512 count=$((_cs + 1)) 2>/dev/null \
+        || { rm -rf "$_w"; die "could not read $1"; }
+    _ok=0
+    if [ "$(od -An -tx1 -j 92 -N 12 "$_w/head" | tr -d ' \n')" != 0100000000000000fffa9090 ]; then
+        echo "sector 0 does not hold GRUB's BIOS boot code"; _ok=1
+    fi
+    if [ "$(od -An -tx1 -j 446 -N 1 "$_w/head" | tr -d ' \n')" != 80 ]; then
+        echo "partition 1 is not active"; _ok=1
+    fi
+    dd if="$_w/head" bs=512 skip=1 2>/dev/null | head -c "$(wc -c < "$2/core.img")" > "$_w/core"
+    if ! cmp -s "$_w/core" "$2/core.img"; then
+        echo "sectors 1 to $_cs do not hold core.img"; _ok=1
+    fi
+    rm -rf "$_w"
+    return "$_ok"
+}
+
 # Bytes to something a human reads, without bc and without locale. Deliberately
 # the same rounding on both backends so the two reports can be compared.
 human_size() {
@@ -216,11 +243,24 @@ macos_partition() {
 # fdisk -e is interactive and has no batch mode; the keystrokes are the API.
 macos_type()     { printf 't %s\n%s\nw\ny\nq\n' "$2" "$3" | priv fdisk -e "/dev/$1" >/dev/null 2>&1; }
 macos_bootflag() { printf 'f %s\nw\ny\nq\n' "$2" | priv fdisk -e "/dev/$1" >/dev/null 2>&1; }
-macos_eject()    { diskutil eject "/dev/$1"; }
+# Called after sync, so a volume something still holds open (Spotlight, a
+# Finder window) is unmounted by force rather than ending the build with
+# "at least one volume could not be unmounted" on a card that is complete.
+macos_eject() {
+    diskutil eject "/dev/$1" 2>/dev/null && return 0
+    diskutil unmountDisk force "/dev/$1" >/dev/null 2>&1 || true
+    diskutil eject "/dev/$1"
+}
 # The r-device: unbuffered, and the only one dd may write sector 0 of while
 # diskutil still holds the disk.
 macos_biosboot() { shared_biosboot "/dev/r$1" "$2" "$1"; }
-macos_biosboot_quiesce() { macos_unmount_all "$1"; }
+# FORCE, because the plain form gives up when anything has a file open on the
+# card -- Spotlight indexing the new volumes, a Finder window -- and then the
+# write is refused all five times. On 27 October a real stick came out of
+# `make sd-pc` that way, UEFI only, with only a warning to say so. Here the
+# build owns the disk.
+macos_biosboot_quiesce() { diskutil unmountDisk force "/dev/$1" >/dev/null 2>&1 || true; }
+macos_biosboot_check() { shared_biosboot_check "/dev/r$1" "$2"; }
 
 # CRawDiskImage: a bare sector image with no header, which is what a card is
 # and what QEMU expects back. Without it hdiutil looks for a UDIF structure and
@@ -368,6 +408,7 @@ linux_biosboot() { shared_biosboot "/dev/$1" "$2" "$1"; }
 # Linux writes sector 0 of a disk whose partitions are mounted, and stage 3
 # needs exactly that: the new disk is mounted at /mnt when its boot code goes on.
 linux_biosboot_quiesce() { :; }
+linux_biosboot_check() { shared_biosboot_check "/dev/$1" "$2"; }
 
 linux_eject() {
     sync 2>/dev/null || true
