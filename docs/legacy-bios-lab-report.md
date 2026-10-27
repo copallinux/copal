@@ -539,7 +539,8 @@ no `\|` in basic expressions, and this check runs on the Mac).
 | SeaBIOS, the stick's netboot entry, QEMU's user network | the netboot.xyz 3.0.3 menu, "next-server: 10.0.2.2", signature checks enabled |
 | EDK2 (UEFI), the stick's default entry | Copal's login prompt with the first-login message; `efivarfs` mounted: the UEFI path as before |
 | SeaBIOS, the stick's live system with `apkovl=none` | "Welcome to Alpine Linux 3.24": the starter overlay ignored, as the rescue entry needs |
-| EDK2, the netboot entry | UEFI_NETBOOT_RESULT |
+| EDK2, the netboot entry | the stick's menu with the entry third; chosen, GRUB loaded `chain.mod` from the card and the netboot.xyz 3.0.3 menu came up ("Utilities (UEFI)", signature checks enabled) |
+| SeaBIOS, `apkovl=none`, logged in as root | Alpine's own MOTD ("You can setup the system with the command: setup-alpine") and a root prompt with no password |
 | the build's verifier | `grub.cfg -> /boot/netboot/netboot.xyz.efi`, `.lkrn`, both kernels ok; legacy BIOS read back ok |
 
 ## IX. One stick, two firmwares: the layout
