@@ -179,7 +179,7 @@ Two details came from testing:
 - **On the first real stick, every write to sector 0 was refused.** `make
   sd-pc` printed `could not write the boot sector to /dev/rdisk4`, and `mount`
   showed both partitions back under `/Volumes` (FSKit, macOS's FAT driver
-  since macOS 15): Disk Arbitration mounts them again within seconds of an
+  on this Mac): Disk Arbitration mounts them again within seconds of an
   unmount, and macOS refuses a write to the partition table of a disk with a
   partition mounted. Sectors 1 onward are not refused, so `core.img` was
   written and sector 0 was not. Each try now unmounts the whole disk
