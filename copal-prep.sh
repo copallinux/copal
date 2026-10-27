@@ -2064,7 +2064,17 @@ phase "Copy payload"
 # COPYFILE_DISABLE stops macOS writing ._AppleDouble sidecar files.
 info "Copying payload to $MNT ..."
 export COPYFILE_DISABLE=1
-(cd "$SRC" && cp -Rp . "$MNT/")
+# -p (keep owners, modes, times) on macOS only. On Linux, GNU cp reports every
+# directory whose mode FAT cannot hold ("preserving permissions for
+# .../boot/dtbs-lts: Operation not permitted") and exits 1 after copying every
+# file, and the build stopped there, three times, on 27 October
+# (docs/card-from-linux-lab-report.md). Modes and times mean nothing on a FAT
+# boot partition, so Linux copies without -p.
+if [ "$(uname -s)" = Darwin ]; then
+    (cd "$SRC" && cp -Rp . "$MNT/")
+else
+    (cd "$SRC" && cp -R . "$MNT/")
+fi
 
 fi   # end of the destructive block skipped by --refresh
 

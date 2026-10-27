@@ -1,6 +1,6 @@
-# Writing a Card from Linux: Three Stops, Two Causes Found, and a Build That Keeps Its Own Log
+# Writing a Card from Linux: Three Causes, a Wrong Test, and a Build That Keeps Its Own Log
 
-*Lab Report — IEEE Format · 27 October 2026 · interim: one stop unexplained*
+*Lab Report — IEEE Format · 27 October 2026*
 
 <!-- SPDX-License-Identifier: MIT -->
 Copyright (c) 2026 Paul Richeson. MIT licensed — see `LICENSE`. Copal Linux is
@@ -14,14 +14,15 @@ packages remain under their own licences.
 `make sd-pc` had only ever been run on the Mac. Run on saskatchewan (Copal on
 Alpine, as an ordinary user, through `doas`), it stopped three times with a
 stick partitioned but incomplete, and asked for the password about ten
-times. Two causes were found and fixed: the stick's FAT partition was mounted
-by root, so the build could not write to it; and OpenDoas remembers a
-password per parent process, while every disk step was a new process. The
-third stop, after the payload had been copied in full, is not yet
-explained. One cause proposed for it, `cp -Rp` failing on FAT, was put
-forward and then disproved by a test, and is recorded as such. Since the
-evidence had been on a terminal and was gone, the build now keeps its own
-log of every run and names the line of any failed command that ends it.
+times. Three causes, all fixed: the stick's FAT partition was mounted by
+root, so the build could not write to it; OpenDoas remembers a password per
+parent process, while every disk step was a new process; and `cp -Rp`
+exits 1 on Linux after copying everything, because the source folders carry
+the setgid bit (inherited from `~/code`), which FAT cannot store. The third
+was first named correctly, then wrongly "disproved" by a test that left out
+the one property that mattered, and found for certain only once the build
+kept its own log, which it now does for every run, naming the line of any
+failed command that ends it.
 
 ## I. Objective
 
@@ -78,7 +79,7 @@ covers them all. Inside, the disk layer runs as root, so the person's
 macOS is unchanged: `sudo` remembers per terminal there. *Not yet seen in
 a run.*
 
-## V. The third stop, unexplained
+## V. The third stop: setgid folders and `cp -Rp`
 
 After a full copy the build reaches, in order: removing macOS metadata
 (`dot_clean` if present, then `rm -rf` and `find -delete`, each with `||
@@ -86,14 +87,40 @@ true`), the step gate "Write the answer file...", which waits for Enter on
 `/dev/tty`, then `cat > "$MNT/answers.txt"`. `answers.txt` was never
 written, so it stopped in those few lines.
 
-**A wrong cause, put forward and disproved.** Claude first said that `cp
--Rp`, the payload copy, fails on Linux because FAT cannot hold owners and
-modes, and that its error ended the build. A test disproved it before any
-change was made: `cp -Rp` of a file onto the mounted stick, by GNU
-coreutils' `cp`, exited 0 (the mount belongs to the user, and `vfat`
-accepts the `chmod` silently). It also could not explain the evidence, as
-`cp` had copied all 399 MB. The claim is recorded because it was said to
-Paul as a finding, and was not one.
+**A right cause, a wrong test.** Claude first said that `cp -Rp`, the
+payload copy, fails on Linux because FAT cannot hold what `-p` keeps, and
+that its error ended the build. Then a test seemed to disprove it: `cp -Rp`
+of a file in a new folder onto the mounted stick exited 0, as did a folder
+of mode `700`; and a copy that had finished all 399 MB seemed unlikely to
+have failed. The claim was withdrawn and the cause called unexplained. The
+test was wrong, not the claim: it was made in `/tmp`, whose folders carry
+no setgid bit.
+
+**Found, with the log** (section VI), on the fourth run:
+
+```
+cp: preserving permissions for '.../COPALBOOT/./boot/dtbs-virt': Operation not permitted
+cp: preserving permissions for '.../COPALBOOT/./boot/dtbs-lts': Operation not permitted
+cp: preserving permissions for '.../COPALBOOT/./boot': Operation not permitted
+cp: preserving permissions for '.../COPALBOOT/./EFI/BOOT': Operation not permitted
+cp: preserving permissions for '.../COPALBOOT/./EFI': Operation not permitted
+cp: preserving permissions for '.../COPALBOOT/.': Operation not permitted
+copal-prep.sh: STOPPED at line 2067 (exit 1): ( cd "$SRC" && cp -Rp . "$MNT/" )
+```
+
+Only folders, every one of them. On saskatchewan every folder under
+`~/code` is `drwxr-sr-x`: the setgid bit, inherited from `~/code` itself,
+and so carried by every folder of the cached payload. `cp -p` copies every
+file and only afterwards sets each folder's mode, setgid included, which
+FAT cannot store: `Operation not permitted`, exit 1, and `set -e` ended the
+build after a complete copy. That is the evidence of all three runs. The
+Mac's folders have no setgid, which is why it never showed there.
+
+*Reproduced* on the stick: a folder of mode `2755` copied with `cp -Rp`:
+the same message, exit 1; with `cp -R`: exit 0.
+
+*Fix:* on Linux the payload is copied with `cp -R`; macOS keeps `cp -Rp`.
+Modes and times mean nothing on a FAT boot partition.
 
 **"Partition contains vfat signature."** That warning is `sfdisk`'s or
 `fdisk`'s, from the partitioning step much earlier, when the new partition
@@ -102,9 +129,10 @@ partition is formatted next). Whether it was a question waiting for an
 answer, and whether a keystroke meant for a later gate was taken by it, is
 not known.
 
-**Why it is still open:** the build's output was on Paul's terminal and the
-stop was `set -e`'s, which prints nothing. So the next change was to keep
-the evidence.
+**Why it took a log to find:** the build's output was on Paul's terminal
+and the stop was `set -e`'s, which prints nothing; and the test made in its
+place had left out the condition that mattered. The log's `STOPPED` line
+named the command on the first run that had it.
 
 ## VI. The build keeps its own log (`copal-prep.sh`, `Makefile`)
 
@@ -129,15 +157,17 @@ right line.
 
 ## VII. Next
 
-Run 4 on saskatchewan, at the current commit, with the log. Expect one
-password; if it stops, `make lastlog` and the `STOPPED` line say where.
+Run 5 on saskatchewan, with `cp -R`. Expect one password and a whole card;
+`make lastlog` reads the end of it.
 
 ## VIII. Discussion
 
 Every one of these is a difference between macOS and Linux that the Mac
 could not show: who owns a mounted FAT partition, how the privilege tool
 remembers a password, and what the person can see afterwards. The first two
-were found by reading the machine's state over SSH; the third needs the
-output that was lost, which is why the build now keeps it. A cause said
-aloud should be tested before it is called found, and this one was tested
-only after it had been.
+were found by reading the machine's state over SSH; the third needed the
+output that had been lost, which is why the build now keeps it. Two lessons
+from the third: a cause said aloud should be tested before it is called
+found; and a test that disproves a cause must reproduce the conditions of
+the failure, here the source folders' setgid bit, or it disproves nothing.
+A test made in `/tmp` was not a test of `~/code`.
