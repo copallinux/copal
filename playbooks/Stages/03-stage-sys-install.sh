@@ -285,6 +285,15 @@ menuentry "Copal rescue, from this disk (live, no saved settings)" {
     initrd /boot/initramfs-lts
 }
 EOF
+        # Ubuntu over the network, if the stick carried it (copied here).
+        if [ -f /mnt/boot/boot/grub/ubuntu.cfg ]; then
+            cat >> "$BOOTCFG" <<'EOF'
+
+if [ -f /boot/grub/ubuntu.cfg ]; then
+    source /boot/grub/ubuntu.cfg
+fi
+EOF
+        fi
         # The network boot, if the stick carried it (stage 3 copied it here).
         if [ -f /mnt/boot/boot/netboot/netboot.xyz.lkrn ]; then
             cat >> "$BOOTCFG" <<'EOF'

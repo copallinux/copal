@@ -571,6 +571,56 @@ the stick's menu, through "Copal installed on this computer's disk"), log in
 as root with no password, then `mount /dev/sda2 /mnt`, `sed -i
 's#:/bin/bash$#:/bin/sh#' /mnt/etc/passwd`, `umount /mnt`, `reboot`.
 
+### Ubuntu from the boot menu, for a CUDA machine
+
+Paul's GTX 1080 / 1080 Ti machines are to run CUDA, which needs NVIDIA's own
+driver; that driver's user space is built for glibc, and Copal is Alpine
+(musl), so the CUDA machine runs Ubuntu and joins the fleet over SSH. The
+workflow: install Ubuntu from the Copal stick's menu, connect back over SSH,
+and set it up from there.
+
+**Which Ubuntu.** NVIDIA's CUDA repository, read on 27 October 2026:
+
+| Repository | Drivers | CUDA toolkits |
+| --- | --- | --- |
+| `ubuntu2604` | none listed | 13-3, 13-4 |
+| `ubuntu2404` | `cuda-drivers-550` to **`580`**, `nvidia-driver-530` to `580` | 12-5 to **12-9**, 13-0 to 13-4 |
+
+The 580 series is the last driver for Maxwell, Pascal and Volta, and CUDA 12
+the last toolkit for them; CUDA 13 does not target Pascal. So a GTX 1080 or
+1080 Ti that is to run CUDA wants **Ubuntu 24.04 LTS, driver 580, CUDA
+12.9**. Ubuntu 26.04 suits newer cards (the 4060 Ti of treadcore's plan).
+
+**The entries.** Every PC stick carries Ubuntu's own netboot kernel and
+initrd for both releases (`boot/ubuntu/<ver>/`, about 220 MB together), and
+the menu lists "Install Ubuntu 26.04 LTS Server (network)" and "Install
+Ubuntu 24.04 LTS Server (network): for NVIDIA Pascal + CUDA 12". Each boots
+with the command line from Ubuntu's own `pxelinux.cfg`: `root=/dev/ram0
+ramdisk_size=1500000 ip=dhcp iso-url=https://releases.ubuntu.com/<point>/ubuntu-<point>-live-server-amd64.iso`;
+the installer downloads the ISO into RAM (4 GB or more needed; the 5750G
+has 7.8 GB) and runs Ubuntu's installer, which offers Server, minimized
+Server and an OpenSSH server. The entries live in `boot/grub/ubuntu.cfg`,
+read by the stick's menu and, after stage 3 copies it, by an installed
+disk's. Ubuntu publishes no sums for the netboot files, so they are pinned
+at first use (27 October 2026, over HTTPS); a mismatch leaves that release
+out of the menu, with a warning.
+
+**No browser downloads are needed.** NVIDIA's driver and CUDA come from
+NVIDIA's apt repository with no login; and the CUDA installer is over 4 GB,
+more than a FAT32 boot partition can hold as one file, so carrying it on the
+stick would not work anyway.
+
+**Tested in QEMU under SeaBIOS** (6 GB, QEMU's user network): the menu
+listed both entries after the network boot; the 26.04 entry booted Ubuntu's
+kernel 7.0.0-30, took 10.0.2.15 by DHCP, and began "Trying to download and
+mount https://releases.ubuntu.com/26.04.1/ubuntu-26.04.1-live-server-amd64.iso",
+4% and about eight minutes to go when the test was stopped.
+
+**Then, over SSH** (next): tick "Install OpenSSH server" in Ubuntu's
+installer; from the Mac, `ssh-copy-id` to it; on 24.04, NVIDIA's `cuda-keyring`,
+`cuda-drivers-580` and `cuda-toolkit-12-9`, `nouveau` blacklisted, and
+`nvidia-smi` and a CUDA sample as the check.
+
 ## IX. One stick, two firmwares: the layout
 
 ### A. The concept

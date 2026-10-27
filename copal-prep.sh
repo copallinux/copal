@@ -2266,6 +2266,66 @@ if [ "$PLATFORM" = pc ] && { [ "$ARCH" = x86_64 ] || [ "$ARCH" = x86 ]; }; then
     fi
 fi
 
+# UBUNTU, INSTALLED OVER THE NETWORK, from the boot menu. Ubuntu's own netboot
+# kernel and initrd (releases.ubuntu.com/<ver>/netboot/amd64/), carried on the
+# card; booted with the command line Ubuntu's own pxelinux.cfg gives, the
+# installer fetches the live-server ISO into RAM (about 3 GB: a machine needs
+# 4 GB or more) and runs Subiquity, which offers Server, minimized Server and
+# OpenSSH. Then the machine is reached over SSH and set up from there.
+#
+# Two releases, for a reason: NVIDIA's CUDA repository for 26.04 carries only
+# CUDA 13 (no Pascal), while 24.04's carries driver 580 (the last series for
+# Maxwell, Pascal and Volta: GTX 900 and 10 series) and CUDA 12.9. So 24.04
+# is the one for a GTX 1080 / 1080 Ti that is to run CUDA.
+#
+# Ubuntu publishes sums for its ISOs, not for these two files, so the sums
+# below are first use: what releases.ubuntu.com served on 27 October 2026,
+# fetched over HTTPS. A mismatch (Ubuntu refreshes them at point releases)
+# leaves that release out of the menu and says so; update the pin then. The
+# entries are a file of their own, boot/grub/ubuntu.cfg, read by the card's
+# menu and, once stage 3 has copied it, by the installed disk's.
+UBUNTU_NETBOOT='26.04|26.04.1|0ad39b13e289e1a5cf806d14541ac8f221eefe849017f5915e0846917ed67785|7aeb757e12400830fc59e962c603a43439d662fb9309ab36cb2537f41a1b8335|Install Ubuntu 26.04 LTS Server (network)
+24.04|24.04.5|d5d71ed32239eaa9bcb0528227a7adb62688250ce9f163b3e04e9675ddf86cff|5fac8541a73b92cd2e9356420d7280e887d4dbd0948e5e511eec7d726e56892b|Install Ubuntu 24.04 LTS Server (network): for NVIDIA Pascal + CUDA 12'
+UBUNTU_OK=0
+if [ "$PLATFORM" = pc ] && [ "$ARCH" = x86_64 ]; then
+    _ucfg="$MNT/boot/grub/ubuntu.cfg"
+    : > "$_ucfg.new"
+    printf '%s\n' "$UBUNTU_NETBOOT" | while IFS='|' read -r _uv _upoint _uk _ui _ut; do
+        _uc="$CACHEDIR/ubuntu-netboot-$_uv"
+        mkdir -p "$_uc"
+        printf '%s  linux\n%s  initrd\n' "$_uk" "$_ui" > "$_uc/SHA256SUMS"
+        if ! (cd "$_uc" && disk sha256-check SHA256SUMS >/dev/null 2>&1); then
+            info "Downloading Ubuntu $_uv's netboot kernel and initrd (about 110 MB)..."
+            for _f in linux initrd; do
+                curl -fsSL -o "$_uc/$_f" "https://releases.ubuntu.com/$_uv/netboot/amd64/$_f" \
+                    || warn "could not download Ubuntu $_uv netboot $_f"
+            done
+        fi
+        if (cd "$_uc" && disk sha256-check SHA256SUMS >/dev/null 2>&1); then
+            mkdir -p "$MNT/boot/ubuntu/$_uv"
+            cp "$_uc/linux" "$_uc/initrd" "$MNT/boot/ubuntu/$_uv/"
+            cat >> "$_ucfg.new" <<UBUNTUCFG
+
+menuentry "$_ut" {
+    linux /boot/ubuntu/$_uv/linux root=/dev/ram0 ramdisk_size=1500000 ip=dhcp iso-url=https://releases.ubuntu.com/$_upoint/ubuntu-$_upoint-live-server-amd64.iso ---
+    initrd /boot/ubuntu/$_uv/initrd
+}
+UBUNTUCFG
+            info "Ubuntu $_uv netboot on the card (boot/ubuntu/$_uv/), sums checked"
+        else
+            rm -f "$_uc/linux" "$_uc/initrd"
+            warn "Ubuntu $_uv netboot did not download or did not match its pinned sums -- left out of the menu"
+        fi
+    done
+    if [ -s "$_ucfg.new" ]; then
+        { printf '# Written by copal-prep.sh: Ubuntu, installed over the network.\n'
+          printf '# Read by the menus with `source`; see copal-prep.sh, UBUNTU_NETBOOT.\n'
+          cat "$_ucfg.new"; } > "$_ucfg"
+        UBUNTU_OK=1
+    fi
+    rm -f "$_ucfg.new"
+fi
+
 # THE FIRST LOGIN'S MESSAGE, and every login's until the install is done. A
 # fresh card has no saved configuration, so a stock Alpine boots and its login
 # says only "Welcome to Alpine!". The message rides in a starter overlay,
@@ -2525,6 +2585,15 @@ menuentry "Network boot: netboot.xyz (Alpine, BSD, Clonezilla, GParted ...)" {
         linux16 /boot/netboot/netboot.xyz.lkrn
     fi
 }
+GRUBCFG
+fi
+if [ "$UBUNTU_OK" = 1 ]; then
+    cat >> "$MNT/boot/grub/grub.cfg" <<'GRUBCFG'
+
+# Ubuntu, installed over the network: the entries are in their own file.
+if [ -f /boot/grub/ubuntu.cfg ]; then
+    source /boot/grub/ubuntu.cfg
+fi
 GRUBCFG
 fi
 
@@ -22529,6 +22598,15 @@ menuentry "Copal rescue, from this disk (live, no saved settings)" {
     initrd /boot/initramfs-lts
 }
 EOF
+        # Ubuntu over the network, if the stick carried it (copied here).
+        if [ -f /mnt/boot/boot/grub/ubuntu.cfg ]; then
+            cat >> "$BOOTCFG" <<'EOF'
+
+if [ -f /boot/grub/ubuntu.cfg ]; then
+    source /boot/grub/ubuntu.cfg
+fi
+EOF
+        fi
         # The network boot, if the stick carried it (stage 3 copied it here).
         if [ -f /mnt/boot/boot/netboot/netboot.xyz.lkrn ]; then
             cat >> "$BOOTCFG" <<'EOF'
