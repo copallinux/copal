@@ -25,8 +25,9 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | T | text from outside | `staticstream` |
 | C | configuration | `copal` |
 | S | shell scripts | `copal`, and `staticstream` where the entry says so |
+| B | booting and installing | `copal` |
 
-**Standing:** 0 open · 1 in progress · 33 done · 3 dropped. Written 29 September 2026.
+**Standing:** 3 open · 2 in progress · 33 done · 3 dropped. Written 29 September 2026; the B entries 27 October 2026 (`docs/legacy-bios-lab-report.md`).
 
 ---
 
@@ -38,12 +39,21 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 |---|---|---|---|
 | | *nothing* | | |
 
+### Booting and installing
+
+| ID | Entry | Rule | Check |
+|---|---|---|---|
+| B-02 | **A diskless boot after stage 1 cannot log in.** Stage 1 makes `/bin/bash` the login shell of root and the user; a diskless boot reinstalls packages from the boot medium only (the apk cache is on the stick's p2, which the initramfs does not mount), so bash is missing and every login ends in `can't execute '/bin/bash'`. Seen on the legacy PC when its disk would not start (lab report, section VIII). The UEFI path does not boot diskless after stage 1. Set bash only once the root is persistent, or put the cache where the initramfs reads it, without changing the UEFI path | a login must not depend on a package the boot cannot install | boot a stick that has run stage 1 and nothing after, diskless; root and the user log in |
+| B-03 | A hybrid ISO, for a DVD and a stick: El Torito for BIOS and UEFI and an MBR, built with `xorriso`. A DVD is read-only, so it is an installer or a live disc; the configuration is saved to a stick or a disk | — | the ISO boots in QEMU under SeaBIOS and EDK2, from a CD and as a disk |
+| B-04 | `shellcheck` over `tools/copal-disk.sh`, `tools/grub-bios-build.sh`, `tools/copal-answers.sh` and the changed stages: it was not installed on the Mac that wrote them | S-23's standard | `make shell-lint` passes with no new warning |
+
 ---
 
 ## In progress
 
 | ID | Entry | Rule | Where it stands |
 |---|---|---|---|
+| B-01 | **A legacy-BIOS PC.** The stick boots both ways (GRUB's boot code written by `dd`, `copal-disk.sh biosboot`), and on a PC booted in legacy BIOS stage 3 lays out the PC's own disk as MBR and writes the same boot code to it. UEFI machines take the path they took before. **Checked:** QEMU SeaBIOS boots a fresh stick to the login and its message; on Paul's PC the stick booted and stage 1 ran; under busybox, the MBR layout and the Linux `biosboot` wrote and read back right. **Left:** a whole install on the PC, after which it starts from `sda` without the stick (the first try, before `151925c`, was a GPT disk: "No bootable device") | the UEFI path unchanged | `151925c`; the stick being rewritten 27 October |
 | S-16 | The installer fetching itself is checked against a signature. **The checking side is built, and does nothing until a machine has signers.** `copal -U` fetches `copal-prep.sh.sig` from beside the file and checks it with `ssh-keygen -Y verify` against `/etc/copal/allowed_signers`, which the card brings. With signers and no good signature it refuses, unless `--unsigned` is given. With no signers it installs as it always did and says it did not check. `tools/copal-sign.sh` and `make signers`, `make sign`, `make signed` are the other side. **Checked** with throwaway keys and a stand-in server, eight cases: no signers; a good signature; none published; none, with `--unsigned`; signed and then changed; signed by a key the machine does not know; signed by the right key for another purpose; nothing at that ref. **What is left is the author's:** `make signers KEY=…` once, `make sign KEY=…` when a release is tagged, and the decision to do either. Nothing was signed, and no key of anybody's is in the repository | S11 | `ecebfc1` |
 
 ## Done
