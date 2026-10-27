@@ -92,15 +92,17 @@ priv() {
 #
 # od reads the start sector in host byte order; both hosts Copal builds on
 # (arm64 and x86) are little-endian, as the MBR is.
-shared_biosboot() {  # <raw device> <dir>
+shared_biosboot() {  # <raw device> <dir> <disk name, for unmount-all>
     [ -f "$2/boot.img" ] && [ -f "$2/core.img" ] || die "no boot.img and core.img in $2"
+    _bdisk=$3
     _w=$(mktemp -d) || die "mktemp failed"
     # A raw device takes whole sectors only, so core.img is padded to them.
     _cs=$(( ($(wc -c < "$2/core.img") + 511) / 512 ))
     dd if="$2/core.img" of="$_w/core" bs=512 conv=sync 2>/dev/null
     # <device> <dd operands...>: as this user if the device is writable
     # (an attached image usually is), through priv if not (a real card).
-    _dd() { _dv=$1; shift; if [ -w "$_dv" ]; then dd "$@" 2>/dev/null; else priv dd "$@" 2>/dev/null; fi; }
+    # dd's own complaint is kept in $_w/err, so a refusal says why.
+    _dd() { _dv=$1; shift; if [ -w "$_dv" ]; then dd "$@" 2>"$_w/err"; else priv dd "$@" 2>"$_w/err"; fi; }
     _rd() { if [ -r "$1" ]; then dd if="$1" of="$2" bs=512 count=1 2>/dev/null; else priv dd if="$1" of="$2" bs=512 count=1 2>/dev/null; fi; }
     _rd "$1" "$_w/mbr" || { rm -rf "$_w"; die "could not read sector 0 of $1"; }
     [ "$(od -An -tx1 -j 510 -N 2 "$_w/mbr" | tr -d ' \n')" = 55aa ] \
@@ -120,15 +122,19 @@ shared_biosboot() {  # <raw device> <dir>
     for _o in 462 478 494; do
         printf '\000' | dd of="$_w/new" bs=1 seek="$_o" conv=notrunc 2>/dev/null
     done
-    # Five tries a second apart: on macOS a disk just attached or just
-    # partitioned is still being probed by Disk Arbitration, and the first
-    # write to sector 0 was refused once in testing and accepted at once on
-    # the next try.
-    _try() { _t=0; until "$@"; do _t=$((_t+1)); [ "$_t" -lt 5 ] || return 1; sleep 1; done; }
+    # EVERY TRY UNMOUNTS THE WHOLE DISK FIRST. macOS refuses a write to
+    # sector 0 -- the partition table -- while any partition of the disk is
+    # mounted, and Disk Arbitration (FSKit, for FAT, since macOS 15) mounts
+    # both partitions again within seconds of being told to unmount them. On
+    # a real stick on 27 October every one of five tries was refused this
+    # way, with both volumes back under /Volumes; on an attached image the
+    # first try was. So: unmount, write at once, five tries a second apart.
+    _try() { _t=0; until "${BACKEND}_unmount_all" "$_bdisk" && "$@"; do
+        _t=$((_t+1)); [ "$_t" -lt 5 ] || return 1; sleep 1; done; }
     _try _dd "$1" if="$_w/core" of="$1" bs=512 seek=1 conv=notrunc \
-        || { rm -rf "$_w"; die "could not write core.img to $1"; }
+        || { _e=$(cat "$_w/err"); rm -rf "$_w"; die "could not write core.img to $1: $_e"; }
     _try _dd "$1" if="$_w/new" of="$1" bs=512 count=1 conv=notrunc \
-        || { rm -rf "$_w"; die "could not write the boot sector to $1"; }
+        || { _e=$(cat "$_w/err"); rm -rf "$_w"; die "could not write the boot sector to $1: $_e"; }
     sync 2>/dev/null || true
     rm -rf "$_w"
 }
@@ -207,7 +213,7 @@ macos_bootflag() { printf 'f %s\nw\ny\nq\n' "$2" | priv fdisk -e "/dev/$1" >/dev
 macos_eject()    { diskutil eject "/dev/$1"; }
 # The r-device: unbuffered, and the only one dd may write sector 0 of while
 # diskutil still holds the disk.
-macos_biosboot() { shared_biosboot "/dev/r$1" "$2"; }
+macos_biosboot() { shared_biosboot "/dev/r$1" "$2" "$1"; }
 
 # CRawDiskImage: a bare sector image with no header, which is what a card is
 # and what QEMU expects back. Without it hdiutil looks for a UDIF structure and
@@ -351,7 +357,7 @@ linux_partition() {
 
 linux_type()     { priv sfdisk --quiet --part-type "/dev/$1" "$2" "$3" >/dev/null 2>&1; }
 linux_bootflag() { priv sfdisk --quiet --activate "/dev/$1" "$2" >/dev/null 2>&1; }
-linux_biosboot() { shared_biosboot "/dev/$1" "$2"; }
+linux_biosboot() { shared_biosboot "/dev/$1" "$2" "$1"; }
 
 linux_eject() {
     sync 2>/dev/null || true

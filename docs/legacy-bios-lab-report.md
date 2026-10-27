@@ -176,6 +176,17 @@ Two details came from testing:
 - The first write to sector 0 of a just-attached image was refused once and
   accepted at once when repeated; macOS's Disk Arbitration was still probing
   the disk. Each write is tried five times, a second apart.
+- **On the first real stick, every write to sector 0 was refused.** `make
+  sd-pc` printed `could not write the boot sector to /dev/rdisk4`, and `mount`
+  showed both partitions back under `/Volumes` (FSKit, macOS's FAT driver
+  since macOS 15): Disk Arbitration mounts them again within seconds of an
+  unmount, and macOS refuses a write to the partition table of a disk with a
+  partition mounted. Sectors 1 onward are not refused, so `core.img` was
+  written and sector 0 was not. Each try now unmounts the whole disk
+  immediately before it writes, and a refusal prints `dd`'s own message.
+  Tested on an image with both volumes mounted on purpose: written, p1
+  active. (The QEMU image builds had not shown it: an attached image is not
+  remounted the same way.)
 - An image attached by the user has a device node the user can write, so
   `dd` runs without sudo when the device is writable and through `priv` when
   it is not (a real card). That keeps `./copal build --auto`, which has no
