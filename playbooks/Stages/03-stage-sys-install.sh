@@ -309,6 +309,22 @@ EOF
         fi
     fi
 
+    # ---- every login shell exists on the new root -------------------------
+    # A login whose shell is missing is a machine nobody can enter (27
+    # October: /bin/bash named and not installed). Whatever /etc/passwd on the
+    # new root names for root and the admin user must be there; if it is not,
+    # that account goes back to /bin/sh, which is part of the base system.
+    for _acct in root "$PI_USER"; do
+        _sh=$(awk -F: -v u="$_acct" '$1 == u { print $7 }' /mnt/etc/passwd 2>/dev/null)
+        [ -n "$_sh" ] || continue
+        if [ ! -x "/mnt$_sh" ]; then
+            warn "$_acct's login shell $_sh is not on the new root -- setting /bin/sh"
+            awk -F: -v OFS=: -v u="$_acct" '$1 == u { $7 = "/bin/sh" } { print }' \
+                /mnt/etc/passwd > /mnt/etc/passwd.copal \
+                && chmod 0644 /mnt/etc/passwd.copal && mv /mnt/etc/passwd.copal /mnt/etc/passwd
+        fi
+    done
+
     # ---- flash-friendly fstab ---------------------------------------------
     say "Tuning /etc/fstab for flash"
     # setup-disk regenerates fstab with `genfstab -U`, so the root line is a

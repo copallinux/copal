@@ -27,7 +27,7 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | S | shell scripts | `copal`, and `staticstream` where the entry says so |
 | B | booting and installing | `copal` |
 
-**Standing:** 3 open · 2 in progress · 33 done · 3 dropped. Written 29 September 2026; the B entries 27 October 2026 (`docs/legacy-bios-lab-report.md`).
+**Standing:** 4 open · 2 in progress · 34 done · 3 dropped. Written 29 September 2026; the B entries 27 October 2026 (`docs/legacy-bios-lab-report.md`).
 
 ---
 
@@ -45,7 +45,6 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 |---|---|---|---|
 | B-05 | **The offline disk tools**: the stick's Alpine booted straight into a disk menu (`fdisk`/`sfdisk`/`parted`, `wipefs`, `mkfs`, `fsck`, `smartctl`, `ddrescue`, partclone for Clonezilla-style images), packages carried on the stick | — | boots and lists the disks with no network |
 | B-06 | **An ISO loader**: GRUB boots ISOs dropped into `isos/` on the stick (Clonezilla, GParted, Alpine) by loopback; needs `loopback` and `iso9660` in the BIOS core and the UEFI module set | — | an Alpine and a Clonezilla ISO boot from the folder under SeaBIOS and EDK2 |
-| B-02 | **A diskless boot after stage 1 cannot log in.** Stage 1 makes `/bin/bash` the login shell of root and the user; a diskless boot reinstalls packages from the boot medium only (the apk cache is on the stick's p2, which the initramfs does not mount), so bash is missing and every login ends in `can't execute '/bin/bash'`. Seen on the legacy PC when its disk would not start (lab report, section VIII). The UEFI path does not boot diskless after stage 1. Set bash only once the root is persistent, or put the cache where the initramfs reads it, without changing the UEFI path | a login must not depend on a package the boot cannot install | boot a stick that has run stage 1 and nothing after, diskless; root and the user log in |
 | B-03 | A hybrid ISO, for a DVD and a stick: El Torito for BIOS and UEFI and an MBR, built with `xorriso`. A DVD is read-only, so it is an installer or a live disc; the configuration is saved to a stick or a disk | — | the ISO boots in QEMU under SeaBIOS and EDK2, from a CD and as a disk |
 | B-04 | `shellcheck` over `tools/copal-disk.sh`, `tools/grub-bios-build.sh`, `tools/copal-answers.sh` and the changed stages: it was not installed on the Mac that wrote them | S-23's standard | `make shell-lint` passes with no new warning |
 
@@ -62,6 +61,7 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 
 | ID | Entry | Done | Commit |
 |---|---|---|---|
+| B-02 | **No login depends on bash.** Both accounts keep `/bin/sh`; `~/.profile` starts bash for an interactive login when it is installed; stage 3 sets `/bin/sh` for any login shell missing on the new root. Met on the legacy PC: every login ended in `can't execute '/bin/bash'`. **Check:** under busybox `sh` on Alpine, an interactive login ends in bash, `sh -lc` stays in sh, and with bash missing the login works in sh | 27 October 2026 | this commit |
 | T-07 | `tests/ytq-hostile-check.sh` and `tests/standin/yt-dlp-hostile`, as `make ytq-hostile-check` and last in `make check`: the real ytq against a stand-in yt-dlp whose every field carries an attack. **Check:** 31 checks. Against the ytq of `75cbf7d`, 19 fail; against this one, none. The 12 that passed from the start were each made to fail once by a sabotaged copy | 29 September 2026 | staticstream `425ba64` |
 | T-02 | `ffescape` escapes a carriage return and leaves out a NUL, which cannot be escaped. **Check:** with this change alone the MP4 had one chapter where it had three, and its lyrics and description whole: 18 failures became 15 | 29 September 2026 | staticstream `425ba64` |
 | T-03 | `printable()` on what `ytq list`, `ytq status` and a runner print, on every line of the log, on a notification line by line, on the `stream`, `source`, `license`, `note` and `key` rows of `sstr verify`, and on the line the Workspace shows before it runs it. **Check:** with T-02 and this, 15 failures became 8 — and `sstr verify` lost its forged rows too, a newline being `^J` | 29 September 2026 | staticstream `425ba64` |

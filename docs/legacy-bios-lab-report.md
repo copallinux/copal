@@ -543,6 +543,34 @@ no `\|` in basic expressions, and this check runs on the Mac).
 | SeaBIOS, `apkovl=none`, logged in as root | Alpine's own MOTD ("You can setup the system with the command: setup-alpine") and a root prompt with no password |
 | the build's verifier | `grub.cfg -> /boot/netboot/netboot.xyz.efi`, `.lkrn`, both kernels ok; legacy BIOS read back ok |
 
+### The install that nobody could log in to
+
+With the new stick the legacy PC installed and rebooted under its new name
+(`nasser`), on the network (192.168.8.121), and every login, `root` and
+`user`, ended in `login: can't execute '/bin/bash': No such file or
+directory`. SSH from the Mac was refused (no key installed yet), so the
+machine was out of reach entirely. This was B-02 of the backlog, met again:
+stage 1 wrote `/bin/bash` into `/etc/passwd` for both accounts, and the
+system that booted did not have it.
+
+**The fix makes the lockout impossible rather than unlikely.**
+
+| Before | After |
+| --- | --- |
+| `/etc/passwd` names `/bin/bash` for root and the user | both keep `/bin/sh` (busybox, part of the base system); a machine set up before is put back |
+| a missing bash: no login at all | an interactive login runs a block in `~/.profile`: `exec /bin/bash -l` if `/bin/bash` is there, so it is still bash; without it, a working sh prompt |
+| — | stage 3 checks that every login shell `/etc/passwd` names on the new root exists there, and sets `/bin/sh` for any that does not |
+
+Tested under busybox `sh` on saskatchewan: an interactive login with bash
+installed ran `~/.profile` once and ended in bash 5.3.9; a non-interactive
+`sh -lc` (as `ssh host command` runs) stayed in sh; with bash missing, the
+login stayed in sh and worked.
+
+**To recover the PC as installed:** boot "Copal rescue, from this disk" (on
+the stick's menu, through "Copal installed on this computer's disk"), log in
+as root with no password, then `mount /dev/sda2 /mnt`, `sed -i
+'s#:/bin/bash$#:/bin/sh#' /mnt/etc/passwd`, `umount /mnt`, `reboot`.
+
 ## IX. One stick, two firmwares: the layout
 
 ### A. The concept

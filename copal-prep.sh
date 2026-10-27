@@ -5624,15 +5624,41 @@ set_login_shell() {  # <account> <shell>
 # objection. The check above is the rest of it: the shell is only set if it is
 # actually there and executable, so the failure mode is "root keeps ash", not
 # "root cannot log in".
+#
+# THE LOGIN SHELL STAYS /bin/sh, AND bash STARTS FROM ~/.profile. Naming bash
+# in /etc/passwd made every login depend on a package: on 27 October a
+# legacy PC came up with /bin/bash named for root and the user and not
+# installed, and every login, root's included, ended in "login: can't execute
+# '/bin/bash'" -- a machine nobody could get into, on the console or over
+# SSH. busybox's /bin/sh is part of the base system and cannot be missing
+# while anything works. So the accounts keep it, and an interactive login
+# moves into bash (as a login shell, so ~/.profile still runs, once) when
+# bash is there. Without bash the login is a working sh prompt. Scripts and
+# `ssh host command` are not interactive and stay in sh, as they always were.
+# A machine set up before this has /bin/bash in passwd; it is put back.
 admin_set_shells() {
     say "Login shells"
     if ! command -v bash >/dev/null 2>&1; then
-        try_add bash || { warn "bash is not available -- leaving both accounts on /bin/sh"; return 0; }
+        try_add bash || warn "bash is not available -- logins stay in sh until it is"
     fi
-    _bash=$(command -v bash 2>/dev/null || echo /bin/bash)
-    set_login_shell "$PI_USER" "$_bash" || true
-    set_login_shell root "$_bash" || true
-    note "ash is still there as /bin/sh -- scripts with #!/bin/sh are unaffected"
+    for _h in /root "$(user_home)"; do
+        [ -n "$_h" ] && [ -d "$_h" ] || continue
+        grep -qs '>>> copal login shell >>>' "$_h/.profile" 2>/dev/null && continue
+        cat >> "$_h/.profile" <<'BASHHOOK'
+
+# >>> copal login shell >>>
+# The login shell is /bin/sh, so a login never fails; an interactive login
+# moves into bash when bash is installed. Delete this block to stay in sh.
+if [ -z "${BASH_VERSION:-}" ] && [ -x /bin/bash ]; then
+    case $- in *i*) exec /bin/bash -l ;; esac
+fi
+# <<< copal login shell <<<
+BASHHOOK
+        [ "$_h" = /root ] || chown "$PI_USER:" "$_h/.profile" 2>/dev/null || true
+    done
+    set_login_shell root /bin/sh || true
+    set_login_shell "$PI_USER" /bin/sh || true
+    note "login shell /bin/sh for both accounts; an interactive login starts bash when it is installed"
 }
 
 # Tab completion, and the rest of what makes bash worth having been switched to.
@@ -22513,6 +22539,22 @@ EOF
             note "sector 0 and the gap before p1 of /dev/$TGT_DISK: GRUB, p1 active"
         fi
     fi
+
+    # ---- every login shell exists on the new root -------------------------
+    # A login whose shell is missing is a machine nobody can enter (27
+    # October: /bin/bash named and not installed). Whatever /etc/passwd on the
+    # new root names for root and the admin user must be there; if it is not,
+    # that account goes back to /bin/sh, which is part of the base system.
+    for _acct in root "$PI_USER"; do
+        _sh=$(awk -F: -v u="$_acct" '$1 == u { print $7 }' /mnt/etc/passwd 2>/dev/null)
+        [ -n "$_sh" ] || continue
+        if [ ! -x "/mnt$_sh" ]; then
+            warn "$_acct's login shell $_sh is not on the new root -- setting /bin/sh"
+            awk -F: -v OFS=: -v u="$_acct" '$1 == u { $7 = "/bin/sh" } { print }' \
+                /mnt/etc/passwd > /mnt/etc/passwd.copal \
+                && chmod 0644 /mnt/etc/passwd.copal && mv /mnt/etc/passwd.copal /mnt/etc/passwd
+        fi
+    done
 
     # ---- flash-friendly fstab ---------------------------------------------
     say "Tuning /etc/fstab for flash"
