@@ -1734,7 +1734,7 @@ fi
 
 INFO=$(disk probe "$DISK") || die "no such disk: /dev/$DISK"
 
-# Eleven keys, one per line, the same eleven from either host. The shim is
+# Twelve keys, one per line, the same twelve from either host. The shim is
 # what guarantees that: a fact a host cannot supply comes back as "unknown"
 # and NEVER as an absent line, because an absent line reads as an empty string
 # and an empty string passes every refusal below.
@@ -1758,6 +1758,11 @@ MOUNTED=$(mount | awk -v d="/dev/$DISK" '$1 ~ "^" d "s?[0-9]*$" {print $3}' \
 
 # --- hard refusals ---------------------------------------------------------
 [ "$INTERNAL" = "Internal" ] && die "/dev/$DISK is an INTERNAL disk. Refusing."
+# A stick whose flash is worn out locks itself read-only, on purpose, so what
+# is on it can still be copied off. On 27 October one did, after a day of
+# rewrites, and the build got as far as diskutil's "A writable disk is
+# required (-69772)". Said here, before anything is attempted.
+[ "$(get read_only)" = Yes ] && die "/dev/$DISK ($MEDIANAME) reports itself READ-ONLY. Check for a write-protect switch; if there is none, the stick has most likely worn out (flash drives lock themselves read-only when they do). Use another."
 # A virtual disk is normally a mounted DMG or a sparse bundle -- something with
 # a filesystem someone cares about, and never an SD card. It is also exactly
 # what --image just created, so the refusal is relaxed only for the device this

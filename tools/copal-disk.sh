@@ -226,6 +226,7 @@ macos_probe() {
     printf 'protocol=%s\n'       "$(_g 'Protocol')"
     printf 'os_installable=%s\n' "$(_g 'OS Can Be Installed')"
     printf 'uuid=%s\n'           "$(_g 'Disk / Partition UUID')"
+    printf 'read_only=%s\n'      "$(_g 'Media Read-Only')"
 }
 
 macos_partition() {
@@ -338,6 +339,7 @@ linux_probe_map() {
     _f() { printf '%s\n' "$_line" | sed -n "s/.*[[:space:]]\{0,1\}$1=\"\([^\"]*\)\".*/\1/p" | head -n1; }
     _model=$(_f MODEL); _size=$(_f SIZE); _rm=$(_f RM)
     _type=$(_f TYPE);   _tran=$(_f TRAN); _hot=$(_f HOTPLUG); _ptuuid=$(_f PTUUID)
+    _ro=$(_f RO)
     [ -n "$_size" ] || _size=0
 
     case "$_tran" in
@@ -362,11 +364,12 @@ linux_probe_map() {
     # signal at all, and the caller counts how many each platform supplies.
     printf 'os_installable=%s\n' 'unknown'
     printf 'uuid=%s\n'           "${_ptuuid:-unknown}"
+    printf 'read_only=%s\n'      "$(case "$_ro" in (1) echo Yes ;; (0) echo No ;; (*) echo unknown ;; esac)"
 }
 
 linux_probe() {
     [ -b "/dev/$1" ] || die "no such disk: /dev/$1"
-    lsblk -b -d -P -o NAME,SIZE,MODEL,RM,TYPE,TRAN,HOTPLUG,PTUUID "/dev/$1" \
+    lsblk -b -d -P -o NAME,SIZE,MODEL,RM,TYPE,TRAN,HOTPLUG,PTUUID,RO "/dev/$1" \
         2>/dev/null | linux_probe_map
 }
 
@@ -439,7 +442,8 @@ linux_sha256_check()   { sha256sum -c "$1"; }
 # and that partition naming is right for the four kinds of device name there
 # are. A recording and an expected answer -- not a second implementation.
 
-FIX_CARD='NAME="sda" SIZE="15931539456" MODEL="SD Card Reader" RM="1" TYPE="disk" TRAN="usb" HOTPLUG="1" PTUUID="6f20736b"'
+FIX_CARD='NAME="sda" SIZE="15931539456" MODEL="SD Card Reader" RM="1" TYPE="disk" TRAN="usb" HOTPLUG="1" PTUUID="6f20736b" RO="0"'
+FIX_WORN='NAME="sdb" SIZE="63250104320" MODEL="MKNUFDVP64GB" RM="1" TYPE="disk" TRAN="usb" HOTPLUG="1" PTUUID="" RO="1"'
 FIX_INTERNAL='NAME="nvme0n1" SIZE="1024209543168" MODEL="Samsung SSD 990" RM="0" TYPE="disk" TRAN="nvme" HOTPLUG="0" PTUUID="a1b2c3d4"'
 FIX_BIGDRIVE='NAME="sdb" SIZE="2000398934016" MODEL="Expansion Desk" RM="0" TYPE="disk" TRAN="usb" HOTPLUG="1" PTUUID="deadbeef"'
 FIX_LOOP='NAME="loop0" SIZE="17179869184" MODEL="" RM="0" TYPE="loop" TRAN="" HOTPLUG="0" PTUUID=""'
@@ -484,6 +488,9 @@ self_test() {
     want "$(probe_key "$FIX_CARD" whole)"      Yes              'card is whole'
     want "$(probe_key "$FIX_CARD" protocol)"   USB              'card protocol'
     want "$(probe_key "$FIX_CARD" uuid)"       6f20736b         'card uuid'
+    want "$(probe_key "$FIX_CARD" read_only)"  No               'card writable'
+    want "$(probe_key "$FIX_WORN" read_only)"  Yes              'a worn stick says read-only'
+    want "$(probe_key "$FIX_LOOP" read_only)"  unknown          'no RO column reads as unknown'
 
     # 4. The refusals. Each of these is a device the build must not write to,
     #    and the key the refusal reads.

@@ -567,6 +567,20 @@ read-back: the build now reads the boot code back (`biosboot-check`), writes
 it again if it is not there, and if it still is not, ends with a box that
 cannot be scrolled past.
 
+**8. A stick can wear out in the middle of the work.** The third rewrite of
+the day stopped at the partition step: `Error creating partition map: A
+writable disk is required (-69772)`. `diskutil info` said `Media Read-Only:
+Yes` and listed no partitions, and Linux gave read-only errors too. The stick
+(MKNUFDVP64GB, 64 GB, old) had been written three times that day, plus the
+boot code. Flash drives lock themselves read-only when their spare blocks run
+out, on purpose, so what is on them can still be read; it does not come back,
+and no `sudo` helps. The build now asks first: `copal-disk.sh probe` reports
+`read_only` (macOS `Media Read-Only`, Linux `lsblk` `RO`), and `copal-prep.sh`
+refuses a read-only stick by name before it touches it, saying to look for a
+write-protect switch and otherwise to use another stick. Checked with an image
+attached read-only (`read_only=Yes`) and writable (`No`), and in the
+self-test with a fixture of the worn stick (66 checks).
+
 ## XI. Practice: what this work did, and should keep doing
 
 These are the IEEE habits the work followed, and the places it fell short of
@@ -584,6 +598,7 @@ them.
 | **Change one thing at a time; keep what works** | every BIOS change is gated on `firmware_mode`, so UEFI machines take the old path ("the old way worked") | — |
 | **Record results as measured, failures included** | "No bootable device", the bash login loop and the UEFI-only stick are in this report with their causes | the login message was committed as "not captured yet" before it was |
 | **Name what is not tested** | section IV and the backlog say a whole BIOS install is untested | — |
+| **Rule out the hardware** | the dead stick was recognised from `Media Read-Only: Yes` and Linux agreeing, not chased as a software fault (X.8) | — |
 
 ## XII. Trying it on the target PC
 
