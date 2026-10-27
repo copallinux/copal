@@ -440,6 +440,33 @@ To check any stick by hand, from the repository (sudo on a real card):
 sh tools/copal-disk.sh biosboot-check disk4 vendor/grub-i386-pc && echo ok
 ```
 
+### The installed disk boots
+
+With a new stick, the legacy PC installed to `sda` and, after stage 3's
+reboot with the stick out, **started from `sda`**: GRUB from the disk's sector
+0, the installed kernel, OpenRC, the hostname, networking. The BIOS path is
+whole.
+
+One error on the way: `fsck.ext4: Unable to resolve 'UUID=1a4cef2b-...'` and
+`mount: mounting UUID=1a4cef2b-... on /media/sdb2 failed`, "Some local
+filesystem failed to mount". `/media/sdb2` is the stick's p2, the apk cache
+of stage 2, by the device name the stick had when stage 2 wrote the line.
+Stage 3 removes that line by the name the stick has in its own boot
+(`P2MNT`), and USB device names are not stable across boots, so a line
+written as `sdb2` survives a stage 3 that sees `sda2`. The boot carries on;
+only the cache mount fails.
+
+The fix is by place, not by name: stage 3 now drops every line of the new
+`/etc/fstab` that mounts something under `/media/` automatically (the
+installed system mounts nothing from the stick), keeping `noauto` lines such
+as Alpine's `/dev/usbdisk /media/usb`. Checked on a sample fstab: the cache
+line dropped and said so; root, `/boot`, the `noauto` line, a comment and
+`tmpfs` kept. This applies to UEFI installs too, where it changes nothing
+when the name matched, which it always had.
+
+On the PC as installed: `sed -i '\|/media/sdb2|d' /etc/fstab` as root, then
+reboot.
+
 ## IX. One stick, two firmwares: the layout
 
 ### A. The concept

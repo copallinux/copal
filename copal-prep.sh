@@ -22446,6 +22446,17 @@ FSTAB
     mkdir -p /mnt/var/cache/apk /mnt/etc/apk
     ln -s /var/cache/apk /mnt/etc/apk/cache
     sed -i "\|[[:space:]]${P2MNT}[[:space:]]|d" /mnt/etc/fstab
+    # And every other mount the diskless system kept under /media, unless it
+    # is noauto (Alpine's own /media/usb line is, and mounts nothing at boot).
+    # P2MNT is the stick's p2 by the name it has in THIS boot; stage 2 wrote
+    # its line under the name it had then, and USB names are not stable
+    # across boots. On a legacy PC, 27 October, the installed system kept
+    # "UUID=... /media/sdb2", and every boot without the stick said "Some
+    # local filesystem failed to mount". The installed system mounts nothing
+    # from the stick, so the rule is by place, not by name.
+    awk '!/^[[:space:]]*#/ && $2 ~ /^\/media\// && $4 !~ /(^|,)noauto(,|$)/ { print "    dropped from fstab: " $0 > "/dev/stderr"; next } { print }' \
+        /mnt/etc/fstab > /mnt/etc/fstab.copal && mv /mnt/etc/fstab.copal /mnt/etc/fstab
+    chmod 0644 /mnt/etc/fstab 2>/dev/null || true
     note "cache -> /var/cache/apk (on the new root)"
 
     # Swap on its own disk, below zram (stage 5) in priority, so the disk is
