@@ -101,7 +101,7 @@ size is a defect of its own (backlog B-09).
 | --- | --- | --- |
 | **SSH from another machine** | `ssh-copy-id user@<ip>` once, then `ssh user@<ip>`; the auto-resume continues the install in that session | **works**: the install ran to the Desktop phase this way |
 | **A VGA monitor** | plug one into the laptop's VGA port: the console is drawn there (it is the screen `nouveau` thinks it has) | should work; not tried |
-| **The display-switch key** | Fn plus the key with the two-screens icon (on Acer laptops usually F5) | to try; on Linux the key reaches the kernel's ACPI video driver, which may or may not move the text console, so it is uncertain |
+| **The display-switch key** | Fn plus the key with the two-screens icon (on Acer laptops usually F5) | **does not work**: tried on the 5750G, 27 October; some Fn keys responded, the display switch did not move the console to the panel. The key reaches the kernel as an ACPI video event, and nothing on a text console acts on it |
 | **The BIOS** | a graphics setting such as "integrated only" or a switchable-graphics option, if this BIOS has one | unlikely: many laptops of this age have none |
 
 Two things made the SSH route harder than it should be, and both are worth
@@ -140,5 +140,5 @@ screen.
 ## VIII. Open items
 
 Backlog B-07 (the console on the panel), B-08 (the card's SSH key at
-stage 1) and B-09 (the progress screen's redraw over SSH). To try on the
-5750G: the display-switch key, and a VGA monitor.
+stage 1) and B-09 (the progress screen's redraw over SSH). Tried on the
+5750G: the display-switch key, without effect. Still to try: a VGA monitor.
