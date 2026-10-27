@@ -183,6 +183,19 @@ let the person override it.
    Intel GPU, with the NVIDIA one as an offload GPU or not at all, so the
    phantom `VGA-1` does not appear as a second screen.
 
+**Built (step 1), 27 October:** "Copal Linux (Intel graphics only: two-GPU
+laptops)" on every PC stick (second in the menu) and on every installed disk
+(after single user). Its command line adds `modprobe.blacklist=nouveau`
+(honoured by kmod's `modprobe`, which the 5750G uses: `/sbin/modprobe ->
+../bin/kmod`) and `nouveau.modeset=0` (the module's own option, so the
+driver keeps off the screen even where it is loaded by something else).
+Tested in QEMU under SeaBIOS: the entry listed second, chosen, and the
+stick booted to its login as the default entry does (QEMU has no NVIDIA GPU,
+so this shows only that the entry is harmless). On the 5750G it is the first
+experiment below, now one menu choice instead of an edit. A disk installed
+before this has the entry only after the next install, or by editing at the
+menu.
+
 **Experiments on the 5750G, in order, each one boot:**
 
 | # | What | How | Expect |

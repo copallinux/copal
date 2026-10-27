@@ -260,6 +260,14 @@ menuentry "Copal Linux (single user)" {
     initrd /$IPATH
 }
 
+# Two-GPU laptops: nouveau kept off the screen, so the console is on the
+# panel (see the same entry on the stick, and
+# docs/console-wrong-screen-lab-report.md).
+menuentry "Copal Linux (Intel graphics only: two-GPU laptops)" {
+    linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0 modprobe.blacklist=nouveau nouveau.modeset=0
+    initrd /$IPATH
+}
+
 menuentry "Copal live, from a USB stick (if one is in)" {
     if search --no-floppy --file /copal-stick --set=root; then
         configfile /boot/grub/grub.cfg

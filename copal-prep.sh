@@ -2487,6 +2487,19 @@ menuentry "Copal Linux (lts -- real hardware)" {
     initrd /boot/initramfs-lts
 }
 
+# TWO-GPU LAPTOPS (Intel + NVIDIA, "Optimus"): on a muxless one every output
+# is the Intel GPU's, but nouveau registers the first framebuffer and the text
+# console goes to it -- a screen wired to nothing, and the panel stays blank
+# (an Acer Aspire 5750G, 27 October; docs/console-wrong-screen-lab-report.md).
+# This entry keeps nouveau off the screen two ways, for whichever modprobe
+# loads it: modprobe.blacklist (kmod's) and nouveau.modeset=0 (the module's
+# own option, which the kernel command line passes to it). The console is
+# then the Intel GPU's, on the panel. Harmless on a machine with no NVIDIA.
+menuentry "Copal Linux (Intel graphics only: two-GPU laptops)" {
+    linux /boot/vmlinuz-lts modules=loop,squashfs,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=tmpfs console=tty0 modprobe.blacklist=nouveau nouveau.modeset=0
+    initrd /boot/initramfs-lts
+}
+
 # A computer Copal was installed on keeps /copal-installed on its own boot
 # partition (stage 3 writes it). Found, its own menu takes over; not found,
 # a line says so and the menu comes back.
@@ -22488,6 +22501,14 @@ menuentry "Copal Linux" {
 
 menuentry "Copal Linux (single user)" {
     linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0 single
+    initrd /$IPATH
+}
+
+# Two-GPU laptops: nouveau kept off the screen, so the console is on the
+# panel (see the same entry on the stick, and
+# docs/console-wrong-screen-lab-report.md).
+menuentry "Copal Linux (Intel graphics only: two-GPU laptops)" {
+    linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0 modprobe.blacklist=nouveau nouveau.modeset=0
     initrd /$IPATH
 }
 
