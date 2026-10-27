@@ -259,6 +259,14 @@ menuentry "Copal Linux (single user)" {
     linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0 single
     initrd /$IPATH
 }
+
+menuentry "Copal live, from a USB stick (if one is in)" {
+    if search --no-floppy --file /copal-stick --set=root; then
+        configfile /boot/grub/grub.cfg
+    else
+        echo "No Copal USB stick found."
+    fi
+}
 EOF
         note "kernel  /$KPATH"
         note "initrd  /$IPATH"
@@ -430,7 +438,35 @@ FSTAB
         for _f in copal-auto copal-timings copal.log copal-git copal-repos copal-profile; do
             [ -f "$BOOT/$_f" ] && cp "$BOOT/$_f" /mnt/boot/ 2>/dev/null
         done
-        note "the install continues from /dev/$TGT_DISK after the reboot; the stick can come out"
+        # The disk is the installed system now: it says so (the stick's menu
+        # finds it by this file), and it is not a stick (the disk's menu
+        # finds a stick by the other one).
+        printf 'Copal installed on %s, /dev/%s, %s\n' "$(hostname)" "$TGT_DISK" "$(date -u +%Y-%m-%d)" > /mnt/boot/copal-installed
+        rm -f /mnt/boot/copal-stick
+        note "the install continues from /dev/$TGT_DISK after the reboot"
+
+        # THE STICK GOES BACK TO NEW, so it installs the next computer from
+        # scratch. Everything this install left on it -- the saved
+        # configuration, the resume marker, the level chosen, the log and
+        # timings -- is on the disk now (copied above). Left on the stick,
+        # the next computer would boot as this one (its hostname, its fstab,
+        # its half-finished install), which is what happened on 27 October.
+        # The git identity and the repository list stay: they are the
+        # person's, not the machine's. The hostname is drawn again.
+        say "Resetting the USB stick for the next computer"
+        mount -o remount,rw "$BOOT" 2>/dev/null || true
+        for _o in "$BOOT"/*.apkovl.tar.gz; do
+            [ -e "$_o" ] || continue
+            case "${_o##*/}" in copal-first.apkovl.tar.gz) ;; *) rm -f "$_o" ;; esac
+        done
+        rm -f "$BOOT/copal-auto" "$BOOT/copal-profile" "$BOOT/copal-timings" "$BOOT/copal.log"
+        if [ -f "$BOOT/boot/copal-starter.tar.gz" ]; then
+            cp "$BOOT/boot/copal-starter.tar.gz" "$BOOT/copal-first.apkovl.tar.gz"
+            note "stick: back to new -- the next computer starts at stage 1, with a new hostname"
+        else
+            warn "stick: no spare starter on it (a stick written before 27 October); it boots fresh but without the first-login message"
+        fi
+        STICK_RESET=1
     fi
 
     sync
@@ -438,6 +474,29 @@ FSTAB
     umount /mnt
 
     say "Stage 3 complete."
+    if [ "${STICK_RESET:-0}" = 1 ]; then
+        if [ "$(firmware_mode)" = UEFI ]; then
+            _fw='UEFI setup: put this disk first in the Boot Order (or choose it in the one-time boot menu)'
+        else
+            _fw='BIOS setup: put the hard disk first in the Boot Priority / Hard Disk order'
+        fi
+        cat <<MSG
+
+    =====================================================================
+      COPAL IS NOW ON /dev/$TGT_DISK. TO START FROM IT:
+
+        1. Say yes to the reboot below. When the screen goes dark,
+           REMOVE THE USB STICK.
+        2. If the computer still starts from the stick, or says no disk:
+           $_fw.
+
+      The stick has been reset. It installs the NEXT computer from the
+      beginning. Left in this one, its menu has "Copal installed on this
+      computer's disk", which starts this install.
+    =====================================================================
+
+MSG
+    fi
     cat <<MSG
     A reboot is REQUIRED before anything else. Until then / is still the
     tmpfs, the new root on p2 is merely populated, and stage 4 will refuse

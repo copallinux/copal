@@ -467,6 +467,34 @@ when the name matched, which it always had.
 On the PC as installed: `sed -i '\|/media/sdb2|d' /etc/fstab` as root, then
 reboot.
 
+### One stick for many computers, and a menu that reaches both
+
+Booted again after the install, the stick misbehaved: it still carried the
+first computer's saved configuration (its hostname, the fstab line for its
+cache, root's shell), so on the next computer it booted as the last one.
+Paul's requirement: the same stick installs the next computer, both menus
+reach both systems, and the install says plainly what to do with the boot
+order and the stick.
+
+| Change | Where |
+| --- | --- |
+| **The stick's menu** has "Copal installed on this computer's disk": `search --file /copal-installed`, then that disk's own `grub.cfg`; if none, a line says so and the menu returns | `copal-prep.sh`, PC `grub.cfg` |
+| **The installed disk's menu** has "Copal live, from a USB stick (if one is in)": `search --file /copal-stick`, then the stick's menu | stage 3's `grub.cfg` |
+| **The markers:** every stick carries `/copal-stick`; stage 3 removes it from the disk's copy of p1 and writes `/copal-installed` (hostname, disk, date) there | `copal-prep.sh`, stage 3 |
+| **The stick is reset** after an install to a disk: the saved configuration, `copal-auto`, `copal-profile`, `copal-timings` and `copal.log` go (all copied to the disk first), and the starter comes back from a spare (`boot/copal-starter.tar.gz`, a name the initramfs does not load). The git identity and repository list stay, being the person's; the hostname is drawn again on the next computer | stage 3 |
+| **A box at the end of stage 3:** remove the stick when the screen goes dark; if the computer still starts from the stick or finds no disk, put the disk first in the boot order, in UEFI or BIOS words to match the machine | stage 3 |
+
+Not reset when root went onto the stick itself: then the stick is the
+computer.
+
+**Tested in QEMU under SeaBIOS** with a fresh stick image and a second disk
+standing for an installed one (`/copal-installed`, and a `grub.cfg` with one
+entry, "THIS IS THE INSTALLED DISK MENU"): the stick's menu listed the new
+entry second; choosing it showed the other disk's menu, with "ESC to return
+to previous menu". The UEFI GRUB the cards carry has `search`,
+`search_fs_file` and `configfile` (read from the binary). Not yet tested: the
+reset itself, which runs at the end of a real stage 3.
+
 ## IX. One stick, two firmwares: the layout
 
 ### A. The concept
