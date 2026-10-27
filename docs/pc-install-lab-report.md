@@ -679,6 +679,38 @@ That is OpenGL through zink on NVK, on the real card, at the monitor's native
 3440×1440 and 100 Hz. The same process was still running on a later check,
 with no new runtime directories. **Attempt 7 reached the desktop.**
 
+### J. Attempt 8 — the install went onto the stick
+
+**Symptom.** An install meant for the PC's NVMe drive put root, and with it
+the boot loader, on the USB stick. The operator could not tell afterwards
+whether the wrong disk was typed.
+
+**Cause.** Stage 3's disk list had a default, and the default was the stick:
+Enter at "Root on which disk?" kept root on the stick. In automatic mode
+`ask()` then answered "Type yes to proceed" by itself and stage 3 erased the
+stick's p2. Three more paths reached the stick without asking: no util-linux
+`blkid`, no other disk seen, no terminal. Nothing on the way said that the
+boot loader goes on p1 of the root disk, so a stick root is a stick boot.
+`copal.log` from this run has not been read, so which path it took is not
+known.
+
+**Fix.** Enter no longer has a default; the stick takes an explicit `s`. The
+list shows the stick's own row, the firmware mode, and where the boot loader
+goes, and a confirmed disk is described as its result (boot loader on p1, root
+on p2, firmware entry first). A new screen, `removable_root_gate`, stops every
+path whose root disk is removable or on USB. It names root and boot-loader
+partitions, lists the internal disks seen, and, if it saw none, names Intel
+VMD/RST storage mode as the usual reason an NVMe drive is hidden. Going on
+takes the disk's name typed at the keyboard; automatic mode cannot answer it,
+and with no terminal the stage stops with nothing erased. `ask_person` now
+fails at end of input, which a picker with no default needs to avoid looping.
+
+**Checked so far.** Against a fake `/sys` with a USB stick and an NVMe drive:
+Enter re-asks, `s` reaches the screen, typing the stick's name goes on, `b`
+returns to the list, anything else stops, a closed terminal stops, no terminal
+stops. The VMs attach VirtIO disks, which are neither removable nor USB, so
+the screen never appears there. Not yet run on hardware.
+
 ## IV. Results so far
 
 | Attempt | Stage reached | Result |
@@ -691,6 +723,7 @@ with no new runtime directories. **Attempt 7 reached the desktop.**
 | 5 | Desktop phase, Brave | **Stage 1 fixed: the System phase completed.** Brave's glibc error is expected; the Flatpak fallback ran |
 | 6 | Stage 3, `setup-disk` | Five-drive PC, no network. The network check passed on the stick's own repository. Fixed, and a disk list is now logged |
 | 7 | Desktop, Hyprland | **Full install completed** on a second PC. The disk choice worked on real disks: root on NVMe, swap on a small SSD, Windows read-only. Hyprland aborts in a loop on an RTX 4060 Ti: no NVK, so no EGL. Stage 17 fixed. After one `apk add`: **desktop on the GPU** (zink on NVK), 3440×1440 at 100 Hz |
+| 8 | Stage 3, disk choice | Root and boot loader landed on the stick, not the NVMe. Enter defaulted to the stick. No default now, and a removable-disk screen before anything is erased. Hardware run pending |
 
 ## V. Discussion
 

@@ -4828,6 +4828,19 @@ disk_kind() {  # <disk> -> NVMe | eMMC | USB | SSD | HDD
 
 disk_gib() { echo $(( $(cat "/sys/block/$1/size" 2>/dev/null || echo 0) / 2097152 )); }
 
+# Removable: the kernel says so, or it hangs off USB. A USB SSD often reports
+# removable=0, and a card reader reports 1 on a bus that is not USB; either
+# way it is a disk that leaves with the person who unplugs it.
+disk_removable() {  # <disk>
+    [ "$(cat "/sys/block/$1/removable" 2>/dev/null)" = 1 ] || [ "$(disk_kind "$1")" = USB ]
+}
+
+disk_model() {  # <disk>
+    cat "/sys/block/$1/device/model" 2>/dev/null | tr -s ' ' | sed 's/^ //; s/ *$//'
+}
+
+firmware_mode() { if [ -d /sys/firmware/efi ]; then echo UEFI; else echo 'legacy BIOS'; fi; }
+
 probe_field() {  # <device> <FIELD> -> value, from blkid -p
     blkid -p -o export "$1" 2>/dev/null | sed -n "s/^$2=//p" | head -n1
 }
@@ -4890,8 +4903,11 @@ root_candidates() {
 # Read one answer from the person at the keyboard, whatever AUTO says.
 ask_person() {  # <prompt> -> REPLY
     printf '\n\033[36m%s\033[0m ' "$*"
-    read -r REPLY < /dev/tty || REPLY=''
+    # Fails at end of input, so a question that will not take '' for an
+    # answer can tell a closed terminal from a person pressing Enter.
+    _ap=0; read -r REPLY < /dev/tty || { REPLY=''; _ap=1; }
     printf '%s\n' "$REPLY" >> "$LOG" 2>/dev/null || true
+    return $_ap
 }
 
 # Show a disk's partitions before it is erased: what is about to be lost.
@@ -4956,15 +4972,25 @@ MSG
         printf '  %s %-3s %-10s %5s GiB  %-5s %-24.24s %s\n' "$_mk" "$_i" "$_n" "$(( _b / 1073741824 ))" "$_k" "$_m" "$_o"
         [ -z "$_rec" ] && [ "$_p" = 0 ] && _rec="$_i $_n"
     done < "$COPAL_TMP/disks"
-    printf '     %-3s %s\n' s "the USB stick ($STICK_DISK) -- root on the stick, as before  [default]"
+    printf '     %-3s %-10s %5s GiB  %-5s %-24.24s %s\n' s "$STICK_DISK" "$(disk_gib "$STICK_DISK")" \
+        "$(disk_kind "$STICK_DISK")" "$(disk_model "$STICK_DISK")" "the medium Copal booted from"
     echo
     note "!! = part of a ZFS pool, RAID array, LVM, LUKS or Btrfs: erasing it breaks the set it belongs to"
+    note "firmware: $(firmware_mode). The boot loader (GRUB, \\EFI\\BOOT\\BOOT*.EFI) goes on p1 of the"
+    note "disk chosen here, so the PC needs that disk -- and only that disk -- to start."
     [ -n "$_rec" ] && note "recommended: ${_rec%% *} (${_rec#* }) -- the fastest unmarked disk"
 
     while :; do
-        ask_person "Root on which disk? [number, name, or s for the stick]:"
+        # No default. Enter used to mean the stick, and one stray Enter put
+        # a whole install on the USB stick with an NVMe drive sitting idle.
+        if ! ask_person "Root on which disk? [number, name, or s for the stick]:"; then
+            note "the terminal closed -- no disk chosen"; TGT_DISK=''; break
+        fi
         _ans=$REPLY
-        case "$_ans" in ''|s|S|stick) note "root stays on the stick ($STICK_DISK)"; TGT_DISK=''; break ;; esac
+        case "$_ans" in
+            '') note "no default here -- type a number from the list${_rec:+ (${_rec%% *} is recommended)}, or s"; continue ;;
+            s|S|stick) note "root stays on the stick ($STICK_DISK)"; TGT_DISK=''; break ;;
+        esac
         _line=''
         case "$_ans" in
             *[!0-9]*) _line=$(awk -F'|' -v n="$_ans" '$4 == n' "$COPAL_TMP/disks") ;;
@@ -5002,6 +5028,8 @@ EOF
         _big=$(sort -t'|' -k3,3n "$COPAL_TMP/disks" | tail -n1 | cut -d'|' -f4)
         [ "$_big" = "$_n" ] && [ "$_b" -gt 1000000000000 ] \
             && warn "the largest disk here -- usually the one meant for data. Root needs about 30-130 GB."
+        note "after this: boot loader on $(part_of "$_n" 1) (EFI), root on $(part_of "$_n" 2) (ext4),"
+        note "and a firmware entry 'Copal Linux' pointing at $_n, first in the boot order."
         ask_person "Type $_n to erase it and install there (anything else goes back):"
         if [ "$REPLY" = "$_n" ]; then TGT_DISK=$_n; break; fi
         note "not confirmed -- nothing erased"
@@ -5032,6 +5060,68 @@ EOF
     fi
     tui_resume
     return 0
+}
+
+# The last word before anything is erased, when root -- and with it the boot
+# loader, which always goes on p1 of the root disk -- would land on removable
+# media. Every path that leaves TGT_DISK empty ends here: s at the list, no
+# util-linux blkid, no other disk seen, no terminal. The first PC install to
+# go wrong went through one of them and filled the stick while an NVMe drive
+# sat idle, so this screen is put to a person and never to ask(): automatic
+# mode would type the answer for them.
+# Returns 0 to go ahead, 1 to stop with nothing erased, 2 to choose again.
+removable_root_gate() {
+    _gd=${TGT_DISK:-$STICK_DISK}
+    disk_removable "$_gd" || return 0
+    if [ "${HAVE_TTY:-0}" != 1 ]; then
+        warn "root and the boot loader would go on /dev/$_gd, a removable disk, and"
+        warn "there is no terminal to confirm that on. Stopping; nothing was erased."
+        return 1
+    fi
+    tui_suspend
+    _internal=''
+    for _gb in /sys/block/*; do
+        _gn=${_gb##*/}
+        case "$_gn" in loop*|ram*|zram*|sr*|fd*|md*|dm-*|nbd*) continue ;; esac
+        [ "$(cat "$_gb/size" 2>/dev/null || echo 0)" -gt 0 ] || continue
+        disk_removable "$_gn" && continue
+        _internal="$_internal$(printf '        /dev/%-10s %5s GiB  %-5s %s' "$_gn" "$(disk_gib "$_gn")" "$(disk_kind "$_gn")" "$(disk_model "$_gn")")
+"
+    done
+    printf '\n\033[41;97m  %s  \033[0m\n\n' "REMOVABLE DISK -- READ THIS BEFORE ANYTHING IS ERASED"
+    printf '    Root (ext4)   -> %s on /dev/%s\n' "$(part_of "$_gd" 2)" "$_gd"
+    printf '    Boot loader   -> %s, GRUB at \\EFI\\BOOT\\  (firmware: %s)\n' "$(part_of "$_gd" 1)" "$(firmware_mode)"
+    printf '    /dev/%s is %s GiB, %s, %s%s\n\n' "$_gd" "$(disk_gib "$_gd")" "$(disk_kind "$_gd")" \
+        "$(disk_model "$_gd")" "$([ "$_gd" = "$STICK_DISK" ] && echo ' -- the stick Copal booted from')"
+    cat <<'MSG'
+    Both would live on a removable disk. The PC will not start without it
+    plugged in, and nothing is installed on any internal drive.
+MSG
+    if [ -n "$_internal" ]; then
+        printf '\n    Internal disks this PC has -- root can go on one of these instead:\n%s' "$_internal"
+    else
+        cat <<'MSG'
+
+    No internal disk was seen at all. If this PC has an NVMe drive, the
+    firmware is probably hiding it: Intel VMD / RST ("RAID" or "Intel RST
+    Premium" storage mode) puts NVMe behind a controller Linux does not
+    drive. Set the storage mode to AHCI in the firmware setup and boot the
+    stick again. (Windows on that drive needs Safe Mode once afterwards.)
+MSG
+    fi
+    blkid -V 2>&1 | grep -q util-linux \
+        || printf '\n    util-linux blkid could not be installed, so the disks were not offered.\n    Check the network (stage 3 needs it anyway) and run stage 3 again.\n'
+    echo
+    _again=''
+    [ -s "${COPAL_TMP:-/nonexistent}/disks" ] && _again=', b to go back to the disk list'
+    ask_person "Type $_gd to install on it anyway${_again}, anything else stops:"
+    tui_resume
+    case "$REPLY" in
+        "$_gd") note "confirmed: root and boot loader on removable /dev/$_gd"; return 0 ;;
+        b|B) [ -n "$_again" ] && return 2 ;;
+    esac
+    note "stopped -- nothing was erased"
+    return 1
 }
 
 # Unmount and strip every signature from a disk, then its partitions.
@@ -21902,7 +21992,18 @@ MSG
     # confirmed by typing the disk's name -- see choose_root_target.
     TGT_DISK=''; SWAP_DISK=''; SWAP_DEV=''
     STICK_DISK=$DISKDEV
-    is_pi_boot || choose_root_target
+    if ! is_pi_boot; then
+        rm -f "${COPAL_TMP:?}/disks"
+        while :; do
+            choose_root_target
+            _gate=0; removable_root_gate || _gate=$?
+            case "$_gate" in
+                0) break ;;
+                2) TGT_DISK=''; SWAP_DISK=''; SWAP_GIB=0 ;;
+                *) return 0 ;;
+            esac
+        done
+    fi
 
     if [ -z "$TGT_DISK" ]; then
         [ -b "$P2" ] || die "$P2 not found"
