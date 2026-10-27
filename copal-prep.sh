@@ -96,7 +96,15 @@ disk() {
     # owner, COPAL_MOUNT_ROOT for ~/.copal/mnt), or the stick would be
     # mounted root's, under /root. macOS is unchanged: sudo remembers per
     # terminal, so it asks once there already.
-    if [ "$(uname -s)" = Linux ] && [ "$(id -u)" != 0 ] && command -v doas >/dev/null 2>&1; then
+    # Only the verbs that touch a device go through doas. A checksum, a
+    # listing or a probe needs no root, and asking doas for them only adds
+    # prompts -- and a prompt nobody answered failed the Ubuntu 26.04 check
+    # silently on saskatchewan, so a good download was left off the card.
+    _need_root=0
+    case "${1:-}" in
+        unmount-all|unmount|mount|partition|type|bootflag|biosboot|biosboot-check|eject|image-attach|image-detach) _need_root=1 ;;
+    esac
+    if [ "$_need_root" = 1 ] && [ "$(uname -s)" = Linux ] && [ "$(id -u)" != 0 ] && command -v doas >/dev/null 2>&1; then
         doas env COPAL_OWNER="$(id -u):$(id -g)" \
             COPAL_MOUNT_ROOT="${COPAL_MOUNT_ROOT:-$HOME/.copal/mnt}" \
             sh "$DISKSH" "$@"
@@ -2440,7 +2448,15 @@ unset _cb _cd _cr
 SETUPMSG
 chmod 0644 "$_seed/etc/issue" "$_seed/etc/motd" "$_seed/etc/profile.d/copal-setup.sh" "$_seed/etc/.default_boot_services"
 # Owned by root on the machine, whoever wrote the card; no macOS metadata.
-COPYFILE_DISABLE=1 tar -czf "$MNT/copal-first.apkovl.tar.gz" --uid 0 --gid 0 -C "$_seed" \
+# Owned by root in the archive: --uid/--gid is bsdtar's (macOS), GNU tar's is
+# --owner/--group (Linux; '--uid' stopped the first card written there).
+if tar --version 2>/dev/null | grep -q 'GNU tar'; then
+    _tarown='--owner=0 --group=0 --numeric-owner'
+else
+    _tarown='--uid 0 --gid 0'
+fi
+# shellcheck disable=SC2086  # _tarown is two or three words, on purpose
+COPYFILE_DISABLE=1 tar -czf "$MNT/copal-first.apkovl.tar.gz" $_tarown -C "$_seed" \
     etc/.default_boot_services etc/issue etc/motd etc/profile.d/copal-setup.sh \
     || die "could not write copal-first.apkovl.tar.gz"
 rm -rf "$_seed"

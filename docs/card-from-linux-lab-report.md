@@ -155,10 +155,42 @@ true)`, `if false`, `false && true`, a failing `grep` inside `$(...)`), and
 for `cp /nonexistent` inside a function, `STOPPED at line 4 (exit 1)`, the
 right line.
 
+## VI-A. Run 5: two more, found by the log
+
+With `cp -R` the payload copied and the build reached the files it writes
+itself, then stopped, by name:
+
+```
+tar: unrecognized option '--uid'
+error: could not write copal-first.apkovl.tar.gz
+```
+
+**4. `--uid 0 --gid 0` is bsdtar's.** The starter overlay was packed with
+macOS's tar syntax; GNU tar spells it `--owner=0 --group=0`. Now chosen by
+`tar --version`: GNU gets `--owner=0 --group=0 --numeric-owner`, others
+`--uid 0 --gid 0`. Checked: both archives list `etc/motd` owned by root
+(`root` from bsdtar, `0/0` from GNU tar 1.35).
+
+**5. A good download dropped by its check.** "Ubuntu 26.04 netboot did not
+download or did not match its pinned sums", while 24.04 matched. Downloaded
+again on saskatchewan by hand, both 26.04 files matched the pins exactly
+(and `Last-Modified` was 26 August), so the files were right and the check
+was wrong. Since `36dece9` every disk-layer verb had gone through `doas`,
+the checksum one included; a `doas` prompt in the middle of the downloads,
+unanswered or past `persist`'s window, made the check fail with its output
+discarded. Now only the verbs that touch a device go through `doas`
+(unmount, mount, partition, type, bootflag, biosboot and its check, eject,
+image attach and detach); a checksum, a listing or a probe runs as the
+person.
+
+A scan of the host-side build for other macOS-only commands (`sed -i ''`,
+`stat -f`, `diskutil`, `hdiutil`, `date -j`, `xattr`, ...) found only
+`bsdtar` for reading ISOs, which saskatchewan has (the Extract step passed).
+
 ## VII. Next
 
-Run 5 on saskatchewan, with `cp -R`. Expect one password and a whole card;
-`make lastlog` reads the end of it.
+Run 6 on saskatchewan. Expect one password and a whole card, with both
+Ubuntu entries; `make lastlog` reads the end of it.
 
 ## VIII. Discussion
 
