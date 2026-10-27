@@ -2140,6 +2140,7 @@ bindings, the account model, the SD-card wear analysis — is in
 | `docs/interface-report.md` | Interface simplification for the technically capable user — the design position, IEEE format |
 | `docs/terminal-guide-lab-report.md` | ([on the site](https://copallinux.org/terminal-guide-lab-report.html)) Writing the Terminal Guide against a running machine: the template, the checker, screen automation and review, and the installer defects the writing found. IEEE format |
 | `docs/text-safety-lab-report.md` | A hostile-input review of ytq and Static Stream, Copal's shell scripts measured with shellcheck, and the standard both are held to. IEEE format |
+| `docs/card-from-linux-lab-report.md` | Writing a card from Linux: a root-owned FAT mount, ten passwords (OpenDoas persists per parent process), a stop not yet explained, and the build's own log. IEEE format, interim |
 | `docs/renaming-a-machine-lab-report.md` | Two machines called saskatchewan: where a hostname lives (three files), renaming one over SSH, and why a pasted command should not depend on staying on one line. IEEE format |
 | `docs/console-wrong-screen-lab-report.md` | A two-GPU laptop whose console went to a VGA port with nothing on it, and finishing the install over SSH. IEEE format |
 | `docs/legacy-bios-lab-report.md` | Legacy BIOS boot written from a Mac (GRUB's boot code by `dd`), the hostname drawn at each install, and the first login's message. IEEE format |

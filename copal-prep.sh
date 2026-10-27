@@ -1023,6 +1023,28 @@ MIRROR="${MIRROR:-https://dl-cdn.alpinelinux.org/alpine}"
 # into the cache directory, so a rule that emptied the cache would have taken a
 # finished install with it.
 BUILDDIR="${BUILDDIR:-$(cd "$(dirname "$0")" && pwd)/build}"
+
+# THE BUILD'S OWN LOG, and where it stopped. A card written from Linux on 27
+# October stopped right after the payload copy, three times, and all anyone
+# could see afterwards was a half-written card: the output had been on a
+# terminal, and the stop was set -e's, which says nothing. So every run now
+# copies everything it prints into build/copal-prep-STAMP.log (the newest is
+# build/copal-prep-last.log, and `make lastlog` shows it), and a command that
+# fails and ends the build says so, with its line, before the exit. The step
+# gates read /dev/tty, not standard input, so they are not affected by the
+# copy. COPAL_PREP_LOG set by a caller (a nested run) means it is already
+# being logged.
+if [ -z "${COPAL_PREP_LOG:-}" ]; then
+    mkdir -p "$BUILDDIR"
+    COPAL_PREP_LOG="$BUILDDIR/copal-prep-$(date +%Y%m%d-%H%M%S).log"
+    export COPAL_PREP_LOG
+    ln -sfn "$(basename "$COPAL_PREP_LOG")" "$BUILDDIR/copal-prep-last.log"
+    exec > >(tee -a "$COPAL_PREP_LOG") 2>&1
+fi
+set -E
+# Only at the top level: with set -E the trap reaches $(...) too, where a
+# failing command does not end the build, and a STOPPED line there would lie.
+trap '_e=$?; [ "$BASH_SUBSHELL" = 0 ] && printf "\ncopal-prep.sh: STOPPED at line %s (exit %s): %s\n" "$LINENO" "$_e" "$BASH_COMMAND" >&2' ERR
 # WORKDIR is honoured because it is what this variable used to be called and
 # scripted callers may still set it.
 CACHEDIR="${CACHEDIR:-${WORKDIR:-$BUILDDIR/cache}}"
@@ -1106,6 +1128,7 @@ on_exit() {
     # exact opposite of the paragraph above. Failures inside it are still
     # swallowed by '|| true', which is all the trap actually needs.
     build_time_report || true
+    [ -n "${COPAL_PREP_LOG:-}" ] && printf '\nLog: %s   (make lastlog)\n' "$COPAL_PREP_LOG" >&2
     rm -rf "$BUILD_STATE" 2>/dev/null || true
     if [ -n "${IMAGE_DEV:-}" ] && [ -e "${IMAGE_DEV:-/nonexistent}" ]; then
         printf '\033[33mReleasing %s (%s).\033[0m\n' "$IMAGE_DEV" "${IMAGE_PATH:-image}" >&2
