@@ -1,6 +1,6 @@
 # Writing a Card from Linux: Three Causes, a Wrong Test, and a Build That Keeps Its Own Log
 
-*Lab Report — IEEE Format · 27 October 2026*
+*Lab Report — IEEE Format · 27 October 2026 · a whole card at run 6*
 
 <!-- SPDX-License-Identifier: MIT -->
 Copyright (c) 2026 Paul Richeson. MIT licensed — see `LICENSE`. Copal Linux is
@@ -208,10 +208,20 @@ time, and more verbs than before went through `doas`. Two changes:
 What one run should now ask for: one password, again only if more than
 `persist`'s five minutes pass between device verbs.
 
+## VI-C. Run 6: a whole card
+
+At `cc2bee3`, 16:46, 56 s: the first complete Copal card written from
+Linux. From its log (`build/copal-prep-20261027-164608.log` on
+saskatchewan): netboot.xyz 3.0.3, Ubuntu 26.04 and 24.04 netboot, each "sums
+checked"; the starter overlay written; the verifier's `grub.cfg ->` lines
+for both kernels and both netboot.xyz files; `ok legacy BIOS: sector 0, p1
+active, core.img`; "It is safe to remove /dev/sde"; no `STOPPED`, no
+`MISSING`, no error. How many passwords it asked for is Paul's to report.
+
 ## VII. Next
 
-Run 6 on saskatchewan. Expect one password and a whole card, with both
-Ubuntu entries; `make lastlog` reads the end of it.
+Boot the card (the 1080 Ti machine, "Install Ubuntu 24.04 LTS Server"), and
+confirm the password count of a Linux write.
 
 ## VIII. Discussion
 
