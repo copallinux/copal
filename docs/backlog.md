@@ -27,7 +27,7 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | S | shell scripts | `copal`, and `staticstream` where the entry says so |
 | B | booting and installing | `copal` |
 
-**Standing:** 8 open · 2 in progress · 34 done · 3 dropped. Written 29 September 2026; the B entries 27 October 2026 (`docs/legacy-bios-lab-report.md`).
+**Standing:** 9 open · 2 in progress · 34 done · 3 dropped. Written 29 September 2026; the B entries 27 October 2026 (`docs/legacy-bios-lab-report.md`).
 
 ---
 
@@ -49,6 +49,7 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | B-08 | **The card's SSH key at stage 1**, not at the SSH-key stage, so a machine is reachable from the Mac from its first boot (the 5750G needed `ssh-copy-id` and the password) | — | after stage 1, `ssh user@<ip>` from the Mac logs in with the key |
 | B-09 | **The progress screen draws stray text over SSH.** In the Mac's Terminal at 120x33, during the Desktop phase, text ran down the right edge ("100Execut", a wrapped mirror address) beside a correct screen; the install was not affected (`docs/console-wrong-screen-lab-report.md`, V) | a screen that can be read | the Desktop phase over SSH at 120x33 and at 80x24 shows no stray text |
 | B-10 | **A CUDA machine in the fleet.** Ubuntu installed from the Copal menu (done: "Install Ubuntu 24.04 / 26.04 LTS Server (network)"), then set up over SSH: for a GTX 1080 / 1080 Ti, Ubuntu 24.04 with NVIDIA's `cuda-drivers-580` and `cuda-toolkit-12-9` (the 26.04 repository has only CUDA 13, which does not target Pascal) | NVIDIA's supported path, not Alpine | `nvidia-smi` lists the card, and a CUDA 12.9 sample runs |
+| B-11 | **`copal rename NAME`.** A rename touches three files (`/etc/hostname`, `/etc/hosts`, the `hostname` line in `/etc/network/interfaces`, which DHCP sends to the router); done by hand on `columbia` it reached two, because the Terminal wrapped the one long command. The command checks the name, changes all three, sets the running name, commits on a diskless root, and prints them back (`docs/renaming-a-machine-lab-report.md`) | one command, nothing to paste | on a test machine all three files and `hostname` show the new name, and after a reboot too |
 | B-03 | A hybrid ISO, for a DVD and a stick: El Torito for BIOS and UEFI and an MBR, built with `xorriso`. A DVD is read-only, so it is an installer or a live disc; the configuration is saved to a stick or a disk | — | the ISO boots in QEMU under SeaBIOS and EDK2, from a CD and as a disk |
 | B-04 | `shellcheck` over `tools/copal-disk.sh`, `tools/grub-bios-build.sh`, `tools/copal-answers.sh` and the changed stages: it was not installed on the Mac that wrote them | S-23's standard | `make shell-lint` passes with no new warning |
 
