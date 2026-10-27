@@ -327,7 +327,21 @@ linux_mount() {
     _m="$_root/${_l:-$_p}"
     mkdir -p "$_m" || die "cannot create the mount point $_m"
     if ! mountpoint -q "$_m" 2>/dev/null; then
-        priv mount "/dev/$_p" "$_m" || die "could not mount /dev/$_p at $_m"
+        # FAT keeps no owners, so a FAT partition mounted by root belongs to
+        # root, and the build -- run as the person, who copies the payload
+        # onto it -- is refused: "Permission denied", with the stick
+        # partitioned and empty (saskatchewan, 27 October, the first card
+        # written from Linux by a non-root user). macOS mounts a card as the
+        # person who plugged it in, which is why it never showed there. So a
+        # FAT partition is mounted owned by whoever runs this; other
+        # filesystems keep their own owners and take no uid= option.
+        _fs=$(lsblk -n -o FSTYPE "/dev/$_p" 2>/dev/null | head -n1 | xargs || true)
+        case "$_fs" in
+            vfat|fat|msdos|exfat)
+                priv mount -o "uid=$(id -u),gid=$(id -g)" "/dev/$_p" "$_m" \
+                    || die "could not mount /dev/$_p at $_m" ;;
+            *)  priv mount "/dev/$_p" "$_m" || die "could not mount /dev/$_p at $_m" ;;
+        esac
     fi
     printf '%s\n' "$_m"
 }
