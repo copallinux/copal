@@ -86,7 +86,26 @@ screen at all. This is the Copal fleet's way of working
 (`docs/fleet-plan.md`): machines on one LAN, reached and driven from another;
 here, one machine and plain SSH.
 
-Two things made this harder than it should be, and both are worth fixing:
+**The install ran to the Desktop phase this way** (Paul's screenshot,
+14:06): the progress screen in the Mac's Terminal over SSH, "37% 6 of 16
+stages done", System, Memory and Access ticked, Desktop under way
+("Installing the X server", "Installing a file manager and a task manager":
+pcmanfm, htop, ncdu, mc, jgmenu). The screen itself drew stray text down its
+right edge in a 120x33 window ("100Execut", a wrapped mirror address); the
+install was not affected, but the progress screen's redraw over SSH at that
+size is a defect of its own (backlog B-09).
+
+### The workarounds, all of them
+
+| Workaround | How | State |
+| --- | --- | --- |
+| **SSH from another machine** | `ssh-copy-id user@<ip>` once, then `ssh user@<ip>`; the auto-resume continues the install in that session | **works**: the install ran to the Desktop phase this way |
+| **A VGA monitor** | plug one into the laptop's VGA port: the console is drawn there (it is the screen `nouveau` thinks it has) | should work; not tried |
+| **The display-switch key** | Fn plus the key with the two-screens icon (on Acer laptops usually F5) | to try; on Linux the key reaches the kernel's ACPI video driver, which may or may not move the text console, so it is uncertain |
+| **The BIOS** | a graphics setting such as "integrated only" or a switchable-graphics option, if this BIOS has one | unlikely: many laptops of this age have none |
+
+Two things made the SSH route harder than it should be, and both are worth
+fixing:
 
 1. **No key until stage 6.** The card carries `authorized_keys`
    (`ssh-ed25519 paulr@sdf.org`), but it is installed for `user` only at the
@@ -120,5 +139,6 @@ screen.
 
 ## VIII. Open items
 
-Backlog B-07 (the console on the panel) and B-08 (the card's SSH key at
-stage 1).
+Backlog B-07 (the console on the panel), B-08 (the card's SSH key at
+stage 1) and B-09 (the progress screen's redraw over SSH). To try on the
+5750G: the display-switch key, and a VGA monitor.

@@ -27,7 +27,7 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | S | shell scripts | `copal`, and `staticstream` where the entry says so |
 | B | booting and installing | `copal` |
 
-**Standing:** 6 open · 2 in progress · 34 done · 3 dropped. Written 29 September 2026; the B entries 27 October 2026 (`docs/legacy-bios-lab-report.md`).
+**Standing:** 7 open · 2 in progress · 34 done · 3 dropped. Written 29 September 2026; the B entries 27 October 2026 (`docs/legacy-bios-lab-report.md`).
 
 ---
 
@@ -47,6 +47,7 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | B-06 | **An ISO loader**: GRUB boots ISOs dropped into `isos/` on the stick (Clonezilla, GParted, Alpine) by loopback; needs `loopback` and `iso9660` in the BIOS core and the UEFI module set | — | an Alpine and a Clonezilla ISO boot from the folder under SeaBIOS and EDK2 |
 | B-07 | **The console on a screen that is not there.** On an Acer Aspire 5750G (Intel HD 3000 + NVIDIA GT 520M), `nouveau` takes fb0 and reports its empty VGA port connected (EDID 0 bytes), so the text console draws there and the laptop panel stays blank; the system runs. Workaround: SSH. Try first: `i915` early (in `modules=` and the installed initramfs's `kms` feature), so the panel's GPU is fb0 (`docs/console-wrong-screen-lab-report.md`) | the console where the person is looking | the 5750G boots to a visible login on its panel, and NVIDIA still loads |
 | B-08 | **The card's SSH key at stage 1**, not at the SSH-key stage, so a machine is reachable from the Mac from its first boot (the 5750G needed `ssh-copy-id` and the password) | — | after stage 1, `ssh user@<ip>` from the Mac logs in with the key |
+| B-09 | **The progress screen draws stray text over SSH.** In the Mac's Terminal at 120x33, during the Desktop phase, text ran down the right edge ("100Execut", a wrapped mirror address) beside a correct screen; the install was not affected (`docs/console-wrong-screen-lab-report.md`, V) | a screen that can be read | the Desktop phase over SSH at 120x33 and at 80x24 shows no stray text |
 | B-03 | A hybrid ISO, for a DVD and a stick: El Torito for BIOS and UEFI and an MBR, built with `xorriso`. A DVD is read-only, so it is an installer or a live disc; the configuration is saved to a stick or a disk | — | the ISO boots in QEMU under SeaBIOS and EDK2, from a CD and as a disk |
 | B-04 | `shellcheck` over `tools/copal-disk.sh`, `tools/grub-bios-build.sh`, `tools/copal-answers.sh` and the changed stages: it was not installed on the Mac that wrote them | S-23's standard | `make shell-lint` passes with no new warning |
 
