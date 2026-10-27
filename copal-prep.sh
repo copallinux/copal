@@ -1200,6 +1200,7 @@ fetch_payload() {
     COPYFILE_DISABLE=1 tar -xzf "$archive" -C "$dest" \
         || die "extraction failed"
     [ "$PLATFORM" = pc ] && fetch_bootloader "$dest"
+    [ "$PLATFORM" = pc ] && fetch_disk_initramfs "$dest"
     printf '%s\n' "$dest"
 }
 
@@ -1304,6 +1305,79 @@ fetch_bootloader() {  # <payload dir>
        repository on the card would be unreadable to apk."
     # shellcheck disable=SC2012  # counted, not read; apk names its packages
     info "Repository: apks/$ARCH ($(ls "$_dest/apks/$ARCH"/*.apk 2>/dev/null | wc -l | xargs) packages, $(du -sh "$_dest/apks" | awk '{print $1}'))"
+}
+
+# The lts initramfs and modloop, from alpine-standard, because the netboot ones
+# cannot read the card they boot from. Called only for PLATFORM=pc.
+#
+# alpine-netboot's initramfs-lts is built to fetch its root over the network
+# and carries no local-disk drivers at all: no sd_mod, no ahci, no nvme. On a
+# real PC the stick is found -- xhci, usb-storage and the SCSI core are all
+# there -- and then nothing claims it as a disk, so there is no /dev/sda and
+# the boot ends at
+#
+#     scsi 0:0:0:0: Direct-Access     MUSHKIN  MKNUFDVP64GB ...
+#     Mounting boot media: failed.
+#
+# The x86_64 VM never met this: its disk is virtio_blk, which netboot does
+# carry. See docs/pc-install-lab-report.md, attempt 3.
+#
+# alpine-standard's initramfs-lts is built for booting from local media and has
+# all three. Its kernel is the same build as netboot's, which is checked below
+# rather than assumed: an initramfs whose modules do not match the kernel
+# loads none of them. The modloop comes from the same ISO because the
+# initramfs carries the key its modloop is verified against, and the two are
+# only promised to agree when they were built together. initramfs-virt and
+# modloop-virt stay netboot's -- the VM entries are the ones that work.
+DISK_INITRAMFS_ISO="alpine-standard-${ALPINE_VER}-${ARCH}.iso"
+DISK_INITRAMFS_URL="${MIRROR}/${BRANCH}/releases/${ARCH}/${DISK_INITRAMFS_ISO}"
+
+fetch_disk_initramfs() {  # <payload dir>
+    _dest="$1"
+    _iso="$CACHEDIR/$DISK_INITRAMFS_ISO"
+    _sum="$CACHEDIR/${DISK_INITRAMFS_ISO}.sha256"
+
+    info "Disk initramfs: initramfs-lts and modloop-lts, from $DISK_INITRAMFS_ISO"
+    curl -fsSL -o "$_sum" "${DISK_INITRAMFS_URL}.sha256" \
+        || die "could not download the checksum from ${DISK_INITRAMFS_URL}.sha256"
+    if [ -f "$_iso" ] && ! (cd "$CACHEDIR" && disk sha256-check "${DISK_INITRAMFS_ISO}.sha256" >/dev/null 2>&1); then
+        warn "existing $DISK_INITRAMFS_ISO failed verification; re-downloading"
+        rm -f "$_iso"
+    fi
+    if [ ! -f "$_iso" ]; then
+        info "Downloading $DISK_INITRAMFS_ISO (~290-370 MB; two files are used from it)..."
+        curl -fL -C - -o "$_iso" "$DISK_INITRAMFS_URL" || die "download failed: $DISK_INITRAMFS_URL"
+    fi
+    (cd "$CACHEDIR" && disk sha256-check "${DISK_INITRAMFS_ISO}.sha256") \
+        || die "CHECKSUM MISMATCH on $DISK_INITRAMFS_ISO -- refusing to take an initramfs from it."
+
+    _tmp="$CACHEDIR/.disk-initramfs.$$"
+    rm -rf "$_tmp"
+    mkdir -p "$_tmp"
+    bsdtar -xf "$_iso" -C "$_tmp" boot/vmlinuz-lts boot/initramfs-lts boot/modloop-lts 2>/dev/null \
+        || { rm -rf "$_tmp"; die "could not extract the lts boot files from $DISK_INITRAMFS_ISO"; }
+
+    # The same kernel, byte for byte, or the swap is refused.
+    if ! cmp -s "$_tmp/boot/vmlinuz-lts" "$_dest/boot/vmlinuz-lts"; then
+        rm -rf "$_tmp"
+        die "vmlinuz-lts in $DISK_INITRAMFS_ISO is not the netboot kernel.
+       Its initramfs would carry modules for a different build. Refusing."
+    fi
+
+    # The drivers a USB boot needs, checked in the file that will be written.
+    # This is the check that would have caught attempt 3 on the Mac.
+    _mods=$(gzip -dc "$_tmp/boot/initramfs-lts" 2>/dev/null | cpio -it 2>/dev/null)
+    for _m in usb-storage sd_mod vfat; do
+        printf '%s\n' "$_mods" | grep -q "/$_m\.ko" || {
+            rm -rf "$_tmp"
+            die "initramfs-lts from $DISK_INITRAMFS_ISO has no $_m -- a PC could not read the card."
+        }
+    done
+
+    mv -f "$_tmp/boot/initramfs-lts" "$_dest/boot/initramfs-lts"
+    mv -f "$_tmp/boot/modloop-lts" "$_dest/boot/modloop-lts"
+    rm -rf "$_tmp"
+    info "Disk initramfs: initramfs-lts has usb-storage, sd_mod and vfat; same kernel as netboot"
 }
 
 # --------------------------------------------------------------- cache only ---
@@ -2772,7 +2846,11 @@ warn() { if [ "${TUI:-0}" = 1 ]; then tui_warn "$*"
 # die is deliberately NOT hooked: it is the last thing printed before the script
 # exits, and it has to be readable on a screen that may be mid-repaint. It puts
 # the terminal back first.
-die()  { [ "${TUI:-0}" = 1 ] && tui_end
+# tui_capture_off as well as tui_end: while the progress screen is up, stdout
+# goes to the Output pane's file, and an error printed there is an error
+# nobody sees. On the first real PC the reason stage 1 stopped went into that
+# file, and the screen showed only the wrapper's complaint about it.
+die()  { [ "${TUI:-0}" = 1 ] && { tui_capture_off; tui_end; }
          printf '\n\033[31merror:\033[0m %s\n' "$*"; exit 1; }
 
 # Prompts go straight to the terminal rather than down the tee pipe, so a
@@ -2924,6 +3002,33 @@ if [ "${FIRSTRUN_LOG_ACTIVE:-0}" != 1 ]; then
         { sh "$0" "$@" 2>&1; echo $? > "$_rcfile"; } | tee -a "$LOG"
         _rc=$(cat "$_rcfile" 2>/dev/null || echo 1)
         rm -f "$_rcfile"
+        # While the progress screen is up, the stages print into its Output
+        # file under /tmp, and only a run that finishes copies that into the
+        # log. A run that dies or is killed left it in RAM, so the one part
+        # of the transcript that said why was the part a reboot threw away.
+        # A successful run has already copied and removed it, so whatever is
+        # still here belongs to a run that did not finish.
+        if [ "$_rc" != 0 ]; then
+            for _out in /tmp/copal.*/copal-tui-out; do
+                [ -s "$_out" ] || continue
+                {
+                    printf '\n===== the progress screen'"'"'s output, kept because the run stopped =====\n'
+                    cat "$_out"
+                } >> "$LOG" 2>/dev/null || true
+                printf '\nThe last of what the progress screen showed:\n' >&2
+                tail -n 25 "$_out" >&2
+                rm -f "$_out"
+            done
+        fi
+        # An empty status means the run never reached the echo above: it was
+        # killed, or the file could not be written. 'exit ""' turned that
+        # into "exit: Illegal number:", which hid the failure behind its own.
+        case "$_rc" in
+            ''|*[!0-9]*)
+                printf '\n\033[31merror:\033[0m the installer ended without reporting a status (killed?).\n' >&2
+                printf 'The full transcript is %s -- read its last lines.\n' "$LOG" >&2
+                exit 1 ;;
+        esac
         exit "$_rc"
     fi
     warn "cannot write $LOG (is $BOOT read-only?) -- continuing without a log"
@@ -4632,13 +4737,50 @@ install_home_once() {  # <relative path> <source file, the header comment>
     done
 }
 
+# Every disk this machine has, and which one Copal writes to, into the log
+# before anything is written. A PC with five drives put the stick at sdf, and
+# afterwards the only record of which disks were there was a guess from a
+# letter. Read from /sys, so it needs nothing busybox does not have.
+log_disks() {
+    say "Disks on this machine"
+    for _b in /sys/block/*; do
+        _n=${_b##*/}
+        case "$_n" in loop*|ram*|zram*|sr*|fd*) continue ;; esac
+        _sec=$(cat "$_b/size" 2>/dev/null || echo 0)
+        _model=$(cat "$_b/device/model" 2>/dev/null | tr -s ' ' | sed 's/ *$//')
+        _rm=$(cat "$_b/removable" 2>/dev/null || echo '?')
+        _mark=''
+        [ "$_n" = "$DISKDEV" ] && _mark='  <-- the boot medium; the only disk Copal writes to'
+        note "$(printf '%-9s %8s GB  removable=%s  %s%s' "$_n" "$(( _sec / 2097152 ))" "$_rm" "${_model:-?}" "$_mark")"
+    done
+    note "boot partition: ${BOOTDEV:-unknown} at $BOOT"
+}
+
 require_network() {
     say "Checking the package repositories are reachable"
-    if apk update >/dev/null 2>&1; then
-        note "ok -- apk can reach its mirrors"
-        return 0
+    # A REMOTE mirror, fetched -- not 'apk update' alone. The boot medium
+    # carries a repository of its own (apks/ on p1), so apk update succeeds
+    # on a machine with no network at all. On the first PC with its cable
+    # unplugged this said "ok", stage 3 reformatted p2, and setup-disk then
+    # failed to download a kernel. Each remote line is asked for its index,
+    # and one answer is enough.
+    _arch=$(apk --print-arch 2>/dev/null || uname -m)
+    _remote=0
+    for _repo in $(grep -E '^[[:space:]]*https?://' /etc/apk/repositories 2>/dev/null); do
+        _remote=1
+        if wget -q -T 15 --spider "$_repo/$_arch/APKINDEX.tar.gz" 2>/dev/null \
+           && apk update >/dev/null 2>&1; then
+            note "ok -- $_repo answers"
+            return 0
+        fi
+    done
+    if [ "$_remote" = 0 ]; then
+        warn "no remote mirror is configured -- only the boot medium's own repository."
+        note "setup-alpine says 'No mirror found' when it could not reach one at install time."
+        note "Once the network is up:  setup-apkrepos -1   (adds the fastest mirror)"
+    else
+        warn "no remote mirror answered."
     fi
-    warn "apk update failed."
     cat <<'MSG'
     This stage installs packages over the network, so it cannot proceed.
     Check in this order:
@@ -4648,6 +4790,368 @@ require_network() {
       cat /etc/apk/repositories   # is a mirror configured and uncommented?
 MSG
     return 1
+}
+
+# ------------------------------------------------ where root goes, on a PC ---
+#
+# A Pi has one card and a VM one disk, so stage 3 used to put / on p2 of
+# whatever Copal booted from. A PC can have many disks. The first real one had
+# seven: Windows on one, six empty NTFS volumes, and the stick at sdf. These
+# are the pieces stage 3 uses to offer a choice. NVMe first, then SSD, then
+# spinning disks, then USB. Anything holding part of a ZFS pool, a RAID
+# array, LVM, LUKS or Btrfs goes to the bottom, marked. Root takes a whole
+# disk, laid out like the stick: p1 a 2 GiB EFI partition holding a copy of
+# the stick's boot partition, so the PC boots without the stick, and p2 ext4.
+# A smaller disk can be offered for swap. Existing filesystems on the other
+# disks get fstab lines, read-only where they hold Windows. Nothing is ever
+# written to them.
+#
+# The choice is put to a person even in full-automatic mode: these read
+# /dev/tty directly and never go through ask(), which would answer for them.
+# With no terminal, or nothing to choose from, root stays on the stick.
+#
+# Disk names are read from /sys and probed with util-linux blkid -p, which
+# reads the device and not a cache, and which knows zfs_member and
+# linux_raid_member where busybox's blkid does not.
+
+disk_parts() {  # <disk> -> its partitions' names
+    for _dp in /sys/block/"$1"/"$1"*; do
+        [ -e "$_dp/partition" ] && echo "${_dp##*/}"
+    done
+}
+
+disk_kind() {  # <disk> -> NVMe | eMMC | USB | SSD | HDD
+    case "$1" in nvme*) echo NVMe; return ;; mmcblk*) echo eMMC; return ;; esac
+    case "$(readlink -f "/sys/block/$1/device" 2>/dev/null)" in *usb*) echo USB; return ;; esac
+    if [ "$(cat "/sys/block/$1/queue/rotational" 2>/dev/null)" = 0 ]; then echo SSD; else echo HDD; fi
+}
+
+disk_gib() { echo $(( $(cat "/sys/block/$1/size" 2>/dev/null || echo 0) / 2097152 )); }
+
+probe_field() {  # <device> <FIELD> -> value, from blkid -p
+    blkid -p -o export "$1" 2>/dev/null | sed -n "s/^$2=//p" | head -n1
+}
+
+ESP_GUID=c12a7328-f81f-11d2-ba4b-00a0c93ec93b
+
+# What is on a disk, in a few words, and whether that should push it down the
+# list. Sets _sv_notes, _sv_pen (0 fine, 1 marked) and _sv_win (1 if Windows
+# boots from it).
+disk_survey() {  # <disk>
+    _sv_notes=''; _sv_pen=0; _sv_win=0
+    for _sd in "$1" $(disk_parts "$1"); do
+        _st=$(probe_field "/dev/$_sd" TYPE)
+        [ -n "$_st" ] || continue
+        _sl=$(probe_field "/dev/$_sd" LABEL)
+        case "$_st" in
+            zfs_member)        _sw='ZFS pool member'; _sv_pen=1 ;;
+            linux_raid_member) _sw='RAID member'; _sv_pen=1 ;;
+            LVM2_member)       _sw='LVM'; _sv_pen=1 ;;
+            crypto_LUKS)       _sw='LUKS (encrypted)'; _sv_pen=1 ;;
+            bcache)            _sw='bcache'; _sv_pen=1 ;;
+            btrfs)             _sw="Btrfs${_sl:+ \"$_sl\"}"; _sv_pen=1 ;;
+            vfat)
+                _sw="FAT${_sl:+ \"$_sl\"}"
+                if [ "$(probe_field "/dev/$_sd" PART_ENTRY_TYPE)" = "$ESP_GUID" ]; then
+                    _sw='EFI'
+                    mkdir -p "${COPAL_TMP:?}/probe"
+                    if mount -o ro -t vfat "/dev/$_sd" "$COPAL_TMP/probe" 2>/dev/null; then
+                        [ -d "$COPAL_TMP/probe/EFI/Microsoft" ] && { _sw='EFI with Windows Boot Manager'; _sv_win=1; }
+                        umount "$COPAL_TMP/probe" 2>/dev/null || true
+                    fi
+                fi ;;
+            *) _sw="$_st${_sl:+ \"$_sl\"}" ;;
+        esac
+        _sv_notes="${_sv_notes:+$_sv_notes, }$_sw"
+    done
+    [ -n "$_sv_notes" ] || _sv_notes='empty'
+}
+
+# Every disk root could go on, best first: pen|rank|bytes|name|kind|model|notes.
+# Too small for root (under 16 GiB) is pen 2: listed, never chosen.
+root_candidates() {
+    for _rb in /sys/block/*; do
+        _rn=${_rb##*/}
+        case "$_rn" in loop*|ram*|zram*|sr*|fd*|md*|dm-*|nbd*) continue ;; esac
+        [ "$_rn" = "$STICK_DISK" ] && continue
+        _rbytes=$(( $(cat "$_rb/size" 2>/dev/null || echo 0) * 512 ))
+        [ "$_rbytes" -gt 0 ] || continue
+        _rk=$(disk_kind "$_rn")
+        case "$_rk" in NVMe) _rr=0 ;; SSD|eMMC) _rr=1 ;; HDD) _rr=2 ;; *) _rr=3 ;; esac
+        _rm=$(cat "$_rb/device/model" 2>/dev/null | tr -s ' ' | sed 's/^ //; s/ *$//')
+        disk_survey "$_rn"
+        _rp=$_sv_pen
+        [ "$_rbytes" -lt 17179869184 ] && { _rp=2; _sv_notes="too small for root; $_sv_notes"; }
+        [ "$_sv_win" = 1 ] && _sv_notes="$_sv_notes [Windows boots from here]"
+        printf '%s|%s|%s|%s|%s|%s|%s\n' "$_rp" "$_rr" "$_rbytes" "$_rn" "$_rk" "${_rm:-?}" "$_sv_notes"
+    done | sort -t'|' -k1,1n -k2,2n -k3,3n
+}
+
+# Read one answer from the person at the keyboard, whatever AUTO says.
+ask_person() {  # <prompt> -> REPLY
+    printf '\n\033[36m%s\033[0m ' "$*"
+    read -r REPLY < /dev/tty || REPLY=''
+    printf '%s\n' "$REPLY" >> "$LOG" 2>/dev/null || true
+}
+
+# Show a disk's partitions before it is erased: what is about to be lost.
+show_disk() {  # <disk>
+    printf '      /dev/%s  %s GiB  %s  %s\n' "$1" "$(disk_gib "$1")" "$(disk_kind "$1")" \
+        "$(cat "/sys/block/$1/device/model" 2>/dev/null | tr -s ' ')"
+    _shp=$(disk_parts "$1")
+    [ -n "$_shp" ] || { printf '        (no partitions)\n'; return 0; }
+    for _p in $_shp; do
+        printf '        %-12s %6s GiB  %-18s %s\n' "$_p" \
+            "$(( $(cat "/sys/block/$1/$_p/size" 2>/dev/null || echo 0) / 2097152 ))" \
+            "$(probe_field "/dev/$_p" TYPE)" "$(probe_field "/dev/$_p" LABEL)"
+    done
+}
+
+# The choice. Sets TGT_DISK (empty: root stays on the stick), and SWAP_DISK /
+# SWAP_GIB if a swap disk was accepted.
+choose_root_target() {
+    TGT_DISK=''; SWAP_DISK=''; SWAP_GIB=0
+    STICK_DISK=$DISKDEV
+    say "Where the root filesystem goes"
+    add_optional blkid sfdisk wipefs dosfstools e2fsprogs
+    # The version string, not a trial run: busybox's blkid accepts flags it
+    # does not know and ignores them (see uuid_of), so a trial would pass,
+    # every probe would come back blank, and a ZFS member would read "empty".
+    if ! blkid -V 2>&1 | grep -q util-linux; then
+        note "util-linux blkid is not available -- cannot survey the disks safely."
+        note "Root goes on the stick ($STICK_DISK), as it always has."
+        return 0
+    fi
+    _list=$(root_candidates)
+    if [ -z "$_list" ]; then
+        note "no other disks -- root goes on the stick ($STICK_DISK), as it always has"
+        return 0
+    fi
+    if [ "${HAVE_TTY:-0}" != 1 ]; then
+        note "no terminal to ask on -- root goes on the stick ($STICK_DISK)"
+        return 0
+    fi
+
+    tui_suspend
+    cat <<'MSG'
+
+    This PC has disks besides the stick. Root can go on one of them -- the
+    whole disk, erased and laid out like the stick: a 2 GiB EFI partition
+    with a copy of the boot files, so the PC boots without the stick, and
+    the rest ext4. Or it can stay on the stick, as Copal has always done.
+
+    Root takes a WHOLE disk. That is the recommendation, and the only layout
+    offered: a partition squeezed beside another system's is how installs
+    end up erasing the wrong thing.
+
+MSG
+    printf '    %-3s %-10s %9s  %-5s %-24s %s\n' '#' disk size kind model 'on it now'
+    _i=0; _rec=''
+    printf '%s\n' "$_list" > "${COPAL_TMP:?}/disks"
+    while IFS='|' read -r _p _r _b _n _k _m _o; do
+        _i=$((_i + 1))
+        _mk='  '
+        [ "$_p" = 1 ] && _mk='!!'
+        [ "$_p" = 2 ] && _mk='--'
+        printf '  %s %-3s %-10s %5s GiB  %-5s %-24.24s %s\n' "$_mk" "$_i" "$_n" "$(( _b / 1073741824 ))" "$_k" "$_m" "$_o"
+        [ -z "$_rec" ] && [ "$_p" = 0 ] && _rec="$_i $_n"
+    done < "$COPAL_TMP/disks"
+    printf '     %-3s %s\n' s "the USB stick ($STICK_DISK) -- root on the stick, as before  [default]"
+    echo
+    note "!! = part of a ZFS pool, RAID array, LVM, LUKS or Btrfs: erasing it breaks the set it belongs to"
+    [ -n "$_rec" ] && note "recommended: ${_rec%% *} (${_rec#* }) -- the fastest unmarked disk"
+
+    while :; do
+        ask_person "Root on which disk? [number, name, or s for the stick]:"
+        _ans=$REPLY
+        case "$_ans" in ''|s|S|stick) note "root stays on the stick ($STICK_DISK)"; TGT_DISK=''; break ;; esac
+        _line=''
+        case "$_ans" in
+            *[!0-9]*) _line=$(awk -F'|' -v n="$_ans" '$4 == n' "$COPAL_TMP/disks") ;;
+            *)        _line=$(sed -n "${_ans}p" "$COPAL_TMP/disks") ;;
+        esac
+        if [ -z "$_line" ]; then
+            # A partition, most likely: sdb1, nvme0n1p2. Say what to pick instead.
+            _whole=$(printf '%s' "$_ans" | sed -E 's/(nvme[0-9]+n[0-9]+|mmcblk[0-9]+)p[0-9]+$/\1/; s/^(sd[a-z]+|vd[a-z]+|hd[a-z]+)[0-9]+$/\1/')
+            if [ "$_whole" != "$_ans" ] && awk -F'|' -v n="$_whole" '$4 == n {f=1} END {exit !f}' "$COPAL_TMP/disks"; then
+                warn "$_ans is a partition. Root takes a whole disk here -- choose $_whole,"
+                warn "and everything on $_whole, not just $_ans, is erased."
+            elif [ "$_ans" = "$STICK_DISK" ]; then
+                note "that is the stick -- type s to keep root there"
+            else
+                warn "'$_ans' is not on the list"
+            fi
+            continue
+        fi
+        IFS='|' read -r _p _r _b _n _k _m _o <<EOF
+$_line
+EOF
+        if [ "$_p" = 2 ]; then warn "$_n is under 16 GiB -- too small for root"; continue; fi
+
+        echo
+        warn "/dev/$_n will be ERASED. What is on it now:"
+        show_disk "$_n"
+        case "$_o" in empty) ;; *) warn "every partition above is destroyed: $_o" ;; esac
+        [ "$_p" = 1 ] && warn "it holds part of a set ($_o) -- the rest of that set will not survive without it"
+        case "$_o" in *Windows*) warn "Windows boots from this disk. After this, it will not." ;; esac
+        case "$_k" in
+            HDD) _fast=$(awk -F'|' '$1 == 0 && ($5 == "NVMe" || $5 == "SSD") {print $4; exit}' "$COPAL_TMP/disks")
+                 [ -n "$_fast" ] && warn "a spinning disk -- $_fast is solid-state and much faster for root" ;;
+            USB) warn "a USB disk -- slower than an internal one, and easy to unplug by mistake" ;;
+        esac
+        _big=$(sort -t'|' -k3,3n "$COPAL_TMP/disks" | tail -n1 | cut -d'|' -f4)
+        [ "$_big" = "$_n" ] && [ "$_b" -gt 1000000000000 ] \
+            && warn "the largest disk here -- usually the one meant for data. Root needs about 30-130 GB."
+        ask_person "Type $_n to erase it and install there (anything else goes back):"
+        if [ "$REPLY" = "$_n" ]; then TGT_DISK=$_n; break; fi
+        note "not confirmed -- nothing erased"
+    done
+
+    # Swap: the smallest unmarked internal disk left over, sized like RAM.
+    _sw=$(awk -F'|' -v t="$TGT_DISK" '$1 == 0 && $4 != t && $5 != "USB"' "$COPAL_TMP/disks" | sort -t'|' -k3,3n | head -n1)
+    if [ -n "$_sw" ]; then
+        IFS='|' read -r _p _r _b _n _k _m _o <<EOF
+$_sw
+EOF
+        _ramkb=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null)
+        SWAP_GIB=$(( (${_ramkb:-0} + 1048575) / 1048576 ))
+        [ "$SWAP_GIB" -lt 2 ] && SWAP_GIB=2
+        [ "$SWAP_GIB" -gt 32 ] && SWAP_GIB=32
+        echo
+        note "$_n ($(( _b / 1073741824 )) GiB $_k) is free for swap: one ${SWAP_GIB} GiB swap partition,"
+        note "the size of RAM, with the rest of the disk left unallocated. Swap on disk backs up"
+        note "zram (stage 5) for the builds that outgrow memory."
+        ask_person "Use $_n for swap? [y/N]:"
+        case "$REPLY" in
+            y|Y|yes)
+                show_disk "$_n"
+                ask_person "Type $_n to erase it for swap (anything else skips swap):"
+                if [ "$REPLY" = "$_n" ]; then SWAP_DISK=$_n; else note "no swap disk"; SWAP_GIB=0; fi ;;
+            *) note "no swap disk"; SWAP_GIB=0 ;;
+        esac
+    fi
+    tui_resume
+    return 0
+}
+
+# Unmount and strip every signature from a disk, then its partitions.
+wipe_disk() {  # <disk>
+    for _wm in $(awk -v d="/dev/$1" 'index($1, d) == 1 {print $2}' /proc/mounts); do
+        umount "$_wm" 2>/dev/null || umount -l "$_wm" 2>/dev/null || true
+    done
+    for _ws in $(awk -v d="/dev/$1" 'index($1, d) == 1 {print $1}' /proc/swaps); do
+        swapoff "$_ws" 2>/dev/null || true
+    done
+    for _wp in $(disk_parts "$1"); do wipefs -a -q "/dev/$_wp" 2>/dev/null || true; done
+    wipefs -a -q "/dev/$1"
+}
+
+wait_for_dev() {  # <device> -- mdev makes the node; give it a moment
+    _wi=0
+    while [ ! -b "$1" ] && [ "$_wi" -lt 20 ]; do
+        mdev -s 2>/dev/null || true
+        sleep 1
+        _wi=$((_wi + 1))
+    done
+    [ -b "$1" ]
+}
+
+prepare_root_disk() {  # <disk> -> TGT_P1 (EFI, 2 GiB), TGT_P2 (ext4, the rest)
+    wipe_disk "$1" || return 1
+    printf 'label: gpt\nsize=2GiB, type=U, name="COPALBOOT"\ntype=L, name="COPALROOT"\n' \
+        | sfdisk -q --wipe always "/dev/$1" || return 1
+    TGT_P1=$(part_of "$1" 1); TGT_P2=$(part_of "$1" 2)
+    wait_for_dev "$TGT_P1" && wait_for_dev "$TGT_P2" || return 1
+    mkfs.vfat -F 32 -n COPALBOOT "$TGT_P1" >/dev/null || return 1
+    mkfs.ext4 -q -F -L COPALROOT "$TGT_P2" || return 1
+}
+
+prepare_swap_disk() {  # <disk> <GiB> -> SWAP_DEV
+    wipe_disk "$1" || return 1
+    printf 'label: gpt\nsize=%sGiB, type=S, name="COPALSWAP"\n' "$2" \
+        | sfdisk -q --wipe always "/dev/$1" || return 1
+    SWAP_DEV=$(part_of "$1" 1)
+    wait_for_dev "$SWAP_DEV" || return 1
+    mkswap -L COPALSWAP "$SWAP_DEV" >/dev/null
+}
+
+# Put the new disk first in the firmware's boot order, so the PC boots it and
+# not the stick or another system. If that fails, the disk still boots from
+# the firmware's boot menu: its EFI partition has \EFI\BOOT\BOOTX64.EFI.
+register_efi_boot() {  # <disk>
+    [ -d /sys/firmware/efi ] || { note "not booted through UEFI -- no boot entry to write"; return 0; }
+    add_optional efibootmgr
+    command -v efibootmgr >/dev/null 2>&1 || { warn "no efibootmgr -- choose the disk in the firmware's boot menu"; return 0; }
+    is_mounted /sys/firmware/efi/efivars || mount -t efivarfs efivarfs /sys/firmware/efi/efivars 2>/dev/null || true
+    _ef=$(cd "$BOOT/EFI/BOOT" 2>/dev/null && ls BOOT*.EFI 2>/dev/null | head -n1)
+    if efibootmgr -q -c -d "/dev/$1" -p 1 -L "Copal Linux" -l "\\EFI\\BOOT\\${_ef:-BOOTX64.EFI}" 2>/dev/null; then
+        note "firmware boot entry 'Copal Linux' -> /dev/$1, first in the boot order"
+    else
+        warn "could not write a firmware boot entry -- choose /dev/$1 in the firmware's boot menu"
+    fi
+}
+
+# fstab lines for what is already on the other disks. nofail on every one, so
+# a disk that is missing or will not mount never stops a boot. Nothing is
+# written to these filesystems.
+mount_existing_volumes() {  # <new root>
+    say "Other disks: what is already on them"
+    _mu=$(id -u "$PI_USER" 2>/dev/null || echo 0)
+    _mg=$(id -g "$PI_USER" 2>/dev/null || echo 0)
+    _mown="uid=$_mu,gid=$_mg,umask=022"
+    _mdone=''
+    for _mb in /sys/block/*; do
+        _mn=${_mb##*/}
+        case "$_mn" in loop*|ram*|zram*|sr*|fd*|md*|dm-*|nbd*) continue ;; esac
+        case " ${STICK_DISK:-$DISKDEV} $TGT_DISK $SWAP_DISK " in *" $_mn "*) continue ;; esac
+        for _mp in "$_mn" $(disk_parts "$_mn"); do
+            _mt=$(probe_field "/dev/$_mp" TYPE)
+            _muu=$(probe_field "/dev/$_mp" UUID)
+            [ -n "$_mt" ] && [ -n "$_muu" ] || continue
+            case " $_mdone " in *" $_muu "*) continue ;; esac
+            _ml=$(probe_field "/dev/$_mp" LABEL)
+            _mfs=$_mt; _mo="nofail,noatime"; _mnote=''
+            case "$_mt" in
+                zfs_member|linux_raid_member|LVM2_member|crypto_LUKS|bcache)
+                    note "$_mp: $_mt -- left alone; it needs its own tools to assemble"; continue ;;
+                swap) continue ;;
+                vfat)
+                    if [ "$(probe_field "/dev/$_mp" PART_ENTRY_TYPE)" = "$ESP_GUID" ]; then
+                        note "$_mp: an EFI partition -- not mounted"; continue
+                    fi
+                    _mo="$_mo,$_mown" ;;
+                exfat) _mo="$_mo,$_mown" ;;
+                ntfs)
+                    _mfs=ntfs3; _mo="$_mo,$_mown"
+                    mkdir -p "${COPAL_TMP:?}/probe"
+                    if mount -o ro -t ntfs3 "/dev/$_mp" "$COPAL_TMP/probe" 2>/dev/null; then
+                        if [ -d "$COPAL_TMP/probe/Windows/System32" ]; then
+                            _mo="ro,$_mo"; _mnote='Windows -- read-only'
+                        fi
+                        umount "$COPAL_TMP/probe" 2>/dev/null || true
+                    else
+                        # Unreadable now -- often Windows hibernated (Fast
+                        # Startup). Read-only until someone looks.
+                        _mo="ro,$_mo"; _mnote='could not be read now -- read-only to be safe'
+                    fi ;;
+                btrfs)
+                    if [ "$(blkid -t "UUID=$_muu" -o device 2>/dev/null | wc -l)" -gt 1 ]; then
+                        note "$_mp: Btrfs across several devices -- not mounted; 'btrfs device scan' first"
+                        _mdone="$_mdone $_muu"; continue
+                    fi ;;
+                ext2|ext3|ext4|xfs|f2fs) ;;
+                *) note "$_mp: $_mt -- not mounted"; continue ;;
+            esac
+            _mname=$(printf '%s' "${_ml:-$_mp}" | tr -c 'A-Za-z0-9._-' '_')
+            grep -q "[[:space:]]/mnt/disks/$_mname[[:space:]]" "$1/etc/fstab" 2>/dev/null && _mname="$_mname-$_mp"
+            sed -i "/^UUID=$_muu[[:space:]]/d" "$1/etc/fstab"
+            mkdir -p "$1/mnt/disks/$_mname"
+            printf 'UUID=%s\t/mnt/disks/%s\t%s\t%s\t0 0\n' "$_muu" "$_mname" "$_mfs" "$_mo" >> "$1/etc/fstab"
+            note "$_mp  $_mt${_ml:+ \"$_ml\"}  -> /mnt/disks/$_mname${_mnote:+  ($_mnote)}"
+            _mdone="$_mdone $_muu"
+        done
+    done
+    [ -n "$_mdone" ] || note "nothing to mount"
 }
 
 # --------------------------------------------- the admin user and root ------
@@ -5167,7 +5671,23 @@ lbu_fix_media() {
         note "lbu is not in use -- / is persistent, so there is no apkovl to write"
         return 0
     fi
-    _want=$(basename "$(boot_device 2>/dev/null || true)" 2>/dev/null || true)
+    # The name lbu wants is the one under /media, NOT the device's. lbu works
+    # on /media/$LBU_MEDIA, and the two names only agree when nothing renamed
+    # the mount: mmcblk0p1 on a Pi, vda1 in a VM. A USB stick on a PC does
+    # not agree. Alpine's initramfs moves the boot medium to the mount point
+    # its fstab gives for it, and Alpine's fstab says /dev/usbdisk /media/usb,
+    # so the stick is /media/usb while its device is sda1. LBU_MEDIA=sda1
+    # sent lbu to a /media/sda1 that was never mounted, and stage 1 died at
+    # its commit. See docs/pc-install-lab-report.md, attempt 4.
+    #
+    # /media/copal-boot is find_boot's own temporary mount, which is in no
+    # fstab, so lbu could not mount it again after a reboot. That one keeps
+    # the device name, as before.
+    case "$BOOT" in
+        /media/copal-boot) _want=$(basename "$(boot_device 2>/dev/null || true)" 2>/dev/null || true) ;;
+        /media/?*)         _want=${BOOT#/media/}; _want=${_want%%/*} ;;
+        *)                 _want=$(basename "$(boot_device 2>/dev/null || true)" 2>/dev/null || true) ;;
+    esac
     [ -n "$_want" ] || { warn "cannot tell which device \$BOOT is on -- leaving lbu alone"; return 0; }
     [ -f /etc/lbu/lbu.conf ] || { mkdir -p /etc/lbu; : > /etc/lbu/lbu.conf; }
     _have=$(sed -n 's/^LBU_MEDIA=//p' /etc/lbu/lbu.conf | tail -n1)
@@ -5678,6 +6198,16 @@ configure_9p_share() {
     # installed before the test below has a chance to return.
     write_share_retry
 
+    # Real hardware has no host to share with. The 9p test below is not
+    # enough to tell: the lts kernel a PC boots carries 9p too, so on the first
+    # real PC this step ran, reported "mounted: /mnt/share" and linked ~/Shared
+    # to an empty directory. The boot-time retry above stays installed, and it
+    # is quiet where there is nothing.
+    if ! is_vm; then
+        note "not a virtual machine -- no host to share a folder with"
+        return 0
+    fi
+
     # 9p and 9pnet_virtio are separate modules and neither is loaded by default.
     modprobe 9pnet_virtio 2>/dev/null || true
     modprobe 9p          2>/dev/null || true
@@ -5735,8 +6265,14 @@ configure_9p_share() {
         warn "autofs is not installable here -- falling back to an fstab line"
         mkdir -p /mnt/share
         share_fstab_write /etc/fstab
-        mount /mnt/share 2>/dev/null && note "mounted: /mnt/share" \
-            || note "no folder is being shared with this machine yet"
+        # Asked of the mount table, not of mount's exit status: with nofail on
+        # the line, mount can succeed at mounting nothing.
+        mount /mnt/share 2>/dev/null || true
+        if mountpoint -q /mnt/share 2>/dev/null; then
+            note "mounted: /mnt/share"
+        else
+            note "no folder is being shared with this machine yet"
+        fi
     fi
 
     # Ownership: try it, say what happened. See the note above the function.
@@ -5850,7 +6386,7 @@ GFX
 # the handler at copal-halt without -y and get the nagbar, but a dialog nobody
 # is sitting in front of is worse than none.
 configure_power_button() {
-    say "The power button, and UTM's Request Power Down"
+    say "The power button"
 
     if ! command -v acpid >/dev/null 2>&1; then
         add_optional acpid || {
@@ -5899,6 +6435,7 @@ ACPIHANDLER
         warn "acpid did not start -- 'rc-service acpid start' to see why"
     fi
 
+    if is_vm; then
     cat <<'PWRMSG'
 
     UTM's "Request Power Down" now shuts this machine down cleanly, and so
@@ -5907,6 +6444,15 @@ ACPIHANDLER
     power outright -- that is the hypervisor pulling the plug and nothing in
     here can soften it.
 PWRMSG
+    else
+    cat <<'PWRMSG'
+
+    A press of the power button now shuts this machine down cleanly: it goes
+    through copal-halt, so the boot medium is synced first. Holding the
+    button down still cuts the power outright -- that is the firmware, and
+    nothing in here can soften it.
+PWRMSG
+    fi
 }
 
 # setup-alpine APPENDS its mirror lines rather than replacing them, so every
@@ -21323,8 +21869,6 @@ stage_sys_install() {
     and boot depends on the ext4 partition being healthy. The RAM-resident
     setup on p1 stays intact as a fallback.
 MSG
-    [ -b "$P2" ] || die "$P2 not found"
-    [ "$(fstype_of "$P2")" = ext4 ] || die "$P2 is not ext4 yet -- run stage 2 first"
     apkovl_exists || die "no saved configuration -- run stage 1 first (setup-disk copies the running config into the new root, so it must exist)"
 
     if sys_installed; then
@@ -21353,9 +21897,39 @@ MSG
     esac
     fi
 
-    warn "about to ERASE $P2 and install a system onto it."
-    ask "Type yes to proceed:"
-    [ "$REPLY" = "yes" ] || { note "Aborted; nothing was erased."; return 0; }
+    # On a PC, root may go on one of its own disks instead of the stick. The
+    # choice is put to the person at the keyboard even in automatic mode, and
+    # confirmed by typing the disk's name -- see choose_root_target.
+    TGT_DISK=''; SWAP_DISK=''; SWAP_DEV=''
+    STICK_DISK=$DISKDEV
+    is_pi_boot || choose_root_target
+
+    if [ -z "$TGT_DISK" ]; then
+        [ -b "$P2" ] || die "$P2 not found"
+        [ "$(fstype_of "$P2")" = ext4 ] || die "$P2 is not ext4 yet -- run stage 2 first"
+        warn "about to ERASE $P2 and install a system onto it."
+        ask "Type yes to proceed:"
+        [ "$REPLY" = "yes" ] || { note "Aborted; nothing was erased."; return 0; }
+    else
+        say "Partitioning /dev/$TGT_DISK: 2 GiB EFI, the rest ext4"
+        prepare_root_disk "$TGT_DISK" \
+            || die "could not partition /dev/$TGT_DISK -- nothing else was changed; the stick still boots as before"
+        note "boot  $TGT_P1 (FAT32, COPALBOOT)"
+        note "root  $TGT_P2 (ext4, COPALROOT)"
+        # From here on P1 and P2 are the new disk's, so the rest of this stage
+        # -- the mounts, setup-disk, the root= in grub.cfg -- is the same code
+        # the stick uses. P2MNT stays the stick's: its apk-cache line is the
+        # one taken out of the new fstab below.
+        P1=$TGT_P1; P2=$TGT_P2
+    fi
+    if [ -n "$SWAP_DISK" ]; then
+        say "Swap on /dev/$SWAP_DISK: ${SWAP_GIB} GiB"
+        if prepare_swap_disk "$SWAP_DISK" "$SWAP_GIB"; then
+            note "swap  $SWAP_DEV (${SWAP_GIB} GiB, COPALSWAP)"
+        else
+            warn "could not make swap on /dev/$SWAP_DISK -- carrying on without it"; SWAP_DEV=''
+        fi
+    fi
 
     say "Backing up the boot partition's configuration"
     # setup_raspberrypi_bootloader does
@@ -21376,8 +21950,10 @@ MSG
         CMDLINE_BEFORE="(grub.cfg, $(grep -c menuentry "$BOOTCFG") entries)"
     fi
 
-    is_mounted "$P2MNT" && umount "$P2MNT"
-    mkfs.ext4 -F -L COPALROOT "$P2"
+    if [ -z "$TGT_DISK" ]; then
+        is_mounted "$P2MNT" && umount "$P2MNT"
+        mkfs.ext4 -F -L COPALROOT "$P2"
+    fi
 
     say "Mounting the target: $P2 at /mnt, and p1 at /mnt/boot"
     mkdir -p /mnt
@@ -21393,6 +21969,19 @@ MSG
     # the same options shares one superblock, so the two views stay coherent.
     mkdir -p /mnt/boot
     mount "$P1" /mnt/boot
+
+    # The new disk's EFI partition becomes a copy of the stick's boot
+    # partition: GRUB, the diskless payload, answers.txt and the install's
+    # own state (copal-auto, the log). After the reboot it is /boot, and the
+    # install resumes from it without the stick. The stick is not changed, so
+    # it still boots the diskless system if this goes wrong.
+    if [ -n "$TGT_DISK" ]; then
+        say "Copying the stick's boot partition onto $P1"
+        cp -r "$BOOT"/. /mnt/boot/ || die "could not copy $BOOT onto $P1"
+        BOOTCFG=/mnt/boot/boot/grub/grub.cfg
+        cp "$BOOTCFG" "$BOOTCFG.bak"
+        note "$(du -sh /mnt/boot 2>/dev/null | cut -f1) copied; grub.cfg on $P1 is the one rewritten below"
+    fi
 
     say "Running setup-disk (this installs a kernel; it takes a while)"
     note "A 'WARNING: no kernel found' from mkinitfs here is expected and"
@@ -21561,6 +22150,25 @@ FSTAB
     sed -i "\|[[:space:]]${P2MNT}[[:space:]]|d" /mnt/etc/fstab
     note "cache -> /var/cache/apk (on the new root)"
 
+    # Swap on its own disk, below zram (stage 5) in priority, so the disk is
+    # only used once compressed RAM is full.
+    if [ -n "$SWAP_DEV" ]; then
+        _su=$(uuid_of "$SWAP_DEV")
+        if [ -n "$_su" ]; then
+            sed -i '/[[:space:]]swap[[:space:]]/d' /mnt/etc/fstab
+            printf 'UUID=%s\tnone\tswap\tsw,pri=10\t0 0\n' "$_su" >> /mnt/etc/fstab
+            [ -e /mnt/etc/init.d/swap ] && mkdir -p /mnt/etc/runlevels/boot \
+                && ln -sf /etc/init.d/swap /mnt/etc/runlevels/boot/swap
+            note "swap: $SWAP_DEV in fstab, priority 10 (zram's is higher)"
+        fi
+    fi
+
+    # What is already on the PC's other disks: fstab lines, nofail, read-only
+    # where Windows lives. Never written to.
+    is_pi_boot || mount_existing_volumes /mnt
+
+    [ -n "$TGT_DISK" ] && register_efi_boot "$TGT_DISK"
+
     echo
     note "fstab:"
     grep -v '^[[:space:]]*#' /mnt/etc/fstab | grep -v '^[[:space:]]*$' | sed 's/^/      /'
@@ -21630,6 +22238,16 @@ FSTAB
     # will not be after.
     if [ "${AUTO:-0}" = 1 ]; then
         auto_install_resume_hook /mnt
+    fi
+
+    # The install's own state, again: it was copied before setup-disk ran,
+    # and the log and timings have grown since. The resume after the reboot
+    # reads these from the new disk's /boot.
+    if [ -n "$TGT_DISK" ]; then
+        for _f in copal-auto copal-timings copal.log copal-git copal-repos copal-profile; do
+            [ -f "$BOOT/$_f" ] && cp "$BOOT/$_f" /mnt/boot/ 2>/dev/null
+        done
+        note "the install continues from /dev/$TGT_DISK after the reboot; the stick can come out"
     fi
 
     sync
@@ -28916,6 +29534,23 @@ stage_hyprland() {
     # CONTEXT_INIT, which UTM does not offer, so the software one is the
     # one that works here: every pixel is the CPU's, as with llvmpipe.
     add_optional mesa-vulkan-swrast
+    # The real card's Vulkan driver, by PCI vendor. On NVIDIA it is not
+    # optional in effect: from Mesa 25.1 nouveau draws GL on Turing and
+    # later through zink, which sits on NVK, so without mesa-vulkan-nouveau
+    # EGL fails with "DRI2: failed to create screen" and Hyprland aborts
+    # every few seconds. That was an RTX 4060 Ti (10de:2805) on its first
+    # boot, with nouveau loaded, firmware present and /dev/dri/card0 there.
+    # Intel and AMD draw GL without it; their Vulkan drivers come along so
+    # Vulkan programs get the GPU rather than lavapipe.
+    for _v in /sys/class/drm/card*/device/vendor; do
+        [ -r "$_v" ] || continue
+        case "$(cat "$_v")" in
+            0x10de) add_optional linux-firmware-nvidia mesa-vulkan-nouveau
+                    note "NVIDIA GPU -- nouveau with NVK (mesa-vulkan-nouveau)" ;;
+            0x8086) add_optional mesa-vulkan-intel ;;
+            0x1002) add_optional mesa-vulkan-ati ;;
+        esac
+    done
 
     # Everything else the theme names, each surviving its own absence.
     # xwayland keeps stage 4's and stage 12's X programs runnable inside the
@@ -34232,7 +34867,7 @@ auto_manifest() {
     cat <<'MANIFEST'
 1|System|Apply the setup-alpine answers|4
 2|System|Format p2 and move the apk cache|6
-3|System|Move the root filesystem onto the card|8
+3|System|Move the root filesystem onto the card, or a disk of its own|8
 8|System|Grow p2 into the free space|4
 5|Memory|Compressed swap in RAM (zram)|4
 6|Access|Install the SSH key from the card|3
@@ -35065,6 +35700,7 @@ auto_run() {
     fleet is and changes nothing, which is every card built before today.
 
 MSG
+    log_disks
     auto_state_load || { AUTO_DONE=""; auto_state_save; }
 
     # The checklist, before anything runs. On a resume it is also where you see

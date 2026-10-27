@@ -4,7 +4,7 @@
 # origin:   stage
 # stage:    3
 # category: System
-# step:     Move the root filesystem onto the card
+# step:     Move the root filesystem onto the card, or a disk of its own
 # weight:   8
 # levels:   server medium full
 # summary:  Moves the running system from RAM onto the disk, in Alpine's sys mode, and reboots into
@@ -24,8 +24,6 @@ stage_sys_install() {
     and boot depends on the ext4 partition being healthy. The RAM-resident
     setup on p1 stays intact as a fallback.
 MSG
-    [ -b "$P2" ] || die "$P2 not found"
-    [ "$(fstype_of "$P2")" = ext4 ] || die "$P2 is not ext4 yet -- run stage 2 first"
     apkovl_exists || die "no saved configuration -- run stage 1 first (setup-disk copies the running config into the new root, so it must exist)"
 
     if sys_installed; then
@@ -54,9 +52,39 @@ MSG
     esac
     fi
 
-    warn "about to ERASE $P2 and install a system onto it."
-    ask "Type yes to proceed:"
-    [ "$REPLY" = "yes" ] || { note "Aborted; nothing was erased."; return 0; }
+    # On a PC, root may go on one of its own disks instead of the stick. The
+    # choice is put to the person at the keyboard even in automatic mode, and
+    # confirmed by typing the disk's name -- see choose_root_target.
+    TGT_DISK=''; SWAP_DISK=''; SWAP_DEV=''
+    STICK_DISK=$DISKDEV
+    is_pi_boot || choose_root_target
+
+    if [ -z "$TGT_DISK" ]; then
+        [ -b "$P2" ] || die "$P2 not found"
+        [ "$(fstype_of "$P2")" = ext4 ] || die "$P2 is not ext4 yet -- run stage 2 first"
+        warn "about to ERASE $P2 and install a system onto it."
+        ask "Type yes to proceed:"
+        [ "$REPLY" = "yes" ] || { note "Aborted; nothing was erased."; return 0; }
+    else
+        say "Partitioning /dev/$TGT_DISK: 2 GiB EFI, the rest ext4"
+        prepare_root_disk "$TGT_DISK" \
+            || die "could not partition /dev/$TGT_DISK -- nothing else was changed; the stick still boots as before"
+        note "boot  $TGT_P1 (FAT32, COPALBOOT)"
+        note "root  $TGT_P2 (ext4, COPALROOT)"
+        # From here on P1 and P2 are the new disk's, so the rest of this stage
+        # -- the mounts, setup-disk, the root= in grub.cfg -- is the same code
+        # the stick uses. P2MNT stays the stick's: its apk-cache line is the
+        # one taken out of the new fstab below.
+        P1=$TGT_P1; P2=$TGT_P2
+    fi
+    if [ -n "$SWAP_DISK" ]; then
+        say "Swap on /dev/$SWAP_DISK: ${SWAP_GIB} GiB"
+        if prepare_swap_disk "$SWAP_DISK" "$SWAP_GIB"; then
+            note "swap  $SWAP_DEV (${SWAP_GIB} GiB, COPALSWAP)"
+        else
+            warn "could not make swap on /dev/$SWAP_DISK -- carrying on without it"; SWAP_DEV=''
+        fi
+    fi
 
     say "Backing up the boot partition's configuration"
     # setup_raspberrypi_bootloader does
@@ -77,8 +105,10 @@ MSG
         CMDLINE_BEFORE="(grub.cfg, $(grep -c menuentry "$BOOTCFG") entries)"
     fi
 
-    is_mounted "$P2MNT" && umount "$P2MNT"
-    mkfs.ext4 -F -L COPALROOT "$P2"
+    if [ -z "$TGT_DISK" ]; then
+        is_mounted "$P2MNT" && umount "$P2MNT"
+        mkfs.ext4 -F -L COPALROOT "$P2"
+    fi
 
     say "Mounting the target: $P2 at /mnt, and p1 at /mnt/boot"
     mkdir -p /mnt
@@ -94,6 +124,19 @@ MSG
     # the same options shares one superblock, so the two views stay coherent.
     mkdir -p /mnt/boot
     mount "$P1" /mnt/boot
+
+    # The new disk's EFI partition becomes a copy of the stick's boot
+    # partition: GRUB, the diskless payload, answers.txt and the install's
+    # own state (copal-auto, the log). After the reboot it is /boot, and the
+    # install resumes from it without the stick. The stick is not changed, so
+    # it still boots the diskless system if this goes wrong.
+    if [ -n "$TGT_DISK" ]; then
+        say "Copying the stick's boot partition onto $P1"
+        cp -r "$BOOT"/. /mnt/boot/ || die "could not copy $BOOT onto $P1"
+        BOOTCFG=/mnt/boot/boot/grub/grub.cfg
+        cp "$BOOTCFG" "$BOOTCFG.bak"
+        note "$(du -sh /mnt/boot 2>/dev/null | cut -f1) copied; grub.cfg on $P1 is the one rewritten below"
+    fi
 
     say "Running setup-disk (this installs a kernel; it takes a while)"
     note "A 'WARNING: no kernel found' from mkinitfs here is expected and"
@@ -262,6 +305,25 @@ FSTAB
     sed -i "\|[[:space:]]${P2MNT}[[:space:]]|d" /mnt/etc/fstab
     note "cache -> /var/cache/apk (on the new root)"
 
+    # Swap on its own disk, below zram (stage 5) in priority, so the disk is
+    # only used once compressed RAM is full.
+    if [ -n "$SWAP_DEV" ]; then
+        _su=$(uuid_of "$SWAP_DEV")
+        if [ -n "$_su" ]; then
+            sed -i '/[[:space:]]swap[[:space:]]/d' /mnt/etc/fstab
+            printf 'UUID=%s\tnone\tswap\tsw,pri=10\t0 0\n' "$_su" >> /mnt/etc/fstab
+            [ -e /mnt/etc/init.d/swap ] && mkdir -p /mnt/etc/runlevels/boot \
+                && ln -sf /etc/init.d/swap /mnt/etc/runlevels/boot/swap
+            note "swap: $SWAP_DEV in fstab, priority 10 (zram's is higher)"
+        fi
+    fi
+
+    # What is already on the PC's other disks: fstab lines, nofail, read-only
+    # where Windows lives. Never written to.
+    is_pi_boot || mount_existing_volumes /mnt
+
+    [ -n "$TGT_DISK" ] && register_efi_boot "$TGT_DISK"
+
     echo
     note "fstab:"
     grep -v '^[[:space:]]*#' /mnt/etc/fstab | grep -v '^[[:space:]]*$' | sed 's/^/      /'
@@ -331,6 +393,16 @@ FSTAB
     # will not be after.
     if [ "${AUTO:-0}" = 1 ]; then
         auto_install_resume_hook /mnt
+    fi
+
+    # The install's own state, again: it was copied before setup-disk ran,
+    # and the log and timings have grown since. The resume after the reboot
+    # reads these from the new disk's /boot.
+    if [ -n "$TGT_DISK" ]; then
+        for _f in copal-auto copal-timings copal.log copal-git copal-repos copal-profile; do
+            [ -f "$BOOT/$_f" ] && cp "$BOOT/$_f" /mnt/boot/ 2>/dev/null
+        done
+        note "the install continues from /dev/$TGT_DISK after the reboot; the stick can come out"
     fi
 
     sync

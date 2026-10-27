@@ -110,6 +110,23 @@ stage_hyprland() {
     # CONTEXT_INIT, which UTM does not offer, so the software one is the
     # one that works here: every pixel is the CPU's, as with llvmpipe.
     add_optional mesa-vulkan-swrast
+    # The real card's Vulkan driver, by PCI vendor. On NVIDIA it is not
+    # optional in effect: from Mesa 25.1 nouveau draws GL on Turing and
+    # later through zink, which sits on NVK, so without mesa-vulkan-nouveau
+    # EGL fails with "DRI2: failed to create screen" and Hyprland aborts
+    # every few seconds. That was an RTX 4060 Ti (10de:2805) on its first
+    # boot, with nouveau loaded, firmware present and /dev/dri/card0 there.
+    # Intel and AMD draw GL without it; their Vulkan drivers come along so
+    # Vulkan programs get the GPU rather than lavapipe.
+    for _v in /sys/class/drm/card*/device/vendor; do
+        [ -r "$_v" ] || continue
+        case "$(cat "$_v")" in
+            0x10de) add_optional linux-firmware-nvidia mesa-vulkan-nouveau
+                    note "NVIDIA GPU -- nouveau with NVK (mesa-vulkan-nouveau)" ;;
+            0x8086) add_optional mesa-vulkan-intel ;;
+            0x1002) add_optional mesa-vulkan-ati ;;
+        esac
+    done
 
     # Everything else the theme names, each surviving its own absence.
     # xwayland keeps stage 4's and stage 12's X programs runnable inside the
