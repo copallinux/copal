@@ -128,6 +128,69 @@ fixing:
 The first is the one to try: it puts the console on the panel without giving
 up the second GPU. The test is this laptop booting to a visible login.
 
+## VI-A. Every port is the Intel GPU's: why no monitor shows the console
+
+Paul plugged in a VGA monitor (inconclusive without a power cycle), an HDMI
+monitor (blank) and a USB-powered VGA-to-HDMI converter (blank). Read again
+over SSH with the converter in:
+
+| Connector | GPU | Before | With the converter |
+| --- | --- | --- | --- |
+| `card0-VGA-1` | nouveau | connected, EDID 0 bytes | connected, EDID 0 bytes |
+| `card1-VGA-2` | i915 | disconnected | **connected**, 1024x768 |
+| `card1-HDMI-A-1` | i915 | disconnected | disconnected |
+| `card1-LVDS-1` (panel) | i915 | connected, EDID 128 | connected, EDID 128 |
+
+The physical VGA port is `VGA-2`, on the Intel GPU, and so are HDMI and the
+panel. `nouveau`'s `VGA-1` answers "connected" whatever is plugged in: a
+connector that exists in the NVIDIA VBIOS's tables and is wired to nothing.
+This is a "muxless" Optimus laptop: under Windows the GT 520M renders and
+hands its frames to the Intel GPU, which owns every output. So **no monitor
+on any port can show the console**: all of them are fb1's, and the console
+is on fb0, which reaches no glass at all. That is why the VGA monitor, HDMI
+and the converter all stayed blank. Reports of the same family agree:
+nouveau does not do Optimus output switching, and on Acer Optimus models of
+this generation the NVIDIA card drives nothing unless a BIOS
+discrete-graphics option exists and is set (sources in section X).
+
+## VI-B. Development: force a choice
+
+Copal leaves the kernel to pick the console's GPU, and on this class of
+laptop the kernel picks the one with no outputs. Copal should choose, and
+let the person override it.
+
+1. **A boot entry, now, on every PC stick and installed disk:** "Copal
+   Linux (Intel graphics only: two-GPU laptops)", the same entry with
+   `modprobe.blacklist=nouveau`. Cheap, harmless on machines without
+   NVIDIA, and a way through the menu on a 5750G today. Its test is the
+   first experiment below.
+2. **Detect the pair at install.** Two PCI display devices, one Intel
+   (`0x8086`) and one NVIDIA (`0x10de`), with the internal panel (`LVDS` or
+   `eDP`) on the Intel one: a muxless Optimus laptop. Then stage 3 makes the
+   panel's GPU the console's:
+   - **default:** load `i915` first (in `modules=` ahead of the storage
+     drivers, and the `kms` feature in the installed initramfs), so
+     `i915drmfb` is fb0 and the console is on the panel, while `nouveau`
+     still loads for whoever wants the GT 520M (PRIME offload);
+   - **if that does not hold:** `modprobe.blacklist=nouveau` as the
+     installed default, with the NVIDIA entry kept in the menu.
+3. **A question, asked once, in the guided install,** when the pair is
+   found: "This laptop has two graphics chips; the screen is on the Intel
+   one. Use only it (recommended), or keep the NVIDIA one too?" The answer
+   goes in `answers.txt` like the rest (`COPAL_GPU=intel|both`), so an
+   unattended install never stops to ask.
+4. **The desktop phases** use the same choice: X and Hyprland on the
+   Intel GPU, with the NVIDIA one as an offload GPU or not at all, so the
+   phantom `VGA-1` does not appear as a second screen.
+
+**Experiments on the 5750G, in order, each one boot:**
+
+| # | What | How | Expect |
+| --- | --- | --- | --- |
+| 1 | no nouveau | at GRUB, `e` on "Copal Linux", add `modprobe.blacklist=nouveau` to the `linux` line, Ctrl+X | the console on the panel |
+| 2 | Intel first | the same, with `i915` added at the front of `modules=` | the console on the panel, and nouveau loaded (`/proc/fb` lists both, i915 first) |
+| 3 | the BIOS | F2 at power-on; look for a graphics, switchable or Optimus setting | probably none on this model |
+
 ## VII. Discussion
 
 The bug shows only on two-GPU laptops where the GPU without the panel
@@ -137,8 +200,18 @@ saved the session was not a fix but a design choice: a Copal machine is on
 the network with `sshd` from stage 1, so it can be driven without its
 screen.
 
-## VIII. Open items
+## IX. Open items
 
 Backlog B-07 (the console on the panel), B-08 (the card's SSH key at
 stage 1) and B-09 (the progress screen's redraw over SSH). Tried on the
 5750G: the display-switch key, without effect. Still to try: a VGA monitor.
+
+## X. Sources
+
+- [Avoiding NVIDIA Optimus? (CLUG list, 2011)](https://lists.samba.org/archive/linux/2011-July/030397.html): an Acer Optimus laptop of this generation; the NVIDIA card never shows up under Linux with Optimus on.
+- [Avoiding NVIDIA Optimus? (follow-up)](https://lists.samba.org/archive/linux/2011-July/030394.html)
+- [linux.org.ru: nouveau and Optimus](https://www.linux.org.ru/forum/linux-hardware/5970793): nouveau does not implement Optimus switching; use a discrete-only BIOS setting where there is one.
+- [Arch forum: nouveau and a GT 520M](https://bbs.archlinux.org/viewtopic.php?id=143198)
+- [freedesktop bug 33445: blank internal panel with nouveau](https://bugs.freedesktop.org/show_bug.cgi?id=33445)
+- [LKML: KMS picks the wrong output on a laptop](https://lkml.iu.edu/hypermail/linux/kernel/0910.3/00826.html)
+- [LKML: blank screen on boot with i915 and fbdev emulation](https://lkml.iu.edu/hypermail/linux/kernel/1603.3/01088.html): where `fbcon=map:` was tried.
