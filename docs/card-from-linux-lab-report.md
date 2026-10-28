@@ -216,7 +216,7 @@ saskatchewan): netboot.xyz 3.0.3, Ubuntu 26.04 and 24.04 netboot, each "sums
 checked"; the starter overlay written; the verifier's `grub.cfg ->` lines
 for both kernels and both netboot.xyz files; `ok legacy BIOS: sector 0, p1
 active, core.img`; "It is safe to remove /dev/sde"; no `STOPPED`, no
-`MISSING`, no error. How many passwords it asked for is Paul's to report.
+`MISSING`, no error. **It asked for the password once** (Paul): `persist` held across the whole build once every `doas` came from the build's own process. The card booted the 1080 Ti machine and installed Ubuntu 24.04 over the network (orrery's `docs/cuda-node-lab-report.md`).
 
 ## VII. Next
 
