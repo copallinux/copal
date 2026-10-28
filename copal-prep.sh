@@ -21991,6 +21991,7 @@ MSG
     # choice is put to the person at the keyboard even in automatic mode, and
     # confirmed by typing the disk's name -- see choose_root_target.
     TGT_DISK=''; SWAP_DISK=''; SWAP_DEV=''
+    # shellcheck disable=SC2034  # read by mount_existing_volumes, in the installer
     STICK_DISK=$DISKDEV
     if ! is_pi_boot; then
         rm -f "${COPAL_TMP:?}/disks"
@@ -24008,6 +24009,15 @@ build_csv() {  # <wayland|x11>
     fi
     [ -f "$GUIDES/widgets.txt" ] \
         && out "Configure the bar and widgets,$TERM_EMU -e copal-guide widgets" || true
+    # The wheel's direction, named the same way: by the way it would go next.
+    # Hyprland only -- the X session's is a root-owned xorg.conf.d file.
+    if [ "$_sess" = wayland ] && have copal-scroll; then
+        if grep -qs '^[[:space:]]*natural_scroll[[:space:]]*=[[:space:]]*false' "$CONFDIR/hypr/copal-scroll.conf"; then
+            out "Scroll wheel: move the page (natural),copal-scroll --natural"
+        else
+            out "Scroll wheel: move the scrollbar (traditional),copal-scroll --traditional"
+        fi
+    fi
 
     # ----- System -----
     out '^tag(system)'
@@ -24048,7 +24058,8 @@ stale() {
               "$HOME/.local/share/flatpak/exports/share/applications" \
               "$HOME/.local/share/applications" \
               /usr/bin /usr/local/bin /usr/sbin "$HOME/.local/bin" "$HOME/bin" \
-              "$CONFDIR/copal" "$CONFDIR/waybar" "$HOME/minivmac"; do
+              "$CONFDIR/copal" "$CONFDIR/waybar" "$CONFDIR/hypr/copal-scroll.conf" \
+              "$HOME/minivmac"; do
         [ -e "$_p" ] && [ "$_p" -nt "$CSV" ] && return 0
     done
     # Once a day regardless: cheap insurance for whatever the list misses.
@@ -30155,6 +30166,79 @@ esac
 ANTIQWALL
     chmod 0755 /usr/local/bin/copal-wallpaper
 
+    cat > /usr/local/bin/copal-scroll <<'ANTIQSCROLL'
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson -- part of Copal Linux.
+# copal-scroll -- which way the mouse wheel scrolls, flipped in one go.
+#
+# hyprland.conf sets natural_scroll = true: the wheel moves the CONTENT, as on
+# a Mac and on every touch screen. Some hands want the other way, the
+# scrollbar's. This writes the choice to ~/.config/hypr/copal-scroll.conf,
+# which hyprland.conf sources after its own input block and before
+# local.conf, and tells the running Hyprland at once. The wheel only: the
+# touchpad block keeps its own setting, and in a VM on a Mac a trackpad
+# arrives here as a wheel anyway.
+set -eu
+
+CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/copal-scroll.conf"
+
+usage() {
+    cat <<'USAGE'
+copal-scroll -- the mouse wheel's direction (Hyprland)
+
+  copal-scroll --toggle        flip it (takes effect now)
+  copal-scroll --natural       the wheel moves the page, as on a Mac
+  copal-scroll --traditional   the wheel moves the scrollbar
+  copal-scroll --status        which way it is set
+USAGE
+}
+
+current() {  # -> true | false; true unless the file says otherwise
+    case "$(sed -n 's/^[[:space:]]*natural_scroll[[:space:]]*=[[:space:]]*//p' "$CONF" 2>/dev/null | tail -n1)" in
+        false|0|no|off) echo false ;;
+        *)              echo true ;;
+    esac
+}
+
+describe() {  # <true|false>
+    if [ "$1" = true ]; then echo "natural -- the wheel moves the page"
+    else echo "traditional -- the wheel moves the scrollbar"; fi
+}
+
+set_to() {  # <true|false>
+    mkdir -p "$(dirname "$CONF")"
+    cat > "$CONF.tmp" <<EOF
+# ~/.config/hypr/copal-scroll.conf -- written by copal-scroll; run it rather
+# than edit this. A line in local.conf still wins over it.
+input {
+    natural_scroll = $1
+}
+EOF
+    mv -f "$CONF.tmp" "$CONF"
+    _live=''
+    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null 2>&1; then
+        hyprctl keyword input:natural_scroll "$1" >/dev/null 2>&1 && _live=1
+    fi
+    echo "scroll wheel: $(describe "$1")"
+    [ -n "$_live" ] || echo "  (Hyprland is not running here -- it applies at the next Hyprland login)"
+    grep -qs 'copal-scroll.conf' "$(dirname "$CONF")/hyprland.conf" \
+        || echo "  hyprland.conf does not source this file yet -- re-run stage 17 to make it stick"
+    command -v notify-send >/dev/null 2>&1 \
+        && notify-send -a copal-scroll "Scroll wheel" "$(describe "$1")" 2>/dev/null || true
+}
+
+case "${1:-}" in
+    --toggle)      if [ "$(current)" = true ]; then set_to false; else set_to true; fi ;;
+    --natural)     set_to true ;;
+    --traditional) set_to false ;;
+    --status)      echo "scroll wheel: $(describe "$(current)")" ;;
+    -h|--help|help) usage ;;
+    *) usage; exit 1 ;;
+esac
+ANTIQSCROLL
+    chmod 0755 /usr/local/bin/copal-scroll
+
     # The compositor config: upstream's hyprland.lua translated value-for-
     # value into the .conf dialect that Hyprland 0.54 -- the one Alpine
     # ships -- actually reads. Hyprland looks for ~/.config/hypr/
@@ -30297,6 +30381,8 @@ input {
     #
     # Set both to false to go back. Stage 4's X session has the same setting
     # in /etc/X11/xorg.conf.d/30-scrolling.conf, and the two should agree.
+    # The wheel's half is also flipped by copal-scroll (Style menu), whose
+    # copal-scroll.conf is sourced below and so wins over this line.
     natural_scroll = true
     touchpad {
         natural_scroll = true
@@ -30862,6 +30948,8 @@ bind = $mainMod CTRL, SPACE, exec, copal-wallpaper --pick
 # -- goes there and survives every re-run. Sourced last, so it wins.
 # The theme's borders, written by copal-theme (re-run it rather than edit).
 source = ~/.config/hypr/copal-theme.conf
+# The wheel's direction, written by copal-scroll (re-run it rather than edit).
+source = ~/.config/hypr/copal-scroll.conf
 source = ~/.config/hypr/local.conf
 ANTIQDOORS
 
@@ -30880,6 +30968,18 @@ ANTIQDOORS
 HYPRLOCAL
     install_home_once .config/hypr/local.conf "${COPAL_TMP:?}/hyprlocal"
     rm -f "${COPAL_TMP:?}/hyprlocal"
+    # Created once, with the direction the input block above already sets: a
+    # source line naming a missing file is an error banner in Hyprland, and a
+    # re-run must not undo a choice made with copal-scroll since.
+    cat > "${COPAL_TMP:?}/hyprscroll" <<'HYPRSCROLL'
+# ~/.config/hypr/copal-scroll.conf -- written by copal-scroll; run it rather
+# than edit this. A line in local.conf still wins over it.
+input {
+    natural_scroll = true
+}
+HYPRSCROLL
+    install_home_once .config/hypr/copal-scroll.conf "${COPAL_TMP:?}/hyprscroll"
+    rm -f "${COPAL_TMP:?}/hyprscroll"
     rm -f "${COPAL_TMP:?}/hyprconf"
 
     # hyprpaper.conf named the author's two monitors. An empty monitor field

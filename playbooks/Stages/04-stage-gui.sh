@@ -1604,6 +1604,15 @@ build_csv() {  # <wayland|x11>
     fi
     [ -f "$GUIDES/widgets.txt" ] \
         && out "Configure the bar and widgets,$TERM_EMU -e copal-guide widgets" || true
+    # The wheel's direction, named the same way: by the way it would go next.
+    # Hyprland only -- the X session's is a root-owned xorg.conf.d file.
+    if [ "$_sess" = wayland ] && have copal-scroll; then
+        if grep -qs '^[[:space:]]*natural_scroll[[:space:]]*=[[:space:]]*false' "$CONFDIR/hypr/copal-scroll.conf"; then
+            out "Scroll wheel: move the page (natural),copal-scroll --natural"
+        else
+            out "Scroll wheel: move the scrollbar (traditional),copal-scroll --traditional"
+        fi
+    fi
 
     # ----- System -----
     out '^tag(system)'
@@ -1644,7 +1653,8 @@ stale() {
               "$HOME/.local/share/flatpak/exports/share/applications" \
               "$HOME/.local/share/applications" \
               /usr/bin /usr/local/bin /usr/sbin "$HOME/.local/bin" "$HOME/bin" \
-              "$CONFDIR/copal" "$CONFDIR/waybar" "$HOME/minivmac"; do
+              "$CONFDIR/copal" "$CONFDIR/waybar" "$CONFDIR/hypr/copal-scroll.conf" \
+              "$HOME/minivmac"; do
         [ -e "$_p" ] && [ "$_p" -nt "$CSV" ] && return 0
     done
     # Once a day regardless: cheap insurance for whatever the list misses.
