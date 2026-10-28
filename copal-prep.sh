@@ -22452,7 +22452,18 @@ MSG
     TGT_DISK=''; SWAP_DISK=''; SWAP_DEV=''
     # shellcheck disable=SC2034  # read by mount_existing_volumes, in the installer
     STICK_DISK=$DISKDEV
-    is_pi_boot || choose_root_target
+    if ! is_pi_boot; then
+        rm -f "${COPAL_TMP:?}/disks"
+        while :; do
+            choose_root_target
+            _gate=0; removable_root_gate || _gate=$?
+            case "$_gate" in
+                0) break ;;
+                2) TGT_DISK=''; SWAP_DISK=''; SWAP_GIB=0 ;;
+                *) return 0 ;;
+            esac
+        done
+    fi
 
     if [ -z "$TGT_DISK" ]; then
         [ -b "$P2" ] || die "$P2 not found"
