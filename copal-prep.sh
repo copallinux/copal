@@ -85,7 +85,47 @@ disk() {
         printf '       Cards are written through tools/copal-disk.sh. This\n' >&2
         printf '       checkout does not have it.\n' >&2
         exit 1; }
-    sh "$DISKSH" "$@"
+    # ON LINUX, ONE PASSWORD, NOT ONE A STEP. The disk layer asks doas for
+    # root inside each verb, and OpenDoas remembers a password ('persist')
+    # per PARENT process, not per terminal: every verb is a new sh, so every
+    # doas inside it asked again -- about ten times for one card
+    # (saskatchewan, 27 October). Run the whole verb through doas from here
+    # instead: its parent is this script, the same for the whole build, so
+    # persist covers them all. Inside it runs as root, so who is building and
+    # where their mounts go are handed in (COPAL_OWNER for the FAT mount's
+    # owner, COPAL_MOUNT_ROOT for ~/.copal/mnt), or the stick would be
+    # mounted root's, under /root. macOS is unchanged: sudo remembers per
+    # terminal, so it asks once there already.
+    # Only the verbs that touch a device go through doas. A checksum, a
+    # listing or a probe needs no root, and asking doas for them only adds
+    # prompts -- and a prompt nobody answered failed the Ubuntu 26.04 check
+    # silently on saskatchewan, so a good download was left off the card.
+    _need_root=0
+    case "${1:-}" in
+        unmount-all|unmount|mount|partition|type|bootflag|biosboot|biosboot-check|eject|image-attach|image-detach) _need_root=1 ;;
+    esac
+    if [ "$_need_root" = 1 ] && [ "$(uname -s)" = Linux ] && [ "$(id -u)" != 0 ] && command -v doas >/dev/null 2>&1; then
+        doas env COPAL_OWNER="$(id -u):$(id -g)" \
+            COPAL_MOUNT_ROOT="${COPAL_MOUNT_ROOT:-$HOME/.copal/mnt}" \
+            sh "$DISKSH" "$@"
+    else
+        sh "$DISKSH" "$@"
+    fi
+}
+
+# disk_to VAR VERB ARGS...: a disk verb run in THIS process, its output put in
+# VAR. VAR=$(disk VERB) would run it in a subshell, and OpenDoas remembers a
+# password per parent process (its timestamp is /run/doas/PPID-...), so every
+# $(...) asked again: more prompts than ever on saskatchewan, 27 October.
+# The status is the verb's.
+disk_to() {
+    _dt_var=$1; shift
+    _dt_tmp=$(mktemp "${TMPDIR:-/tmp}/copal-disk.XXXXXX") || return 1
+    _dt_rc=0
+    disk "$@" > "$_dt_tmp" || _dt_rc=$?
+    printf -v "$_dt_var" '%s' "$(cat "$_dt_tmp")"
+    rm -f "$_dt_tmp"
+    return "$_dt_rc"
 }
 
 BOOT_LABEL="COPALBOOT"
@@ -570,7 +610,19 @@ random_hostname() {
     while [ "$pick" -ge "$limit" ]; do pick=$RANDOM; done
     printf '%s\n' "$names" | sed -n "$(( pick % count + 1 ))p"
 }
-CFG_HOSTNAME="${CFG_HOSTNAME:-$(random_hostname)}"
+# 'random' (and an unset hostname) is not a name: it is drawn on the machine
+# at stage 1 from waters.txt, which this writes onto the card, so one card
+# installs any number of machines under different names. The card's
+# answers.txt carries COPAL_RANDOM_WATER where the name goes; stage 1 puts the
+# drawn river in its place, in a copy, never in the card's own file.
+CFG_HOSTNAME="${CFG_HOSTNAME:-random}"
+if [ "$CFG_HOSTNAME" = random ]; then
+    CARD_HOSTNAME=COPAL_RANDOM_WATER
+    HOSTNAME_SHOWN="a river drawn at install"
+else
+    CARD_HOSTNAME=$CFG_HOSTNAME
+    HOSTNAME_SHOWN=$CFG_HOSTNAME
+fi
 CFG_TIMEZONE="${CFG_TIMEZONE:-US/Pacific}"
 CFG_IFACE="${CFG_IFACE:-eth0}"
 # Whether this was chosen by the caller or is merely the fallback. The prompt
@@ -744,9 +796,9 @@ if [ -z "$MODEL" ] && [ -z "${ARCH:-}" ] && [ -t 0 ]; then
     printf '    3) Pi Zero 2 W / Pi 3 / CM3 / 2B v1.2 (BCM2710, A53)     aarch64\n'
     printf '    4) Pi 4 / 400 / CM4                   (BCM2711, A72)     aarch64\n'
     printf '    5) Pi 5                               (BCM2712, A76)     aarch64\n'
-    printf '  PC (UEFI only -- see the note after you choose):\n'
-    printf '    6) PC / laptop / Mac, 64-bit          (UEFI)             x86_64\n'
-    printf '    7) PC, 32-bit                         (UEFI)             x86\n'
+    printf '  PC (UEFI or legacy BIOS -- see the note after you choose):\n'
+    printf '    6) PC / laptop / Mac, 64-bit          (UEFI or BIOS)     x86_64\n'
+    printf '    7) PC, 32-bit                         (UEFI or BIOS)     x86\n'
     printf '  Virtual machine (pair either with --image):\n'
     printf '    8) UTM / QEMU on Apple Silicon        (UEFI)             aarch64\n'
     printf '       Native speed on an M-series Mac, and the same code path a\n'
@@ -934,14 +986,15 @@ esac
 # architecture-independent, so all fifteen stages, the catalogue and the
 # desktop work the same once the kernel is running.
 #
-# UEFI ONLY, and this is a limitation of the writing machine rather than a
-# preference. Copal writes cards from macOS. A legacy-BIOS boot needs syslinux
-# or grub-install to write a boot sector and patch a stage-1.5 loader onto the
-# filesystem, and both are Linux tools that do not exist on macOS -- there is
-# no honest way to fake it. UEFI needs no installer at all: the firmware reads
-# a FAT partition and executes \EFI\BOOT\BOOTX64.EFI, which is a file copy.
-# So Copal supports UEFI, which is every PC since roughly 2012 and every Intel
-# Mac, and says so plainly instead of writing a card that will not boot.
+# UEFI AND LEGACY BIOS. UEFI needs no installer at all: the firmware reads a
+# FAT partition and executes \EFI\BOOT\BOOTX64.EFI, which is a file copy. A
+# BIOS needs boot code in sector 0 and the gap before p1, which grub-install
+# writes and macOS cannot run -- this used to be why Copal was UEFI only. But
+# for an MBR card with p1 at sector 2048 those are the same bytes every time,
+# so they are built once on Alpine (tools/grub-bios-build.sh), kept in
+# vendor/grub-i386-pc, and written by dd (copal-disk.sh biosboot; see
+# docs/legacy-bios-lab-report.md). Stage 3's install to a PC's own disk is
+# still UEFI only.
 # VM has to be tested before ARCH, not folded into it: a VM is aarch64, and
 # aarch64 otherwise means a Pi. Take the UEFI path for anything that is not a
 # board with GPU firmware on it.
@@ -993,6 +1046,28 @@ MIRROR="${MIRROR:-https://dl-cdn.alpinelinux.org/alpine}"
 # into the cache directory, so a rule that emptied the cache would have taken a
 # finished install with it.
 BUILDDIR="${BUILDDIR:-$(cd "$(dirname "$0")" && pwd)/build}"
+
+# THE BUILD'S OWN LOG, and where it stopped. A card written from Linux on 27
+# October stopped right after the payload copy, three times, and all anyone
+# could see afterwards was a half-written card: the output had been on a
+# terminal, and the stop was set -e's, which says nothing. So every run now
+# copies everything it prints into build/copal-prep-STAMP.log (the newest is
+# build/copal-prep-last.log, and `make lastlog` shows it), and a command that
+# fails and ends the build says so, with its line, before the exit. The step
+# gates read /dev/tty, not standard input, so they are not affected by the
+# copy. COPAL_PREP_LOG set by a caller (a nested run) means it is already
+# being logged.
+if [ -z "${COPAL_PREP_LOG:-}" ]; then
+    mkdir -p "$BUILDDIR"
+    COPAL_PREP_LOG="$BUILDDIR/copal-prep-$(date +%Y%m%d-%H%M%S).log"
+    export COPAL_PREP_LOG
+    ln -sfn "$(basename "$COPAL_PREP_LOG")" "$BUILDDIR/copal-prep-last.log"
+    exec > >(tee -a "$COPAL_PREP_LOG") 2>&1
+fi
+set -E
+# Only at the top level: with set -E the trap reaches $(...) too, where a
+# failing command does not end the build, and a STOPPED line there would lie.
+trap '_e=$?; [ "$BASH_SUBSHELL" = 0 ] && printf "\ncopal-prep.sh: STOPPED at line %s (exit %s): %s\n" "$LINENO" "$_e" "$BASH_COMMAND" >&2' ERR
 # WORKDIR is honoured because it is what this variable used to be called and
 # scripted callers may still set it.
 CACHEDIR="${CACHEDIR:-${WORKDIR:-$BUILDDIR/cache}}"
@@ -1076,6 +1151,7 @@ on_exit() {
     # exact opposite of the paragraph above. Failures inside it are still
     # swallowed by '|| true', which is all the trap actually needs.
     build_time_report || true
+    [ -n "${COPAL_PREP_LOG:-}" ] && printf '\nLog: %s   (make lastlog)\n' "$COPAL_PREP_LOG" >&2
     rm -rf "$BUILD_STATE" 2>/dev/null || true
     if [ -n "${IMAGE_DEV:-}" ] && [ -e "${IMAGE_DEV:-/nonexistent}" ]; then
         printf '\033[33mReleasing %s (%s).\033[0m\n' "$IMAGE_DEV" "${IMAGE_PATH:-image}" >&2
@@ -1661,7 +1737,7 @@ attach_image() {
     # Attached as a bare sector image -- no header, no UDIF, no partition
     # scanning skipped. Both backends die rather than return empty, so a
     # device name that arrives here is a device name.
-    IMAGE_DEV=$(disk image-attach "$IMAGE_PATH")
+    disk_to IMAGE_DEV image-attach "$IMAGE_PATH"
     DISK="${IMAGE_DEV#/dev/}"
     info "Attached: $IMAGE_DEV"
 }
@@ -1721,7 +1797,7 @@ fi
 
 INFO=$(disk probe "$DISK") || die "no such disk: /dev/$DISK"
 
-# Eleven keys, one per line, the same eleven from either host. The shim is
+# Twelve keys, one per line, the same twelve from either host. The shim is
 # what guarantees that: a fact a host cannot supply comes back as "unknown"
 # and NEVER as an absent line, because an absent line reads as an empty string
 # and an empty string passes every refusal below.
@@ -1745,6 +1821,11 @@ MOUNTED=$(mount | awk -v d="/dev/$DISK" '$1 ~ "^" d "s?[0-9]*$" {print $3}' \
 
 # --- hard refusals ---------------------------------------------------------
 [ "$INTERNAL" = "Internal" ] && die "/dev/$DISK is an INTERNAL disk. Refusing."
+# A stick whose flash is worn out locks itself read-only, on purpose, so what
+# is on it can still be copied off. On 27 October one did, after a day of
+# rewrites, and the build got as far as diskutil's "A writable disk is
+# required (-69772)". Said here, before anything is attempted.
+[ "$(get read_only)" = Yes ] && die "/dev/$DISK ($MEDIANAME) reports itself READ-ONLY. Check for a write-protect switch; if there is none, the stick has most likely worn out (flash drives lock themselves read-only when they do). Use another."
 # A virtual disk is normally a mounted DMG or a sparse bundle -- something with
 # a filesystem someone cares about, and never an SD card. It is also exactly
 # what --image just created, so the refusal is relaxed only for the device this
@@ -1827,7 +1908,7 @@ DISK_FINGERPRINT="${MEDIANAME}|${DISK_BYTES}|$(get uuid)"
 # ---------------------------------------------------------------- format ---
 if [ "$REFRESH" -eq 1 ]; then
     # Refresh: mount the existing boot partition and leave everything else be.
-    MNT=$(disk mount "$DISK" 1) \
+    disk_to MNT mount "$DISK" 1 \
         || die "could not mount partition 1 of /dev/$DISK -- is this a card written by copal-prep.sh?"
     [ -d "$MNT" ] || die "could not mount partition 1 of /dev/$DISK at $MNT"
     assert_mount_is "$MNT" "$DISK"
@@ -1958,13 +2039,35 @@ info "Marking partition 1 bootable..."
 disk bootflag "$DISK" 1 \
     || warn "could not set the bootable flag (usually harmless; continuing)"
 
+# LEGACY BIOS, on the same card as UEFI. A BIOS runs sector 0, not a file, so
+# a card with only \EFI\BOOT boots nothing on a machine without UEFI (or with
+# it switched to legacy). This goes after the boot flag on purpose: that
+# flag's macOS form is fdisk -e, which rewrites sector 0, so this writes last. GRUB's boot code goes into sector 0 and the gap
+# before p1, and that GRUB reads the same boot/grub/grub.cfg the UEFI one
+# does. biosboot also marks partition 1 active, which some BIOSes need before
+# they will treat a USB stick as a disk at all; UEFI ignores the flag.
+#
+# What is written and why it is only dd: tools/grub-bios-build.sh, which made
+# vendor/grub-i386-pc. x86 only -- an aarch64 VM has no BIOS.
+BIOSBOOT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/vendor/grub-i386-pc"
+if [ "$PLATFORM" = pc ] && { [ "$ARCH" = x86_64 ] || [ "$ARCH" = x86 ]; }; then
+    if [ -f "$BIOSBOOT_DIR/core.img" ]; then
+        info "Writing GRUB's legacy-BIOS boot code (sector 0 and the gap before p1)..."
+        disk unmount-all "$DISK"
+        disk biosboot "$DISK" "$BIOSBOOT_DIR" \
+            || warn "could not write the BIOS boot code -- this card boots UEFI only"
+    else
+        warn "no $BIOSBOOT_DIR/core.img -- this card boots UEFI only (tools/grub-bios-build.sh makes it)"
+    fi
+fi
+
 sleep 2
 # WHERE, not whether. macOS mounts by label wherever it likes and Linux mounts
 # where it is told, so the mount point is what the disk layer reports back --
 # the /Volumes/$BOOT_LABEL constant that used to be here could only ever be
 # right on one of the two hosts, and was quietly wrong on a Mac with two
 # builds running anyway.
-MNT=$(disk mount "$DISK" 1) \
+disk_to MNT mount "$DISK" 1 \
     || die "could not mount partition 1 of /dev/$DISK after formatting"
 [ -d "$MNT" ] || die "expected $MNT to be mounted after formatting"
 assert_mount_is "$MNT" "$DISK"
@@ -1984,7 +2087,17 @@ phase "Copy payload"
 # COPYFILE_DISABLE stops macOS writing ._AppleDouble sidecar files.
 info "Copying payload to $MNT ..."
 export COPYFILE_DISABLE=1
-(cd "$SRC" && cp -Rp . "$MNT/")
+# -p (keep owners, modes, times) on macOS only. On Linux, GNU cp reports every
+# directory whose mode FAT cannot hold ("preserving permissions for
+# .../boot/dtbs-lts: Operation not permitted") and exits 1 after copying every
+# file, and the build stopped there, three times, on 27 October
+# (docs/card-from-linux-lab-report.md). Modes and times mean nothing on a FAT
+# boot partition, so Linux copies without -p.
+if [ "$(uname -s)" = Darwin ]; then
+    (cd "$SRC" && cp -Rp . "$MNT/")
+else
+    (cd "$SRC" && cp -R . "$MNT/")
+fi
 
 fi   # end of the destructive block skipped by --refresh
 
@@ -2000,7 +2113,7 @@ step "Write the answer file, firmware settings and first-run script" \
     "Writes three files to the boot partition:" \
     "" \
     "  answers.txt   setup-alpine answers -- keymap ${CFG_KEYMAP}, host" \
-    "                ${CFG_HOSTNAME}, ${CFG_TIMEZONE}, ${CFG_IFACE}/dhcp, disk=none" \
+    "                ${HOSTNAME_SHOWN}, ${CFG_TIMEZONE}, ${CFG_IFACE}/dhcp, disk=none" \
     "  usercfg.txt   firmware settings (gpu_mem=16, enable_uart=1); config.txt" \
     "                includes it last and is itself overwritten on upgrade" \
     "  copal-init.sh   the one command to run on the Pi -- a re-runnable menu" \
@@ -2028,14 +2141,14 @@ cat > "$MNT/answers.txt" <<ANSWERS
 # Apply with:  setup-alpine -f /media/mmcblk0p1/answers.txt
 
 KEYMAPOPTS="${CFG_KEYMAP}"
-HOSTNAMEOPTS="-n ${CFG_HOSTNAME}"
+HOSTNAMEOPTS="-n ${CARD_HOSTNAME}"
 
 INTERFACESOPTS="auto lo
 iface lo inet loopback
 
 auto ${CFG_IFACE}
 iface ${CFG_IFACE} inet dhcp
-    hostname ${CFG_HOSTNAME}
+    hostname ${CARD_HOSTNAME}
 "
 
 TIMEZONEOPTS="-z ${CFG_TIMEZONE}"
@@ -2167,6 +2280,209 @@ COPAL_FLEET_PSK='${CFG_FLEET_PSK}'
 # Single use, this card only, burned the first time this machine is signed.
 COPAL_FLEET_TOKEN='${CFG_FLEET_TOKEN}'
 ANSWERS
+
+# The pool stage 1 draws a hostname from when answers.txt says 'random': one
+# name a line, the same 300 random_hostname picks from.
+hostname_pool | tr -s ' \n' '\n\n' | grep -v '^$' > "$MNT/waters.txt"
+
+# GRUB's BIOS boot code, again, as files: stage 3 writes it to a PC's own disk
+# when that PC booted in legacy BIOS (with tools/copal-disk.sh, staged above).
+# The card's sector 0 already holds it; this is for the disk the install makes.
+# (Named again here: a --refresh skips the block that first set it.)
+BIOSBOOT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/vendor/grub-i386-pc"
+if [ "$PLATFORM" = pc ] && [ -f "$BIOSBOOT_DIR/core.img" ]; then
+    mkdir -p "$MNT/boot/grub/bios"
+    cp "$BIOSBOOT_DIR/boot.img" "$BIOSBOOT_DIR/core.img" "$MNT/boot/grub/bios/"
+fi
+
+# NETWORK BOOT: netboot.xyz, a 400 kB to 1.2 MB iPXE build that fetches a menu
+# of installers and live systems over the network -- Alpine, Debian, FreeBSD,
+# OpenBSD, Clonezilla, GParted, SystemRescue and more. The fallback for
+# anything the card cannot do itself: format a disk, image one, or install
+# something else. Apache-2.0. Pinned by version and by the sums its release
+# publishes (netboot.xyz-sha256-checksums.txt, 3.0.3), cached, and refused on
+# a mismatch: then the card is written without the entry, and says so.
+#
+#   netboot.xyz.lkrn  for a BIOS: GRUB starts it with linux16 (built into
+#                     vendor/grub-i386-pc's core.img for this)
+#   netboot.xyz.efi   for UEFI: GRUB starts it with chainloader, from
+#                     chain.mod (vendor/grub-x86_64-efi, loaded by the entry;
+#                     the UEFI GRUB itself is Alpine's, unchanged)
+NETBOOT_VER=3.0.3
+NETBOOT_URL="https://github.com/netbootxyz/netboot.xyz/releases/download/$NETBOOT_VER"
+NETBOOT_SUMS='b8934c4f4a651959915123edfe57436faf79a0a2f38c88c3bc38ed6930b165d9  netboot.xyz.lkrn
+56bb21e9f6d79eadb947e7031a088c9afcc48aa1eb99b2502d161f0b1c586a82  netboot.xyz.efi'
+NETBOOT_OK=0
+if [ "$PLATFORM" = pc ] && { [ "$ARCH" = x86_64 ] || [ "$ARCH" = x86 ]; }; then
+    _nb="$CACHEDIR/netboot.xyz-$NETBOOT_VER"
+    mkdir -p "$_nb"
+    printf '%s\n' "$NETBOOT_SUMS" > "$_nb/SHA256SUMS"
+    if ! (cd "$_nb" && disk sha256-check SHA256SUMS >/dev/null 2>&1); then
+        info "Downloading netboot.xyz $NETBOOT_VER (the network boot entry)..."
+        for _f in netboot.xyz.lkrn netboot.xyz.efi; do
+            curl -fsSL -o "$_nb/$_f" "$NETBOOT_URL/$_f" || warn "could not download $_f"
+        done
+    fi
+    if (cd "$_nb" && disk sha256-check SHA256SUMS >/dev/null 2>&1); then
+        mkdir -p "$MNT/boot/netboot"
+        cp "$_nb/netboot.xyz.lkrn" "$_nb/netboot.xyz.efi" "$MNT/boot/netboot/"
+        _em="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/vendor/grub-x86_64-efi"
+        if [ -f "$_em/chain.mod" ]; then
+            mkdir -p "$MNT/boot/grub/x86_64-efi"
+            cp "$_em"/*.mod "$MNT/boot/grub/x86_64-efi/"
+        fi
+        NETBOOT_OK=1
+        info "netboot.xyz $NETBOOT_VER on the card (boot/netboot/), sums checked"
+    else
+        rm -f "$_nb/netboot.xyz.lkrn" "$_nb/netboot.xyz.efi"
+        warn "netboot.xyz did not download or did not match its published sums -- this card has no network boot entry"
+    fi
+fi
+
+# UBUNTU, INSTALLED OVER THE NETWORK, from the boot menu. Ubuntu's own netboot
+# kernel and initrd (releases.ubuntu.com/<ver>/netboot/amd64/), carried on the
+# card; booted with the command line Ubuntu's own pxelinux.cfg gives, the
+# installer fetches the live-server ISO into RAM (about 3 GB: a machine needs
+# 4 GB or more) and runs Subiquity, which offers Server, minimized Server and
+# OpenSSH. Then the machine is reached over SSH and set up from there.
+#
+# Two releases, for a reason: NVIDIA's CUDA repository for 26.04 carries only
+# CUDA 13 (no Pascal), while 24.04's carries driver 580 (the last series for
+# Maxwell, Pascal and Volta: GTX 900 and 10 series) and CUDA 12.9. So 24.04
+# is the one for a GTX 1080 / 1080 Ti that is to run CUDA.
+#
+# Ubuntu publishes sums for its ISOs, not for these two files, so the sums
+# below are first use: what releases.ubuntu.com served on 27 October 2026,
+# fetched over HTTPS. A mismatch (Ubuntu refreshes them at point releases)
+# leaves that release out of the menu and says so; update the pin then. The
+# entries are a file of their own, boot/grub/ubuntu.cfg, read by the card's
+# menu and, once stage 3 has copied it, by the installed disk's.
+UBUNTU_NETBOOT='26.04|26.04.1|0ad39b13e289e1a5cf806d14541ac8f221eefe849017f5915e0846917ed67785|7aeb757e12400830fc59e962c603a43439d662fb9309ab36cb2537f41a1b8335|Install Ubuntu 26.04 LTS Server (network)
+24.04|24.04.5|d5d71ed32239eaa9bcb0528227a7adb62688250ce9f163b3e04e9675ddf86cff|5fac8541a73b92cd2e9356420d7280e887d4dbd0948e5e511eec7d726e56892b|Install Ubuntu 24.04 LTS Server (network): for NVIDIA Pascal + CUDA 12'
+UBUNTU_OK=0
+if [ "$PLATFORM" = pc ] && [ "$ARCH" = x86_64 ]; then
+    _ucfg="$MNT/boot/grub/ubuntu.cfg"
+    : > "$_ucfg.new"
+    printf '%s\n' "$UBUNTU_NETBOOT" | while IFS='|' read -r _uv _upoint _uk _ui _ut; do
+        _uc="$CACHEDIR/ubuntu-netboot-$_uv"
+        mkdir -p "$_uc"
+        printf '%s  linux\n%s  initrd\n' "$_uk" "$_ui" > "$_uc/SHA256SUMS"
+        if ! (cd "$_uc" && disk sha256-check SHA256SUMS >/dev/null 2>&1); then
+            info "Downloading Ubuntu $_uv's netboot kernel and initrd (about 110 MB)..."
+            for _f in linux initrd; do
+                curl -fsSL -o "$_uc/$_f" "https://releases.ubuntu.com/$_uv/netboot/amd64/$_f" \
+                    || warn "could not download Ubuntu $_uv netboot $_f"
+            done
+        fi
+        if (cd "$_uc" && disk sha256-check SHA256SUMS >/dev/null 2>&1); then
+            mkdir -p "$MNT/boot/ubuntu/$_uv"
+            cp "$_uc/linux" "$_uc/initrd" "$MNT/boot/ubuntu/$_uv/"
+            cat >> "$_ucfg.new" <<UBUNTUCFG
+
+menuentry "$_ut" {
+    linux /boot/ubuntu/$_uv/linux root=/dev/ram0 ramdisk_size=1500000 ip=dhcp iso-url=https://releases.ubuntu.com/$_upoint/ubuntu-$_upoint-live-server-amd64.iso ---
+    initrd /boot/ubuntu/$_uv/initrd
+}
+UBUNTUCFG
+            info "Ubuntu $_uv netboot on the card (boot/ubuntu/$_uv/), sums checked"
+        else
+            rm -f "$_uc/linux" "$_uc/initrd"
+            warn "Ubuntu $_uv netboot did not download or did not match its pinned sums -- left out of the menu"
+        fi
+    done
+    if [ -s "$_ucfg.new" ]; then
+        { printf '# Written by copal-prep.sh: Ubuntu, installed over the network.\n'
+          printf '# Read by the menus with `source`; see copal-prep.sh, UBUNTU_NETBOOT.\n'
+          cat "$_ucfg.new"; } > "$_ucfg"
+        UBUNTU_OK=1
+    fi
+    rm -f "$_ucfg.new"
+fi
+
+# THE FIRST LOGIN'S MESSAGE, and every login's until the install is done. A
+# fresh card has no saved configuration, so a stock Alpine boots and its login
+# says only "Welcome to Alpine!". The message rides in a starter overlay,
+# copal-first.apkovl.tar.gz, which the initramfs unpacks over / at boot like
+# any apkovl:
+#
+#   etc/issue                    before the login prompt: log in as root
+#   etc/motd                     a one-line banner
+#   etc/profile.d/copal-setup.sh after login: look at answers.txt and run
+#                                copal-init.sh; after stage 1, how to carry
+#                                on. Silent while the auto-resume block (in
+#                                .profile) is doing the same job.
+#   etc/.default_boot_services   EMPTY, AND NOT OPTIONAL. The initramfs adds
+#                                Alpine's default boot services only when
+#                                there is no overlay or the overlay carries
+#                                this file; without it the machine boots with
+#                                no mdev, no hwdrivers and no network.
+#
+# Stage 1 deletes the starter before its lbu commit: with two overlays on one
+# medium the initramfs loads only the first it finds (head -n 1 of nlplug's
+# list, mkinitfs 3.24), which could be the starter, and the saved
+# configuration would be passed over. What the starter put in /etc is
+# by then part of the running system, so the commit carries it forward, and
+# copal-init.sh removes copal-setup.sh when the last stage is done.
+info "Writing copal-first.apkovl.tar.gz (the login message until Copal is set up)..."
+_seed=$(mktemp -d)
+mkdir -p "$_seed/etc/profile.d"
+: > "$_seed/etc/.default_boot_services"
+cat > "$_seed/etc/issue" <<'ISSUE'
+Copal Linux on Alpine \r (\l)
+
+  Not set up yet. Log in as root -- there is no password until setup.
+
+ISSUE
+cat > "$_seed/etc/motd" <<'MOTDTEXT'
+
+  Copal Linux -- https://copallinux.org
+
+MOTDTEXT
+cat > "$_seed/etc/profile.d/copal-setup.sh" <<'SETUPMSG'
+# Copal: what to do next, at every login until the install is finished.
+# From the card's starter overlay (copal-prep.sh); copal-init.sh removes it
+# when the last stage is done. Delete it to stop the message.
+_cb=''
+for _cd in /boot /media/*; do
+    [ -f "$_cd/copal-init.sh" ] && { _cb=$_cd; break; }
+done
+if [ -n "$_cb" ] && ! ls "$_cb"/copal-auto >/dev/null 2>&1; then
+    if [ "$(id -u)" = 0 ]; then _cr="sh $_cb/copal-init.sh"; else _cr="doas sh $_cb/copal-init.sh"; fi
+    if ls "$_cb"/*.apkovl.tar.gz 2>/dev/null | grep -qv '/copal-first\.apkovl\.tar\.gz$'; then
+        printf '\n  Copal: the install is not finished. To carry on where it stopped:\n\n'
+        printf '      %s\n\n' "$_cr"
+    else
+        printf '\n  Copal: this machine is not set up yet.\n\n'
+        printf '  The answers for the install are on the boot medium. Look at them first:\n\n'
+        printf '      less %s/answers.txt\n\n' "$_cb"
+        printf '  Then start the install (as root):\n\n'
+        printf '      %s\n\n' "$_cr"
+    fi
+fi
+unset _cb _cd _cr
+SETUPMSG
+chmod 0644 "$_seed/etc/issue" "$_seed/etc/motd" "$_seed/etc/profile.d/copal-setup.sh" "$_seed/etc/.default_boot_services"
+# Owned by root on the machine, whoever wrote the card; no macOS metadata.
+# Owned by root in the archive: --uid/--gid is bsdtar's (macOS), GNU tar's is
+# --owner/--group (Linux; '--uid' stopped the first card written there).
+if tar --version 2>/dev/null | grep -q 'GNU tar'; then
+    _tarown='--owner=0 --group=0 --numeric-owner'
+else
+    _tarown='--uid 0 --gid 0'
+fi
+# shellcheck disable=SC2086  # _tarown is two or three words, on purpose
+COPYFILE_DISABLE=1 tar -czf "$MNT/copal-first.apkovl.tar.gz" $_tarown -C "$_seed" \
+    etc/.default_boot_services etc/issue etc/motd etc/profile.d/copal-setup.sh \
+    || die "could not write copal-first.apkovl.tar.gz"
+rm -rf "$_seed"
+# A spare of the starter, under a name the initramfs does not load (it looks
+# for *.apkovl.tar.gz* at the top of the medium), so stage 3 can put the
+# stick back as it was after installing a computer's own disk.
+mkdir -p "$MNT/boot"
+cp "$MNT/copal-first.apkovl.tar.gz" "$MNT/boot/copal-starter.tar.gz"
+# How GRUB on an installed disk finds this stick ("Copal live, from a USB
+# stick"): by this file, which stage 3 removes from the disk's copy of p1.
+printf 'A Copal USB stick. GRUB finds it by this file; do not delete it.\n' > "$MNT/copal-stick"
 
 # THE BOOT CONFIGURATION, which is the one part of this script that is genuinely
 # different per platform. A Pi gets firmware directives; a PC gets a GRUB menu.
@@ -2311,7 +2627,56 @@ menuentry "Copal Linux (lts -- real hardware)" {
     linux /boot/vmlinuz-lts modules=loop,squashfs,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=tmpfs console=tty0
     initrd /boot/initramfs-lts
 }
+
+# TWO-GPU LAPTOPS (Intel + NVIDIA, "Optimus"): on a muxless one every output
+# is the Intel GPU's, but nouveau registers the first framebuffer and the text
+# console goes to it -- a screen wired to nothing, and the panel stays blank
+# (an Acer Aspire 5750G, 27 October; docs/console-wrong-screen-lab-report.md).
+# This entry keeps nouveau off the screen two ways, for whichever modprobe
+# loads it: modprobe.blacklist (kmod's) and nouveau.modeset=0 (the module's
+# own option, which the kernel command line passes to it). The console is
+# then the Intel GPU's, on the panel. Harmless on a machine with no NVIDIA.
+menuentry "Copal Linux (Intel graphics only: two-GPU laptops)" {
+    linux /boot/vmlinuz-lts modules=loop,squashfs,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=tmpfs console=tty0 modprobe.blacklist=nouveau nouveau.modeset=0
+    initrd /boot/initramfs-lts
+}
+
+# A computer Copal was installed on keeps /copal-installed on its own boot
+# partition (stage 3 writes it). Found, its own menu takes over; not found,
+# a line says so and the menu comes back.
+menuentry "Copal installed on this computer's disk" {
+    if search --no-floppy --file /copal-installed --set=root; then
+        configfile /boot/grub/grub.cfg
+    else
+        echo "No Copal install found on this computer's disks."
+    fi
+}
 GRUBCFG
+if [ "$NETBOOT_OK" = 1 ]; then
+    cat >> "$MNT/boot/grub/grub.cfg" <<'GRUBCFG'
+
+# Tools and rescue, over the network: netboot.xyz's menu of installers and
+# live systems (Alpine, Debian, FreeBSD, OpenBSD, Clonezilla, GParted, ...).
+# Needs a wired network with DHCP. Secure Boot must be off, as for Copal.
+menuentry "Network boot: netboot.xyz (Alpine, BSD, Clonezilla, GParted ...)" {
+    if [ "$grub_platform" = efi ]; then
+        insmod chain
+        chainloader /boot/netboot/netboot.xyz.efi
+    else
+        linux16 /boot/netboot/netboot.xyz.lkrn
+    fi
+}
+GRUBCFG
+fi
+if [ "$UBUNTU_OK" = 1 ]; then
+    cat >> "$MNT/boot/grub/grub.cfg" <<'GRUBCFG'
+
+# Ubuntu, installed over the network: the entries are in their own file.
+if [ -f /boot/grub/ubuntu.cfg ]; then
+    source /boot/grub/ubuntu.cfg
+fi
+GRUBCFG
+fi
 
 # The virt entry only where that flavour exists, which is not everywhere.
 #
@@ -2553,7 +2918,7 @@ info "Staging tools/ and themes/ on ${BOOT_LABEL}..."
 _here="$(cd "$(dirname "$0")" && pwd)"
 rm -rf "$MNT/tools" "$MNT/themes"
 mkdir -p "$MNT/tools" "$MNT/themes"
-for _t in copal-terminal-theme copal-theme; do
+for _t in copal-terminal-theme copal-theme copal-disk.sh; do
     if ! { [ -f "$_here/tools/$_t" ] && cp "$_here/tools/$_t" "$MNT/tools/"; }; then
         warn "tools/$_t is missing; the target will do without it"
     fi
@@ -3392,7 +3757,9 @@ fstype_of()    { blkid "$1" 2>/dev/null | sed -n 's/.*[[:space:]]TYPE="\([^"]*\)
 # keeps this from matching PARTUUID=.
 uuid_of()      { blkid "$1" 2>/dev/null | sed -n 's/.*[[:space:]]UUID="\([^"]*\)".*/\1/p'; }
 is_mounted()   { awk -v m="$1" '$2 == m { found = 1 } END { exit !found }' /proc/mounts; }
-apkovl_exists() { ls "$BOOT"/*.apkovl.tar.gz >/dev/null 2>&1; }
+# The starter overlay (copal-first, the login message) is not a saved
+# configuration; stage 1 deletes it.
+apkovl_exists() { ls "$BOOT"/*.apkovl.tar.gz 2>/dev/null | grep -qv '/copal-first\.apkovl\.tar\.gz$'; }
 # "has stage 3 already run" -- the boot configuration carries a root= once it
 # has. Two different files, because two different bootloaders.
 sys_installed() {
@@ -4976,7 +5343,8 @@ MSG
         "$(disk_kind "$STICK_DISK")" "$(disk_model "$STICK_DISK")" "the medium Copal booted from"
     echo
     note "!! = part of a ZFS pool, RAID array, LVM, LUKS or Btrfs: erasing it breaks the set it belongs to"
-    note "firmware: $(firmware_mode). The boot loader (GRUB, \\EFI\\BOOT\\BOOT*.EFI) goes on p1 of the"
+    if [ "$(firmware_mode)" = UEFI ]; then _bl='GRUB, \EFI\BOOT\BOOT*.EFI on p1'; else _bl='GRUB, in sector 0 of an MBR disk'; fi
+    note "firmware: $(firmware_mode). The boot loader ($_bl) goes on the"
     note "disk chosen here, so the PC needs that disk -- and only that disk -- to start."
     [ -n "$_rec" ] && note "recommended: ${_rec%% *} (${_rec#* }) -- the fastest unmarked disk"
 
@@ -5146,10 +5514,21 @@ wait_for_dev() {  # <device> -- mdev makes the node; give it a moment
     [ -b "$1" ]
 }
 
-prepare_root_disk() {  # <disk> -> TGT_P1 (EFI, 2 GiB), TGT_P2 (ext4, the rest)
+# On a machine booted in legacy BIOS the disk is MBR, not GPT: a BIOS runs
+# sector 0, and the boot code Copal writes there (stage 3, copal-disk.sh
+# biosboot) needs the sectors GPT keeps its table in. p1 is FAT32 (0x0C) and
+# active, at 2048 as on the card, so the card's own GRUB core finds its
+# grub.cfg at (,msdos1)/boot/grub on this disk too. A UEFI machine gets GPT,
+# exactly as before.
+prepare_root_disk() {  # <disk> -> TGT_P1 (boot, 2 GiB), TGT_P2 (ext4, the rest)
     wipe_disk "$1" || return 1
-    printf 'label: gpt\nsize=2GiB, type=U, name="COPALBOOT"\ntype=L, name="COPALROOT"\n' \
-        | sfdisk -q --wipe always "/dev/$1" || return 1
+    if [ "$(firmware_mode)" = UEFI ]; then
+        printf 'label: gpt\nsize=2GiB, type=U, name="COPALBOOT"\ntype=L, name="COPALROOT"\n' \
+            | sfdisk -q --wipe always "/dev/$1" || return 1
+    else
+        printf 'label: dos\nsize=2GiB, type=c, bootable\ntype=83\n' \
+            | sfdisk -q --wipe always "/dev/$1" || return 1
+    fi
     TGT_P1=$(part_of "$1" 1); TGT_P2=$(part_of "$1" 2)
     wait_for_dev "$TGT_P1" && wait_for_dev "$TGT_P2" || return 1
     mkfs.vfat -F 32 -n COPALBOOT "$TGT_P1" >/dev/null || return 1
@@ -5408,15 +5787,41 @@ set_login_shell() {  # <account> <shell>
 # objection. The check above is the rest of it: the shell is only set if it is
 # actually there and executable, so the failure mode is "root keeps ash", not
 # "root cannot log in".
+#
+# THE LOGIN SHELL STAYS /bin/sh, AND bash STARTS FROM ~/.profile. Naming bash
+# in /etc/passwd made every login depend on a package: on 27 October a
+# legacy PC came up with /bin/bash named for root and the user and not
+# installed, and every login, root's included, ended in "login: can't execute
+# '/bin/bash'" -- a machine nobody could get into, on the console or over
+# SSH. busybox's /bin/sh is part of the base system and cannot be missing
+# while anything works. So the accounts keep it, and an interactive login
+# moves into bash (as a login shell, so ~/.profile still runs, once) when
+# bash is there. Without bash the login is a working sh prompt. Scripts and
+# `ssh host command` are not interactive and stay in sh, as they always were.
+# A machine set up before this has /bin/bash in passwd; it is put back.
 admin_set_shells() {
     say "Login shells"
     if ! command -v bash >/dev/null 2>&1; then
-        try_add bash || { warn "bash is not available -- leaving both accounts on /bin/sh"; return 0; }
+        try_add bash || warn "bash is not available -- logins stay in sh until it is"
     fi
-    _bash=$(command -v bash 2>/dev/null || echo /bin/bash)
-    set_login_shell "$PI_USER" "$_bash" || true
-    set_login_shell root "$_bash" || true
-    note "ash is still there as /bin/sh -- scripts with #!/bin/sh are unaffected"
+    for _h in /root "$(user_home)"; do
+        [ -n "$_h" ] && [ -d "$_h" ] || continue
+        grep -qs '>>> copal login shell >>>' "$_h/.profile" 2>/dev/null && continue
+        cat >> "$_h/.profile" <<'BASHHOOK'
+
+# >>> copal login shell >>>
+# The login shell is /bin/sh, so a login never fails; an interactive login
+# moves into bash when bash is installed. Delete this block to stay in sh.
+if [ -z "${BASH_VERSION:-}" ] && [ -x /bin/bash ]; then
+    case $- in *i*) exec /bin/bash -l ;; esac
+fi
+# <<< copal login shell <<<
+BASHHOOK
+        [ "$_h" = /root ] || chown "$PI_USER:" "$_h/.profile" 2>/dev/null || true
+    done
+    set_login_shell root /bin/sh || true
+    set_login_shell "$PI_USER" /bin/sh || true
+    note "login shell /bin/sh for both accounts; an interactive login starts bash when it is installed"
 }
 
 # Tab completion, and the rest of what makes bash worth having been switched to.
@@ -6108,6 +6513,44 @@ MSG
 # it back is a grep rather than a `.` of the whole file: answers.txt is
 # setup-alpine's, sourcing it here would set thirty of its variables in this
 # shell as a side effect, and only one line is wanted.
+# A river from waters.txt beside answers.txt, uniform: /dev/urandom gives 16
+# bits, and the tail that would favour the front of the list is drawn again.
+# No waters.txt (a card older than the pool) gives copal-XXXX instead.
+draw_water() {
+    _pool="$(dirname "$ANSWERS")/waters.txt"
+    # grep -c prints 0 AND fails on an empty file, so the fallback is an
+    # assignment, not a second number appended to the first.
+    _n=$(grep -c . "$_pool" 2>/dev/null) || _n=0
+    if [ "$_n" -gt 0 ]; then
+        _lim=$(( 65536 - 65536 % _n ))
+        while :; do
+            _r=$(od -An -N2 -tu2 /dev/urandom | tr -d ' ')
+            [ "$_r" -lt "$_lim" ] && break
+        done
+        sed -n "$(( _r % _n + 1 ))p" "$_pool"
+    else
+        printf 'copal-%s\n' "$(od -An -N2 -tx1 /dev/urandom | tr -d ' \n')"
+    fi
+}
+
+# SETUP_ANSWERS: the answer file setup-alpine is given. The card's own when it
+# names the host; otherwise a copy in /tmp with the name filled in, so the card
+# keeps saying 'random' for the next machine. A machine that has been set up
+# before keeps the name it has.
+setup_answers() {
+    SETUP_ANSWERS=$ANSWERS
+    grep -q COPAL_RANDOM_WATER "$ANSWERS" || return 0
+    if apkovl_exists && [ -n "$(hostname 2>/dev/null)" ] && [ "$(hostname)" != localhost ]; then
+        _water=$(hostname)
+        note "Hostname: $_water, kept from this machine's saved configuration."
+    else
+        _water=$(draw_water)
+        note "Hostname: $_water, drawn at random for this machine (answers.txt says random)."
+    fi
+    SETUP_ANSWERS=/tmp/copal-setup-answers.txt
+    sed "s/COPAL_RANDOM_WATER/$_water/g" "$ANSWERS" > "$SETUP_ANSWERS"
+}
+
 answers_pw_hash() {
     [ -f "$ANSWERS" ] || return 1
     # Quote-agnostic: the card is written with single quotes, but a file
@@ -21742,6 +22185,7 @@ stage_base_config() {
     note "commits, and the repositories to check out into ~/code. They are"
     note "saved on the card and acted on by stage 7, which is why that stage"
     note "does not stop to ask an hour and a half from now."
+    setup_answers
     note "Then keymap, hostname, network, timezone, mirror, sshd and user come"
     note "from answers.txt."
     if answers_pw_hash >/dev/null 2>&1; then
@@ -21791,7 +22235,7 @@ stage_base_config() {
         tui_suspend
         printf '%s\n%s\n%s\n%s\n' \
             "$_throwaway" "$_throwaway" "$_throwaway" "$_throwaway" \
-            | setup-alpine -f "$ANSWERS"
+            | setup-alpine -f "$SETUP_ANSWERS"
         tui_resume
         _throwaway=""
         apply_answers_password "$_pw_hash" || true
@@ -21803,7 +22247,7 @@ stage_base_config() {
             "Run 'make answers' on the Mac to stop being asked at all." \
             ''
         tui_suspend
-        setup-alpine -f "$ANSWERS"
+        setup-alpine -f "$SETUP_ANSWERS"
         tui_resume
     fi
 
@@ -21850,6 +22294,21 @@ stage_base_config() {
     # after having done all of its real work.
     if is_diskless; then
         say "Committing the configuration to the boot partition"
+        # The starter's /etc/issue says "Not set up yet"; from here it is set
+        # up, so the login prompt says only what it is (seen on a legacy PC,
+        # 27 October, still saying it after the install).
+        if grep -q 'Not set up yet' /etc/issue 2>/dev/null; then
+            printf 'Copal Linux on Alpine \\r (\\l)\n\n' > /etc/issue
+        fi
+        # The starter overlay goes first: with two apkovls on one medium the
+        # initramfs loads only the first it finds, which could be the starter,
+        # and this configuration would be passed over at the next boot. What
+        # the starter carried is in /etc now, so this commit keeps it.
+        if [ -f "$BOOT/copal-first.apkovl.tar.gz" ]; then
+            mount -o remount,rw "$BOOT" 2>/dev/null || true
+            rm -f "$BOOT/copal-first.apkovl.tar.gz" \
+                || die "could not remove $BOOT/copal-first.apkovl.tar.gz -- with two overlays the next boot may load the wrong one"
+        fi
         # Without this, nothing at all survives a reboot on a diskless system.
         lbu commit -d || die "lbu commit failed -- see above. Nothing will persist until this works."
         ls -l "$BOOT"/*.apkovl.tar.gz
@@ -21993,18 +22452,7 @@ MSG
     TGT_DISK=''; SWAP_DISK=''; SWAP_DEV=''
     # shellcheck disable=SC2034  # read by mount_existing_volumes, in the installer
     STICK_DISK=$DISKDEV
-    if ! is_pi_boot; then
-        rm -f "${COPAL_TMP:?}/disks"
-        while :; do
-            choose_root_target
-            _gate=0; removable_root_gate || _gate=$?
-            case "$_gate" in
-                0) break ;;
-                2) TGT_DISK=''; SWAP_DISK=''; SWAP_GIB=0 ;;
-                *) return 0 ;;
-            esac
-        done
-    fi
+    is_pi_boot || choose_root_target
 
     if [ -z "$TGT_DISK" ]; then
         [ -b "$P2" ] || die "$P2 not found"
@@ -22013,7 +22461,11 @@ MSG
         ask "Type yes to proceed:"
         [ "$REPLY" = "yes" ] || { note "Aborted; nothing was erased."; return 0; }
     else
-        say "Partitioning /dev/$TGT_DISK: 2 GiB EFI, the rest ext4"
+        if [ "$(firmware_mode)" = UEFI ]; then
+            say "Partitioning /dev/$TGT_DISK: GPT, 2 GiB EFI, the rest ext4"
+        else
+            say "Partitioning /dev/$TGT_DISK: MBR (legacy BIOS), 2 GiB FAT32 boot, the rest ext4"
+        fi
         prepare_root_disk "$TGT_DISK" \
             || die "could not partition /dev/$TGT_DISK -- nothing else was changed; the stick still boots as before"
         note "boot  $TGT_P1 (FAT32, COPALBOOT)"
@@ -22202,11 +22654,88 @@ menuentry "Copal Linux (single user)" {
     linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0 single
     initrd /$IPATH
 }
+
+# Two-GPU laptops: nouveau kept off the screen, so the console is on the
+# panel (see the same entry on the stick, and
+# docs/console-wrong-screen-lab-report.md).
+menuentry "Copal Linux (Intel graphics only: two-GPU laptops)" {
+    linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0 modprobe.blacklist=nouveau nouveau.modeset=0
+    initrd /$IPATH
+}
+
+menuentry "Copal live, from a USB stick (if one is in)" {
+    if search --no-floppy --file /copal-stick --set=root; then
+        configfile /boot/grub/grub.cfg
+    else
+        echo "No Copal USB stick found."
+    fi
+}
+
+# The local fallback: the stick's live system, copied onto this disk's boot
+# partition by stage 3, booted with no saved settings (apkovl=none names no
+# file, so the initramfs loads no overlay): a clean Alpine in RAM, root with
+# no password at this console, for repairing this disk without the stick.
+menuentry "Copal rescue, from this disk (live, no saved settings)" {
+    linux /boot/vmlinuz-lts modules=loop,squashfs,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=tmpfs apkovl=none console=tty0
+    initrd /boot/initramfs-lts
+}
 EOF
+        # Ubuntu over the network, if the stick carried it (copied here).
+        if [ -f /mnt/boot/boot/grub/ubuntu.cfg ]; then
+            cat >> "$BOOTCFG" <<'EOF'
+
+if [ -f /boot/grub/ubuntu.cfg ]; then
+    source /boot/grub/ubuntu.cfg
+fi
+EOF
+        fi
+        # The network boot, if the stick carried it (stage 3 copied it here).
+        if [ -f /mnt/boot/boot/netboot/netboot.xyz.lkrn ]; then
+            cat >> "$BOOTCFG" <<'EOF'
+
+menuentry "Network boot: netboot.xyz (Alpine, BSD, Clonezilla, GParted ...)" {
+    if [ "$grub_platform" = efi ]; then
+        insmod chain
+        chainloader /boot/netboot/netboot.xyz.efi
+    else
+        linux16 /boot/netboot/netboot.xyz.lkrn
+    fi
+}
+EOF
+        fi
         note "kernel  /$KPATH"
         note "initrd  /$IPATH"
         note "root    $_root"
+        # A PC that booted in legacy BIOS cannot run \EFI\BOOT\: its disk was
+        # made MBR (prepare_root_disk), and here it gets the same GRUB boot
+        # code as the card, from the card's copy now on the new p1. That GRUB
+        # reads (,msdos1)/boot/grub/grub.cfg, the file rewritten just above.
+        # UEFI machines are untouched.
+        if [ -n "$TGT_DISK" ] && [ "$(firmware_mode)" != UEFI ]; then
+            say "Writing GRUB's legacy-BIOS boot code to /dev/$TGT_DISK"
+            [ -f /mnt/boot/boot/grub/bios/core.img ] && [ -f "$BOOT/tools/copal-disk.sh" ] \
+                || die "this card has no BIOS boot code for the disk (a card written before 27 October) -- rewrite it with copal-prep.sh; the stick still boots as before"
+            sh "$BOOT/tools/copal-disk.sh" biosboot "$TGT_DISK" /mnt/boot/boot/grub/bios \
+                || die "could not write the BIOS boot code to /dev/$TGT_DISK -- it would not start; the stick still boots as before"
+            note "sector 0 and the gap before p1 of /dev/$TGT_DISK: GRUB, p1 active"
+        fi
     fi
+
+    # ---- every login shell exists on the new root -------------------------
+    # A login whose shell is missing is a machine nobody can enter (27
+    # October: /bin/bash named and not installed). Whatever /etc/passwd on the
+    # new root names for root and the admin user must be there; if it is not,
+    # that account goes back to /bin/sh, which is part of the base system.
+    for _acct in root "$PI_USER"; do
+        _sh=$(awk -F: -v u="$_acct" '$1 == u { print $7 }' /mnt/etc/passwd 2>/dev/null)
+        [ -n "$_sh" ] || continue
+        if [ ! -x "/mnt$_sh" ]; then
+            warn "$_acct's login shell $_sh is not on the new root -- setting /bin/sh"
+            awk -F: -v OFS=: -v u="$_acct" '$1 == u { $7 = "/bin/sh" } { print }' \
+                /mnt/etc/passwd > /mnt/etc/passwd.copal \
+                && chmod 0644 /mnt/etc/passwd.copal && mv /mnt/etc/passwd.copal /mnt/etc/passwd
+        fi
+    done
 
     # ---- flash-friendly fstab ---------------------------------------------
     say "Tuning /etc/fstab for flash"
@@ -22250,6 +22779,17 @@ FSTAB
     mkdir -p /mnt/var/cache/apk /mnt/etc/apk
     ln -s /var/cache/apk /mnt/etc/apk/cache
     sed -i "\|[[:space:]]${P2MNT}[[:space:]]|d" /mnt/etc/fstab
+    # And every other mount the diskless system kept under /media, unless it
+    # is noauto (Alpine's own /media/usb line is, and mounts nothing at boot).
+    # P2MNT is the stick's p2 by the name it has in THIS boot; stage 2 wrote
+    # its line under the name it had then, and USB names are not stable
+    # across boots. On a legacy PC, 27 October, the installed system kept
+    # "UUID=... /media/sdb2", and every boot without the stick said "Some
+    # local filesystem failed to mount". The installed system mounts nothing
+    # from the stick, so the rule is by place, not by name.
+    awk '!/^[[:space:]]*#/ && $2 ~ /^\/media\// && $4 !~ /(^|,)noauto(,|$)/ { print "    dropped from fstab: " $0 > "/dev/stderr"; next } { print }' \
+        /mnt/etc/fstab > /mnt/etc/fstab.copal && mv /mnt/etc/fstab.copal /mnt/etc/fstab
+    chmod 0644 /mnt/etc/fstab 2>/dev/null || true
     note "cache -> /var/cache/apk (on the new root)"
 
     # Swap on its own disk, below zram (stage 5) in priority, so the disk is
@@ -22349,7 +22889,35 @@ FSTAB
         for _f in copal-auto copal-timings copal.log copal-git copal-repos copal-profile; do
             [ -f "$BOOT/$_f" ] && cp "$BOOT/$_f" /mnt/boot/ 2>/dev/null
         done
-        note "the install continues from /dev/$TGT_DISK after the reboot; the stick can come out"
+        # The disk is the installed system now: it says so (the stick's menu
+        # finds it by this file), and it is not a stick (the disk's menu
+        # finds a stick by the other one).
+        printf 'Copal installed on %s, /dev/%s, %s\n' "$(hostname)" "$TGT_DISK" "$(date -u +%Y-%m-%d)" > /mnt/boot/copal-installed
+        rm -f /mnt/boot/copal-stick
+        note "the install continues from /dev/$TGT_DISK after the reboot"
+
+        # THE STICK GOES BACK TO NEW, so it installs the next computer from
+        # scratch. Everything this install left on it -- the saved
+        # configuration, the resume marker, the level chosen, the log and
+        # timings -- is on the disk now (copied above). Left on the stick,
+        # the next computer would boot as this one (its hostname, its fstab,
+        # its half-finished install), which is what happened on 27 October.
+        # The git identity and the repository list stay: they are the
+        # person's, not the machine's. The hostname is drawn again.
+        say "Resetting the USB stick for the next computer"
+        mount -o remount,rw "$BOOT" 2>/dev/null || true
+        for _o in "$BOOT"/*.apkovl.tar.gz; do
+            [ -e "$_o" ] || continue
+            case "${_o##*/}" in copal-first.apkovl.tar.gz) ;; *) rm -f "$_o" ;; esac
+        done
+        rm -f "$BOOT/copal-auto" "$BOOT/copal-profile" "$BOOT/copal-timings" "$BOOT/copal.log"
+        if [ -f "$BOOT/boot/copal-starter.tar.gz" ]; then
+            cp "$BOOT/boot/copal-starter.tar.gz" "$BOOT/copal-first.apkovl.tar.gz"
+            note "stick: back to new -- the next computer starts at stage 1, with a new hostname"
+        else
+            warn "stick: no spare starter on it (a stick written before 27 October); it boots fresh but without the first-login message"
+        fi
+        STICK_RESET=1
     fi
 
     sync
@@ -22357,6 +22925,29 @@ FSTAB
     umount /mnt
 
     say "Stage 3 complete."
+    if [ "${STICK_RESET:-0}" = 1 ]; then
+        if [ "$(firmware_mode)" = UEFI ]; then
+            _fw='UEFI setup: put this disk first in the Boot Order (or choose it in the one-time boot menu)'
+        else
+            _fw='BIOS setup: put the hard disk first in the Boot Priority / Hard Disk order'
+        fi
+        cat <<MSG
+
+    =====================================================================
+      COPAL IS NOW ON /dev/$TGT_DISK. TO START FROM IT:
+
+        1. Say yes to the reboot below. When the screen goes dark,
+           REMOVE THE USB STICK.
+        2. If the computer still starts from the stick, or says no disk:
+           $_fw.
+
+      The stick has been reset. It installs the NEXT computer from the
+      beginning. Left in this one, its menu has "Copal installed on this
+      computer's disk", which starts this install.
+    =====================================================================
+
+MSG
+    fi
     cat <<MSG
     A reboot is REQUIRED before anything else. Until then / is still the
     tmpfs, the new root on p2 is merely populated, and stage 4 will refuse
@@ -35767,6 +36358,7 @@ auto_timing_report() {
 
 auto_finish() {
     rm -f "$AUTOFILE" 2>/dev/null || true
+    rm -f /etc/profile.d/copal-setup.sh /mnt/etc/profile.d/copal-setup.sh 2>/dev/null || true
     # Take the resume hook off the new root as well, so a later login is a
     # plain login again. Both accounts, and both roots -- the running one and
     # the one at /mnt if this is called while stage 3's is still mounted.
@@ -37590,6 +38182,10 @@ while :; do
     elif p2_growable;                          then SUGGEST=8
     else                                            SUGGEST=v
     fi
+    # Every stage done: the login message has nothing left to say.
+    if [ "${SUGGEST%% *}" = v ] && [ -f /etc/profile.d/copal-setup.sh ]; then
+        rm -f /etc/profile.d/copal-setup.sh 2>/dev/null || true
+    fi
 
     # A BANNER RATHER THAN A SUGGESTION LINE. "Suggested next" is one line at
     # the bottom of a screen of sixteen options, and it is easy to read past
@@ -37813,7 +38409,10 @@ if [ "$PLATFORM" = pc ]; then
         MISSING=1
     fi
     # shellcheck disable=SC2013  # kernel paths from grub.cfg, one word each
-    for _k in $(sed -n 's/^[[:space:]]*linux[[:space:]]*\([^ ]*\).*/\1/p' "$MNT/boot/grub/grub.cfg" 2>/dev/null | sort -u); do
+    # linux, linux16 and chainloader each name a file; the space after the
+    # command is required, or "linux16 /boot/x" reads as a kernel called "16"
+    # (which is how the netboot entry was first refused, correctly).
+    for _k in $(sed -nE 's/^[[:space:]]*(linux|linux16|chainloader)[[:space:]]+([^ ]*).*/\2/p' "$MNT/boot/grub/grub.cfg" 2>/dev/null | sort -u); do
         if [ -e "$MNT$_k" ]; then
             printf '    ok      grub.cfg -> %s\n' "$_k"
         else
@@ -37890,10 +38489,44 @@ echo
 info "Space used on boot partition:"
 df -h "$MNT" | tail -n1
 
+# LEGACY BIOS, READ BACK. The write in the boot-flag step can be refused
+# (macOS will not write sector 0 while the card's volumes are mounted), and a
+# refusal there is only a warning -- which on 27 October scrolled past and
+# left a stick that booted UEFI only. So it is read back here, written again
+# if it is not there, and said loudly if it still is not.
+BIOSBOOT_MISSING=0
+if [ "$PLATFORM" = pc ] && { [ "$ARCH" = x86_64 ] || [ "$ARCH" = x86 ]; } \
+   && [ -f "$BIOSBOOT_DIR/core.img" ]; then
+    info "Checking GRUB's legacy-BIOS boot code on the card..."
+    sync
+    if disk biosboot-check "$DISK" "$BIOSBOOT_DIR" >/dev/null 2>&1; then
+        printf '    ok      legacy BIOS: sector 0, p1 active, core.img\n'
+    else
+        warn "the legacy-BIOS boot code is not on the card; writing it again"
+        disk biosboot "$DISK" "$BIOSBOOT_DIR" || true
+        if disk_to _why biosboot-check "$DISK" "$BIOSBOOT_DIR"; then
+            printf '    ok      legacy BIOS: written on the second try\n'
+        else
+            BIOSBOOT_MISSING=1
+            printf '    MISSING legacy BIOS: %s\n' "$_why"
+        fi
+    fi
+fi
+
 info "Flushing writes (this can take a while)..."
 sync
 # 'eject' on an attached image detaches it, so there is no special case here.
 disk eject "$DISK"
+if [ "$BIOSBOOT_MISSING" -eq 1 ]; then
+    printf '\n'
+    warn "================================================================"
+    warn "THIS CARD BOOTS UEFI ONLY. The legacy-BIOS boot code could not be"
+    warn "written. Put the card back in and, from this folder, run:"
+    warn "    sh tools/copal-disk.sh biosboot $DISK vendor/grub-i386-pc"
+    warn "    sh tools/copal-disk.sh biosboot-check $DISK vendor/grub-i386-pc"
+    warn "(the disk name may differ: diskutil list external physical)"
+    warn "================================================================"
+fi
 
 # An image is finished at this point, and what you need next is the command to
 # boot it -- not two pages about SD card partitions. Print that instead and
@@ -38050,7 +38683,7 @@ ON THE PI -- there is only one command to run
        report at the end shows what actually landed.
 
     1) Base configuration   'setup-alpine -f answers.txt' -- keymap
-       ${CFG_KEYMAP}, hostname ${CFG_HOSTNAME}, ${CFG_IFACE}/dhcp, ${CFG_TIMEZONE},
+       ${CFG_KEYMAP}, hostname ${HOSTNAME_SHOWN}, ${CFG_IFACE}/dhcp, ${CFG_TIMEZONE},
        fastest mirror, openssh, user '${CFG_USER}', disk=none, lbu on
        mmcblk0p1 -- then 'lbu commit -d'.
 

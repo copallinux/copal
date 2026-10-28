@@ -85,7 +85,7 @@ export MEM CPUS BUILDDIR CACHEDIR
 model_of = $(patsubst pizero%,zero%,$(1))
 
 .DEFAULT_GOAL := help
-.PHONY: alldebug build-all-debug imagedebug freshdebug purge \
+.PHONY: lastlog alldebug build-all-debug imagedebug freshdebug purge \
 	help menu flow targets boards configure require-tools vm graphical check \
         fresh auto image refresh utm utm-x86 layout layout-auto answers answers-show lint space clean distclean \
         all cache build-all release capture video screens verify gallery chain walkthrough release-cast logs utm-export utm-grow sync-playbooks sync-apps install \
@@ -537,6 +537,11 @@ walkthrough:
 # so a collection never leaves a mount behind.
 logs:
 	@tools/collect-logs.sh --image $(IMG)
+
+## lastlog: the newest copal-prep.sh log (make sd-*, image builds): its path and last N lines (default 40)
+lastlog:
+	@ls -l $(BUILDDIR)/copal-prep-last.log 2>/dev/null || { echo "no log yet: copal-prep.sh writes $(BUILDDIR)/copal-prep-*.log as it runs"; exit 1; }
+	@tail -n $(or $(N),40) $(BUILDDIR)/copal-prep-last.log
 
 # Record the release pipeline ITSELF -- the Mac side, not the guest's install.
 #

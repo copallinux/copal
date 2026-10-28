@@ -1,0 +1,8 @@
+GRUB 2.14-r0 (Alpine package grub-efi, 3.24.3),
+x86_64-efi modules: boot.mod bufio.mod chain.mod datetime.mod efinet.mod net.mod priority_queue.mod 
+taken by tools/grub-efi-mods-build.sh on 2026-10-27 for: chain
+
+GRUB is free software under the GNU General Public License, version 3 or
+later. Its corresponding source is Alpine's: the aports recipe main/grub at
+the release above, and the GNU tarball it names, https://ftp.gnu.org/gnu/grub/ .
+These files are GRUB's, not Copal's, and are not covered by Copal's MIT licence.

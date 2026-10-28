@@ -596,7 +596,7 @@ CHOOSE A TARGET
     4) Pi 4 / 400 / CM4               aarch64  Enough RAM to be a real desktop. The comfortable Pi
     5) Pi 5                           aarch64  Fastest Pi. NVMe over PCIe if you have the hat
 
-  PC -- UEFI only. Legacy BIOS is not supported; see 'w' below
+  PC -- UEFI or legacy BIOS from one stick; see 'w' below
     6) PC / laptop / Intel Mac        x86_64   Any UEFI machine since roughly 2012. Revives old hardware
     7) PC, 32-bit UEFI                x86      Early-2010s Atom netbooks and some Bay Trail tablets
 
@@ -606,7 +606,7 @@ CHOOSE A TARGET
 
   f) Show the flow chart again
   r) What can this Mac build?  (requirements check -- writes nothing)
-  w) Why UEFI only, and other things worth knowing first
+  w) UEFI and legacy BIOS, and other things worth knowing first
   q) Quit
 
 Choose [1-9, f, r, w, q]: 8
@@ -692,7 +692,7 @@ The other keys are worth knowing:
 | `1`–`9` | briefing for that target, then the offer to begin |
 | `f` | the flow chart again |
 | `r` | the requirements check — what *this* Mac can build |
-| `w` | why UEFI only, why the root starts as RAM, and the rest of the caveats |
+| `w` | UEFI and legacy BIOS, why the root starts as RAM, and the rest of the caveats |
 | `q` | quit. Nothing was written |
 
 And the three non-interactive forms, for when you already know: `./copal --flow`,
@@ -1763,12 +1763,15 @@ Getting the architecture wrong is not a degraded system, it is a machine that
 stops dead — so the target is chosen explicitly and the installer refuses a
 payload whose kernel config disagrees with it.
 
-**UEFI only, on everything that is not a Pi.** This is a limit of the writing
-machine, not a preference: a legacy-BIOS boot needs `syslinux` or
-`grub-install` to write a boot sector, and both are Linux tools that do not
-exist on macOS. UEFI needs no installer at all — the firmware reads a FAT
-partition and executes `\EFI\BOOT\BOOTX64.EFI`, which is a file copy. So Copal
-supports UEFI and says so plainly rather than writing a card that will not boot.
+**UEFI and legacy BIOS, from one stick.** UEFI needs no installer at all — the
+firmware reads a FAT partition and executes `\EFI\BOOT\BOOTX64.EFI`, which is a
+file copy. A legacy BIOS needs GRUB's boot code in sector 0 and the gap before
+partition 1, which `grub-install` writes and macOS cannot run. For an MBR card
+with partition 1 at sector 2048 those are the same bytes every time, so they
+are built once on Alpine (`tools/grub-bios-build.sh`), kept in
+`vendor/grub-i386-pc/`, and written with `dd` (`copal-disk.sh biosboot`). See
+`docs/legacy-bios-lab-report.md`. Installing to a BIOS machine's own disk
+(stage 3) is still UEFI only; the stick runs Copal there diskless.
 
 ## Networking
 
@@ -2137,6 +2140,10 @@ bindings, the account model, the SD-card wear analysis — is in
 | `docs/interface-report.md` | Interface simplification for the technically capable user — the design position, IEEE format |
 | `docs/terminal-guide-lab-report.md` | ([on the site](https://copallinux.org/terminal-guide-lab-report.html)) Writing the Terminal Guide against a running machine: the template, the checker, screen automation and review, and the installer defects the writing found. IEEE format |
 | `docs/text-safety-lab-report.md` | A hostile-input review of ytq and Static Stream, Copal's shell scripts measured with shellcheck, and the standard both are held to. IEEE format |
+| `docs/card-from-linux-lab-report.md` | Writing a card from Linux: a root-owned FAT mount, ten passwords (OpenDoas persists per parent process), `cp -Rp` and setgid folders, a wrong test, and the build's own log. IEEE format |
+| `docs/renaming-a-machine-lab-report.md` | Two machines called saskatchewan: where a hostname lives (three files), renaming one over SSH, and why a pasted command should not depend on staying on one line. IEEE format |
+| `docs/console-wrong-screen-lab-report.md` | A two-GPU laptop whose console went to a VGA port with nothing on it, and finishing the install over SSH. IEEE format |
+| `docs/legacy-bios-lab-report.md` | Legacy BIOS boot written from a Mac (GRUB's boot code by `dd`), the hostname drawn at each install, and the first login's message. IEEE format |
 | `docs/system-hardening-lab-report.md` | Update and lock-down review of the bench: PHP, Node and Python against upstream advisories, sshd, every enabled and dormant service, an eighteen-step checklist and suggested removals. IEEE format |
 | `docs/FEATURE_GUIDE.md` | **A tour in pictures**: the process from the front door to the first login, each feature, why it exists and how it fits. Pictures in `docs/features/`, made by `tools/feature-guide.py` |
 | `docs/backlog.md` | **What is known and not yet done**, in order: twenty entries from the review, each with the check that closes it |

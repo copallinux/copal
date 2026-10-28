@@ -27,6 +27,7 @@ stage_base_config() {
     note "commits, and the repositories to check out into ~/code. They are"
     note "saved on the card and acted on by stage 7, which is why that stage"
     note "does not stop to ask an hour and a half from now."
+    setup_answers
     note "Then keymap, hostname, network, timezone, mirror, sshd and user come"
     note "from answers.txt."
     if answers_pw_hash >/dev/null 2>&1; then
@@ -76,7 +77,7 @@ stage_base_config() {
         tui_suspend
         printf '%s\n%s\n%s\n%s\n' \
             "$_throwaway" "$_throwaway" "$_throwaway" "$_throwaway" \
-            | setup-alpine -f "$ANSWERS"
+            | setup-alpine -f "$SETUP_ANSWERS"
         tui_resume
         _throwaway=""
         apply_answers_password "$_pw_hash" || true
@@ -88,7 +89,7 @@ stage_base_config() {
             "Run 'make answers' on the Mac to stop being asked at all." \
             ''
         tui_suspend
-        setup-alpine -f "$ANSWERS"
+        setup-alpine -f "$SETUP_ANSWERS"
         tui_resume
     fi
 
@@ -135,6 +136,21 @@ stage_base_config() {
     # after having done all of its real work.
     if is_diskless; then
         say "Committing the configuration to the boot partition"
+        # The starter's /etc/issue says "Not set up yet"; from here it is set
+        # up, so the login prompt says only what it is (seen on a legacy PC,
+        # 27 October, still saying it after the install).
+        if grep -q 'Not set up yet' /etc/issue 2>/dev/null; then
+            printf 'Copal Linux on Alpine \\r (\\l)\n\n' > /etc/issue
+        fi
+        # The starter overlay goes first: with two apkovls on one medium the
+        # initramfs loads only the first it finds, which could be the starter,
+        # and this configuration would be passed over at the next boot. What
+        # the starter carried is in /etc now, so this commit keeps it.
+        if [ -f "$BOOT/copal-first.apkovl.tar.gz" ]; then
+            mount -o remount,rw "$BOOT" 2>/dev/null || true
+            rm -f "$BOOT/copal-first.apkovl.tar.gz" \
+                || die "could not remove $BOOT/copal-first.apkovl.tar.gz -- with two overlays the next boot may load the wrong one"
+        fi
         # Without this, nothing at all survives a reboot on a diskless system.
         lbu commit -d || die "lbu commit failed -- see above. Nothing will persist until this works."
         ls -l "$BOOT"/*.apkovl.tar.gz

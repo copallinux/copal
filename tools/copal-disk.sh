@@ -32,6 +32,8 @@
 #   copal-disk.sh partition DISK BL BS RL RS    MBR: FAT32 boot + root
 #   copal-disk.sh type DISK N HEX          set the MBR type byte
 #   copal-disk.sh bootflag DISK N          mark partition N active
+#   copal-disk.sh biosboot DISK DIR        GRUB's BIOS boot code from DIR, p1 active
+#   copal-disk.sh biosboot-check DISK DIR  is it there? (exit 0 if so)
 #   copal-disk.sh eject DISK               flush and let go of it
 #   copal-disk.sh image-attach PATH        attach a raw image, PRINT the device
 #   copal-disk.sh image-detach DEV         let go of it
@@ -45,7 +47,7 @@ die() { printf 'copal-disk: %s\n' "$*" >&2; exit 2; }
 # The whole surface. Adding a line here without adding both functions is what
 # self-test exists to catch.
 VERBS='list show probe part unmount-all unmount mount partition type bootflag
-eject image-attach image-detach image-attached sha256-check'
+biosboot biosboot-check eject image-attach image-detach image-attached sha256-check'
 
 # The verbs, one to a line. VERBS is a list of words, and this is the one
 # place that splits it into them.
@@ -77,6 +79,98 @@ priv() {
 }
 
 # ------------------------------------------------------------------ shared ---
+
+# Legacy BIOS boot: GRUB's boot.img into the first 440 bytes of sector 0 and
+# its core.img into sector 1 onward, from DIR (vendor/grub-i386-pc, built by
+# tools/grub-bios-build.sh, which explains why this is all grub-install does
+# on an MBR disk). Host-independent: each backend only names the raw device.
+#
+# Bytes 440 to 511 of sector 0 -- the disk signature and the partition table
+# -- are read back and kept, so this goes after `partition` and changes
+# nothing a later `type` or `bootflag` touches. It refuses, rather than
+# overwrite partition 1, a disk whose partition 1 starts too early to hold
+# core.img (an old 63-sector layout), and a sector 0 with no 0x55AA.
+#
+# od reads the start sector in host byte order; both hosts Copal builds on
+# (arm64 and x86) are little-endian, as the MBR is.
+shared_biosboot() {  # <raw device> <dir> <disk name, for unmount-all>
+    [ -f "$2/boot.img" ] && [ -f "$2/core.img" ] || die "no boot.img and core.img in $2"
+    _bdisk=$3
+    _w=$(mktemp -d) || die "mktemp failed"
+    # A raw device takes whole sectors only, so core.img is padded to them.
+    _cs=$(( ($(wc -c < "$2/core.img") + 511) / 512 ))
+    dd if="$2/core.img" of="$_w/core" bs=512 conv=sync 2>/dev/null
+    # <device> <dd operands...>: as this user if the device is writable
+    # (an attached image usually is), through priv if not (a real card).
+    # dd's own complaint is kept in $_w/err, so a refusal says why.
+    _dd() { _dv=$1; shift; if [ -w "$_dv" ]; then dd "$@" 2>"$_w/err"; else priv dd "$@" 2>"$_w/err"; fi; }
+    _rd() { if [ -r "$1" ]; then dd if="$1" of="$2" bs=512 count=1 2>/dev/null; else priv dd if="$1" of="$2" bs=512 count=1 2>/dev/null; fi; }
+    _rd "$1" "$_w/mbr" || { rm -rf "$_w"; die "could not read sector 0 of $1"; }
+    [ "$(od -An -tx1 -j 510 -N 2 "$_w/mbr" | tr -d ' \n')" = 55aa ] \
+        || { rm -rf "$_w"; die "$1 has no MBR (no 0x55AA) -- partition it first"; }
+    # GPT: sector 0 is only a protective MBR (one entry of type 0xEE) and
+    # sectors 1 to 33 hold the GPT itself, exactly where core.img would go.
+    # BIOS boot from GPT needs a bios_grub partition and grub-install aiming
+    # core.img at it, which these fixed images cannot do. Copal cards are MBR.
+    [ "$(od -An -tx1 -j 450 -N 1 "$_w/mbr" | tr -d ' \n')" != ee ] \
+        || { rm -rf "$_w"; die "$1 is a GPT disk; this boot code is for MBR disks only (a Copal card is MBR -- rewrite it with copal-prep.sh)"; }
+    _p1=$(od -An -tu4 -j 454 -N 4 "$_w/mbr" | tr -d ' ')
+    [ "$_p1" -gt "$_cs" ] \
+        || { rm -rf "$_w"; die "partition 1 starts at sector $_p1; GRUB's core needs sectors 1 to $_cs free"; }
+    head -c 440 "$2/boot.img" > "$_w/new"
+    tail -c 72 "$_w/mbr" >> "$_w/new"
+    # grub-bios-setup's patch for a hard disk: NOP the drive-check jump.
+    printf '\220\220' | dd of="$_w/new" bs=1 seek=102 conv=notrunc 2>/dev/null
+    # Partition 1 active (0x80), the other three not: some BIOSes will not
+    # treat a USB stick as bootable without it, and UEFI ignores it. Done in
+    # this same write rather than by `bootflag`, whose macOS form is fdisk -e
+    # behind sudo and rewrites sector 0 itself.
+    printf '\200' | dd of="$_w/new" bs=1 seek=446 conv=notrunc 2>/dev/null
+    for _o in 462 478 494; do
+        printf '\000' | dd of="$_w/new" bs=1 seek="$_o" conv=notrunc 2>/dev/null
+    done
+    # ON macOS EVERY TRY UNMOUNTS THE WHOLE DISK FIRST. macOS refuses a write to
+    # sector 0 -- the partition table -- while any partition of the disk is
+    # mounted, and Disk Arbitration (through FSKit, for FAT, on macOS 26) mounts
+    # both partitions again within seconds of being told to unmount them. On
+    # a real stick on 27 October every one of five tries was refused this
+    # way, with both volumes back under /Volumes; on an attached image the
+    # first try was. So: unmount, write at once, five tries a second apart.
+    _try() { _t=0; until "${BACKEND}_biosboot_quiesce" "$_bdisk" && "$@"; do
+        _t=$((_t+1)); [ "$_t" -lt 5 ] || return 1; sleep 1; done; }
+    _try _dd "$1" if="$_w/core" of="$1" bs=512 seek=1 conv=notrunc \
+        || { _e=$(cat "$_w/err"); rm -rf "$_w"; die "could not write core.img to $1: $_e"; }
+    _try _dd "$1" if="$_w/new" of="$1" bs=512 count=1 conv=notrunc \
+        || { _e=$(cat "$_w/err"); rm -rf "$_w"; die "could not write the boot sector to $1: $_e"; }
+    sync 2>/dev/null || true
+    rm -rf "$_w"
+}
+
+# Is GRUB's BIOS boot code on the disk? The three facts `biosboot` writes,
+# read back: the boot sector's kernel sector, boot drive and drive-check
+# patch (bytes 92 to 103), partition 1 active, and core.img in sectors 1 on.
+# Says which is missing; exit 0 only if all three are there.
+shared_biosboot_check() {  # <raw device> <dir>
+    [ -f "$2/core.img" ] || die "no core.img in $2"
+    _w=$(mktemp -d) || die "mktemp failed"
+    _cs=$(( ($(wc -c < "$2/core.img") + 511) / 512 ))
+    if [ -r "$1" ]; then _rdr=''; else _rdr=priv; fi
+    $_rdr dd if="$1" of="$_w/head" bs=512 count=$((_cs + 1)) 2>/dev/null \
+        || { rm -rf "$_w"; die "could not read $1"; }
+    _ok=0
+    if [ "$(od -An -tx1 -j 92 -N 12 "$_w/head" | tr -d ' \n')" != 0100000000000000fffa9090 ]; then
+        echo "sector 0 does not hold GRUB's BIOS boot code"; _ok=1
+    fi
+    if [ "$(od -An -tx1 -j 446 -N 1 "$_w/head" | tr -d ' \n')" != 80 ]; then
+        echo "partition 1 is not active"; _ok=1
+    fi
+    dd if="$_w/head" bs=512 skip=1 2>/dev/null | head -c "$(wc -c < "$2/core.img")" > "$_w/core"
+    if ! cmp -s "$_w/core" "$2/core.img"; then
+        echo "sectors 1 to $_cs do not hold core.img"; _ok=1
+    fi
+    rm -rf "$_w"
+    return "$_ok"
+}
 
 # Bytes to something a human reads, without bc and without locale. Deliberately
 # the same rounding on both backends so the two reports can be compared.
@@ -132,6 +226,7 @@ macos_probe() {
     printf 'protocol=%s\n'       "$(_g 'Protocol')"
     printf 'os_installable=%s\n' "$(_g 'OS Can Be Installed')"
     printf 'uuid=%s\n'           "$(_g 'Disk / Partition UUID')"
+    printf 'read_only=%s\n'      "$(_g 'Media Read-Only')"
 }
 
 macos_partition() {
@@ -149,7 +244,24 @@ macos_partition() {
 # fdisk -e is interactive and has no batch mode; the keystrokes are the API.
 macos_type()     { printf 't %s\n%s\nw\ny\nq\n' "$2" "$3" | priv fdisk -e "/dev/$1" >/dev/null 2>&1; }
 macos_bootflag() { printf 'f %s\nw\ny\nq\n' "$2" | priv fdisk -e "/dev/$1" >/dev/null 2>&1; }
-macos_eject()    { diskutil eject "/dev/$1"; }
+# Called after sync, so a volume something still holds open (Spotlight, a
+# Finder window) is unmounted by force rather than ending the build with
+# "at least one volume could not be unmounted" on a card that is complete.
+macos_eject() {
+    diskutil eject "/dev/$1" 2>/dev/null && return 0
+    diskutil unmountDisk force "/dev/$1" >/dev/null 2>&1 || true
+    diskutil eject "/dev/$1"
+}
+# The r-device: unbuffered, and the only one dd may write sector 0 of while
+# diskutil still holds the disk.
+macos_biosboot() { shared_biosboot "/dev/r$1" "$2" "$1"; }
+# FORCE, because the plain form gives up when anything has a file open on the
+# card -- Spotlight indexing the new volumes, a Finder window -- and then the
+# write is refused all five times. On 27 October a real stick came out of
+# `make sd-pc` that way, UEFI only, with only a warning to say so. Here the
+# build owns the disk.
+macos_biosboot_quiesce() { diskutil unmountDisk force "/dev/$1" >/dev/null 2>&1 || true; }
+macos_biosboot_check() { shared_biosboot_check "/dev/r$1" "$2"; }
 
 # CRawDiskImage: a bare sector image with no header, which is what a card is
 # and what QEMU expects back. Without it hdiutil looks for a UDIF structure and
@@ -215,7 +327,22 @@ linux_mount() {
     _m="$_root/${_l:-$_p}"
     mkdir -p "$_m" || die "cannot create the mount point $_m"
     if ! mountpoint -q "$_m" 2>/dev/null; then
-        priv mount "/dev/$_p" "$_m" || die "could not mount /dev/$_p at $_m"
+        # FAT keeps no owners, so a FAT partition mounted by root belongs to
+        # root, and the build -- run as the person, who copies the payload
+        # onto it -- is refused: "Permission denied", with the stick
+        # partitioned and empty (saskatchewan, 27 October, the first card
+        # written from Linux by a non-root user). macOS mounts a card as the
+        # person who plugged it in, which is why it never showed there. So a
+        # FAT partition is mounted owned by whoever runs this; other
+        # filesystems keep their own owners and refuse a uid= option, so the
+        # owned mount is tried first and a plain one if it is refused. Tried
+        # rather than asked: lsblk reports no FSTYPE to a non-root user on a
+        # system without udev (Alpine with mdev), which is where this runs.
+        # COPAL_OWNER (uid:gid) when copal-prep.sh runs this through doas.
+        _own="${COPAL_OWNER:-$(id -u):$(id -g)}"
+        priv mount -o "uid=${_own%%:*},gid=${_own##*:}" "/dev/$_p" "$_m" 2>/dev/null \
+            || priv mount "/dev/$_p" "$_m" \
+            || die "could not mount /dev/$_p at $_m"
     fi
     printf '%s\n' "$_m"
 }
@@ -227,6 +354,7 @@ linux_probe_map() {
     _f() { printf '%s\n' "$_line" | sed -n "s/.*[[:space:]]\{0,1\}$1=\"\([^\"]*\)\".*/\1/p" | head -n1; }
     _model=$(_f MODEL); _size=$(_f SIZE); _rm=$(_f RM)
     _type=$(_f TYPE);   _tran=$(_f TRAN); _hot=$(_f HOTPLUG); _ptuuid=$(_f PTUUID)
+    _ro=$(_f RO)
     [ -n "$_size" ] || _size=0
 
     case "$_tran" in
@@ -251,11 +379,12 @@ linux_probe_map() {
     # signal at all, and the caller counts how many each platform supplies.
     printf 'os_installable=%s\n' 'unknown'
     printf 'uuid=%s\n'           "${_ptuuid:-unknown}"
+    printf 'read_only=%s\n'      "$(case "$_ro" in (1) echo Yes ;; (0) echo No ;; (*) echo unknown ;; esac)"
 }
 
 linux_probe() {
     [ -b "/dev/$1" ] || die "no such disk: /dev/$1"
-    lsblk -b -d -P -o NAME,SIZE,MODEL,RM,TYPE,TRAN,HOTPLUG,PTUUID "/dev/$1" \
+    lsblk -b -d -P -o NAME,SIZE,MODEL,RM,TYPE,TRAN,HOTPLUG,PTUUID,RO "/dev/$1" \
         2>/dev/null | linux_probe_map
 }
 
@@ -293,6 +422,11 @@ linux_partition() {
 
 linux_type()     { priv sfdisk --quiet --part-type "/dev/$1" "$2" "$3" >/dev/null 2>&1; }
 linux_bootflag() { priv sfdisk --quiet --activate "/dev/$1" "$2" >/dev/null 2>&1; }
+linux_biosboot() { shared_biosboot "/dev/$1" "$2" "$1"; }
+# Linux writes sector 0 of a disk whose partitions are mounted, and stage 3
+# needs exactly that: the new disk is mounted at /mnt when its boot code goes on.
+linux_biosboot_quiesce() { :; }
+linux_biosboot_check() { shared_biosboot_check "/dev/$1" "$2"; }
 
 linux_eject() {
     sync 2>/dev/null || true
@@ -323,7 +457,8 @@ linux_sha256_check()   { sha256sum -c "$1"; }
 # and that partition naming is right for the four kinds of device name there
 # are. A recording and an expected answer -- not a second implementation.
 
-FIX_CARD='NAME="sda" SIZE="15931539456" MODEL="SD Card Reader" RM="1" TYPE="disk" TRAN="usb" HOTPLUG="1" PTUUID="6f20736b"'
+FIX_CARD='NAME="sda" SIZE="15931539456" MODEL="SD Card Reader" RM="1" TYPE="disk" TRAN="usb" HOTPLUG="1" PTUUID="6f20736b" RO="0"'
+FIX_WORN='NAME="sdb" SIZE="63250104320" MODEL="MKNUFDVP64GB" RM="1" TYPE="disk" TRAN="usb" HOTPLUG="1" PTUUID="" RO="1"'
 FIX_INTERNAL='NAME="nvme0n1" SIZE="1024209543168" MODEL="Samsung SSD 990" RM="0" TYPE="disk" TRAN="nvme" HOTPLUG="0" PTUUID="a1b2c3d4"'
 FIX_BIGDRIVE='NAME="sdb" SIZE="2000398934016" MODEL="Expansion Desk" RM="0" TYPE="disk" TRAN="usb" HOTPLUG="1" PTUUID="deadbeef"'
 FIX_LOOP='NAME="loop0" SIZE="17179869184" MODEL="" RM="0" TYPE="loop" TRAN="" HOTPLUG="0" PTUUID=""'
@@ -368,6 +503,9 @@ self_test() {
     want "$(probe_key "$FIX_CARD" whole)"      Yes              'card is whole'
     want "$(probe_key "$FIX_CARD" protocol)"   USB              'card protocol'
     want "$(probe_key "$FIX_CARD" uuid)"       6f20736b         'card uuid'
+    want "$(probe_key "$FIX_CARD" read_only)"  No               'card writable'
+    want "$(probe_key "$FIX_WORN" read_only)"  Yes              'a worn stick says read-only'
+    want "$(probe_key "$FIX_LOOP" read_only)"  unknown          'no RO column reads as unknown'
 
     # 4. The refusals. Each of these is a device the build must not write to,
     #    and the key the refusal reads.

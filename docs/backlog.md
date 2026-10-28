@@ -25,8 +25,9 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 | T | text from outside | `staticstream` |
 | C | configuration | `copal` |
 | S | shell scripts | `copal`, and `staticstream` where the entry says so |
+| B | booting and installing | `copal` |
 
-**Standing:** 0 open · 1 in progress · 33 done · 3 dropped. Written 29 September 2026.
+**Standing:** 9 open · 2 in progress · 34 done · 3 dropped. Written 29 September 2026; the B entries 27 October 2026 (`docs/legacy-bios-lab-report.md`).
 
 ---
 
@@ -38,18 +39,34 @@ An entry that is decided against moves to **Dropped** and keeps its reason.
 |---|---|---|---|
 | | *nothing* | | |
 
+### Booting and installing
+
+| ID | Entry | Rule | Check |
+|---|---|---|---|
+| B-05 | **The offline disk tools**: the stick's Alpine booted straight into a disk menu (`fdisk`/`sfdisk`/`parted`, `wipefs`, `mkfs`, `fsck`, `smartctl`, `ddrescue`, partclone for Clonezilla-style images), packages carried on the stick | — | boots and lists the disks with no network |
+| B-06 | **An ISO loader**: GRUB boots ISOs dropped into `isos/` on the stick (Clonezilla, GParted, Alpine) by loopback; needs `loopback` and `iso9660` in the BIOS core and the UEFI module set | — | an Alpine and a Clonezilla ISO boot from the folder under SeaBIOS and EDK2 |
+| B-07 | **The console on a screen that is not there.** On an Acer Aspire 5750G (Intel HD 3000 + NVIDIA GT 520M), `nouveau` takes fb0 and reports its empty VGA port connected (EDID 0 bytes), so the text console draws there and the laptop panel stays blank; the system runs. Workaround: SSH. Every physical port (panel, VGA, HDMI) is the Intel GPU's: a muxless Optimus laptop, so no monitor shows the console. Plan (lab report VI-B): a boot entry with `modprobe.blacklist=nouveau`; detect the Intel+NVIDIA pair at install and put `i915` first; a one-time question saved as `COPAL_GPU` in answers.txt (`docs/console-wrong-screen-lab-report.md`) | the console where the person is looking | the 5750G boots to a visible login on its panel, and NVIDIA still loads |
+| B-08 | **The card's SSH key at stage 1**, not at the SSH-key stage, so a machine is reachable from the Mac from its first boot (the 5750G needed `ssh-copy-id` and the password) | — | after stage 1, `ssh user@<ip>` from the Mac logs in with the key |
+| B-09 | **The progress screen draws stray text over SSH.** In the Mac's Terminal at 120x33, during the Desktop phase, text ran down the right edge ("100Execut", a wrapped mirror address) beside a correct screen; the install was not affected (`docs/console-wrong-screen-lab-report.md`, V) | a screen that can be read | the Desktop phase over SSH at 120x33 and at 80x24 shows no stray text |
+| B-10 | **A CUDA machine in the fleet.** Ubuntu installed from the Copal menu (done: "Install Ubuntu 24.04 / 26.04 LTS Server (network)"), then set up over SSH: for a GTX 1080 / 1080 Ti, Ubuntu 24.04 with NVIDIA's `cuda-drivers-580` and `cuda-toolkit-12-9` (the 26.04 repository has only CUDA 13, which does not target Pascal) | NVIDIA's supported path, not Alpine | `nvidia-smi` lists the card, and a CUDA 12.9 sample runs |
+| B-11 | **`copal rename NAME`.** A rename touches three files (`/etc/hostname`, `/etc/hosts`, the `hostname` line in `/etc/network/interfaces`, which DHCP sends to the router); done by hand on `columbia` it reached two, because the Terminal wrapped the one long command. The command checks the name, changes all three, sets the running name, commits on a diskless root, and prints them back (`docs/renaming-a-machine-lab-report.md`) | one command, nothing to paste | on a test machine all three files and `hostname` show the new name, and after a reboot too |
+| B-03 | A hybrid ISO, for a DVD and a stick: El Torito for BIOS and UEFI and an MBR, built with `xorriso`. A DVD is read-only, so it is an installer or a live disc; the configuration is saved to a stick or a disk | — | the ISO boots in QEMU under SeaBIOS and EDK2, from a CD and as a disk |
+| B-04 | `shellcheck` over `tools/copal-disk.sh`, `tools/grub-bios-build.sh`, `tools/copal-answers.sh` and the changed stages: it was not installed on the Mac that wrote them | S-23's standard | `make shell-lint` passes with no new warning |
+
 ---
 
 ## In progress
 
 | ID | Entry | Rule | Where it stands |
 |---|---|---|---|
+| B-01 | **A legacy-BIOS PC.** The stick boots both ways (GRUB's boot code written by `dd`, `copal-disk.sh biosboot`), and on a PC booted in legacy BIOS stage 3 lays out the PC's own disk as MBR and writes the same boot code to it. UEFI machines take the path they took before. **Checked:** QEMU SeaBIOS boots a fresh stick to the login and its message; on Paul's PC the stick booted and stage 1 ran; under busybox, the MBR layout and the Linux `biosboot` wrote and read back right. **Left:** a whole install on the PC, after which it starts from `sda` without the stick (the first try, before `151925c`, was a GPT disk: "No bootable device"); the second stick came out UEFI only when macOS would not unmount its volumes, fixed by a forced unmount and a read-back in the build's verify step; the third rewrite found the stick worn out (read-only); a new stick is next, and the build now refuses a read-only one by name. **With the new stick the PC started from `sda` (27 October)**; one fstab line for the stick's cache survived, now dropped by place in stage 3. Left: a clean boot with that fix | the UEFI path unchanged | `151925c`; the stick being rewritten 27 October |
 | S-16 | The installer fetching itself is checked against a signature. **The checking side is built, and does nothing until a machine has signers.** `copal -U` fetches `copal-prep.sh.sig` from beside the file and checks it with `ssh-keygen -Y verify` against `/etc/copal/allowed_signers`, which the card brings. With signers and no good signature it refuses, unless `--unsigned` is given. With no signers it installs as it always did and says it did not check. `tools/copal-sign.sh` and `make signers`, `make sign`, `make signed` are the other side. **Checked** with throwaway keys and a stand-in server, eight cases: no signers; a good signature; none published; none, with `--unsigned`; signed and then changed; signed by a key the machine does not know; signed by the right key for another purpose; nothing at that ref. **What is left is the author's:** `make signers KEY=…` once, `make sign KEY=…` when a release is tagged, and the decision to do either. Nothing was signed, and no key of anybody's is in the repository | S11 | `ecebfc1` |
 
 ## Done
 
 | ID | Entry | Done | Commit |
 |---|---|---|---|
+| B-02 | **No login depends on bash.** Both accounts keep `/bin/sh`; `~/.profile` starts bash for an interactive login when it is installed; stage 3 sets `/bin/sh` for any login shell missing on the new root. Met on the legacy PC: every login ended in `can't execute '/bin/bash'`. **Check:** under busybox `sh` on Alpine, an interactive login ends in bash, `sh -lc` stays in sh, and with bash missing the login works in sh | 27 October 2026 | this commit |
 | T-07 | `tests/ytq-hostile-check.sh` and `tests/standin/yt-dlp-hostile`, as `make ytq-hostile-check` and last in `make check`: the real ytq against a stand-in yt-dlp whose every field carries an attack. **Check:** 31 checks. Against the ytq of `75cbf7d`, 19 fail; against this one, none. The 12 that passed from the start were each made to fail once by a sabotaged copy | 29 September 2026 | staticstream `425ba64` |
 | T-02 | `ffescape` escapes a carriage return and leaves out a NUL, which cannot be escaped. **Check:** with this change alone the MP4 had one chapter where it had three, and its lyrics and description whole: 18 failures became 15 | 29 September 2026 | staticstream `425ba64` |
 | T-03 | `printable()` on what `ytq list`, `ytq status` and a runner print, on every line of the log, on a notification line by line, on the `stream`, `source`, `license`, `note` and `key` rows of `sstr verify`, and on the line the Workspace shows before it runs it. **Check:** with T-02 and this, 15 failures became 8 — and `sstr verify` lost its forged rows too, a newline being `^J` | 29 September 2026 | staticstream `425ba64` |

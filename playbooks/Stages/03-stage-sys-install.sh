@@ -78,7 +78,11 @@ MSG
         ask "Type yes to proceed:"
         [ "$REPLY" = "yes" ] || { note "Aborted; nothing was erased."; return 0; }
     else
-        say "Partitioning /dev/$TGT_DISK: 2 GiB EFI, the rest ext4"
+        if [ "$(firmware_mode)" = UEFI ]; then
+            say "Partitioning /dev/$TGT_DISK: GPT, 2 GiB EFI, the rest ext4"
+        else
+            say "Partitioning /dev/$TGT_DISK: MBR (legacy BIOS), 2 GiB FAT32 boot, the rest ext4"
+        fi
         prepare_root_disk "$TGT_DISK" \
             || die "could not partition /dev/$TGT_DISK -- nothing else was changed; the stick still boots as before"
         note "boot  $TGT_P1 (FAT32, COPALBOOT)"
@@ -267,11 +271,88 @@ menuentry "Copal Linux (single user)" {
     linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0 single
     initrd /$IPATH
 }
+
+# Two-GPU laptops: nouveau kept off the screen, so the console is on the
+# panel (see the same entry on the stick, and
+# docs/console-wrong-screen-lab-report.md).
+menuentry "Copal Linux (Intel graphics only: two-GPU laptops)" {
+    linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0 modprobe.blacklist=nouveau nouveau.modeset=0
+    initrd /$IPATH
+}
+
+menuentry "Copal live, from a USB stick (if one is in)" {
+    if search --no-floppy --file /copal-stick --set=root; then
+        configfile /boot/grub/grub.cfg
+    else
+        echo "No Copal USB stick found."
+    fi
+}
+
+# The local fallback: the stick's live system, copied onto this disk's boot
+# partition by stage 3, booted with no saved settings (apkovl=none names no
+# file, so the initramfs loads no overlay): a clean Alpine in RAM, root with
+# no password at this console, for repairing this disk without the stick.
+menuentry "Copal rescue, from this disk (live, no saved settings)" {
+    linux /boot/vmlinuz-lts modules=loop,squashfs,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=tmpfs apkovl=none console=tty0
+    initrd /boot/initramfs-lts
+}
 EOF
+        # Ubuntu over the network, if the stick carried it (copied here).
+        if [ -f /mnt/boot/boot/grub/ubuntu.cfg ]; then
+            cat >> "$BOOTCFG" <<'EOF'
+
+if [ -f /boot/grub/ubuntu.cfg ]; then
+    source /boot/grub/ubuntu.cfg
+fi
+EOF
+        fi
+        # The network boot, if the stick carried it (stage 3 copied it here).
+        if [ -f /mnt/boot/boot/netboot/netboot.xyz.lkrn ]; then
+            cat >> "$BOOTCFG" <<'EOF'
+
+menuentry "Network boot: netboot.xyz (Alpine, BSD, Clonezilla, GParted ...)" {
+    if [ "$grub_platform" = efi ]; then
+        insmod chain
+        chainloader /boot/netboot/netboot.xyz.efi
+    else
+        linux16 /boot/netboot/netboot.xyz.lkrn
+    fi
+}
+EOF
+        fi
         note "kernel  /$KPATH"
         note "initrd  /$IPATH"
         note "root    $_root"
+        # A PC that booted in legacy BIOS cannot run \EFI\BOOT\: its disk was
+        # made MBR (prepare_root_disk), and here it gets the same GRUB boot
+        # code as the card, from the card's copy now on the new p1. That GRUB
+        # reads (,msdos1)/boot/grub/grub.cfg, the file rewritten just above.
+        # UEFI machines are untouched.
+        if [ -n "$TGT_DISK" ] && [ "$(firmware_mode)" != UEFI ]; then
+            say "Writing GRUB's legacy-BIOS boot code to /dev/$TGT_DISK"
+            [ -f /mnt/boot/boot/grub/bios/core.img ] && [ -f "$BOOT/tools/copal-disk.sh" ] \
+                || die "this card has no BIOS boot code for the disk (a card written before 27 October) -- rewrite it with copal-prep.sh; the stick still boots as before"
+            sh "$BOOT/tools/copal-disk.sh" biosboot "$TGT_DISK" /mnt/boot/boot/grub/bios \
+                || die "could not write the BIOS boot code to /dev/$TGT_DISK -- it would not start; the stick still boots as before"
+            note "sector 0 and the gap before p1 of /dev/$TGT_DISK: GRUB, p1 active"
+        fi
     fi
+
+    # ---- every login shell exists on the new root -------------------------
+    # A login whose shell is missing is a machine nobody can enter (27
+    # October: /bin/bash named and not installed). Whatever /etc/passwd on the
+    # new root names for root and the admin user must be there; if it is not,
+    # that account goes back to /bin/sh, which is part of the base system.
+    for _acct in root "$PI_USER"; do
+        _sh=$(awk -F: -v u="$_acct" '$1 == u { print $7 }' /mnt/etc/passwd 2>/dev/null)
+        [ -n "$_sh" ] || continue
+        if [ ! -x "/mnt$_sh" ]; then
+            warn "$_acct's login shell $_sh is not on the new root -- setting /bin/sh"
+            awk -F: -v OFS=: -v u="$_acct" '$1 == u { $7 = "/bin/sh" } { print }' \
+                /mnt/etc/passwd > /mnt/etc/passwd.copal \
+                && chmod 0644 /mnt/etc/passwd.copal && mv /mnt/etc/passwd.copal /mnt/etc/passwd
+        fi
+    done
 
     # ---- flash-friendly fstab ---------------------------------------------
     say "Tuning /etc/fstab for flash"
@@ -315,6 +396,17 @@ FSTAB
     mkdir -p /mnt/var/cache/apk /mnt/etc/apk
     ln -s /var/cache/apk /mnt/etc/apk/cache
     sed -i "\|[[:space:]]${P2MNT}[[:space:]]|d" /mnt/etc/fstab
+    # And every other mount the diskless system kept under /media, unless it
+    # is noauto (Alpine's own /media/usb line is, and mounts nothing at boot).
+    # P2MNT is the stick's p2 by the name it has in THIS boot; stage 2 wrote
+    # its line under the name it had then, and USB names are not stable
+    # across boots. On a legacy PC, 27 October, the installed system kept
+    # "UUID=... /media/sdb2", and every boot without the stick said "Some
+    # local filesystem failed to mount". The installed system mounts nothing
+    # from the stick, so the rule is by place, not by name.
+    awk '!/^[[:space:]]*#/ && $2 ~ /^\/media\// && $4 !~ /(^|,)noauto(,|$)/ { print "    dropped from fstab: " $0 > "/dev/stderr"; next } { print }' \
+        /mnt/etc/fstab > /mnt/etc/fstab.copal && mv /mnt/etc/fstab.copal /mnt/etc/fstab
+    chmod 0644 /mnt/etc/fstab 2>/dev/null || true
     note "cache -> /var/cache/apk (on the new root)"
 
     # Swap on its own disk, below zram (stage 5) in priority, so the disk is
@@ -414,7 +506,35 @@ FSTAB
         for _f in copal-auto copal-timings copal.log copal-git copal-repos copal-profile; do
             [ -f "$BOOT/$_f" ] && cp "$BOOT/$_f" /mnt/boot/ 2>/dev/null
         done
-        note "the install continues from /dev/$TGT_DISK after the reboot; the stick can come out"
+        # The disk is the installed system now: it says so (the stick's menu
+        # finds it by this file), and it is not a stick (the disk's menu
+        # finds a stick by the other one).
+        printf 'Copal installed on %s, /dev/%s, %s\n' "$(hostname)" "$TGT_DISK" "$(date -u +%Y-%m-%d)" > /mnt/boot/copal-installed
+        rm -f /mnt/boot/copal-stick
+        note "the install continues from /dev/$TGT_DISK after the reboot"
+
+        # THE STICK GOES BACK TO NEW, so it installs the next computer from
+        # scratch. Everything this install left on it -- the saved
+        # configuration, the resume marker, the level chosen, the log and
+        # timings -- is on the disk now (copied above). Left on the stick,
+        # the next computer would boot as this one (its hostname, its fstab,
+        # its half-finished install), which is what happened on 27 October.
+        # The git identity and the repository list stay: they are the
+        # person's, not the machine's. The hostname is drawn again.
+        say "Resetting the USB stick for the next computer"
+        mount -o remount,rw "$BOOT" 2>/dev/null || true
+        for _o in "$BOOT"/*.apkovl.tar.gz; do
+            [ -e "$_o" ] || continue
+            case "${_o##*/}" in copal-first.apkovl.tar.gz) ;; *) rm -f "$_o" ;; esac
+        done
+        rm -f "$BOOT/copal-auto" "$BOOT/copal-profile" "$BOOT/copal-timings" "$BOOT/copal.log"
+        if [ -f "$BOOT/boot/copal-starter.tar.gz" ]; then
+            cp "$BOOT/boot/copal-starter.tar.gz" "$BOOT/copal-first.apkovl.tar.gz"
+            note "stick: back to new -- the next computer starts at stage 1, with a new hostname"
+        else
+            warn "stick: no spare starter on it (a stick written before 27 October); it boots fresh but without the first-login message"
+        fi
+        STICK_RESET=1
     fi
 
     sync
@@ -422,6 +542,29 @@ FSTAB
     umount /mnt
 
     say "Stage 3 complete."
+    if [ "${STICK_RESET:-0}" = 1 ]; then
+        if [ "$(firmware_mode)" = UEFI ]; then
+            _fw='UEFI setup: put this disk first in the Boot Order (or choose it in the one-time boot menu)'
+        else
+            _fw='BIOS setup: put the hard disk first in the Boot Priority / Hard Disk order'
+        fi
+        cat <<MSG
+
+    =====================================================================
+      COPAL IS NOW ON /dev/$TGT_DISK. TO START FROM IT:
+
+        1. Say yes to the reboot below. When the screen goes dark,
+           REMOVE THE USB STICK.
+        2. If the computer still starts from the stick, or says no disk:
+           $_fw.
+
+      The stick has been reset. It installs the NEXT computer from the
+      beginning. Left in this one, its menu has "Copal installed on this
+      computer's disk", which starts this install.
+    =====================================================================
+
+MSG
+    fi
     cat <<MSG
     A reboot is REQUIRED before anything else. Until then / is still the
     tmpfs, the new root on p2 is merely populated, and stage 4 will refuse
