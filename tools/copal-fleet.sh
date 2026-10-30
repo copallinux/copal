@@ -19,6 +19,7 @@
 #   copal fleet ca [--create]      the fleet certificate authority
 #   copal fleet trust              teach this machine to trust the fleet
 #   copal fleet login              an 8-hour operator certificate
+#   copal fleet certify NODE       a host certificate from a key on stdin, not installed
 #   copal fleet sign NODE...       sign one node's host key
 #   copal fleet enrol              sign every candidate with a matching token
 #   copal fleet run VERB [ARG...]  one verb, fanned out, a result per node
@@ -550,6 +551,32 @@ cmd_sign() {
         [ -n "$_addr" ] || _addr="$_id"
         sign_one "$_id" "$_addr" || true
     done
+}
+
+# A host certificate and nothing else: the public key on stdin, the certificate's
+# path on stdout. sign_one installs through copal-fleet install-cert, and a machine
+# that joined as a worker has no copal-fleet. Its installer checks what it is given,
+# so THE SIGNING STAYS HERE, where the CA is, and orrery's recipe only carries the
+# result. No token: the caller read the key over a login known_hosts vouches for.
+cmd_certify() {
+    _id=""; _more=""
+    while [ $# -gt 0 ]; do
+        if take_common "$@"; then shift "$SHIFTN"; continue; fi
+        case "$1" in
+            -*) die "unknown option '$1' for certify" ;;
+            *) if [ -z "$_id" ]; then _id="$1"; else _more="$_more,$1"; fi; shift ;;
+        esac
+    done
+    settle
+    [ -n "$_id" ] || die "which node? copal fleet certify NODE [NAME ...] < its-host-key.pub"
+    [ -f "$CA" ] || die "no CA private key at $CA"
+    mkdir -p "$FDIR/hosts"
+    _hk="$FDIR/hosts/$_id.pub"
+    cat > "$_hk"
+    case "$(head -c 12 "$_hk")" in ssh-ed25519*) ;; *) die "$_id: stdin is not an ed25519 public key" ;; esac
+    ssh-keygen -q -s "$CA" -I "$_id" -h -n "$_id,$_id.local,$_id.lan$_more" -V '+90d' "$_hk" \
+        || die "$_id: signing failed"
+    printf '%s\n' "$FDIR/hosts/$_id-cert.pub"
 }
 
 cmd_enrol() {
@@ -1389,6 +1416,7 @@ case "${1:-}" in
     trust)             shift; cmd_trust "$@" ;;
     login)             shift; cmd_login "$@" ;;
     sign)              shift; cmd_sign "$@" ;;
+    certify)           shift; cmd_certify "$@" ;;
     enrol|enroll)      shift; cmd_enrol "$@" ;;
     run)               shift; cmd_run "$@" ;;
     status)            shift; cmd_status "$@" ;;
