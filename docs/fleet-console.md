@@ -88,7 +88,7 @@ becomes an error the console can explain rather than a warning an operator
 learns to press through.
 
 ```
-copal fleet login               # an 8-hour operator certificate
+copal fleet login               # 30 days, or the fleet's cert-hours file
 copal fleet login --hours 2
 ```
 *works.* Short on purpose: short lifetimes are what make revocation a rarity
