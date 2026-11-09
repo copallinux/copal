@@ -855,6 +855,19 @@ sync-profile: | $(BUILDDIR)
 	@printf '  ok      orrery --profile-sshd -> $(PREP)\n'
 	@$(MAKE) --no-print-directory lint
 
+## sync-firmware: copy orrery's tools/fleet-firmware.sh into 'copal firmware'.
+.PHONY: sync-firmware
+sync-firmware:
+	@test -f $(ORRERY_SRC)/tools/fleet-firmware.sh \
+	  || { printf '\033[31merror:\033[0m no tools/fleet-firmware.sh in $(ORRERY_SRC)\n'; exit 1; }
+	@python3 -c 'import sys;\
+	p=sys.argv[1];s=open(p).read();prog=open(sys.argv[2]).read();\
+	m="    cat > /usr/local/bin/copal-firmware.new <<\x27COPALFIRMWARE\x27\n";\
+	i=s.index(m)+len(m);j=s.index("\nCOPALFIRMWARE\n",i);\
+	open(p,"w").write(s[:i]+prog.rstrip("\n")+s[j:])' $(PREP) $(ORRERY_SRC)/tools/fleet-firmware.sh
+	@printf '  ok      orrery tools/fleet-firmware.sh -> $(PREP)\n'
+	@$(MAKE) --no-print-directory lint
+
 ## sync-agent: copy tools/copal-fleet-agent into the heredoc in copal-prep.sh.
 sync-agent:
 	@python3 -c 'import sys;\
@@ -1202,6 +1215,17 @@ lint: | $(BUILDDIR)
 	@grep -q '^AuthenticationMethods publickey$$' $(BUILDDIR)/.profile.lint.conf \
 	    && printf '  ok      the fleet sshd block forces publickey and nothing else\n' \
 	    || { printf '\033[31merror:\033[0m the fleet sshd block does not force publickey\n'; exit 1; }
+	@sed -n "/^    cat > \/usr\/local\/bin\/copal-firmware.new <<'COPALFIRMWARE'$$/,/^COPALFIRMWARE$$/p" $(PREP) \
+	    | sed '1d;$$d' > $(BUILDDIR)/.firmware.lint.sh
+	@test -s $(BUILDDIR)/.firmware.lint.sh && sh -n $(BUILDDIR)/.firmware.lint.sh \
+	    || { printf '\033[31merror:\033[0m could not extract copal-firmware from $(PREP)\n'; exit 1; }
+	@if [ -f $(ORRERY_SRC)/tools/fleet-firmware.sh ]; then \
+	    cmp -s $(BUILDDIR)/.firmware.lint.sh $(ORRERY_SRC)/tools/fleet-firmware.sh \
+	      && printf '  ok      copal-firmware matches orrery tools/fleet-firmware.sh\n' \
+	      || { printf '\033[31merror:\033[0m copal-firmware has drifted from orrery -- run: make sync-firmware\n'; \
+	           diff -u $(ORRERY_SRC)/tools/fleet-firmware.sh $(BUILDDIR)/.firmware.lint.sh | head -20; rm -f $(BUILDDIR)/.firmware.lint.sh; exit 1; }; \
+	 else printf '  skip    copal-firmware against orrery (no checkout at $(ORRERY_SRC))\n'; fi
+	@rm -f $(BUILDDIR)/.firmware.lint.sh
 	@if [ -f $(ORRERY_SRC)/Cargo.toml ] && command -v cargo >/dev/null 2>&1; then \
 	    ( cd $(ORRERY_SRC) && cargo run --quiet -- --profile-sshd ) \
 	        > $(BUILDDIR)/.profile.orrery.conf 2>/dev/null; \

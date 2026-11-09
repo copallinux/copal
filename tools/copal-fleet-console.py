@@ -526,8 +526,22 @@ def seat_rows(node, facts):
             ("job",    g("job")),
             ("apk",    "%s pending" % g("apk_pending")
                        if g("apk_pending").isdigit() else g("apk_pending")),
+            ("bios",   g("bios")),
     ):
         rows.append((label, value, style_for(value)))
+    # THE MICROCODE, and whether the boot loads a newer one: a package that is
+    # installed and not in grub.cfg looks fixed and is not, and no package at
+    # all leaves the CPU on its BIOS's own (saskatchewan, 8 November: 0x10f,
+    # from before Intel's fix for the 13th Gen Vmin shift). Both warn.
+    uc, mc = g("ucode"), g("microcode")
+    if uc.endswith("loaded at boot"):
+        rows.append(("ucode", "%s · loaded" % mc, FG))
+    elif uc == "none installed":
+        rows.append(("ucode", "%s · no package" % mc, WARN))
+    elif "not in grub.cfg" in uc:
+        rows.append(("ucode", "%s · not loaded" % mc, WARN))
+    else:
+        rows.append(("ucode", uc if mc in ("n/a", "not reported") else "%s · %s" % (mc, uc), style_for(uc)))
     return rows
 
 
@@ -1164,6 +1178,25 @@ def self_test():
     assert rows["mounts"][0].startswith("not collected"), rows["mounts"]
     assert rows["mounts"][1] == DIM, "not collected is not a fault, it is a gap"
     checks += 5
+
+    # THE FIRMWARE: the BIOS shown, and the microcode warned of when no package
+    # loads one at boot, or one is installed and grub.cfg does not hand it over.
+    fw = dict(full, bios="B.D3 03/24/2023", microcode="0x137",
+              ucode="intel-ucode-20260812-r0, loaded at boot")
+    rows = {lbl: (val, st) for lbl, val, st in seat_rows(seat_node, fw)}
+    assert rows["bios"] == ("B.D3 03/24/2023", FG), rows["bios"]
+    assert rows["ucode"] == ("0x137 · loaded", FG), rows["ucode"]
+    rows = {lbl: (val, st) for lbl, val, st in seat_rows(seat_node, dict(fw, microcode="0x10f", ucode="none installed"))}
+    assert rows["ucode"] == ("0x10f · no package", WARN), rows["ucode"]
+    rows = {lbl: (val, st) for lbl, val, st in seat_rows(seat_node, dict(fw, ucode="intel-ucode-20260812-r0, not in grub.cfg"))}
+    assert rows["ucode"] == ("0x137 · not loaded", WARN), rows["ucode"]
+    pi = {lbl: (val, st) for lbl, val, st in seat_rows(seat_node, dict(fw, bios="n/a", microcode="n/a", ucode="n/a"))}
+    assert pi["bios"] == ("n/a", FG) and pi["ucode"] == ("n/a", FG), (pi["bios"], pi["ucode"])
+    old = {lbl: (val, st) for lbl, val, st in seat_rows(seat_node, full)}
+    assert old["ucode"] == ("not reported", WARN), "a node older than this console says so"
+    ftxt = text_of(seat_frame(dict(seat, facts=fw), 104, 40))
+    assert "B.D3 03/24/2023" in ftxt and "0x137 · loaded" in ftxt, ftxt
+    checks += 7
 
     # The build comes off the beacon when the node cannot be asked for facts.
     # It was parsed by W6 and dropped by assemble() until W8 went looking, so

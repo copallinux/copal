@@ -209,6 +209,34 @@ MSG
         die "stage 3 did not complete. Transcript: $LOG"
     fi
 
+    # ---- the CPU's microcode, handed to the kernel before the initramfs ----
+    # A PC's CPU otherwise runs the microcode its BIOS carries, and a BIOS is
+    # seldom updated: on 8 November saskatchewan's i7-13700F ran its BIOS's
+    # 0x10f of March 2023, from before Intel's fix for the 13th Gen Vmin shift,
+    # the instability that wears the chip out, while Alpine's intel-ucode
+    # carried 0x137 (Paul: "these should be part of copal too"). The package
+    # puts one image in /mnt/boot, the root of p1 beside the kernel, and the
+    # grub.cfg below names it first on each installed entry's initrd line. Not
+    # fatal: without it the machine boots as it would have.
+    UCODE=
+    if ! is_pi_boot; then
+        case "$(sed -n 's/^vendor_id[[:space:]]*: //p' /proc/cpuinfo | head -n 1)" in
+            GenuineIntel) _uc=intel-ucode ;;
+            AuthenticAMD) _uc=amd-ucode ;;
+            *) _uc= ;;
+        esac
+        if [ -n "$_uc" ]; then
+            say "Installing the CPU's microcode ($_uc)"
+            if apk --root /mnt add "$_uc" >>"$LOG" 2>&1 && [ -f "/mnt/boot/$_uc.img" ]; then
+                UCODE="/$_uc.img "
+                note "ok -- /$_uc.img, loaded before the kernel at every boot"
+            else
+                warn "could not install $_uc: the CPU keeps its BIOS's microcode."
+                warn "Later: doas apk add $_uc, and /$_uc.img first on grub.cfg's initrd lines."
+            fi
+        fi
+    fi
+
     # ---- point the firmware at the newly installed kernel -----------------
     # Stock config.txt has 'kernel=boot/vmlinuz-rpi', which is where the
     # diskless payload keeps it. setup-disk installed the kernel into
@@ -264,12 +292,12 @@ set default=0
 
 menuentry "Copal Linux" {
     linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0
-    initrd /$IPATH
+    initrd $UCODE/$IPATH
 }
 
 menuentry "Copal Linux (single user)" {
     linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0 single
-    initrd /$IPATH
+    initrd $UCODE/$IPATH
 }
 
 # Two-GPU laptops: nouveau kept off the screen, so the console is on the
@@ -277,7 +305,7 @@ menuentry "Copal Linux (single user)" {
 # docs/console-wrong-screen-lab-report.md).
 menuentry "Copal Linux (Intel graphics only: two-GPU laptops)" {
     linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0 modprobe.blacklist=nouveau nouveau.modeset=0
-    initrd /$IPATH
+    initrd $UCODE/$IPATH
 }
 
 menuentry "Copal live, from a USB stick (if one is in)" {
@@ -321,7 +349,7 @@ menuentry "Network boot: netboot.xyz (Alpine, BSD, Clonezilla, GParted ...)" {
 EOF
         fi
         note "kernel  /$KPATH"
-        note "initrd  /$IPATH"
+        note "initrd  $UCODE/$IPATH"
         note "root    $_root"
         # A PC that booted in legacy BIOS cannot run \EFI\BOOT\: its disk was
         # made MBR (prepare_root_disk), and here it gets the same GRUB boot
