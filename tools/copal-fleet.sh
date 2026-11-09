@@ -86,7 +86,7 @@ answer() {  # <key>
         | sed "s/[\"']\{0,1\}[[:space:]]*$//" | head -1
 }
 
-FLEET=""; VIA=""; TAG=""; ONLY=""; LOGIN_USER=""; HOURS=8; SHOW_ALL=0; CREATE=0
+FLEET=""; VIA=""; TAG=""; ONLY=""; LOGIN_USER=""; HOURS=""; SHOW_ALL=0; CREATE=0
 JSON=0; CHECK=0; ASKPASS=0; TIMEOUT=120
 SHIFTN=0
 
@@ -440,6 +440,13 @@ cmd_login() {
     done
     settle
     [ -f "$CA" ] || die "no CA private key at $CA -- this machine cannot sign"
+    # How long: --hours, else the fleet's own cert-hours file, else 720, thirty days. Paul, 1
+    # November 2026: eight hours left a console running on an expired certificate, and OpenSSH
+    # penalised its every refused dial. THE PRICE: a stolen operator key now holds the fleet for
+    # up to a month. Shorten it with a number in that file, and run login again.
+    [ -n "$HOURS" ] || HOURS="$(cat "$(dirname "$OPKEY")/cert-hours" 2>/dev/null || true)"
+    [ -n "$HOURS" ] || HOURS=720
+    case "$HOURS" in *[!0-9]*|0) die "--hours and cert-hours want a whole number of hours, not '$HOURS'" ;; esac
     if [ ! -f "$OPKEY" ]; then
         info "Making an operator key for fleet '$FLEET'. It is used for nothing else."
         ssh-keygen -q -t ed25519 -N '' -C "copal fleet operator $FLEET" -f "$OPKEY"

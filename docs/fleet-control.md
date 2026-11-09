@@ -43,7 +43,7 @@ account, which the fleet's `Match` block never mentions and which therefore gets
 an ordinary login shell with an ordinary tty.
 
 `AllowUsers` already permits both (`fleet_sshd_policy()`, and `copal-ssh users`
-before it). The door is open, it is CA-gated, it expires in eight hours, and
+before it). The door is open, it is CA-gated, it expires (thirty days by default, `--hours` to change), and
 nothing in this repository has to change for Terminal, Exchange or Send.
 
 **The wider door was a deliberate design and the README recorded it as a gap.**
