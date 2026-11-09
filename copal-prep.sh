@@ -19823,6 +19823,68 @@ remote_state() {
     esac
 }
 
+# THE FIRMWARE, as this account can read it, no root: the board's BIOS, the
+# CPU's microcode and whether a microcode image is loaded at boot, and each
+# disk's firmware revision. orrery's Machines probe reads the same and says
+# which of it is behind; on 8 November saskatchewan's i7-13700F was found on
+# its BIOS's 0x10f, from before Intel's fix for the 13th Gen Vmin shift,
+# because nothing on an installed Copal loaded a newer one. `n/a` where the
+# board has none: a Pi has no DMI and no microcode.
+dmi_id() { tr -s ' ' < "/sys/class/dmi/id/$1" 2>/dev/null | sed 's/ *$//'; }
+
+bios_now() {
+    _v=$(dmi_id bios_version)
+    [ -n "$_v" ] || { printf 'n/a'; return 0; }
+    printf '%s %s' "$_v" "$(dmi_id bios_date)"
+}
+
+board_now() {
+    _v=$(dmi_id board_name)
+    [ -n "$_v" ] || { printf 'n/a'; return 0; }
+    printf '%s %s' "$(dmi_id board_vendor)" "$_v"
+}
+
+microcode_now() {
+    _m=$(sed -n 's/^microcode[[:space:]]*: //p' /proc/cpuinfo 2>/dev/null | head -n 1)
+    if [ -n "$_m" ]; then printf '%s' "$_m"; else printf 'n/a'; fi
+}
+
+# The microcode package, and whether grub.cfg hands its image to the kernel.
+# Installed and not loaded is the state that looks fixed and is not, so the
+# two are one reading.
+ucode_state() {
+    case "$(uname -m)" in
+        x86_64|i?86) : ;;
+        *) printf 'n/a'; return 0 ;;
+    esac
+    _p=$(apk info -v 2>/dev/null | grep -E '^(intel|amd)-ucode-[0-9]' | head -n 1)
+    [ -n "$_p" ] || { printf 'none installed'; return 0; }
+    for _c in /boot/boot/grub/grub.cfg /boot/grub/grub.cfg; do
+        [ -r "$_c" ] || continue
+        if grep -q 'ucode\.img' "$_c"; then
+            printf '%s, loaded at boot' "$_p"
+        else
+            printf '%s, not in grub.cfg' "$_p"
+        fi
+        return 0
+    done
+    printf '%s, no grub.cfg to read' "$_p"
+}
+
+# Each disk: its name, model and firmware revision, a ';' after each.
+disks_fw() {
+    _d=
+    for _n in /sys/class/nvme/nvme*; do
+        [ -r "$_n/firmware_rev" ] || continue
+        _d="$_d$(basename "$_n") $(tr -s ' ' < "$_n/model" | sed 's/ *$//') $(tr -d ' ' < "$_n/firmware_rev");"
+    done
+    for _b in /sys/block/sd*; do
+        [ -r "$_b/device/model" ] || continue
+        _d="$_d$(basename "$_b") $(tr -s ' ' < "$_b/device/model" | sed 's/ *$//') $(tr -d ' ' < "$_b/device/rev" 2>/dev/null);"
+    done
+    if [ -n "$_d" ]; then printf '%s' "$_d"; else printf 'none'; fi
+}
+
 facts() {
     printf 'id\t%s\n'          "$(hostname)"
     printf 'fleet\t%s\n'       "$(or_unknown "$(f name)")"
@@ -19847,6 +19909,12 @@ facts() {
     # a claim the node makes about itself, and a port scan is a guess.
     printf 'session\t%s\n'     "$(or_unknown "$(cat /etc/copal/session 2>/dev/null)")"
     printf 'remote\t%s\n'      "$(remote_state)"
+    # The firmware (see dmi_id above).
+    printf 'bios\t%s\n'        "$(bios_now)"
+    printf 'board\t%s\n'       "$(board_now)"
+    printf 'microcode\t%s\n'   "$(microcode_now)"
+    printf 'ucode\t%s\n'       "$(ucode_state)"
+    printf 'disks_fw\t%s\n'    "$(disks_fw)"
     # §IV-B asks for these two and nothing on a node produces them yet. Saying
     # so is the point: an absent row would read as "no mounts" and "no job".
     printf 'mounts\tnot collected (§11)\n'
@@ -22603,6 +22671,34 @@ MSG
         die "stage 3 did not complete. Transcript: $LOG"
     fi
 
+    # ---- the CPU's microcode, handed to the kernel before the initramfs ----
+    # A PC's CPU otherwise runs the microcode its BIOS carries, and a BIOS is
+    # seldom updated: on 8 November saskatchewan's i7-13700F ran its BIOS's
+    # 0x10f of March 2023, from before Intel's fix for the 13th Gen Vmin shift,
+    # the instability that wears the chip out, while Alpine's intel-ucode
+    # carried 0x137 (Paul: "these should be part of copal too"). The package
+    # puts one image in /mnt/boot, the root of p1 beside the kernel, and the
+    # grub.cfg below names it first on each installed entry's initrd line. Not
+    # fatal: without it the machine boots as it would have.
+    UCODE=
+    if ! is_pi_boot; then
+        case "$(sed -n 's/^vendor_id[[:space:]]*: //p' /proc/cpuinfo | head -n 1)" in
+            GenuineIntel) _uc=intel-ucode ;;
+            AuthenticAMD) _uc=amd-ucode ;;
+            *) _uc= ;;
+        esac
+        if [ -n "$_uc" ]; then
+            say "Installing the CPU's microcode ($_uc)"
+            if apk --root /mnt add "$_uc" >>"$LOG" 2>&1 && [ -f "/mnt/boot/$_uc.img" ]; then
+                UCODE="/$_uc.img "
+                note "ok -- /$_uc.img, loaded before the kernel at every boot"
+            else
+                warn "could not install $_uc: the CPU keeps its BIOS's microcode."
+                warn "Later: doas apk add $_uc, and /$_uc.img first on grub.cfg's initrd lines."
+            fi
+        fi
+    fi
+
     # ---- point the firmware at the newly installed kernel -----------------
     # Stock config.txt has 'kernel=boot/vmlinuz-rpi', which is where the
     # diskless payload keeps it. setup-disk installed the kernel into
@@ -22658,12 +22754,12 @@ set default=0
 
 menuentry "Copal Linux" {
     linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0
-    initrd /$IPATH
+    initrd $UCODE/$IPATH
 }
 
 menuentry "Copal Linux (single user)" {
     linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0 single
-    initrd /$IPATH
+    initrd $UCODE/$IPATH
 }
 
 # Two-GPU laptops: nouveau kept off the screen, so the console is on the
@@ -22671,7 +22767,7 @@ menuentry "Copal Linux (single user)" {
 # docs/console-wrong-screen-lab-report.md).
 menuentry "Copal Linux (Intel graphics only: two-GPU laptops)" {
     linux /$KPATH root=$_root ro modules=ext4,sd-mod,usb-storage,ahci,nvme,mmc_block,sdhci,sdhci_pci rootfstype=ext4 console=tty0 modprobe.blacklist=nouveau nouveau.modeset=0
-    initrd /$IPATH
+    initrd $UCODE/$IPATH
 }
 
 menuentry "Copal live, from a USB stick (if one is in)" {
@@ -22715,7 +22811,7 @@ menuentry "Network boot: netboot.xyz (Alpine, BSD, Clonezilla, GParted ...)" {
 EOF
         fi
         note "kernel  /$KPATH"
-        note "initrd  /$IPATH"
+        note "initrd  $UCODE/$IPATH"
         note "root    $_root"
         # A PC that booted in legacy BIOS cannot run \EFI\BOOT\: its disk was
         # made MBR (prepare_root_disk), and here it gets the same GRUB boot
